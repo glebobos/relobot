@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Motor Control</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            text-align: center; 
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        #joystick {
+            width: 300px;
+            height: 300px;
+            border-radius: 50%;
+            background-color: #f0f0f0;
+            position: relative;
+            margin: 50px auto;
+            touch-action: none;
+        }
+        #stick {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background-color: #007bff;
+            position: absolute;
+            top: 125px;
+            left: 125px;
+            touch-action: none;
+        }
+        .slider-container {
+            width: 300px;
+            margin: 20px auto;
+            text-align: left;
+        }
+        .slider-container label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        .slider-container input {
+            width: 100%;
+        }
+        .value-display {
+            display: inline-block;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Motor Control</h1>
+    <div class="slider-container">
+        <label for="speed-sensitivity">Maximum Speed (0-100%)</label>
+        <input type="range" id="speed-sensitivity" min="0" max="100" value="100">
+        <span class="value-display" id="speed-value">100%</span>
+    </div>
+    <div class="slider-container">
+        <label for="turn-sensitivity">Turn Sensitivity (0-100%)</label>
+        <input type="range" id="turn-sensitivity" min="0" max="100" value="100">
+        <span class="value-display" id="turn-value">100%</span>
+    </div>
+    <div id="joystick">
+        <div id="stick"></div>
+    </div>
+    <p>X: <span id="x-value">0</span>, Y: <span id="y-value">0</span></p>
+
+    <script>
+        const joystick = document.getElementById('joystick');
+        const stick = document.getElementById('stick');
+        const xValue = document.getElementById('x-value');
+        const yValue = document.getElementById('y-value');
+        const speedSlider = document.getElementById('speed-sensitivity');
+        const turnSlider = document.getElementById('turn-sensitivity');
+        const speedValue = document.getElementById('speed-value');
+        const turnValue = document.getElementById('turn-value');
+        let isActive = false;
+
+        // Update displayed values when sliders change
+        speedSlider.addEventListener('input', () => {
+            speedValue.textContent = speedSlider.value + '%';
+        });
+
+        turnSlider.addEventListener('input', () => {
+            turnValue.textContent = turnSlider.value + '%';
+        });
+
+        function setStickPosition(x, y) {
+            const joystickRect = joystick.getBoundingClientRect();
+            const stickRect = stick.getBoundingClientRect();
+            const radius = (joystickRect.width - stickRect.width) / 2;
+            
+            const centerX = joystickRect.left + joystickRect.width / 2;
+            const centerY = joystickRect.top + joystickRect.height / 2;
+            
+            let dx = x - centerX;
+            let dy = y - centerY;
+            
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            if (distance > radius) {
+                dx *= radius / distance;
+                dy *= radius / distance;
+            }
+            
+            stick.style.left = `${dx + radius}px`;
+            stick.style.top = `${dy + radius}px`;
+            
+            let normalizedX = dx / radius;
+            let normalizedY = -dy / radius;  // Invert Y-axis
+
+            // Apply sensitivity adjustments
+            normalizedX *= turnSlider.value / 100;
+            normalizedY *= speedSlider.value / 100;
+            
+            xValue.textContent = normalizedX.toFixed(2);
+            yValue.textContent = normalizedY.toFixed(2);
+            
+            throttleUpdateMotors(normalizedX, normalizedY);
+        }
+
+        function updateMotors(x, y) {
+            fetch('/set_motors', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ x, y }),
+            });
+        }
+
+        function throttle(func, limit) {
+            let lastFunc;
+            let lastRan;
+            return function(...args) {
+                if (!lastRan) {
+                    func.apply(this, args);
+                    lastRan = Date.now();
+                } else {
+                    clearTimeout(lastFunc);
+                    lastFunc = setTimeout(() => {
+                        if ((Date.now() - lastRan) >= limit) {
+                            func.apply(this, args);
+                            lastRan = Date.now();
+                        }
+                    }, limit - (Date.now() - lastRan));
+                }
+            };
+        }
+
+        const throttleUpdateMotors = throttle(updateMotors, 100);
+
+        function handleStart(e) {
+            isActive = true;
+            handleMove(e);
+        }
+
+        function handleMove(e) {
+            if (!isActive) return;
+            const touch = e.touches ? e.touches[0] : e;
+            setStickPosition(touch.clientX, touch.clientY);
+            e.preventDefault();
+        }
+
+        function handleEnd() {
+            isActive = false;
+            stick.style.left = '125px';
+            stick.style.top = '125px';
+            xValue.textContent = '0';
+            yValue.textContent = '0';
+            throttleUpdateMotors(0, 0);
+        }
+
+        joystick.addEventListener('mousedown', handleStart);
+        joystick.addEventListener('touchstart', handleStart);
+
+        document.addEventListener('mousemove', handleMove);
+        document.addEventListener('touchmove', handleMove, { passive: false });
+
+        document.addEventListener('mouseup', handleEnd);
+        document.addEventListener('touchend', handleEnd);
+    </script>
+</body>
+</html>

@@ -1,0 +1,30 @@
+FROM ros:humble
+
+# Install additional dependencies
+RUN apt-get update && apt-get install -y \
+    python3-pip \
+    python3-serial \
+    ros-humble-ros2launch \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Flask
+RUN pip3 install flask
+
+# Create workspace
+WORKDIR /ros2_ws
+
+# Source the workspace
+RUN echo "source /opt/ros/humble/setup.bash" >> /root/.bashrc
+
+# Create development script
+RUN echo '#!/bin/bash\n\
+source /opt/ros/humble/setup.bash\n\
+cd /ros2_ws\n\
+colcon build\n\
+source install/setup.bash\n\
+ros2 launch robot_control robot_control.launch.py' > /start_dev.sh && \
+chmod +x /start_dev.sh
+
+EXPOSE 5000
+
+CMD ["/start_dev.sh"]
