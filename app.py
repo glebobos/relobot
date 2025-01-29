@@ -47,6 +47,14 @@ def smooth_motor_control():
         
         time.sleep(UPDATE_RATE)
 
+def read_serial_data():
+    while True:
+        if ser.in_waiting > 0:
+            line = ser.readline().decode().strip()
+            print(f"Received from USB: {line}")
+        time.sleep(0.01)  # Small delay to reduce CPU usage
+
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -88,6 +96,11 @@ if __name__ == '__main__':
     motor_thread = threading.Thread(target=smooth_motor_control)
     motor_thread.daemon = True
     motor_thread.start()
+    
+    # Start the serial reading thread
+    serial_thread = threading.Thread(target=read_serial_data)
+    serial_thread.daemon = True
+    serial_thread.start()
     
     # Run the Flask app in a separate thread
     flask_thread = threading.Thread(target=lambda: app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False))
