@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="diffbot">
+
+  <xacro:include filename="$(find diff_drive_hardware)/config/diffbot_description.xacro" />
+  
+  <ros2_control name="DiffBot" type="system">
+    <hardware>
+      <plugin>diff_drive_hardware/DiffDriveHardware</plugin>
+      <param name="wheel_radius">0.033</param>
+      <param name="wheel_separation">0.17</param>
+    </hardware>
+    <joint name="left_wheel_joint">
+      <command_interface name="velocity"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="right_wheel_joint">
+      <command_interface name="velocity"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+  </ros2_control>
+
+  <gazebo>
+    <plugin name="gazebo_ros2_control" filename="libgazebo_ros2_control.so">
+      <parameters>$(find diff_drive_hardware)/config/diffbot_controllers.yaml</parameters>
+    </plugin>
+  </gazebo>
+
+</robot>

@@ -1,0 +1,9 @@
+<library path="diff_drive_hardware">
+  <class name="diff_drive_hardware/DiffDriveHardware"
+         type="diff_drive_hardware::DiffDriveHardware"
+         base_class_type="hardware_interface::SystemInterface">
+    <description>
+      Hardware Interface for differential drive robot
+    </description>
+  </class>
+</library>
