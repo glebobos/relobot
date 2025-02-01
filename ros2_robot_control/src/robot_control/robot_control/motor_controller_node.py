@@ -3,6 +3,7 @@ from rclpy.node import Node
 from std_msgs.msg import Float32MultiArray
 import serial
 import time
+import threading
 
 class MotorControllerNode(Node):
     def __init__(self):
@@ -16,10 +17,21 @@ class MotorControllerNode(Node):
         self.target_left = 0.0
         self.target_right = 0.0
         
+        # Encoder values
+        self.left_encoder = 0
+        self.right_encoder = 0
+        
         # Serial connection
         self.SERIAL_PORT = '/dev/ttyACM1'
         self.BAUD_RATE = 115200
         self.connect_serial()
+        
+        # Create publishers for encoder values
+        self.encoder_publisher = self.create_publisher(
+            Float32MultiArray,
+            'encoder_values',
+            10
+        )
         
         # Create subscription
         self.subscription = self.create_subscription(
@@ -31,8 +43,15 @@ class MotorControllerNode(Node):
         # Create timer for smooth control
         self.timer = self.create_timer(self.UPDATE_RATE, self.smooth_control_callback)
         
+        # Create timer for publishing encoder values
+        self.encoder_timer = self.create_timer(0.1, self.publish_encoder_values)
+        
         # Add a flag to track if we're currently processing a command
         self.is_processing = False
+        
+        # Start serial reading thread
+        self.serial_thread = threading.Thread(target=self.read_serial, daemon=True)
+        self.serial_thread.start()
 
     def connect_serial(self):
         try:
@@ -48,6 +67,52 @@ class MotorControllerNode(Node):
         except serial.SerialException as e:
             self.get_logger().error(f'Serial connection failed: {str(e)}')
             raise
+
+    def read_serial(self):
+        """Thread function to continuously read from serial port"""
+        while rclpy.ok():
+            try:
+                if not self.ser.in_waiting:
+                    time.sleep(0.001)  # 1ms delay when no data
+                    continue
+                    
+                # Read data only when available
+                line = self.ser.readline().decode('utf-8').strip()
+                if line:  # Process only if there's actual data
+                    self.process_serial_data(line)
+            except serial.SerialException as e:
+                self.get_logger().error(f'Serial read error: {str(e)}')
+                try:
+                    self.ser.close()
+                    self.connect_serial()
+                except:
+                    time.sleep(1)  # Wait before trying to reconnect
+            except Exception as e:
+                self.get_logger().error(f'Unexpected error in serial reading: {str(e)}')
+                time.sleep(0.1)
+
+    def process_serial_data(self, data):
+        """Process the received serial data"""
+        try:
+            # Assuming the format is "encoder_left,encoder_right"
+            parts = data.split(',')
+            if len(parts) == 2:
+                self.left_encoder = float(parts[0])
+                self.right_encoder = float(parts[1])
+                self.get_logger().info(f'Encoders - Left: {self.left_encoder}, Right: {self.right_encoder}')
+        except ValueError as e:
+            self.get_logger().warning(f'Invalid encoder data received: {data}')
+        except Exception as e:
+            self.get_logger().error(f'Error processing serial data: {str(e)}')
+
+    def publish_encoder_values(self):
+        """Publish encoder values to ROS topic"""
+        try:
+            msg = Float32MultiArray()
+            msg.data = [float(self.left_encoder), float(self.right_encoder)]
+            self.encoder_publisher.publish(msg)
+        except Exception as e:
+            self.get_logger().error(f'Error publishing encoder values: {str(e)}')
 
     def motor_callback(self, msg):
         try:
@@ -84,10 +149,6 @@ class MotorControllerNode(Node):
             # Check if serial is still connected
             if not self.ser.is_open:
                 self.connect_serial()
-            
-            # Clear buffers before sending new command
-            self.ser.reset_input_buffer()
-            self.ser.reset_output_buffer()
             
             # Send command to motors
             self.ser.write(command.encode())
