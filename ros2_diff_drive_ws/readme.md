@@ -1,3 +1,4 @@
+docker run -ti --rm -v ${PWD}:/ros2_ws --device=/dev/ttyACM1 ros:humble bash
 
 sudo apt-get update && sudo apt-get install -y \
     ros-humble-ros2-control \
