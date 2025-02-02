@@ -152,7 +152,7 @@ hardware_interface::return_type DiffDriveHardware::read(
     if (serial_port_.IsDataAvailable()) {
       std::string response;
       // Changed this line - using '\n' as line terminator
-      serial_port_.ReadLine(response, '\n');
+      serial_port_.ReadLine(response, '\n', 100);
       
       if (response.empty()) {
         return hardware_interface::return_type::OK;
