@@ -166,8 +166,8 @@ hardware_interface::return_type DiffDriveHardware::read(
           double left_encoder = std::stod(left_str);
           double right_encoder = std::stod(right_str);
           
-          hw_positions_[0] = left_encoder * (2.0 * M_PI / encoder_ticks_per_revolution_);
-          hw_positions_[1] = right_encoder * (2.0 * M_PI / encoder_ticks_per_revolution_);
+          hw_positions_[0] = left_encoder;
+          hw_positions_[1] = right_encoder;
         } else {
           RCLCPP_WARN(rclcpp::get_logger("DiffDriveHardware"), 
                      "Invalid encoder values received: %s, %s", 
@@ -188,14 +188,40 @@ hardware_interface::return_type DiffDriveHardware::read(
 hardware_interface::return_type DiffDriveHardware::write(
   const rclcpp::Time & /*time*/, const rclcpp::Duration & /*period*/)
 {
+  if (!serial_port_.IsOpen()) {
+    RCLCPP_ERROR(rclcpp::get_logger("DiffDriveHardware"), 
+                 "Serial port is not open");
+    return hardware_interface::return_type::ERROR;
+  }
+
   try {
+    // Validate commands
+    if (hw_commands_.size() < 2) {
+      RCLCPP_ERROR(rclcpp::get_logger("DiffDriveHardware"), 
+                   "Invalid number of commands");
+      return hardware_interface::return_type::ERROR;
+    }
+
     std::stringstream command;
     command << std::fixed << std::setprecision(2) 
             << hw_commands_[0] << "," << hw_commands_[1] << "\n";
     
     std::string cmd_str = command.str();
-    // Just write the string without checking return value
+    
+    // Debug output
+    RCLCPP_DEBUG(rclcpp::get_logger("DiffDriveHardware"), 
+                 "Writing to serial: %s", cmd_str.c_str());
+
+    // Flush any existing data
+    serial_port_.FlushIOBuffers();
+    
+    // Write the command
     serial_port_.Write(cmd_str);
+    
+    // Debug output for successful write
+    RCLCPP_DEBUG(rclcpp::get_logger("DiffDriveHardware"), 
+                 "Successfully wrote commands: [%f, %f]", 
+                 hw_commands_[0], hw_commands_[1]);
     
   } catch (const std::exception& e) {
     RCLCPP_ERROR(rclcpp::get_logger("DiffDriveHardware"), 

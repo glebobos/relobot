@@ -36,3 +36,5 @@ ros2 topic pub /diff_drive_controller/cmd_vel_unstamped geometry_msgs/msg/Twist 
 
 # Stop
 ros2 topic pub /diff_drive_controller/cmd_vel_unstamped geometry_msgs/msg/Twist "{linear: {x: 0.0}, angular: {z: 0.0}}" --once
+
+ros2 topic echo /joint_states
