@@ -7,6 +7,7 @@
 #include <vector>
 #include <string>
 #include <sstream>
+#include <iomanip>
 
 namespace diff_drive_hardware
 {
@@ -29,26 +30,45 @@ hardware_interface::CallbackReturn DiffDriveHardware::on_init(
   hw_commands_.resize(info_.joints.size(), 0.0);
 
   // Initialize serial port
+  if (!reconnect_serial()) {
+    return hardware_interface::CallbackReturn::ERROR;
+  }
+
+  return hardware_interface::CallbackReturn::SUCCESS;
+}
+
+bool DiffDriveHardware::reconnect_serial()
+{
   try {
-    serial_port_.Open("/dev/ttyACM1");
+    if (serial_port_.IsOpen()) {
+      serial_port_.Close();
+    }
+    
+    serial_port_.Open(serial_port_name_);
     serial_port_.SetBaudRate(LibSerial::BaudRate::BAUD_115200);
     serial_port_.SetCharacterSize(LibSerial::CharacterSize::CHAR_SIZE_8);
     serial_port_.SetFlowControl(LibSerial::FlowControl::FLOW_CONTROL_NONE);
     serial_port_.SetParity(LibSerial::Parity::PARITY_NONE);
     serial_port_.SetStopBits(LibSerial::StopBits::STOP_BITS_1);
     
-    // Wait for serial connection to stabilize
     std::this_thread::sleep_for(std::chrono::seconds(2));
-    
-    // Flush any existing data
     serial_port_.FlushIOBuffers();
     
-  } catch (const LibSerial::OpenFailed& e) {
-    RCLCPP_ERROR(rclcpp::get_logger("DiffDriveHardware"), "Failed to open serial port: %s", e.what());
-    return hardware_interface::CallbackReturn::ERROR;
+    return true;
+  } catch (const std::exception& e) {
+    RCLCPP_ERROR(rclcpp::get_logger("DiffDriveHardware"), 
+                 "Failed to reconnect to serial port: %s", e.what());
+    return false;
   }
+}
 
-  return hardware_interface::CallbackReturn::SUCCESS;
+bool DiffDriveHardware::isValidEncoderValue(const std::string& value) {
+  try {
+    double val = std::stod(value);
+    return !std::isnan(val) && !std::isinf(val);
+  } catch (...) {
+    return false;
+  }
 }
 
 hardware_interface::CallbackReturn DiffDriveHardware::on_configure(
@@ -78,6 +98,12 @@ hardware_interface::CallbackReturn DiffDriveHardware::on_deactivate(
   const rclcpp_lifecycle::State & /*previous_state*/)
 {
   RCLCPP_INFO(rclcpp::get_logger("DiffDriveHardware"), "Stopping controller...");
+  try {
+    std::string zero_command = "0.00,0.00\n";
+    serial_port_.Write(zero_command);
+  } catch (const std::exception& e) {
+    RCLCPP_ERROR(rclcpp::get_logger("DiffDriveHardware"), "Error sending zero command: %s", e.what());
+  }
   return hardware_interface::CallbackReturn::SUCCESS;
 }
 
@@ -85,13 +111,11 @@ std::vector<hardware_interface::StateInterface> DiffDriveHardware::export_state_
 {
   std::vector<hardware_interface::StateInterface> state_interfaces;
   
-  // Export position state interfaces
   state_interfaces.emplace_back(hardware_interface::StateInterface(
     info_.joints[0].name, "position", &hw_positions_[0]));
   state_interfaces.emplace_back(hardware_interface::StateInterface(
     info_.joints[1].name, "position", &hw_positions_[1]));
 
-  // Export velocity state interfaces
   state_interfaces.emplace_back(hardware_interface::StateInterface(
     info_.joints[0].name, "velocity", &hw_velocities_[0]));
   state_interfaces.emplace_back(hardware_interface::StateInterface(
@@ -112,38 +136,55 @@ std::vector<hardware_interface::CommandInterface> DiffDriveHardware::export_comm
   return command_interfaces;
 }
 
+// For the read() function:
 hardware_interface::return_type DiffDriveHardware::read(
   const rclcpp::Time & /*time*/, const rclcpp::Duration & /*period*/)
 {
+  if (!serial_port_.IsOpen()) {
+    RCLCPP_WARN(rclcpp::get_logger("DiffDriveHardware"), 
+                "Serial port disconnected, attempting to reconnect...");
+    if (!reconnect_serial()) {
+      return hardware_interface::return_type::ERROR;
+    }
+  }
+
   try {
     if (serial_port_.IsDataAvailable()) {
       std::string response;
-      serial_port_.ReadLine(response);
+      // Changed this line - using '\n' as line terminator
+      serial_port_.ReadLine(response, '\n');
       
+      if (response.empty()) {
+        return hardware_interface::return_type::OK;
+      }
+
       std::stringstream ss(response);
       std::string left_str, right_str;
       
       if (std::getline(ss, left_str, ',') && std::getline(ss, right_str)) {
-        try {
+        if (isValidEncoderValue(left_str) && isValidEncoderValue(right_str)) {
           double left_encoder = std::stod(left_str);
           double right_encoder = std::stod(right_str);
           
           hw_positions_[0] = left_encoder * (2.0 * M_PI / encoder_ticks_per_revolution_);
           hw_positions_[1] = right_encoder * (2.0 * M_PI / encoder_ticks_per_revolution_);
-          
-        } catch (const std::exception& e) {
-          RCLCPP_ERROR(rclcpp::get_logger("DiffDriveHardware"), "Error parsing encoder values: %s", e.what());
+        } else {
+          RCLCPP_WARN(rclcpp::get_logger("DiffDriveHardware"), 
+                     "Invalid encoder values received: %s, %s", 
+                     left_str.c_str(), right_str.c_str());
         }
       }
     }
   } catch (const std::exception& e) {
-    RCLCPP_ERROR(rclcpp::get_logger("DiffDriveHardware"), "Error reading from serial port: %s", e.what());
+    RCLCPP_ERROR(rclcpp::get_logger("DiffDriveHardware"), 
+                 "Error reading from serial port: %s", e.what());
     return hardware_interface::return_type::ERROR;
   }
 
   return hardware_interface::return_type::OK;
 }
 
+// For the write() function:
 hardware_interface::return_type DiffDriveHardware::write(
   const rclcpp::Time & /*time*/, const rclcpp::Duration & /*period*/)
 {
@@ -152,10 +193,13 @@ hardware_interface::return_type DiffDriveHardware::write(
     command << std::fixed << std::setprecision(2) 
             << hw_commands_[0] << "," << hw_commands_[1] << "\n";
     
-    serial_port_.Write(command.str());
+    std::string cmd_str = command.str();
+    // Just write the string without checking return value
+    serial_port_.Write(cmd_str);
     
   } catch (const std::exception& e) {
-    RCLCPP_ERROR(rclcpp::get_logger("DiffDriveHardware"), "Error writing to serial port: %s", e.what());
+    RCLCPP_ERROR(rclcpp::get_logger("DiffDriveHardware"), 
+                 "Error writing to serial port: %s", e.what());
     return hardware_interface::return_type::ERROR;
   }
 

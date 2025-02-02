@@ -13,6 +13,7 @@ sudo apt-get update && sudo apt-get install -y \
     ros-humble-joint-state-publisher-gui \
     ros-humble-robot-state-publisher \
     libserial-dev
+or rosdep install --from-paths src --ignore-src -r -y
 
     colcon build --packages-select diff_drive_hardware
 source install/setup.bash

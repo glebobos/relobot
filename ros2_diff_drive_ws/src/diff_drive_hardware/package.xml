@@ -19,6 +19,8 @@
   <depend>serial_driver</depend>
   <depend>asio_cmake_module</depend>
   <depend>io_context</depend>
+  <depend>rclcpp_lifecycle</depend>
+
 
   <!-- Add system dependency -->
   <build_depend>libserial-dev</build_depend>

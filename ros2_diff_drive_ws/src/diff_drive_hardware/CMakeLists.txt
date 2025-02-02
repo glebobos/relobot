@@ -17,6 +17,8 @@ find_package(realtime_tools REQUIRED)
 find_package(asio_cmake_module REQUIRED)
 find_package(io_context REQUIRED)
 find_package(serial_driver REQUIRED)
+find_package(rclcpp_lifecycle REQUIRED)
+
 
 # Add serial library
 find_library(SERIAL_LIBRARY serial)
@@ -42,6 +44,7 @@ ament_target_dependencies(
   hardware_interface
   pluginlib
   rclcpp
+  rclcpp_lifecycle
   ros2_control
   ros2_controllers
   controller_manager
