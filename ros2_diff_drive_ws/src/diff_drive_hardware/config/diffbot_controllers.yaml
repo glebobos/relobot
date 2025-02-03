@@ -22,9 +22,9 @@ diff_drive_controller:
     linear:
       x:
         has_velocity_limits: true
-        max_velocity: 0.09 # m/s
+        max_velocity: 0.07 # m/s
         has_acceleration_limits: true
-        max_acceleration: 0.2 # m/s^2
+        max_acceleration: 0.1 # m/s^2
     angular:
       z:
         has_velocity_limits: true
