@@ -7,6 +7,7 @@ endif()
 
 # Find dependencies
 find_package(ament_cmake REQUIRED)
+find_package(ament_cmake_python REQUIRED)  # Ensure this is included
 find_package(hardware_interface REQUIRED)
 find_package(pluginlib REQUIRED)
 find_package(rclcpp REQUIRED)
@@ -18,7 +19,6 @@ find_package(asio_cmake_module REQUIRED)
 find_package(io_context REQUIRED)
 find_package(serial_driver REQUIRED)
 find_package(rclcpp_lifecycle REQUIRED)
-
 
 # Add serial library
 find_library(SERIAL_LIBRARY serial)
@@ -69,6 +69,16 @@ install(
 install(
   DIRECTORY config launch
   DESTINATION share/${PROJECT_NAME}
+)
+
+# Install Python package
+ament_python_install_package(${PROJECT_NAME}
+  PACKAGE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/diff_drive_hardware
+)
+
+install(PROGRAMS
+  diff_drive_hardware/web_server_node.py
+  DESTINATION lib/${PROJECT_NAME}
 )
 
 ament_export_include_directories(

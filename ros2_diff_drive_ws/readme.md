@@ -19,7 +19,7 @@ or apt update  \
     colcon build --packages-select diff_drive_hardware
 source install/setup.bash
 
-ros2 launch diff_drive_hardware test_diff_drive.launch.py --debug
+ros2 launch diff_drive_hardware diffbot.launch.py --debug
 
 # Format: linear.x for forward/backward, angular.z for turning
 ros2 topic pub /diff_drive_controller/cmd_vel_unstamped geometry_msgs/msg/Twist "{linear: {x: 0.2}, angular: {z: 0.0}}" --once
