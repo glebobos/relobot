@@ -52,7 +52,7 @@ private:
   static constexpr double encoder_ticks_per_revolution_ = 4096.0;  // Adjust based on your encoder
 
   // Parameters
-  std::string serial_port_name_ = "/dev/ttyACM1";
+  std::string responce_name_ = "wheels\n";
 
   // Serial communication
   LibSerial::SerialPort serial_port_;

@@ -28,6 +28,7 @@ RUN echo "source /opt/ros/humble/setup.bash" >> /root/.bashrc
 
 # Create development script
 RUN echo '#!/bin/bash\n\
+set -e\n\
 source /opt/ros/humble/setup.bash\n\
 cd /ros2_ws\n\
 colcon build\n\
