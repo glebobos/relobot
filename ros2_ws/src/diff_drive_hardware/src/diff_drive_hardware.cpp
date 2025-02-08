@@ -20,10 +20,6 @@ hardware_interface::CallbackReturn DiffDriveHardware::on_init(
     return hardware_interface::CallbackReturn::ERROR;
   }
 
-  // Get parameters from URDF
-  wheel_radius_ = std::stod(info_.hardware_parameters["wheel_radius"]);
-  wheel_separation_ = std::stod(info_.hardware_parameters["wheel_separation"]);
-
   // Initialize storage for hardware states
   hw_positions_.resize(info_.joints.size(), 0.0);
   hw_velocities_.resize(info_.joints.size(), 0.0);

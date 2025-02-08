@@ -88,7 +88,15 @@ def set_motor_speed(motor, speed):
 def process_command(command):
     """Process incoming command with error handling"""
     try:
-        parts = command.strip().split(',')
+        command = command.strip()
+
+        # Check for identification command
+        if command.lower() == "whoyouare":
+            usb_cdc.data.write(b"wheels\n")
+            return True
+
+        # Process speed commands
+        parts = command.split(',')
         if len(parts) != 2:
             raise ValueError("Expected 2 values")
         

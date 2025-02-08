@@ -53,8 +53,6 @@ private:
 
   // Parameters
   std::string serial_port_name_ = "/dev/ttyACM1";
-  double wheel_radius_ = 0.0;
-  double wheel_separation_ = 0.0;
 
   // Serial communication
   LibSerial::SerialPort serial_port_;
