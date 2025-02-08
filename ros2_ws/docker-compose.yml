@@ -5,8 +5,7 @@ services:
       context: .
       dockerfile: Dockerfile.dev
     volumes:
-      - ./src:/ros2_ws/src
-      - ./templates:/ros2_ws/templates
+      - .:/ros2_ws/
     devices:
       - /dev/ttyACM1:/dev/ttyACM1
     ports:

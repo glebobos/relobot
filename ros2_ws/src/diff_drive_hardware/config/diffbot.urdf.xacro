@@ -6,8 +6,8 @@
   <ros2_control name="DiffBot" type="system">
     <hardware>
       <plugin>diff_drive_hardware/DiffDriveHardware</plugin>
-      <param name="wheel_radius">0.033</param>
-      <param name="wheel_separation">0.17</param>
+      <param name="wheel_radius">0.095</param>
+      <param name="wheel_separation">0.32</param>
     </hardware>
     <joint name="left_wheel_joint">
       <command_interface name="velocity"/>

@@ -33,7 +33,7 @@ def set_motors():
     
     # Calculate linear and angular velocities based on joystick position
     linear_velocity = y
-    angular_velocity = x
+    angular_velocity = -x
     
     # Publish to ROS2 topic
     node.publish_motor_commands(linear_velocity, angular_velocity)
