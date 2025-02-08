@@ -71,16 +71,6 @@ install(
   DESTINATION share/${PROJECT_NAME}
 )
 
-# Install Python package
-ament_python_install_package(${PROJECT_NAME}
-  PACKAGE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/diff_drive_hardware
-)
-
-install(PROGRAMS
-  diff_drive_hardware/web_server_node.py
-  DESTINATION lib/${PROJECT_NAME}
-)
-
 ament_export_include_directories(
   include
 )

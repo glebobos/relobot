@@ -1,6 +1,4 @@
 from launch import LaunchDescription
-from launch.actions import RegisterEventHandler
-from launch.event_handlers import OnProcessExit
 from launch.substitutions import Command, FindExecutable, PathJoinSubstitution
 
 from launch_ros.actions import Node
@@ -54,18 +52,11 @@ def generate_launch_description():
         arguments=["diff_drive_controller", "--controller-manager", "/controller_manager"],
     )
 
-    web_server_node = Node(
-        package='diff_drive_hardware',  # Replace with your package name
-        executable='web_server_node.py',
-        output='screen',
-    )
-
     nodes = [
         control_node,
         robot_state_pub_node,
         joint_state_broadcaster_spawner,
         robot_controller_spawner,
-        web_server_node,
     ]
 
     return LaunchDescription(nodes)

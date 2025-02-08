@@ -7,7 +7,7 @@ from geometry_msgs.msg import Twist
 from flask import Flask, render_template, request, jsonify
 import threading
 
-app = Flask(__name__, template_folder='/ros2_ws/templates')  # Update template folder path
+app = Flask(__name__, template_folder='templates')  # Update template folder path
 node = None
 
 class WebServerNode(Node):

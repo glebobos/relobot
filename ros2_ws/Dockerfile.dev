@@ -13,7 +13,6 @@ RUN apt-get update && apt-get install -y \
     ros-humble-io-context \
     ros-humble-xacro \
     ros-humble-joint-state-publisher \
-    # ros-humble-joint-state-publisher-gui \
     ros-humble-robot-state-publisher \
     libserial-dev \
     && rm -rf /var/lib/apt/lists/*
@@ -31,9 +30,9 @@ RUN echo "source /opt/ros/humble/setup.bash" >> /root/.bashrc
 RUN echo '#!/bin/bash\n\
 source /opt/ros/humble/setup.bash\n\
 cd /ros2_ws\n\
-colcon build --packages-select diff_drive_hardware\n\
+colcon build\n\
 source install/setup.bash\n\
-ros2 launch diff_drive_hardware diffbot.launch.py --debug' > /start_dev.sh && \
+ros2 launch global_launch launch.py --debug' > /start_dev.sh && \
 chmod +x /start_dev.sh
 
 EXPOSE 5000
