@@ -4,10 +4,17 @@
 import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Twist
+from ament_index_python.packages import get_package_share_directory
 from flask import Flask, render_template, request, jsonify
 import threading
+import os
+package_share_directory = get_package_share_directory('web_server')
 
-app = Flask(__name__, template_folder='templates')  # Update template folder path
+# Construct the path to the templates directory
+template_path = os.path.join(package_share_directory, 'templates')
+
+# Initialize the Flask app with the correct template folder
+app = Flask(__name__, template_folder=template_path) # Update template folder path
 node = None
 
 class WebServerNode(Node):

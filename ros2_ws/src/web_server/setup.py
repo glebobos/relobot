@@ -6,6 +6,9 @@ setup(
     name=package_name,
     version='0.0.0',
     packages=[package_name],
+    data_files=[
+        ('lib/' + package_name + '/templates', ['web_server/templates/index.html']),
+    ],
     py_modules=[],
     install_requires=[
         'setuptools',
