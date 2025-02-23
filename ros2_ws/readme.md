@@ -38,3 +38,7 @@ ros2 topic pub /diff_drive_controller/cmd_vel_unstamped geometry_msgs/msg/Twist 
 ros2 topic pub /diff_drive_controller/cmd_vel_unstamped geometry_msgs/msg/Twist "{linear: {x: 0.0}, angular: {z: 0.0}}" --once
 
 ros2 topic echo /joint_states
+
+docker run -it --rm -v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY  -e XDG_RUNTIME_DIR -e ROS_DOMAIN_ID=12 -e ROS_DISCOVERY_SERVER=192.168.22.120:11811 -e ROS_SUPER_CLIENT=True -e  RMW_IMPLEMENTATION=rmw_fastrtps_cpp -e PULSE_SERVER --network host osrf/ros:jazzy-desktop rviz2
+
+
