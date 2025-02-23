@@ -14,10 +14,10 @@ GEAR_RATIO = 1  # Adjust based on your motor's gear ratio
 DEBUG_FACTOR = 1.045 #Adjust based on left and right speeds
 
 try:
-    PWM1 = pwmio.PWMOut(board.D2, frequency=FREQUENCY)
-    PWM2 = pwmio.PWMOut(board.D4, frequency=FREQUENCY)
-    PWM3 = pwmio.PWMOut(board.D1, frequency=FREQUENCY)
-    PWM4 = pwmio.PWMOut(board.D0, frequency=FREQUENCY)
+    PWM1 = pwmio.PWMOut(board.D4, frequency=FREQUENCY)
+    PWM2 = pwmio.PWMOut(board.D2, frequency=FREQUENCY)
+    PWM3 = pwmio.PWMOut(board.D0, frequency=FREQUENCY)
+    PWM4 = pwmio.PWMOut(board.D1, frequency=FREQUENCY)
     encoder_left = countio.Counter(board.D10)
     encoder_right = countio.Counter(board.D7)
 except Exception as e:
@@ -216,6 +216,7 @@ def main():
                 right_radians = counts_to_radians(encoder_state.accumulated_right_count)
                 
                 encoder_data = f"{left_radians:.6f},{right_radians:.6f}\n"
+                print(encoder_data)
                 usb_cdc.data.write(encoder_data.encode())
 
         except Exception as e:
