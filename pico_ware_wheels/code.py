@@ -8,17 +8,18 @@ import math
 # Constants
 MAX_SPEED = 1.0
 MIN_SPEED = -1.0
-FREQUENCY = 10000
+FREQUENCY = 1000
 COUNTS_PER_REVOLUTION = 60  # Adjust based on your encoder specifications
 GEAR_RATIO = 1  # Adjust based on your motor's gear ratio
+DEBUG_FACTOR = 1.045 #Adjust based on left and right speeds
 
 try:
-    PWM1 = pwmio.PWMOut(board.D1, frequency=FREQUENCY)
-    PWM2 = pwmio.PWMOut(board.D0, frequency=FREQUENCY)
-    PWM3 = pwmio.PWMOut(board.D2, frequency=FREQUENCY)
-    PWM4 = pwmio.PWMOut(board.D4, frequency=FREQUENCY)
-    encoder_left = countio.Counter(board.D7)
-    encoder_right = countio.Counter(board.D10)
+    PWM1 = pwmio.PWMOut(board.D2, frequency=FREQUENCY)
+    PWM2 = pwmio.PWMOut(board.D4, frequency=FREQUENCY)
+    PWM3 = pwmio.PWMOut(board.D1, frequency=FREQUENCY)
+    PWM4 = pwmio.PWMOut(board.D0, frequency=FREQUENCY)
+    encoder_left = countio.Counter(board.D10)
+    encoder_right = countio.Counter(board.D7)
 except Exception as e:
     print(f"Error initializing hardware: {e}")
     raise
@@ -71,6 +72,8 @@ def set_motor_speed(motor, speed):
         print(f"Invalid motor number: {motor}")
         return
     
+    if motor == 1 and DEBUG_FACTOR is not None:
+       speed *= DEBUG_FACTOR
     speed = clamp_speed(speed)
     update_encoder_direction(motor, speed)
     duty_cycle = int(65535 * abs(speed))
@@ -124,7 +127,77 @@ def update_accumulated_counts(raw_left, raw_right):
     encoder_state.accumulated_right_count += delta_right * encoder_state.right_direction
     encoder_state.prev_raw_right_count = raw_right
 
+import time
+
+def debug_correction_run_ticks(duration=10.0, test_speed=0.8):
+    """
+    Debug mode to determine the correction factor based on raw encoder ticks.
+    This function sets both motors to the same speed (test_speed),
+    counts the ticks for the specified duration, and then computes their ratio.
+
+    Args:
+        duration (float): The duration of the test in seconds (default=40.0).
+        test_speed (float): Motor speed from -1.0 to 1.0 (default=0.8).
+
+    Returns:
+        float or None: The correction factor (left/right) if available, otherwise None.
+    """
+    print("Starting encoder tick debug: both motors rotating...")
+
+    # Start both motors at the given test speed
+    set_motor_speed(1, test_speed)
+    set_motor_speed(2, test_speed)
+
+    start_time = time.monotonic()
+    last_print_time = start_time
+
+    PRINT_INTERVAL = 0.01  # Interval (in seconds) for print updates
+    SLEEP_INTERVAL = 0.001 # Sleep time (in seconds) to avoid busy-wait
+
+    while True:
+        current_time = time.monotonic()
+        elapsed_time = current_time - start_time
+
+        # Exit the loop once the desired duration has passed
+        if elapsed_time >= duration:
+            break
+
+        left_count, right_count = get_encoder_counts()
+
+        # Print periodic status updates
+        if current_time - last_print_time >= PRINT_INTERVAL:
+            print(f"Time: {elapsed_time:.1f}s - ")
+            print(f"Left: {left_count} ticks, ")
+            print(f"Right: {right_count} ticks")
+            last_print_time = current_time
+
+        time.sleep(SLEEP_INTERVAL)
+
+    # Stop the motors after the test completes
+    set_motor_speed(1, 0)
+    set_motor_speed(2, 0)
+
+    # Final encoder readings
+    left_count, right_count = get_encoder_counts()
+
+    print("\nDebug results:")
+    print(f"Left wheel: {left_count} ticks")
+    print(f"Right wheel: {right_count} ticks")
+
+    # Compute the correction factor
+    if right_count != 0:
+        correction_factor = left_count / right_count
+        print(f"Correction factor (left/right): {correction_factor:.6f}, ")
+        print(f"Test speed: {test_speed:.6f}")
+    else:
+        correction_factor = None
+        print("Error: Right wheel produced 0 ticks. Unable to compute correction factor.")
+
+    return correction_factor
+
 def main():
+    # debug_factor = debug_correction_run_ticks() ## Uncoment to find factor
+
     while True:
         try:
             # Process incoming commands
