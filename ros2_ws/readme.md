@@ -45,3 +45,6 @@ usbipd list
 usbipd bind --busid 2-2
 usbipd attach --wsl --busid 2-2
 
+colcon build --packages-select serial
+colcon build --packages-select icm_20948
+ros2 launch icm_20948 run.launch.xml port:=/dev/ttyACM0

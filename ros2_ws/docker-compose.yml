@@ -14,7 +14,7 @@ services:
     volumes:
       - .:/ros2_ws/
     devices:
-      - /dev/ttyACM1:/dev/ttyACM1
+      - /dev/:/dev/
     ports:
       - "5000:5000"
     environment:
@@ -24,3 +24,4 @@ services:
       - PYTHONUNBUFFERED=1
       - ROS_DOMAIN_ID=12
     network_mode: host  # This might be needed for ROS2 communication
+    privileged: true

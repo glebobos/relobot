@@ -8,13 +8,13 @@ from ament_index_python.packages import get_package_share_directory
 from flask import Flask, render_template, request, jsonify
 import threading
 import os
-package_share_directory = get_package_share_directory('web_server')
+# package_share_directory = get_package_share_directory('web_server')
 
 # Construct the path to the templates directory
-template_path = os.path.join(package_share_directory, 'templates')
+# template_path = os.path.join(package_share_directory, 'templates')
 
 # Initialize the Flask app with the correct template folder
-app = Flask(__name__, template_folder=template_path) # Update template folder path
+app = Flask(__name__, template_folder="./templates") # Update template folder path
 node = None
 
 class WebServerNode(Node):
@@ -40,7 +40,7 @@ def set_motors():
     
     # Calculate linear and angular velocities based on joystick position
     linear_velocity = y
-    angular_velocity = -x
+    angular_velocity = x
     
     # Publish to ROS2 topic
     node.publish_motor_commands(linear_velocity, angular_velocity)

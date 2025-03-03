@@ -31,6 +31,7 @@ RUN echo '#!/bin/bash\n\
 set -e\n\
 source /opt/ros/humble/setup.bash\n\
 cd /ros2_ws\n\
+git clone https://github.com/RoverRobotics-forks/serial-ros2.git ./src/serial || true\n\
 colcon build\n\
 source install/setup.bash\n\
 ros2 launch global_launch launch.py --debug' > /start_dev.sh && \

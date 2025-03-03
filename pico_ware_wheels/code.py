@@ -6,17 +6,23 @@ import countio
 import math
 
 # Constants
-MAX_SPEED_RAD_S = 7.5 # Maximum speed in rad/s
+MAX_SPEED_RAD_S = 7.5  # Уточни максимальную скорость в рад/сек
 MIN_SPEED_RAD_S = -7.5
 FREQUENCY = 7000
-COUNTS_PER_REVOLUTION = 60 # Number of encoder ticks per revolution
+COUNTS_PER_REVOLUTION = 60  # Уточни параметры энкодера
 
+# Функции перевода скорости в PWM
 def speed_to_pwm_left(speed):
-    return max(0, min(1, 0.13281  * speed + 0.029637))
+    abs_speed = abs(speed)
+    pwm_value = 0.13281 * abs_speed + 0.029637
+    return max(0, min(1, pwm_value))
 
 def speed_to_pwm_right(speed):
-    return max(0, min(1, 0.13593 * speed + 0.021466))
+    abs_speed = abs(speed)
+    pwm_value = 0.13593 * abs_speed + 0.021466
+    return max(0, min(1, pwm_value))
 
+# Инициализация PWM и энкодеров
 try:
     PWM1 = pwmio.PWMOut(board.D2, frequency=FREQUENCY)
     PWM2 = pwmio.PWMOut(board.D4, frequency=FREQUENCY)
@@ -82,6 +88,7 @@ def set_motor_speed(motor, speed):
     except Exception as e:
         print(f"Error setting motor speed: {e}")
 
+
 def process_command(command):
     try:
         command = command.strip()
@@ -109,8 +116,6 @@ def process_command(command):
         set_motor_speed(1, 0)
         set_motor_speed(2, 0)
         return False
-# process_command("3.3,3.3")
-
 def main():
     while True:
         try:
@@ -124,7 +129,7 @@ def main():
                 left_radians = counts_to_radians(encoder_state.accumulated_left_count)
                 right_radians = counts_to_radians(encoder_state.accumulated_right_count)
                 encoder_data = f"{left_radians:.6f},{right_radians:.6f}\n"
-                # print(encoder_data)
+#                 print(encoder_data)
                 usb_cdc.data.write(encoder_data.encode())
         except Exception as e:
             print(f"Main loop error: {e}")

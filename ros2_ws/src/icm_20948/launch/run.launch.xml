@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+  <arg name="port" default="/dev/ttyIMU"/>
+  <arg name="time_out" default="0.5"/>
+  <arg name="baudrate" default="115200"/>
+  <arg name="imu_topic" default="imu"/>
+  <arg name="frame_id" default="imu_link"/>
+  <arg name="debug" default="false"/>
+  <arg name="rviz_config" default="$(find-pkg-share icm_20948)/rviz2/imu.rviz"/>
+  <!-- Imu node -->
+  <node pkg="icm_20948" exec="imu_node" output="screen">
+    <param name="port" value="$(var port)"/>
+    <param name="time_out" value="$(var time_out)"/>
+    <param name="baudrate" value="$(var baudrate)"/>
+    <param name="imu_topic" value="$(var imu_topic)"/>
+    <param name="frame_id" value="$(var frame_id)"/>
+  </node>
+</launch>

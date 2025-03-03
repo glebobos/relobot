@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<package format="3">
+  <name>icm_20948</name>
+  <version>2.0.0</version>
+  <description>ROS2 driver for the ICM-20948 with Seeeduino XIAO</description>
+  <maintainer email="zip@todo.todo">Alpaca-zip</maintainer>
+  <license>TODO</license>
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <depend>rclcpp</depend>
+  <depend>sensor_msgs</depend>
+  <depend>serial</depend>
+  <depend>imu_tools</depend>
+  <depend>rqt</depend>
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

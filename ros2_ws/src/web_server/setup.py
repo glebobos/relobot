@@ -1,15 +1,15 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 package_name = 'web_server'
 
 setup(
     name=package_name,
     version='0.0.0',
-    packages=[package_name],
-    data_files=[
-        ('lib/' + package_name + '/templates', ['web_server/templates/index.html']),
-    ],
-    py_modules=[],
+    packages=find_packages(),
+    include_package_data=True,  # Ensure package data is included
+    package_data={
+        package_name: ['templates/*.html'],  # Include all HTML files in templates
+    },
     install_requires=[
         'setuptools',
         'Flask',  # Non-ROS dependency
