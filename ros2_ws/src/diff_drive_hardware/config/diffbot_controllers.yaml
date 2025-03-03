@@ -1,10 +1,8 @@
 controller_manager:
   ros__parameters:
     update_rate: 50  # Hz
-
     joint_state_broadcaster:
       type: joint_state_broadcaster/JointStateBroadcaster
-
     diff_drive_controller:
       type: diff_drive_controller/DiffDriveController
 
@@ -13,8 +11,12 @@ diff_drive_controller:
     left_wheel_names: ["left_wheel_joint"]
     right_wheel_names: ["right_wheel_joint"]
 
-    wheel_separation: 0.32
-    wheel_radius: 0.095
+    wheel_separation: 0.295
+    wheel_radius: 0.0925
+
+    publish_tf: true              # или enable_odom_tf: true
+    odom_frame_id: "odom"
+    base_frame_id: "base_link"
 
     use_stamped_vel: false
     
@@ -22,12 +24,12 @@ diff_drive_controller:
     linear:
       x:
         has_velocity_limits: true
-        max_velocity: 0.07 # m/s
+        max_velocity: 0.058 # m/s
         has_acceleration_limits: true
         max_acceleration: 0.1 # m/s^2
     angular:
       z:
         has_velocity_limits: true
-        max_velocity: 1.0 # rad/s
+        max_velocity: 0.1 # rad/s
         has_acceleration_limits: true
-        max_acceleration: 2.0 # rad/s^2
+        max_acceleration: 0.5 # rad/s^2
