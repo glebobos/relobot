@@ -61,9 +61,9 @@ void run_icm20948_sensors() {
     if (icm20948.linearAccelDataIsReady()) {
         float x, y, z;
         icm20948.readLinearAccelData(&x, &y, &z);
-        data[0] = (int16_t)(x * 16384.0);
-        data[1] = (int16_t)(y * 16384.0);
-        data[2] = (int16_t)(z * 16384.0);
+        data[0] = (int16_t)(x * 8192.0);
+        data[1] = (int16_t)(y * 8192.0);
+        data[2] = (int16_t)(z * 8192.0);
         send_packet(0x51, data);
     }
     
