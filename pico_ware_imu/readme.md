@@ -2,6 +2,10 @@
     ```sh
     zip -r ICM20948.zip ICM20948/
     ```
-2. Add the `ICM20948.zip` file into the Arduino IDE.
-3. Use `code.ino` as the code base for your project.
-4. Use the `test_cube.py` script to check for quadrelions.
+2. Import the `ICM20948.zip` file into the Arduino IDE.
+3. Use `code.ino` as the starting point for your project.
+4. Execute the `test_cube.py` script to verify quadrelions.
+5. Set up a virtual environment and activate it:
+    ```sh
+    python3.12 -m venv myenv && source myenv/bin/activate
+    ```
