@@ -36,64 +36,30 @@ hardware_interface::CallbackReturn DiffDriveHardware::on_init(
 
 bool DiffDriveHardware::reconnect_serial()
 {
-  std::vector<std::string> ports;
+  std::string port = "/dev/ttyACM2";
 
-  // Open the /dev directory
-  DIR* dev_dir = opendir("/dev");
-  if (dev_dir == nullptr) {
-    RCLCPP_ERROR(rclcpp::get_logger("DiffDriveHardware"), "Failed to open /dev directory");
-    return false;
-  }
-
-  // Iterate over entries in the /dev directory
-  struct dirent* entry;
-  while ((entry = readdir(dev_dir)) != nullptr) {
-    // Check if the entry name starts with "ttyACM"
-    if (strncmp(entry->d_name, "ttyACM", 6) == 0) {
-      ports.emplace_back("/dev/" + std::string(entry->d_name));
+  try {
+    if (serial_port_.IsOpen()) {
+      serial_port_.Close();
     }
+
+    serial_port_.Open(port);
+    serial_port_.SetBaudRate(LibSerial::BaudRate::BAUD_115200);
+    serial_port_.SetCharacterSize(LibSerial::CharacterSize::CHAR_SIZE_8);
+    serial_port_.SetFlowControl(LibSerial::FlowControl::FLOW_CONTROL_NONE);
+    serial_port_.SetParity(LibSerial::Parity::PARITY_NONE);
+    serial_port_.SetStopBits(LibSerial::StopBits::STOP_BITS_1);
+
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+    serial_port_.FlushIOBuffers();
+
+    RCLCPP_INFO(rclcpp::get_logger("DiffDriveHardware"), "Successfully connected to %s", port.c_str());
+    return true;
+
+  } catch (const std::exception& e) {
+    RCLCPP_ERROR(rclcpp::get_logger("DiffDriveHardware"), "Failed to connect to %s: %s", port.c_str(), e.what());
   }
 
-  closedir(dev_dir);
-
-  // Try to connect to each found port
-  for (const auto& port : ports) {
-    try {
-      if (serial_port_.IsOpen()) {
-        serial_port_.Close();
-      }
-
-      serial_port_.Open(port);
-      serial_port_.SetBaudRate(LibSerial::BaudRate::BAUD_115200);
-      serial_port_.SetCharacterSize(LibSerial::CharacterSize::CHAR_SIZE_8);
-      serial_port_.SetFlowControl(LibSerial::FlowControl::FLOW_CONTROL_NONE);
-      serial_port_.SetParity(LibSerial::Parity::PARITY_NONE);
-      serial_port_.SetStopBits(LibSerial::StopBits::STOP_BITS_1);
-
-      std::this_thread::sleep_for(std::chrono::seconds(2));
-      serial_port_.FlushIOBuffers();
-
-      // Send identification command
-      std::string id_command = "whoyouare\n";
-      serial_port_.Write(id_command);
-
-      // Wait and read response
-      std::string response;
-      serial_port_.ReadLine(response, '\n', 100);
-
-      if (response == responce_name_) {
-        RCLCPP_INFO(rclcpp::get_logger("DiffDriveHardware"), "Connected to device on port: %s", port.c_str());
-        return true;
-      } else {
-        RCLCPP_WARN(rclcpp::get_logger("DiffDriveHardware"), "Unexpected response from %s: %s", port.c_str(), response.c_str());
-      }
-
-    } catch (const std::exception& e) {
-      RCLCPP_ERROR(rclcpp::get_logger("DiffDriveHardware"), "Failed to connect to %s: %s", port.c_str(), e.what());
-    }
-  }
-
-  RCLCPP_ERROR(rclcpp::get_logger("DiffDriveHardware"), "Failed to find the correct serial device.");
   return false;
 }
 

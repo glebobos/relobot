@@ -49,7 +49,6 @@ private:
   // Constants
   static constexpr auto SERIAL_TIMEOUT = std::chrono::milliseconds(100);
   static constexpr auto READ_TIMEOUT = std::chrono::milliseconds(10);
-  static constexpr double encoder_ticks_per_revolution_ = 4096.0;  // Adjust based on your encoder
 
   // Parameters
   std::string responce_name_ = "wheels\n";
