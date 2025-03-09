@@ -24,10 +24,10 @@ def speed_to_pwm_right(speed):
 
 # Инициализация PWM и энкодеров
 try:
-    PWM1 = pwmio.PWMOut(board.D2, frequency=FREQUENCY)
-    PWM2 = pwmio.PWMOut(board.D4, frequency=FREQUENCY)
-    PWM3 = pwmio.PWMOut(board.D1, frequency=FREQUENCY)
-    PWM4 = pwmio.PWMOut(board.D0, frequency=FREQUENCY)
+    PWM1 = pwmio.PWMOut(board.D1, frequency=FREQUENCY)
+    PWM2 = pwmio.PWMOut(board.D0, frequency=FREQUENCY)
+    PWM3 = pwmio.PWMOut(board.D2, frequency=FREQUENCY)
+    PWM4 = pwmio.PWMOut(board.D4, frequency=FREQUENCY)
     encoder_left = countio.Counter(board.D7)
     encoder_right = countio.Counter(board.D10)
 except Exception as e:
@@ -129,7 +129,7 @@ def main():
                 left_radians = counts_to_radians(encoder_state.accumulated_left_count)
                 right_radians = counts_to_radians(encoder_state.accumulated_right_count)
                 encoder_data = f"{left_radians:.6f},{right_radians:.6f}\n"
-#                 print(encoder_data)
+                # print(encoder_data)
                 usb_cdc.data.write(encoder_data.encode())
         except Exception as e:
             print(f"Main loop error: {e}")
@@ -137,4 +137,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
