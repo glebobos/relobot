@@ -186,9 +186,25 @@ int main(int argc, char * argv[])
 {
   rclcpp::init(argc, argv);
   auto node = std::make_shared<ImuNode>();
-  while (rclcpp::ok()) {
-    node->controlLoop();
-  }
+  
+  // Create a multithreaded executor
+  rclcpp::executors::MultiThreadedExecutor executor;
+  executor.add_node(node);
+  
+  // Create a separate thread for the control loop
+  std::thread control_thread([node]() {
+    rclcpp::Rate rate(100); // 100Hz
+    while (rclcpp::ok()) {
+      node->controlLoop();
+      rate.sleep();
+    }
+  });
+  
+  // Spin the executor in the main thread
+  executor.spin();
+  
+  // Join the control thread before shutdown
+  control_thread.join();
   rclcpp::shutdown();
   return 0;
 }
