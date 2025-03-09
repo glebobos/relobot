@@ -2,7 +2,6 @@ FROM ros:humble
 
 # Install additional dependencies
 RUN apt-get update && apt-get install -y \
-    python3-pip \
     ros-humble-ros2launch \
     ros-humble-ros2-control \
     ros-humble-ros2-controllers \
@@ -17,9 +16,6 @@ RUN apt-get update && apt-get install -y \
     libserial-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Flask
-RUN pip3 install flask
-
 # Create workspace
 WORKDIR /ros2_ws
 
@@ -31,10 +27,9 @@ RUN echo '#!/bin/bash\n\
 set -e\n\
 source /opt/ros/humble/setup.bash\n\
 cd /ros2_ws\n\
-git clone https://github.com/RoverRobotics-forks/serial-ros2.git ./src/serial || true\n\
-colcon build\n\
+colcon build --packages-select diff_drive_hardware\n\
 source install/setup.bash\n\
-ros2 launch global_launch launch.py --debug' > /start_dev.sh && \
+ros2 launch diff_drive_hardware diffbot.launch.py' > /start_dev.sh && \
 chmod +x /start_dev.sh
 
 EXPOSE 5000

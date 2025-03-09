@@ -1,27 +1,65 @@
 version: '3'
 services:
   ds:
-    image: ros:jazzy-ros-core
+    image: ros:humble-ros-core
     network_mode: host
     environment:
-      - ROS_SUPER_CLIENT=True
-      - HOST_IP=${HOST_IP}
-    command: sh -c "fastdds discovery -i 0 -l $HOST_IP -p 11811"
+      - FASTDDS_BUILTIN_TRANSPORTS=UDPv4
+    command: fastdds discovery -i 0 -l $HOST_IP -p 11811
+    volumes:
+      - .:/ros2_ws/:ro
+
   ros2_diff_robot:
     build:
       context: .
-      dockerfile: Dockerfile.dev
+      dockerfile: DiffDriveHardware.dockerfile
     volumes:
       - .:/ros2_ws/
     devices:
       - /dev/:/dev/
-    ports:
-      - "5000:5000"
     environment:
-#      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+      - FASTDDS_BUILTIN_TRANSPORTS=UDPv4
+      - ROS_DISCOVERY_SERVER=${HOST_IP}:11811
+      - ROS_SUPER_CLIENT=True
+    network_mode: host
+    privileged: true
+    depends_on:
+      - ds
+    restart: unless-stopped
+
+  ros2_imu:
+    build:
+      context: .
+      dockerfile: Imu.dockerfile
+    volumes:
+      - .:/ros2_ws/
+    devices:
+      - /dev/ttyACM0:/dev/ttyACM0
+    environment:
+      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+      - FASTDDS_BUILTIN_TRANSPORTS=UDPv4
+      - ROS_DISCOVERY_SERVER=${HOST_IP}:11811
+      - SERIAL_PORT=/dev/ttyACM0
+      - ROS_SUPER_CLIENT=True
+    network_mode: host
+    privileged: true
+    depends_on:
+      - ds
+    restart: unless-stopped
+
+  ros2_web_server:
+    build:
+      context: .
+      dockerfile: WebServer.dockerfile
+    volumes:
+      - .:/ros2_ws/
+    environment:
+      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+      - FASTDDS_BUILTIN_TRANSPORTS=UDPv4
       - ROS_DISCOVERY_SERVER=${HOST_IP}:11811
       - ROS_SUPER_CLIENT=True
       - PYTHONUNBUFFERED=1
-      - ROS_DOMAIN_ID=12
-    network_mode: host  # This might be needed for ROS2 communication
-    privileged: true
+    network_mode: host
+    depends_on:
+      - ds
+    restart: unless-stopped
