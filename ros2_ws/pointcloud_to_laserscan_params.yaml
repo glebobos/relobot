@@ -1,0 +1,4 @@
+pointcloud_to_laserscan_node:
+  ros__parameters:
+    cloud_in: /point_cloud
+    scan: /scan2

@@ -3,8 +3,9 @@ services:
   ds:
     image: ros:humble-ros-core
     network_mode: host
+    ipc: host 
     environment:
-      - FASTDDS_BUILTIN_TRANSPORTS=UDPv4
+      - FASTDDS_BUILTIN_TRANSPORTS=DEFAULT
     command: fastdds discovery -i 0 -l $HOST_IP -p 11811
     volumes:
       - .:/ros2_ws/:ro
@@ -18,10 +19,11 @@ services:
     devices:
       - /dev/:/dev/
     environment:
-      - FASTDDS_BUILTIN_TRANSPORTS=UDPv4
+      - FASTDDS_BUILTIN_TRANSPORTS=DEFAULT
       - ROS_DISCOVERY_SERVER=${HOST_IP}:11811
       - ROS_SUPER_CLIENT=True
     network_mode: host
+    ipc: host 
     privileged: true
     depends_on:
       - ds
@@ -37,10 +39,32 @@ services:
       - /dev/ttyACM0:/dev/ttyACM0
     environment:
       - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
-      - FASTDDS_BUILTIN_TRANSPORTS=UDPv4
+      - FASTDDS_BUILTIN_TRANSPORTS=DEFAULT
       - ROS_DISCOVERY_SERVER=${HOST_IP}:11811
       - SERIAL_PORT=/dev/ttyACM0
       - ROS_SUPER_CLIENT=True
+    network_mode: host
+    ipc: host 
+    privileged: true
+    depends_on:
+      - ds
+    restart: unless-stopped
+
+  ros2_tof_camera:
+    build:
+      context: .
+      dockerfile: Tof.dockerfile
+    ipc: host
+    volumes:
+      - .:/ros2_ws/
+    devices:
+      - /dev/:/dev/
+    environment:
+      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+      - FASTDDS_BUILTIN_TRANSPORTS=DEFAULT
+      - ROS_DISCOVERY_SERVER=${HOST_IP}:11811
+      - ROS_SUPER_CLIENT=True
+      - PYTHONUNBUFFERED=1
     network_mode: host
     privileged: true
     depends_on:
@@ -55,11 +79,12 @@ services:
       - .:/ros2_ws/
     environment:
       - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
-      - FASTDDS_BUILTIN_TRANSPORTS=UDPv4
+      - FASTDDS_BUILTIN_TRANSPORTS=DEFAULT
       - ROS_DISCOVERY_SERVER=${HOST_IP}:11811
       - ROS_SUPER_CLIENT=True
       - PYTHONUNBUFFERED=1
     network_mode: host
+    ipc: host 
     depends_on:
       - ds
     restart: unless-stopped
