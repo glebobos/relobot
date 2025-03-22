@@ -16,9 +16,12 @@ def generate_launch_description():
             output='screen',
             parameters=[
                 {
-                    'angle_min': -3.1415927410125732,
-                    'angle_max': 3.1415927410125732,
-                    'range_min': 0.0
+                    'min_height': -0.1,
+                    'max_height': 0.3,
+                    'angle_min': -0.60,
+                    'angle_max': 0.39,
+                    'range_max': 4.0,
+                    # 'angle_increment': 0.001,
                 }
             ],
             remappings=[('/cloud_in', '/cloud_in')]

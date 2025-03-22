@@ -104,7 +104,7 @@ class TOFPublisher(Node):
         x = (self.u_grid - (self.width_ / 2.0)) * z / self.fx
         y = (self.v_grid - (self.height_ / 2.0)) * z / self.fy
 
-        points = np.dstack((x, y, z)).reshape(-1, 3)
+        points = np.dstack((z, -x, -y)).reshape(-1, 3)
         valid_mask = ~np.isnan(points).any(axis=1)
         points = points[valid_mask]
 
