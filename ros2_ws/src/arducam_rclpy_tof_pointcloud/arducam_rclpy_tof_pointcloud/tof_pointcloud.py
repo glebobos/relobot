@@ -2,6 +2,7 @@ from argparse import ArgumentParser
 from typing import Optional
 import rclpy
 from rclpy.node import Node
+from rclpy.executors import MultiThreadedExecutor
 from sensor_msgs.msg import PointCloud2
 from sensor_msgs_py import point_cloud2
 from std_msgs.msg import Header
@@ -31,6 +32,7 @@ class TOFPublisher(Node):
         self.header = Header()
         self.header.frame_id = "sensor_frame"
 
+        # Создаём Publisher
         self.publisher_pcl_ = self.create_publisher(
             PointCloud2, "cloud_in", 10
         )
@@ -115,28 +117,30 @@ class TOFPublisher(Node):
 
         self.tof_.releaseFrame(frame)
 
-
 def main(args=None):
     rclpy.init(args=args)
 
     parser = ArgumentParser()
     parser.add_argument("--cfg", type=str, help="Path to camera configuration file")
 
-    # Separate ROS-specific arguments from custom arguments
     ns, unknown = parser.parse_known_args()
 
     options = Option()
     options.cfg = ns.cfg
 
     tof_publisher = TOFPublisher(options)
+
+    executor = MultiThreadedExecutor(num_threads=4)
+    executor.add_node(tof_publisher)
+
     try:
-        rclpy.spin(tof_publisher)
+        executor.spin()
     except KeyboardInterrupt:
         pass
     finally:
+        executor.shutdown()
         tof_publisher.destroy_node()
         rclpy.shutdown()
-
 
 if __name__ == "__main__":
     main()
