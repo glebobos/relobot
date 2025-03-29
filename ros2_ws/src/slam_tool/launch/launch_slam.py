@@ -6,19 +6,37 @@ from launch import LaunchDescription
 from launch_ros.actions import Node
 
 def generate_launch_description():
-    # Get the path to the config file from the slam_tool package
-    config_file = os.path.join(
+    # SLAM Toolbox configuration
+    slam_config_file = os.path.join(
         get_package_share_directory('slam_tool'),
         'config',
         'slam_toolbox_config.yaml'
     )
 
+    # EKF configuration for robot_localization (update the package and path as needed)
+    ekf_config_file = os.path.join(
+        get_package_share_directory('slam_tool'),
+        'config',
+        'ekf.yaml'
+    )
+
+    slam_toolbox_node = Node(
+        package='slam_toolbox',
+        executable='async_slam_toolbox_node',  # or the synchronous node if preferred
+        name='slam_toolbox',
+        output='screen',
+        parameters=[slam_config_file]
+    )
+
+    ekf_node = Node(
+        package='robot_localization',
+        executable='ekf_node',
+        name='ekf_filter_node',
+        output='screen',
+        parameters=[ekf_config_file]
+    )
+
     return LaunchDescription([
-        Node(
-            package='slam_toolbox',
-            executable='async_slam_toolbox_node',  # or synchronous node if preferred
-            name='slam_toolbox',
-            output='screen',
-            parameters=[config_file]
-        )
+        slam_toolbox_node,
+        ekf_node
     ])

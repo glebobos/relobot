@@ -188,7 +188,7 @@ int main(int argc, char * argv[])
   auto node = std::make_shared<ImuNode>();
 
   // Create a Rate object with a frequency of 100 Hz
-  rclcpp::Rate rate(100);
+  rclcpp::Rate rate(30);
 
   while (rclcpp::ok()) {
     node->controlLoop();
