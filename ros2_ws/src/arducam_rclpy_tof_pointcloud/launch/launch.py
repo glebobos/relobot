@@ -21,7 +21,7 @@ def generate_launch_description():
                     'angle_min': -0.60,
                     'angle_max': 0.39,
                     'range_max': 4.0,
-                    # 'angle_increment': 0.001,
+                    'angle_increment': 0.018,
                 }
             ],
             remappings=[('/cloud_in', '/cloud_in')]

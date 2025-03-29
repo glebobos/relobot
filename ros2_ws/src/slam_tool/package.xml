@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>slam_tool</name>
+  <version>0.0.1</version>
+  <description>A ROS 2 ament_python package for launching slam_toolbox with additional sensor configurations.</description>
+  <maintainer email="your.email@example.com">Your Name</maintainer>
+  <license>Apache-2.0</license>
+
+  <!-- Build tool dependency -->
+  <buildtool_depend>ament_python</buildtool_depend>
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+
+
+  <!-- Dependencies -->
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>slam_toolbox</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+
+  <!-- Testing dependencies (optional) -->
+  <!-- <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend> -->
+</package>
