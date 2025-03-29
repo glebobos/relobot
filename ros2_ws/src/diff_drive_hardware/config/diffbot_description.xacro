@@ -41,7 +41,7 @@
   <link name="left_wheel">
     <visual>
       <geometry>
-        <cylinder radius="0.033" length="0.02"/>
+        <cylinder radius="0.0925" length="0.02"/>
       </geometry>
       <material name="black">
         <color rgba="0 0 0 1"/>
@@ -49,7 +49,7 @@
     </visual>
     <collision>
       <geometry>
-        <cylinder radius="0.033" length="0.02"/>
+        <cylinder radius="0.0925" length="0.02"/>
       </geometry>
     </collision>
     <inertial>
@@ -62,7 +62,7 @@
   <link name="right_wheel">
     <visual>
       <geometry>
-        <cylinder radius="0.033" length="0.02"/>
+        <cylinder radius="0.0925" length="0.02"/>
       </geometry>
       <material name="black">
         <color rgba="0 0 0 1"/>
@@ -70,7 +70,7 @@
     </visual>
     <collision>
       <geometry>
-        <cylinder radius="0.033" length="0.02"/>
+        <cylinder radius="0.0925" length="0.02"/>
       </geometry>
     </collision>
     <inertial>
@@ -83,7 +83,7 @@
   <joint name="left_wheel_joint" type="continuous">
     <parent link="base_link"/>
     <child link="left_wheel"/>
-    <origin xyz="0 0.085 -0.033" rpy="-1.5707 0 0"/>
+    <origin xyz="0 0.1475 -0.0925" rpy="-1.5707 0 0"/>
     <axis xyz="0 0 1"/>
   </joint>
 
@@ -91,14 +91,14 @@
   <joint name="right_wheel_joint" type="continuous">
     <parent link="base_link"/>
     <child link="right_wheel"/>
-    <origin xyz="0 -0.085 -0.033" rpy="-1.5707 0 0"/>
+    <origin xyz="0 -0.1475 -0.0925" rpy="-1.5707 0 0"/>
     <axis xyz="0 0 1"/>
   </joint>
 
   <joint name="imu_joint" type="fixed">
     <parent link="base_link"/>
     <child link="imu_link"/>
-    <origin xyz="0.05 0 0.15" rpy="0 0 0"/>
+    <origin xyz="0.4 0 0.245" rpy="0 0 0"/>
   </joint>
 
   <!-- Laser Scanner Sensor -->
