@@ -14,12 +14,14 @@ diff_drive_controller:
     wheel_separation: 0.295
     wheel_radius: 0.0925
 
-    publish_tf: true              # или enable_odom_tf: true
-    odom_frame_id: "odom"
-    base_frame_id: "base_link"
+    publish_tf: false              # или enable_odom_tf: true
+    enable_odom_tf: false
+    # odom_frame_id: "odom"
+    # base_frame_id: "base_link"
 
     use_stamped_vel: false
-    
+    pose_covariance_diagonal: [0.2, 0.2, 9999.0, 9999.0, 9999.0, 0.2]
+    twist_covariance_diagonal: [0.2, 0.2, 9999.0, 9999.0, 9999.0, 0.2]
     # Velocity and acceleration limits
     linear:
       x:
