@@ -18,6 +18,8 @@ from ArducamDepthCamera import (
     DepthData,
 )
 
+MAX_DISTANCE=4000
+
 class Option:
     cfg: Optional[str]
 
@@ -47,7 +49,7 @@ class TOFPublisher(Node):
             np.arange(self.width_), np.arange(self.height_)
         )
 
-        self.timer_ = self.create_timer(1.0 / 10.0, self.update)
+        self.timer_ = self.create_timer(1.0 / 30.0, self.update)
 
     def __init_camera(self, options: Option):
         print("Initializing camera...")
@@ -73,7 +75,7 @@ class TOFPublisher(Node):
         if info.device_type == DeviceType.HQVGA:
             width = info.width
             height = info.height
-            tof.setControl(Control.RANGE, 4)
+            tof.setControl(Control.RANGE, 4000)
         elif info.device_type == DeviceType.VGA:
             width = info.width
             height = info.height // 10 - 1
