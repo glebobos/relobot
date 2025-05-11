@@ -9,9 +9,9 @@ import usb_cdc
 # Constants for motor control
 FREQUENCY = 10000  # PWM frequency in Hz
 COUNTS_PER_REVOLUTION = 1
-RPM_UPDATE_INTERVAL = 0.5  # seconds
+RPM_UPDATE_INTERVAL = 0.6  # seconds
 INACTIVITY_TIMEOUT = 30.0  # Stop motor after 3 seconds of inactivity
-SPEED_SMOOTHING_FACTOR = 0.5  # Lower value = smoother transitions
+SPEED_SMOOTHING_FACTOR = 0.2  # Lower value = smoother transitions
 
 # Motor calibration coefficients
 K = 0.001381
@@ -32,15 +32,25 @@ encoder = countio.Counter(board.D5, pull=digitalio.Pull.UP)
 
 
 class MotorController:
-    """Handles motor control with smooth speed transitions."""
+    """Handles motor control with smooth speed transitions and PID for fine control."""
     
     def __init__(self):
         self.prev_count = 0
         self.prev_time = time.monotonic()
         self.current_rpm = 0.0
         self.target_rpm = 0.0
-        self.measured_rpm = 0.0  # Add this line to track measured RPM
+        self.measured_rpm = 0.0
         self.last_command_time = time.monotonic()
+        
+        # PID controller parameters
+        self.kp = 0.00005  # Proportional gain
+        self.ki = 0.00001  # Integral gain
+        self.kd = 0.00001  # Derivative gain
+        self.integral = 0.0
+        self.previous_error = 0.0
+        self.last_pid_time = time.monotonic()
+        self.pid_active = False
+        self.pwm_adjustment = 0.0
     
     def set_pwm(self, norm_pwm, forward=True):
         """Set normalized PWM [0,1] for specified direction."""
@@ -84,35 +94,110 @@ class MotorController:
     
     def set_rpm(self, target_rpm):
         """Set target RPM and update command timestamp."""
+        if self.target_rpm != target_rpm:
+            # Reset PID controller when target changes
+            self.integral = 0.0
+            self.previous_error = 0.0
+            self.pid_active = False
+            self.pwm_adjustment = 0.0
         self.target_rpm = target_rpm
         self.last_command_time = time.monotonic()
     
     def update(self):
-        """Update motor control with smooth transitions and inactivity check."""
+        """Update motor control with smooth transitions and PID near target."""
         now = time.monotonic()
         
         # Check for inactivity timeout
         if now - self.last_command_time > INACTIVITY_TIMEOUT and self.target_rpm != 0:
             print("Inactivity timeout. Stopping motor.")
             self.target_rpm = 0
+            self.pid_active = False
         
         # Get measured RPM from encoder
-        self.measured_rpm = self.calculate_rpm()  # Store the measured RPM
+        self.measured_rpm = self.calculate_rpm()
         
-        # Smooth speed transition
-        if abs(self.current_rpm - self.target_rpm) > 0.1:
-            # Gradually transition to target speed
-            new_rpm = self.current_rpm + SPEED_SMOOTHING_FACTOR * (self.target_rpm - self.current_rpm)
-            self.current_rpm = new_rpm
-            
-            # Apply PWM signal to motor
-            pwm_value, forward = self.rpm_to_pwm(new_rpm)
-            self.set_pwm(pwm_value, forward)
-        elif self.current_rpm == 0 and self.target_rpm == 0:
-            # Ensure motor is fully stopped
+        # Handle the case when target is 0
+        if self.target_rpm == 0:
+            self.current_rpm = 0
+            self.pid_active = False
+            self.pwm_adjustment = 0.0
             self.set_pwm(0, True)
+            return self.measured_rpm
         
-        return self.measured_rpm  # Return the measured RPM
+        # Check if we should activate PID (when speed reaches 80% of target)
+        if not self.pid_active and abs(self.measured_rpm) >= 0.9 * abs(self.target_rpm):
+            self.pid_active = True
+            print("PID control activated")
+            self.integral = 0.0
+            self.previous_error = 0.0
+            self.last_pid_time = now
+        
+        # Use either PID control or standard ramping
+        if self.pid_active:
+            # Calculate base PWM from feed-forward model
+            base_pwm, forward = self.rpm_to_pwm(self.target_rpm)
+            
+            # Calculate PID adjustment
+            self.update_pid()
+            
+            # Apply PID adjustment to base PWM
+            adjusted_pwm = base_pwm + self.pwm_adjustment
+            adjusted_pwm = max(0.0, min(1.0, adjusted_pwm))
+            
+            # Set motor PWM
+            self.set_pwm(adjusted_pwm, self.target_rpm >= 0)
+            print(f"PID control: RPM={self.measured_rpm:.1f} PWM={adjusted_pwm:.4f} Adj={self.pwm_adjustment:.4f}")
+            
+            # Update current_rpm tracking
+            self.current_rpm = self.target_rpm
+        else:
+            # Gradually transition to target speed
+            if abs(self.current_rpm - self.target_rpm) > 0.1:
+                new_rpm = self.current_rpm + SPEED_SMOOTHING_FACTOR * (self.target_rpm - self.current_rpm)
+                self.current_rpm = new_rpm
+                
+                # Apply PWM signal to motor
+                pwm_value, forward = self.rpm_to_pwm(new_rpm)
+                self.set_pwm(pwm_value, forward)
+                print(f"Standard control: RPM={new_rpm:.1f} PWM={pwm_value:.4f}")
+        
+        return self.measured_rpm
+    
+    def update_pid(self):
+        """Calculate PID adjustment to PWM."""
+        now = time.monotonic()
+        dt = now - self.last_pid_time
+        
+        # Skip if dt is too small
+        if dt < 0.001:
+            return
+        
+        # Calculate error (target - measured)
+        error = self.target_rpm - self.measured_rpm
+        
+        # Proportional term
+        p_out = self.kp * error
+        
+        # Integral term with anti-windup
+        self.integral += error * dt
+        self.integral = max(-500, min(500, self.integral))  # Limit integral windup
+        i_out = self.ki * self.integral
+        
+        # Derivative term
+        derivative = (error - self.previous_error) / dt if dt > 0 else 0
+        d_out = self.kd * derivative
+        
+        # Calculate new adjustment with smoothing
+        pid_output = p_out + i_out + d_out
+        smooth_factor = 0.2  # Lower = smoother but slower response
+        self.pwm_adjustment = self.pwm_adjustment * (1 - smooth_factor) + pid_output * smooth_factor
+        
+        # Limit adjustment range
+        self.pwm_adjustment = max(-0.2, min(0.2, self.pwm_adjustment))
+        
+        # Update state for next iteration
+        self.previous_error = error
+        self.last_pid_time = now
     
     def calculate_rpm(self):
         """Calculate RPM from encoder counts."""
@@ -129,7 +214,7 @@ class MotorController:
             
             return measured_rpm
             
-        return self.measured_rpm  # Return the last measured RPM instead of current_rpm
+        return self.measured_rpm  # Return the last measured RPM
 
 
 def process_command(cmd, motor_controller):
@@ -139,7 +224,7 @@ def process_command(cmd, motor_controller):
     if cmd == 'whoyouare':
         usb_cdc.data.write(b'knives\n')
     elif cmd == 'test':
-        motor_controller.set_rpm(100)
+        motor_controller.set_rpm(700)
     else:
         try:
             target = float(cmd)
@@ -153,7 +238,7 @@ def main():
     """Main program loop."""
     try:
         motor = MotorController()
-        motor.set_rpm(1000)  # Start with motor stopped
+        motor.set_rpm(2700)  # Start with motor stopped
         
         while True:
             try:
