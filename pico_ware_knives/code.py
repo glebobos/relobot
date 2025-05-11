@@ -241,7 +241,7 @@ def main():
     """Main program loop."""
     try:
         motor = MotorController()
-        motor.set_rpm(2700)  # Start with motor stopped
+        motor.set_rpm(0)  # Start with motor stopped
         
         while True:
             try:
@@ -256,7 +256,8 @@ def main():
                 # Report current RPM
                 status_msg = f"RPM: {rpm:.1f}\n"
                 usb_cdc.data.write(status_msg.encode())
-                print(status_msg, end="")
+                if rpm != 0:
+                    print(status_msg, end="")
                 
                 time.sleep(0.1)
             except Exception as e:
@@ -281,3 +282,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
