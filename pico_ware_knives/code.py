@@ -124,8 +124,11 @@ class MotorController:
             self.set_pwm(0, True)
             return self.measured_rpm
         
-        # Check if we should activate PID (when speed reaches 80% of target)
-        if not self.pid_active and abs(self.measured_rpm) >= 0.9 * abs(self.target_rpm):
+        # Disable PID for reverse direction
+        if self.target_rpm < 0:
+            self.pid_active = False
+        # Check if we should activate PID (when speed reaches 90% of target and not in reverse)
+        elif not self.pid_active and self.target_rpm > 0 and abs(self.measured_rpm) >= 0.9 * abs(self.target_rpm):
             self.pid_active = True
             print("PID control activated")
             self.integral = 0.0
