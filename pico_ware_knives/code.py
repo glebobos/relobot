@@ -1,162 +1,195 @@
 import time
+import math
 import board
 import pwmio
-import usb_cdc
 import countio
 import digitalio
+import usb_cdc
 
-# Constants
-MAX_SPEED = 1.0
-MIN_SPEED = -1.0
-FREQUENCY = 10000
+# Constants for motor control
+FREQUENCY = 10000  # PWM frequency in Hz
 COUNTS_PER_REVOLUTION = 1
-RPM_UPDATE_INTERVAL = 0.1  # Update RPM every 100ms
+RPM_UPDATE_INTERVAL = 0.5  # seconds
+INACTIVITY_TIMEOUT = 30.0  # Stop motor after 3 seconds of inactivity
+SPEED_SMOOTHING_FACTOR = 0.5  # Lower value = smoother transitions
 
-# Pin configurations
-try:
-    FWD_PWM = pwmio.PWMOut(board.D0, frequency=FREQUENCY)  # Forward PWM
-    FWD_EN = digitalio.DigitalInOut(board.D1)      # Forward Enable
-    FWD_EN.direction = digitalio.Direction.OUTPUT
+# Motor calibration coefficients
+K = 0.001381
+C = 0.048623
 
-    REV_EN = digitalio.DigitalInOut(board.D2)   # Reverse Enable
-    REV_EN.direction = digitalio.Direction.OUTPUT
+# Initialize PWM outputs for forward and reverse control
+FWD_PWM = pwmio.PWMOut(board.D0, frequency=FREQUENCY)
+REV_PWM = pwmio.PWMOut(board.D3, frequency=FREQUENCY)
 
-    REV_PWM = pwmio.PWMOut(board.D3, frequency=FREQUENCY)  # Reverse PWM
-    encoder = countio.Counter(board.D10)                    # Encoder input
-except Exception as e:
-    print(f"Error initializing hardware: {e}")
-    raise
+# Initialize enable pins
+FWD_EN = digitalio.DigitalInOut(board.D1)
+REV_EN = digitalio.DigitalInOut(board.D2)
+for pin in (FWD_EN, REV_EN):
+    pin.direction = digitalio.Direction.OUTPUT
 
-class MotorState:
+# Initialize encoder
+encoder = countio.Counter(board.D5, pull=digitalio.Pull.UP)
+
+
+class MotorController:
+    """Handles motor control with smooth speed transitions."""
+    
     def __init__(self):
         self.prev_count = 0
         self.prev_time = time.monotonic()
-        self.current_rpm = 0
-
-motor_state = MotorState()
-
-def calculate_rpm():
-    """Calculate current RPM"""
-    current_time = time.monotonic()
-    current_count = encoder.count
+        self.current_rpm = 0.0
+        self.target_rpm = 0.0
+        self.measured_rpm = 0.0  # Add this line to track measured RPM
+        self.last_command_time = time.monotonic()
     
-    # Calculate time difference
-    time_diff = current_time - motor_state.prev_time
+    def set_pwm(self, norm_pwm, forward=True):
+        """Set normalized PWM [0,1] for specified direction."""
+        try:
+            duty = int(65535 * max(0.0, min(1.0, norm_pwm)))
+            
+            if duty == 0:
+                FWD_EN.value = False
+                REV_EN.value = False
+                FWD_PWM.duty_cycle = 0
+                REV_PWM.duty_cycle = 0
+                return
+            
+            FWD_EN.value = True
+            REV_EN.value = True
+            
+            if forward:
+                FWD_PWM.duty_cycle = duty
+                REV_PWM.duty_cycle = 0
+            else:
+                FWD_PWM.duty_cycle = 0
+                REV_PWM.duty_cycle = duty
+        except Exception as e:
+            print(f"Error setting PWM: {e}")
+            # Safe shutdown on error
+            try:
+                FWD_EN.value = False
+                REV_EN.value = False
+                FWD_PWM.duty_cycle = 0
+                REV_PWM.duty_cycle = 0
+            except:
+                pass
     
-    if time_diff >= RPM_UPDATE_INTERVAL:
-        # Calculate count difference
-        count_diff = current_count - motor_state.prev_count
+    def rpm_to_pwm(self, rpm):
+        """Convert RPM to PWM value using linear model."""
+        forward = rpm >= 0
+        angular_velocity = abs(rpm) * 2 * math.pi / 60.0
+        pwm_value = K * angular_velocity + C
+        pwm_value = max(0.0, min(1.0, pwm_value))
+        return pwm_value, forward
+    
+    def set_rpm(self, target_rpm):
+        """Set target RPM and update command timestamp."""
+        self.target_rpm = target_rpm
+        self.last_command_time = time.monotonic()
+    
+    def update(self):
+        """Update motor control with smooth transitions and inactivity check."""
+        now = time.monotonic()
         
-        # Calculate RPM
-        rpm = (count_diff / COUNTS_PER_REVOLUTION) * (60 / time_diff)
+        # Check for inactivity timeout
+        if now - self.last_command_time > INACTIVITY_TIMEOUT and self.target_rpm != 0:
+            print("Inactivity timeout. Stopping motor.")
+            self.target_rpm = 0
         
-        # Update previous values
-        motor_state.prev_count = current_count
-        motor_state.prev_time = current_time
-        motor_state.current_rpm = rpm
+        # Get measured RPM from encoder
+        self.measured_rpm = self.calculate_rpm()  # Store the measured RPM
         
-        return rpm
+        # Smooth speed transition
+        if abs(self.current_rpm - self.target_rpm) > 0.1:
+            # Gradually transition to target speed
+            new_rpm = self.current_rpm + SPEED_SMOOTHING_FACTOR * (self.target_rpm - self.current_rpm)
+            self.current_rpm = new_rpm
+            
+            # Apply PWM signal to motor
+            pwm_value, forward = self.rpm_to_pwm(new_rpm)
+            self.set_pwm(pwm_value, forward)
+        elif self.current_rpm == 0 and self.target_rpm == 0:
+            # Ensure motor is fully stopped
+            self.set_pwm(0, True)
+        
+        return self.measured_rpm  # Return the measured RPM
     
-    return motor_state.current_rpm
+    def calculate_rpm(self):
+        """Calculate RPM from encoder counts."""
+        now = time.monotonic()
+        count = encoder.count
+        dt = now - self.prev_time
+        
+        if dt >= RPM_UPDATE_INTERVAL:
+            count_delta = count - self.prev_count
+            measured_rpm = (count_delta / COUNTS_PER_REVOLUTION) * (60.0 / dt)
+            
+            self.prev_count = count
+            self.prev_time = now
+            
+            return measured_rpm
+            
+        return self.measured_rpm  # Return the last measured RPM instead of current_rpm
 
-def set_motor_speed(speed):
-    """Set motor speed with direction control"""
-    speed = max(MIN_SPEED, min(MAX_SPEED, speed))
-    duty_cycle = int(65535 * abs(speed))    
-    try:
-        if speed > 0:
-            FWD_EN.value = True  # Full on
-            REV_EN.value = True      # Off
-            FWD_PWM.duty_cycle = duty_cycle
-            REV_PWM.duty_cycle = 0
-        elif speed < 0:
-            FWD_EN.value = True      # Off
-            REV_EN.value = True  # Full on
-            FWD_PWM.duty_cycle = 0
-            REV_PWM.duty_cycle = duty_cycle
-        else:
-            FWD_EN.value = False      # Off
-            REV_EN.value = False # Full on
-            FWD_PWM.duty_cycle = 0
-            REV_PWM.duty_cycle = 0
-    except Exception as e:
-        print(f"Error setting motor speed: {e}")
 
-def test_motor():
-    """Test function to gradually increase and decrease speed"""
-    print("Starting motor test...")
+def process_command(cmd, motor_controller):
+    """Process commands received over USB."""
+    cmd = cmd.strip().lower()
     
-    # Accelerate forward
-    for speed in range(0, 101, 2):
-        set_motor_speed(speed / 100.0)
-        rpm = calculate_rpm()
-        print(f"Speed: {speed}%, RPM: {rpm:.1f}")
-        time.sleep(0.1)
-    
-    # Decelerate to zero
-    for speed in range(100, -1, -2):
-        set_motor_speed(speed / 100.0)
-        rpm = calculate_rpm()
-        print(f"Speed: {speed}%, RPM: {rpm:.1f}")
-        time.sleep(0.1)
-    
-    # Accelerate reverse
-    for speed in range(0, -101, -2):
-        set_motor_speed(speed / 100.0)
-        rpm = calculate_rpm()
-        print(f"Speed: {speed}%, RPM: {rpm:.1f}")
-        time.sleep(0.1)
-    
-    # Decelerate to zero
-    for speed in range(-100, 1, 2):
-        set_motor_speed(speed / 100.0)
-        rpm = calculate_rpm()
-        print(f"Speed: {speed}%, RPM: {rpm:.1f}")
-        time.sleep(0.1)
-    
-    print("Motor test completed")
+    if cmd == 'whoyouare':
+        usb_cdc.data.write(b'knives\n')
+    elif cmd == 'test':
+        motor_controller.set_rpm(100)
+    else:
+        try:
+            target = float(cmd)
+            motor_controller.set_rpm(target)
+        except ValueError:
+            # Invalid command, stop the motor
+            motor_controller.set_rpm(0)
 
-def process_command(command):
-    """Process incoming command with error handling for a single motor"""
-    try:
-        command = command.strip()
-
-        # Check for identification command
-        if command.lower() == "whoyouare":
-            usb_cdc.data.write(b"knives\n")
-            return True
-
-        # Check for test command
-        if command.lower() == "test":
-            test_motor()
-            return True
-
-        # Process speed command
-        speed = float(command)
-        set_motor_speed(speed)
-        return True
-    except Exception as e:
-        print(f"Error processing command: {e}")
-        set_motor_speed(0)
-        return False
 
 def main():
-    while True:
+    """Main program loop."""
+    try:
+        motor = MotorController()
+        motor.set_rpm(1000)  # Start with motor stopped
+        
+        while True:
+            try:
+                # Process incoming commands
+                if usb_cdc.data.in_waiting > 0:
+                    line = usb_cdc.data.readline().decode()
+                    process_command(line, motor)
+                
+                # Update motor control with smooth transitions
+                rpm = motor.update()
+                
+                # Report current RPM
+                status_msg = f"RPM: {rpm:.1f}\n"
+                usb_cdc.data.write(status_msg.encode())
+                print(status_msg, end="")
+                
+                time.sleep(0.1)
+            except Exception as e:
+                print(f"Error in main loop: {e}")
+                try:
+                    motor.set_rpm(0)
+                    motor.update()
+                except:
+                    pass
+                time.sleep(0.5)
+    except Exception as e:
+        print(f"Critical error: {e}")
+        # Emergency shutdown
         try:
-            # Process incoming commands
-            if usb_cdc.data.in_waiting > 0:
-                command = usb_cdc.data.readline().decode().strip()
-                process_command(command)
-            
-            # Calculate and send RPM data
-            rpm = calculate_rpm()
-            usb_cdc.data.write(f"RPM: {rpm:.1f}\n".encode())
-            time.sleep(0.1)
+            FWD_EN.value = False
+            REV_EN.value = False
+            FWD_PWM.duty_cycle = 0
+            REV_PWM.duty_cycle = 0
+        except:
+            pass
 
-        except Exception as e:
-            print(f"Main loop error: {e}")
-            set_motor_speed(0)
-            time.sleep(0.1)
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
