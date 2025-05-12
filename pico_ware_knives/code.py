@@ -13,9 +13,15 @@ RPM_UPDATE_INTERVAL = 0.6  # seconds
 INACTIVITY_TIMEOUT = 30.0  # Stop motor after 3 seconds of inactivity
 SPEED_SMOOTHING_FACTOR = 0.2  # Lower value = smoother transitions
 
-# Motor calibration coefficients
+# Motor calibration coefficients use test.py in calibration to find
 K = 0.001381
 C = 0.048623
+
+#PID configuration
+PID_SMOOTH_FACTOR = 0.2
+PID_KP = 0.00005
+PID_KI = 0.00001
+PID_KD = 0.00001
 
 # Initialize PWM outputs for forward and reverse control
 FWD_PWM = pwmio.PWMOut(board.D0, frequency=FREQUENCY)
@@ -43,9 +49,9 @@ class MotorController:
         self.last_command_time = time.monotonic()
         
         # PID controller parameters
-        self.kp = 0.00005  # Proportional gain
-        self.ki = 0.00001  # Integral gain
-        self.kd = 0.00001  # Derivative gain
+        self.kp = PID_KP  # Proportional gain
+        self.ki = PID_KI  # Integral gain
+        self.kd = PID_KD  # Derivative gain
         self.integral = 0.0
         self.previous_error = 0.0
         self.last_pid_time = time.monotonic()
@@ -192,7 +198,7 @@ class MotorController:
         
         # Calculate new adjustment with smoothing
         pid_output = p_out + i_out + d_out
-        smooth_factor = 0.2  # Lower = smoother but slower response
+        smooth_factor = PID_SMOOTH_FACTOR  # Lower = smoother but slower response
         self.pwm_adjustment = self.pwm_adjustment * (1 - smooth_factor) + pid_output * smooth_factor
         
         # Limit adjustment range
