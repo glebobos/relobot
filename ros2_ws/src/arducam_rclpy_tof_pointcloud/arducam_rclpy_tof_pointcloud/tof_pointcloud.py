@@ -49,7 +49,7 @@ class TOFPublisher(Node):
             np.arange(self.width_), np.arange(self.height_)
         )
 
-        self.timer_ = self.create_timer(1.0 / 30.0, self.update)
+        self.timer_ = self.create_timer(1.0 / 20.0, self.update)
 
     def __init_camera(self, options: Option):
         print("Initializing camera...")
