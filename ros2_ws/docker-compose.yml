@@ -76,6 +76,8 @@ services:
       dockerfile: WebServer.dockerfile
     volumes:
       - .:/ros2_ws/
+    devices:
+      - /dev/:/dev/
     environment:
       - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
       - FASTDDS_BUILTIN_TRANSPORTS=DEFAULT
@@ -83,6 +85,7 @@ services:
       - ROS_SUPER_CLIENT=True
       - PYTHONUNBUFFERED=1
     network_mode: host
+    privileged: true
     ipc: host 
     depends_on:
       - ds

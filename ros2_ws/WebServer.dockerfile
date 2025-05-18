@@ -2,7 +2,7 @@ FROM ros:humble
 
 # Install additional dependencies
 RUN apt-get update && apt-get install -y \
-    python3-pip &&  pip3 install flask
+    python3-pip &&  pip3 install flask pygame
 # Create workspace
 WORKDIR /ros2_ws
 
