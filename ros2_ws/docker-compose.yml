@@ -76,7 +76,6 @@ services:
       dockerfile: WebServer.dockerfile
     volumes:
       - .:/ros2_ws/
-    devices:
       - /dev/:/dev/
     environment:
       - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
@@ -86,6 +85,11 @@ services:
       - PYTHONUNBUFFERED=1
     network_mode: host
     privileged: true
+    device_cgroup_rules:
+      - "c 13:* rwm"
+      - "c 240:* rwm"
+      - "c 189:* rwm" 
+      - "c 29:* rwm"
     ipc: host 
     depends_on:
       - ds
