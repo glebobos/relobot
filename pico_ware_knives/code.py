@@ -10,7 +10,7 @@ import usb_cdc
 FREQUENCY = 10000  # PWM frequency in Hz
 COUNTS_PER_REVOLUTION = 1
 RPM_UPDATE_INTERVAL = 0.6  # seconds
-INACTIVITY_TIMEOUT = 30.0  # Stop motor after 3 seconds of inactivity
+INACTIVITY_TIMEOUT = 5.0  # Stop motor after 3 seconds of inactivity
 SPEED_SMOOTHING_FACTOR = 0.2  # Lower value = smoother transitions
 
 # Motor calibration coefficients use test.py in calibration to find
