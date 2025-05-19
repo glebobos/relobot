@@ -1,4 +1,3 @@
-import sys
 import time
 import pygame
 from typing import Callable, Dict, Set
@@ -27,44 +26,45 @@ class Controller:
         self.retry_interval = retry_interval
         self.connected = False
         self.joystick = None
-        # initial wait or immediate connect
-        self._wait_for_joystick()
-
-        self._axis_callbacks: Dict[int, AxisCallback]       = {}
+        
+        # Инициализируем атрибуты перед вызовом _try_connect()
+        self._axis_callbacks: Dict[int, AxisCallback] = {}
         self._button_down_callbacks: Dict[int, ButtonCallback] = {}
-        self._button_up_callbacks:   Dict[int, ButtonCallback] = {}
-
+        self._button_up_callbacks: Dict[int, ButtonCallback] = {}
         self._last_axis_values: Dict[int, float] = {}
-        self._held_axes:    Set[int]   = set()
-        self._held_buttons: Set[int]   = set()
+        self._held_axes: Set[int] = set()
+        self._held_buttons: Set[int] = set()
+        
+        # Теперь пытаемся подключиться
+        self._try_connect()
 
-    def _wait_for_joystick(self):
-        """Ожидаем подключения джойстика, проверяя с задержкой."""
-        while True:
-            pygame.joystick.init()
-            try:
-                count = pygame.joystick.get_count()
-            except pygame.error:
-                count = 0
+    def _try_connect(self):
+        """Пытаемся подключиться к джойстику без блокировки."""
+        pygame.joystick.quit()
+        pygame.joystick.init()
+        try:
+            count = pygame.joystick.get_count()
             if count > 0:
                 self._connect(self.joystick_idx)
-                break
-            print(f"No joystick connected. Retrying in {self.retry_interval} seconds...")
-            time.sleep(self.retry_interval)
+                return True
+            return False
+        except pygame.error:
+            return False
 
     def _connect(self, joystick_idx: int):
         """Инициализирует джойстик по индексу и ставит connected=True."""
         try:
-            pygame.joystick.quit()
-            pygame.joystick.init()
             self.joystick = pygame.joystick.Joystick(joystick_idx)
             self.joystick.init()
             self.connected = True
+            # Очищаем состояние при новом подключении
+            self._held_axes.clear()
+            self._held_buttons.clear()
+            self._last_axis_values.clear()
             print(f"Joystick {joystick_idx} initialized: {self.joystick.get_name()}")
         except pygame.error as e:
             print(f"Failed to initialize joystick {joystick_idx}: {e}")
-            time.sleep(self.retry_interval)
-            self._wait_for_joystick()
+            self.connected = False
 
     def _process_axis(self, axis: int, raw_value: float) -> float:
         if axis in DISABLED_AXES:
@@ -100,48 +100,59 @@ class Controller:
         last_check = time.time()
         try:
             while True:
-                # если джойстик внезапно пропал без события
-                if not self.connected and time.time() - last_check >= self.retry_interval:
-                    self._wait_for_joystick()
+                # Периодически проверяем подключение
+                if time.time() - last_check >= self.retry_interval:
+                    if not self.connected:
+                        self._try_connect()
                     last_check = time.time()
-                # обрабатываем события
-                ev = pygame.event.wait()
-                if ev.type == pygame.JOYAXISMOTION:
-                    self._dispatch_axis(ev.axis, ev.value)
-                    proc = self._process_axis(ev.axis, ev.value)
-                    if abs(proc) > 0:
-                        self._held_axes.add(ev.axis)
-                    else:
-                        self._held_axes.discard(ev.axis)
-                elif ev.type == pygame.JOYBUTTONDOWN:
-                    self._held_buttons.add(ev.button)
-                    cb = self._button_down_callbacks.get(ev.button)
-                    if cb:
-                        cb(ev.button)
-                elif ev.type == pygame.JOYBUTTONUP:
-                    self._held_buttons.discard(ev.button)
-                    cb = self._button_up_callbacks.get(ev.button)
-                    if cb:
-                        cb(ev.button)
-                elif ev.type == pygame.JOYDEVICEREMOVED:
-                    print("Joystick removed. Waiting for reconnection...")
-                    self.connected = False
-                elif ev.type == pygame.JOYDEVICEADDED:
-                    print("Joystick added event received.")
-                    self._connect(ev.device_index)
-                    pygame.event.clear()
+                
+                # Обрабатываем события с таймаутом
+                for event in pygame.event.get():
+                    if event.type == pygame.JOYAXISMOTION and self.connected:
+                        self._dispatch_axis(event.axis, event.value)
+                        proc = self._process_axis(event.axis, event.value)
+                        if abs(proc) > 0:
+                            self._held_axes.add(event.axis)
+                        else:
+                            self._held_axes.discard(event.axis)
+                    elif event.type == pygame.JOYBUTTONDOWN and self.connected:
+                        self._held_buttons.add(event.button)
+                        cb = self._button_down_callbacks.get(event.button)
+                        if cb:
+                            cb(event.button)
+                    elif event.type == pygame.JOYBUTTONUP and self.connected:
+                        self._held_buttons.discard(event.button)
+                        cb = self._button_up_callbacks.get(event.button)
+                        if cb:
+                            cb(event.button)
+                    elif event.type == pygame.JOYDEVICEREMOVED:
+                        print("Joystick removed. Waiting for reconnection...")
+                        self.connected = False
+                        self._held_axes.clear()
+                        self._held_buttons.clear()
+                    elif event.type == pygame.JOYDEVICEADDED:
+                        print("Joystick added event received.")
+                        self._connect(event.device_index)
 
-                # непрерывная отправка для удерживаемых
-                for axis in list(self._held_axes):
-                    raw = self.joystick.get_axis(axis)
-                    proc = self._process_axis(axis, raw)
-                    cb = self._axis_callbacks.get(axis)
-                    if cb:
-                        cb(axis, proc)
-                for btn in list(self._held_buttons):
-                    cb = self._button_down_callbacks.get(btn)
-                    if cb:
-                        cb(btn)
+                # Непрерывная отправка для удерживаемых кнопок и осей
+                if self.connected:
+                    try:
+                        for axis in list(self._held_axes):
+                            raw = self.joystick.get_axis(axis)
+                            proc = self._process_axis(axis, raw)
+                            cb = self._axis_callbacks.get(axis)
+                            if cb:
+                                cb(axis, proc)
+                        for btn in list(self._held_buttons):
+                            cb = self._button_down_callbacks.get(btn)
+                            if cb:
+                                cb(btn)
+                    except pygame.error:
+                        # Джойстик был отключен, но событие не пришло
+                        print("Error accessing joystick. Marking as disconnected.")
+                        self.connected = False
+                        self._held_axes.clear()
+                        self._held_buttons.clear()
 
                 time.sleep(poll_delay)
         except KeyboardInterrupt:
