@@ -6,12 +6,12 @@ import countio
 import math
 
 # Constants
-MAX_SPEED_RAD_S = 7.5  # Уточни максимальную скорость в рад/сек
+MAX_SPEED_RAD_S = 7.5  # Specify maximum speed in rad/sec
 MIN_SPEED_RAD_S = -7.5
 FREQUENCY = 7000
-COUNTS_PER_REVOLUTION = 60  # Уточни параметры энкодера
+COUNTS_PER_REVOLUTION = 60  # Specify encoder parameters
 
-# Функции перевода скорости в PWM
+# Functions for converting speed to PWM
 def speed_to_pwm_left(speed):
     abs_speed = abs(speed)
     pwm_value = 0.13281 * abs_speed + 0.029637
@@ -22,7 +22,7 @@ def speed_to_pwm_right(speed):
     pwm_value = 0.13593 * abs_speed + 0.021466
     return max(0, min(1, pwm_value))
 
-# Инициализация PWM и энкодеров
+# Initialization of PWM and encoders
 try:
     PWM1 = pwmio.PWMOut(board.D1, frequency=FREQUENCY)
     PWM2 = pwmio.PWMOut(board.D0, frequency=FREQUENCY)

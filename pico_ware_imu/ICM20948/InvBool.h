@@ -21,7 +21,7 @@
  * ________________________________________________________________________________________________________
  */
 
-/** @brief    Custom definition for boolean type to avoid compiler disrepenrencies
+/** @brief    Custom definition for boolean type to avoid compiler discrepancies
  *	@{
  */
 

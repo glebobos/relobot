@@ -4,15 +4,15 @@ import pwmio
 import countio
 import digitalio
 import math
-import ulab.numpy as np  # Лёгкая библиотека для численных расчётов
+import ulab.numpy as np  # Lightweight library for numerical calculations
 
-# Конфигурация ШИМ и энкодера (как в рабочем коде)
+# PWM and encoder configuration (as in working code)
 FREQUENCY = 10000
-COUNTS_PER_REVOLUTION = 1    # Тиков энкодера на оборот (настройте под ваш энкодер)
-TEST_DURATION = 2.0           # Время теста на каждом уровне PWM (секунды)
+COUNTS_PER_REVOLUTION = 1    # Encoder ticks per revolution (configure for your encoder)
+TEST_DURATION = 2.0           # Test duration at each PWM level (seconds)
 PWM_LEVELS = [i / 10.0 for i in range(1, 11)]  # 0.1 … 1.0
 
-# Инициализация аппаратуры
+# Hardware initialization
 FWD_PWM = pwmio.PWMOut(board.D0, frequency=FREQUENCY)
 REV_PWM = pwmio.PWMOut(board.D3, frequency=FREQUENCY)
 FWD_EN = digitalio.DigitalInOut(board.D1)
@@ -23,12 +23,12 @@ encoder = countio.Counter(board.D5, pull=digitalio.Pull.UP)
 
 
 def counts_to_radians(counts):
-    """Преобразует тики энкодера в радианы."""
+    """Converts encoder ticks to radians."""
     return (counts * 2 * math.pi) / COUNTS_PER_REVOLUTION
 
 
 def set_pwm(pwm_value):
-    """Устанавливает только ШИМ для прямого движения (проверка зависимости)."""
+    """Sets only PWM for forward movement (dependency check)."""
     duty = int(65535 * pwm_value)
     FWD_EN.value = True
     REV_EN.value = True
@@ -37,8 +37,8 @@ def set_pwm(pwm_value):
 
 
 def compute_linear_fit(x_vals, y_vals):
-    """Линейная аппроксимация: pwm = K * ω + C."""
-    x = np.array(y_vals)  # ω (рад/с)
+    """Linear approximation: pwm = K * ω + C."""
+    x = np.array(y_vals)  # ω (rad/s)
     y = np.array(x_vals)  # pwm
     n = len(x)
     sum_x = np.sum(x)
@@ -52,9 +52,9 @@ def compute_linear_fit(x_vals, y_vals):
 
 
 def run_calibration():
-    """Запуск цикла тестирования PWM → ω и получение коэффициентов."""
+    """Launch PWM → ω testing cycle and get coefficients."""
     data = []
-    print("\nЗапуск калибровки PWM → ω...\n")
+    print("\nStarting PWM → ω calibration...\n")
 
     for pwm in PWM_LEVELS:
         encoder.count = 0
@@ -63,10 +63,10 @@ def run_calibration():
         time.sleep(TEST_DURATION)
         ticks = encoder.count
         ω = counts_to_radians(ticks) / TEST_DURATION
-        print(f"PWM={pwm:.2f} → ω={ω:.3f} рад/с")
+        print(f"PWM={pwm:.2f} → ω={ω:.3f} rad/s")
         data.append((pwm, ω))
 
-    # Остановить мотор
+    # Stop motor
     FWD_EN.value = False
     REV_EN.value = False
     FWD_PWM.duty_cycle = 0
@@ -75,7 +75,7 @@ def run_calibration():
     pwm_vals = [d[0] for d in data]
     omega_vals = [d[1] for d in data]
     K, C = compute_linear_fit(pwm_vals, omega_vals)
-    print(f"\nРезультат калибровки: PWM = {K:.6f} * ω + {C:.6f}")
+    print(f"\nCalibration result: PWM = {K:.6f} * ω + {C:.6f}")
     return K, C
 
 

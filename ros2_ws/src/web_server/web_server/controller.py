@@ -2,7 +2,7 @@ import time
 import pygame
 from typing import Callable, Dict, Set
 
-# Конфиги dead-zone и отключённых осей
+# Configs for dead-zone and disabled axes
 IDLE_ZONE_CONFIG = {
     0: 0.07,
     3: 0.07,
@@ -14,10 +14,10 @@ ButtonCallback = Callable[[int], None]
 
 class Controller:
     """Generic wrapper over pygame.Joystick:
-       - регистрация колбэков
-       - автоматическая повторная отправка при удержании
-       - обработка подключения/отключения джойстика
-       - периодический опрос на случай отсутствия udev-ивентов (например в Docker)
+       - callback registration
+       - automatic repeat sending when held
+       - handling joystick connection/disconnection
+       - periodic polling in case of missing udev events (for example in Docker)
     """
     def __init__(self, joystick_idx: int = 0, retry_interval: float = 3.0):
         pygame.init()
@@ -27,7 +27,7 @@ class Controller:
         self.connected = False
         self.joystick = None
         
-        # Инициализируем атрибуты перед вызовом _try_connect()
+        # Initialize attributes before calling _try_connect()
         self._axis_callbacks: Dict[int, AxisCallback] = {}
         self._button_down_callbacks: Dict[int, ButtonCallback] = {}
         self._button_up_callbacks: Dict[int, ButtonCallback] = {}
@@ -35,11 +35,11 @@ class Controller:
         self._held_axes: Set[int] = set()
         self._held_buttons: Set[int] = set()
         
-        # Теперь пытаемся подключиться
+        # Now trying to connect
         self._try_connect()
 
     def _try_connect(self):
-        """Пытаемся подключиться к джойстику без блокировки."""
+        """Trying to connect to the joystick without blocking."""
         pygame.joystick.quit()
         pygame.joystick.init()
         try:
@@ -52,12 +52,12 @@ class Controller:
             return False
 
     def _connect(self, joystick_idx: int):
-        """Инициализирует джойстик по индексу и ставит connected=True."""
+        """Initializes the joystick by index and sets connected=True."""
         try:
             self.joystick = pygame.joystick.Joystick(joystick_idx)
             self.joystick.init()
             self.connected = True
-            # Очищаем состояние при новом подключении
+            # Clear state on new connection
             self._held_axes.clear()
             self._held_buttons.clear()
             self._last_axis_values.clear()
@@ -96,17 +96,17 @@ class Controller:
         self._button_up_callbacks[button] = callback
 
     def run(self, poll_delay: float = 0.01):
-        """Главный цикл: события + непрерывная отправка + периодический опрос подключения"""
+        """Main loop: events + continuous sending + periodic connection polling"""
         last_check = time.time()
         try:
             while True:
-                # Периодически проверяем подключение
+                # Periodically check the connection
                 if time.time() - last_check >= self.retry_interval:
                     if not self.connected:
                         self._try_connect()
                     last_check = time.time()
                 
-                # Обрабатываем события с таймаутом
+                # Process events with timeout
                 for event in pygame.event.get():
                     if event.type == pygame.JOYAXISMOTION and self.connected:
                         self._dispatch_axis(event.axis, event.value)
@@ -134,7 +134,7 @@ class Controller:
                         print("Joystick added event received.")
                         self._connect(event.device_index)
 
-                # Непрерывная отправка для удерживаемых кнопок и осей
+                # Continuous sending for held buttons and axes
                 if self.connected:
                     try:
                         for axis in list(self._held_axes):
@@ -148,7 +148,7 @@ class Controller:
                             if cb:
                                 cb(btn)
                     except pygame.error:
-                        # Джойстик был отключен, но событие не пришло
+                        # Joystick was disconnected, but no event was received
                         print("Error accessing joystick. Marking as disconnected.")
                         self.connected = False
                         self._held_axes.clear()
