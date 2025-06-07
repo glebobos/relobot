@@ -10,7 +10,6 @@ from std_msgs.msg import Float32
 from std_srvs.srv import SetBool
 from flask import Flask, render_template, request, jsonify
 
-# Ваши модули из примера выше
 from web_server.controller import Controller
 
 # Flask
@@ -134,8 +133,12 @@ class WebServerNode(Node):
         
         # Create client for PID control service
         self.pid_client = self.create_client(SetBool, 'knives/enable_pid')
-        while not self.pid_client.wait_for_service(timeout_sec=1.0):
-            self.get_logger().info('PID control service not available, waiting...')
+        
+        # Wait at most 5 seconds for service
+        if not self.pid_client.wait_for_service(timeout_sec=5.0):
+            self.get_logger().warning('PID control service not available after waiting!')
+        else:
+            self.get_logger().info('PID control service is available')
             
         # Запускаем сборщик мусора раз в 10 секунд
         self.create_timer(10.0, self.gc_callback)
@@ -157,20 +160,33 @@ class WebServerNode(Node):
     
     def toggle_pid_control(self, enable):
         """Toggle PID control via service call."""
+        if not self.pid_client.service_is_ready():
+            self.get_logger().warning('PID service is not ready')
+            return
+            
         request = SetBool.Request()
         request.data = enable
         
+        # Create the future
         future = self.pid_client.call_async(request)
-        # Use a separate thread to handle the response
-        threading.Thread(target=self._handle_pid_toggle_response, args=(future,), daemon=True).start()
+        
+        # Add a callback that will be executed when the future completes
+        future.add_done_callback(lambda f: self._handle_pid_toggle_callback(f, enable))
     
-    def _handle_pid_toggle_response(self, future):
-        """Handle the response from the PID toggle service call."""
+    def _handle_pid_toggle_callback(self, future, enable_requested):
+        """Callback for when the PID toggle future completes."""
         try:
             response = future.result()
-            self.get_logger().info(f'PID toggle response: {response.message}')
+            if response is None:
+                self.get_logger().error('PID toggle service returned None')
+                return
+                
+            self.get_logger().info(f'PID toggle response: success={response.success}, ' +
+                                   f'message="{response.message}"')
         except Exception as e:
             self.get_logger().error(f'Failed to call PID toggle service: {e}')
+            # Let's log the state that was requested for debugging purposes
+            self.get_logger().info(f'Note: We requested PID to be {"enabled" if enable_requested else "disabled"}')
 
 @app.route('/')
 def index():
