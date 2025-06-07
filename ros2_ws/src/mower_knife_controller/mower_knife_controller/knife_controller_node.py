@@ -27,6 +27,9 @@ class KnifeControllerNode(Node):
         set_rpm_topic = self.get_parameter('set_rpm_topic').value
         self.update_rate = self.get_parameter('update_rate').value
         
+        # Track last commanded RPM value to control logging
+        self.last_rpm_command = None
+        
         # Initialize motor controller
         self.get_logger().info(f"Connecting to knife motor controller on {serial_port}")
         self.motor_controller = SerialKnifeMotorController(port_name=serial_port, baud_rate=baud_rate)
@@ -65,7 +68,15 @@ class KnifeControllerNode(Node):
     def set_rpm_callback(self, msg):
         """Handle RPM command messages."""
         target_rpm = msg.data
-        self.get_logger().info(f"Setting knife motor RPM to {target_rpm}")
+        
+        # Only log the "Setting to 0" message once when changing from non-zero to zero
+        if target_rpm != 0 or self.last_rpm_command is None or self.last_rpm_command != 0:
+            self.get_logger().info(f"Setting knife motor RPM to {target_rpm}")
+        
+        # Save the current command to track changes
+        self.last_rpm_command = target_rpm
+        
+        # Send the command regardless of logging
         self.motor_controller.set_rpm(target_rpm)
     
     def timer_callback(self):

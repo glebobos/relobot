@@ -90,6 +90,9 @@ def send_knife_commands():
     """Periodically send knife RPM commands."""
     global _knife_speed_rpm, _knife_last_send_time
     
+    # Flag to track if we've already shown the "set to 0" message
+    zero_message_shown = False
+    
     while rclpy.ok():
         current_time = time.time()
         
@@ -98,10 +101,19 @@ def send_knife_commands():
             if node and rclpy.ok():
                 # Always send the most current value
                 node.publish_knife_rpm(_knife_speed_rpm)
-                print(f"Setting knife RPM to {_knife_speed_rpm:.0f}")
+                
+                # Print logic: always show non-zero RPM, but show zero only once
+                if _knife_speed_rpm == 0:
+                    if not zero_message_shown:
+                        print("Setting knife RPM to 0")
+                        zero_message_shown = True
+                else:
+                    print(f"Setting knife RPM to {_knife_speed_rpm:.0f}")
+                    zero_message_shown = False  # Reset flag when RPM is non-zero
+                    
             _knife_last_send_time = current_time
         
-        time.sleep(0.01)  # Check frequently but don't overwhelm the CPU
+        time.sleep(0.1)  # Check frequently but don't overwhelm the CPU
 
 def poll_knife_axis():
     """Continuously poll the knife axis position and update RPM."""
