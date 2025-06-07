@@ -16,14 +16,14 @@ from web_server.controller import Controller
 app = Flask(__name__, template_folder="./templates")
 node = None
 
-# текущие значения осей (от  -1.0 до 1.0)
+# current axis values (from -1.0 to 1.0)
 _linear = 0.0
 _angular = 0.0
 
-# Масштабные коэффициенты для джойстика
-# Вы можете подстроить максимальные скорости робота здесь
-SCALE_LINEAR = 1.0    # максимальная линейная скорость
-SCALE_ANGULAR = 2.0   # максимальная угловая скорость
+# Scale coefficients for joystick
+# You can adjust the maximum robot speeds here
+SCALE_LINEAR = 1.0    # maximum linear speed
+SCALE_ANGULAR = 2.0   # maximum angular speed
 
 # Knife motor control variables
 _knife_speed_rpm = 0.0
@@ -41,7 +41,7 @@ _pid_toggle_cooldown = 0.5  # Cooldown period to avoid multiple toggles
 controller_instance = None
 
 def on_axis(axis_id: int, value: float):
-    """Колбэк для осей 0 и 3: обновляем _linear/_angular и публикуем Twist."""
+    """Callback for axes 0 and 3: update _linear/_angular and publish Twist."""
     global _linear, _angular, node
     if axis_id == 3:
         _linear = -value * SCALE_LINEAR
@@ -140,7 +140,7 @@ class WebServerNode(Node):
         else:
             self.get_logger().info('PID control service is available')
             
-        # Запускаем сборщик мусора раз в 10 секунд
+        # Run garbage collector every 10 seconds
         self.create_timer(10.0, self.gc_callback)
 
     def gc_callback(self):
@@ -198,7 +198,7 @@ def set_motors():
         data = request.json
         x = float(data['x'])
         y = float(data['y'])
-        # Применяем масштабирование
+        # Apply scaling
         linear_velocity  = y * SCALE_LINEAR
         angular_velocity = -x * SCALE_ANGULAR
         if node and rclpy.ok():
@@ -212,14 +212,14 @@ def main(args=None):
     rclpy.init(args=args)
     node = WebServerNode()
 
-    # Запускаем Flask в отдельном потоке
+    # Run Flask in a separate thread
     flask_thread = threading.Thread(
         target=lambda: app.run(host='0.0.0.0', port=80, threaded=False, debug=False),
         daemon=True
     )
     flask_thread.start()
 
-    # Инициализируем контроллер джойстика
+    # Initialize joystick controller
     ctrl = Controller()
     controller_instance = ctrl  # Save for polling
     ctrl.register_axis(0, on_axis)
@@ -241,7 +241,7 @@ def main(args=None):
     knife_command_thread = threading.Thread(target=send_knife_commands, daemon=True)
     knife_command_thread.start()
 
-    # Старт rclpy.spin для обработки колбэков ROS
+    # Start rclpy.spin to process ROS callbacks
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:
