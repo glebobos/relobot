@@ -15,8 +15,8 @@ class KnifeControllerNode(Node):
         # Declare parameters
         self.declare_parameter('serial_port', '/dev/ttyACM4')
         self.declare_parameter('baud_rate', 115200)
-        self.declare_parameter('current_rpm_topic', 'mower/current_rpm')
-        self.declare_parameter('set_rpm_topic', 'mower/set_rpm')
+        self.declare_parameter('current_rpm_topic', 'knives/current_rpm')
+        self.declare_parameter('set_rpm_topic', 'knives/set_rpm')
         self.declare_parameter('update_rate', 0.1)  # seconds
         
         # Get parameters
