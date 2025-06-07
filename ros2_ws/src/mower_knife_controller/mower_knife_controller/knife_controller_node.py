@@ -31,10 +31,10 @@ class KnifeControllerNode(Node):
         self.motor_controller = SerialKnifeMotorController(port_name=serial_port, baud_rate=baud_rate)
         
         # Verify correct device
-        if not self.motor_controller.identify_device():
-            self.get_logger().error("Could not identify the knife motor controller. Is it connected?")
-        else:
-            self.get_logger().info("Knife motor controller identified successfully")
+        # if not self.motor_controller.identify_device():
+        #     self.get_logger().error("Could not identify the knife motor controller. Is it connected?")
+        # else:
+        #     self.get_logger().info("Knife motor controller identified successfully")
         
         # Create publisher for current RPM
         self.rpm_publisher = self.create_publisher(Float32, current_rpm_topic, 10)
@@ -65,6 +65,8 @@ class KnifeControllerNode(Node):
             msg.data = rpm
             self.rpm_publisher.publish(msg)
             self.get_logger().debug(f"Published current RPM: {rpm}")
+        else:
+            self.get_logger().debug("No valid RPM reading available")
     
     def on_shutdown(self):
         """Stop the motor and close the connection when shutting down."""

@@ -49,11 +49,25 @@ class SerialKnifeMotorController:
                 return None
                 
         try:
-            if self.serial.in_waiting > 0:
+            # Read all available data to ensure we get complete messages
+            responses = []
+            while self.serial.in_waiting > 0:
                 response = self.serial.readline().decode().strip()
-                if response.startswith("RPM:"):
-                    return float(response.split(':')[1].strip())
-            return None
+                responses.append(response)
+                
+            # Process all responses, looking for the latest RPM reading
+            rpm_value = None
+            for response in reversed(responses):  # Start with most recent
+                if "RPM:" in response:
+                    try:
+                        # Extract the part after "RPM:"
+                        value_part = response.split('RPM:', 1)[1].strip()
+                        rpm_value = float(value_part)
+                        break
+                    except (ValueError, IndexError) as e:
+                        print(f"Failed to parse RPM from '{response}': {e}")
+            
+            return rpm_value
         except serial.SerialException as e:
             print(f"Error reading response: {e}")
             self.serial = None
