@@ -89,6 +89,30 @@ class SerialKnifeMotorController:
         except serial.SerialException:
             self.serial = None
             return False
+# Add to SerialKnifeMotorController class
+
+    def send_command(self, command):
+        """Send a command to the motor controller and return the response."""
+        try:
+            self.serial.write(f"{command}\n".encode())
+            time.sleep(0.1)  # Give time for the command to be processed
+            
+            # Read response
+            response = ""
+            start_time = time.time()
+            while time.time() - start_time < 1.0:  # 1 second timeout
+                if self.serial.in_waiting > 0:
+                    data = self.serial.readline().decode().strip()
+                    response += data + "\n"
+                    if command == "pid_status" and "PID control" in data:
+                        return data
+                    elif (command == "pid_enable" or command == "pid_disable") and "PID control" in data:
+                        return True
+            
+            return response if response else None
+        except Exception as e:
+            print(f"Error sending command {command}: {e}")
+            return None
     
     def close(self):
         """Close the serial connection."""

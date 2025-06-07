@@ -56,6 +56,7 @@ class MotorController:
         self.previous_error = 0.0
         self.last_pid_time = time.monotonic()
         self.pid_active = False
+        self.pid_allowed = True  # Flag to enable/disable PID control
         self.pwm_adjustment = 0.0
     
     def set_pwm(self, norm_pwm, forward=True):
@@ -134,7 +135,8 @@ class MotorController:
         if self.target_rpm < 0:
             self.pid_active = False
         # Check if we should activate PID (when speed reaches 90% of target and not in reverse)
-        elif not self.pid_active and self.target_rpm > 0 and abs(self.measured_rpm) >= 0.9 * abs(self.target_rpm):
+        elif (not self.pid_active and self.pid_allowed and self.target_rpm > 0 
+              and abs(self.measured_rpm) >= 0.9 * abs(self.target_rpm)):
             self.pid_active = True
             print("PID control activated")
             self.integral = 0.0
@@ -142,7 +144,7 @@ class MotorController:
             self.last_pid_time = now
         
         # Use either PID control or standard ramping
-        if self.pid_active:
+        if self.pid_active and self.pid_allowed:
             # Calculate base PWM from feed-forward model
             base_pwm, forward = self.rpm_to_pwm(self.target_rpm)
             
@@ -234,6 +236,21 @@ def process_command(cmd, motor_controller):
         usb_cdc.data.write(b'knives\n')
     elif cmd == 'test':
         motor_controller.set_rpm(700)
+    elif cmd == 'pid_enable':
+        motor_controller.pid_allowed = True
+        usb_cdc.data.write(b'PID control enabled\n')
+        print("PID control enabled")
+    elif cmd == 'pid_disable':
+        motor_controller.pid_allowed = False
+        motor_controller.pid_active = False  # Turn off PID immediately if active
+        usb_cdc.data.write(b'PID control disabled\n')
+        print("PID control disabled")
+    elif cmd == 'pid_status':
+        status = "enabled" if motor_controller.pid_allowed else "disabled"
+        active = "active" if motor_controller.pid_active else "inactive"
+        status_msg = f'PID control is {status} and currently {active}\n'
+        usb_cdc.data.write(status_msg.encode())
+        print(status_msg, end="")
     else:
         try:
             target = float(cmd)
@@ -288,4 +305,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

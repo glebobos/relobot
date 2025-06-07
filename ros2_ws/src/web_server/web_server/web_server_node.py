@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import threading
 import gc
+import time
 
 import rclpy
 from rclpy.node import Node
@@ -25,10 +26,12 @@ SCALE_LINEAR = 1.0    # максимальная линейная скорост
 SCALE_ANGULAR = 2.0   # максимальная угловая скорость
 
 # Knife motor control variables
-_knife_speed_locked = False
 _knife_speed_rpm = 0.0
 _knife_min_rpm = 500
 _knife_max_rpm = 3000
+
+# Store the controller instance for polling
+controller_instance = None
 
 def on_axis(axis_id: int, value: float):
     """Колбэк для осей 0 и 3: обновляем _linear/_angular и публикуем Twist."""
@@ -40,35 +43,42 @@ def on_axis(axis_id: int, value: float):
     if node and rclpy.ok():
         node.publish_motor_commands(_linear, _angular)
 
-def on_axis_knife(axis_id: int, value: float):
-    """Handle axis 4 for knife motor speed control."""
-    global _knife_speed_locked, _knife_speed_rpm, node
+def process_knife_axis(value: float):
+    """Process knife axis value and publish RPM."""
+    global _knife_speed_rpm, node
     
-    # Only process if this is axis 4 and not locked
-    if axis_id != 4 or _knife_speed_locked:
-        return
-
-    # Map axis value from [-1,1] to [min_rpm, max_rpm]
-    # Normalize to 0-1 range first
-    normalized_value = (value + 1) / 2
-    rpm = _knife_min_rpm + normalized_value * (_knife_max_rpm - _knife_min_rpm)
+    # Calculate RPM based on axis value
+    if value <= -0.98:
+        rpm = 0  # Set to 0 RPM when under -0.98
+    else:
+        # Map axis value from [-0.98,1] to [min_rpm, max_rpm]
+        normalized_value = (value + 0.98) / 1.98
+        rpm = _knife_min_rpm + normalized_value * (_knife_max_rpm - _knife_min_rpm)
     
     # Update the global variable
     _knife_speed_rpm = rpm
-
-    # Send to knife motor controller if node is available
+        
+    # Send to knife motor controller
     if node and rclpy.ok():
         node.publish_knife_rpm(rpm)
         print(f"Setting knife RPM to {rpm:.0f}")
 
-def on_button_knife(button: int):
-    """Handle button 7 for knife motor speed locking."""
-    global _knife_speed_locked, _knife_speed_rpm
+def on_axis_knife(axis_id: int, value: float):
+    """Handle axis 4 for knife motor speed control."""
+    if axis_id == 4:
+        process_knife_axis(value)
+
+def poll_knife_axis():
+    """Continuously poll the knife axis position and update RPM."""
+    global controller_instance
     
-    # Toggle lock state when button 7 is pressed
-    if button == 7:
-        _knife_speed_locked = not _knife_speed_locked
-        print(f"Knife speed {'locked' if _knife_speed_locked else 'unlocked'} at {_knife_speed_rpm:.0f} RPM")
+    while rclpy.ok():
+        if controller_instance:
+            # Assuming the Controller class has a method to get axis value
+            # If it doesn't, you'll need to modify the Controller class to expose this
+            knife_axis_value = controller_instance.get_axis_value(4)
+            process_knife_axis(knife_axis_value)
+        time.sleep(0.05)  # Poll at 20Hz
 
 class WebServerNode(Node):
     def __init__(self):
@@ -112,9 +122,8 @@ def set_motors():
     except Exception as e:
         return jsonify(success=False, error=str(e))
 
-
 def main(args=None):
-    global node
+    global node, controller_instance
     rclpy.init(args=args)
     node = WebServerNode()
 
@@ -127,13 +136,19 @@ def main(args=None):
 
     # Инициализируем контроллер джойстика
     ctrl = Controller()
+    controller_instance = ctrl  # Save for polling
     ctrl.register_axis(0, on_axis)
     ctrl.register_axis(3, on_axis)
-    # Register knife control callbacks
+    # Register knife control callback for axis
     ctrl.register_axis(4, on_axis_knife)
-    ctrl.register_button_down(7, on_button_knife)
+    
+    # Start controller thread
     ctrl_thread = threading.Thread(target=ctrl.run, daemon=True)
     ctrl_thread.start()
+
+    # Start polling thread for continuous knife axis updates
+    polling_thread = threading.Thread(target=poll_knife_axis, daemon=True)
+    polling_thread.start()
 
     # Старт rclpy.spin для обработки колбэков ROS
     try:
