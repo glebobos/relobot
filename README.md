@@ -4,7 +4,7 @@
 
 ## Overview
 
-ReloBot is a comprehensive robotics platform built on ROS2 (Robot Operating System 2) that integrates multiple hardware components including differential drive motors, cutting blades (knives), IMU sensors, and ToF cameras for navigation and object detection. The system is designed with a microcontroller architecture using Raspberry Pi Pico boards for hardware control, with a central ROS2 system coordinating the operation.
+ReloBot is a comprehensive robotics platform built on ROS2 (Robot Operating System 2) that integrates multiple hardware components including differential drive motors, cutting blades (knives), IMU sensors, ToF cameras for navigation and object detection, and joystick control for manual operation. The system is designed with a microcontroller architecture using Raspberry Pi Pico boards for hardware control, with a central ROS2 system coordinating the operation.
 
 ## System Architecture
 
@@ -15,15 +15,19 @@ The ReloBot platform consists of the following major components:
 3. **Sensor Suite**:
    - IMU (Inertial Measurement Unit) - ICM20948 for orientation data
    - ToF (Time of Flight) Camera - For distance measurement and object detection
-4. **Web-based Control Interface** - For remote operation and monitoring
+4. **Control Interfaces**:
+   - Web-based Control Interface - For remote operation and monitoring
+   - Joystick Controller - For direct manual control with haptic feedback
 5. **SLAM** (Simultaneous Localization and Mapping) - For environment mapping and navigation
 
 ## Hardware Components
 
+- Raspberry Pi 5 (main controller)
 - Raspberry Pi Pico microcontrollers (for wheels and knife control)
 - ICM20948 IMU sensor
 - ToF Camera (B0410)
 - DC Motors with encoders
+- Bluetooth/USB Joystick controller
 - Various serial interfaces and USB connections
 
 ## Software Stack
@@ -32,16 +36,19 @@ The ReloBot platform consists of the following major components:
 - **FastDDS** - For distributed communications
 - **Python** - For high-level control and microcontroller programming
 - **Docker** - For containerization of ROS2 nodes
+- **Pygame** - For joystick control interface and haptic feedback
+- **Systemd** - For autostart services on Raspberry Pi
 - **Web Server** - For remote control interface
 
 ## Project Structure
 
 ```
 ├── finddevice.py              # Utility to find connected serial devices
-├── start_app_helper.sh        # Startup script for the application
+├── start_app_helper.sh        # Startup script for the application (autostart)
 ├── B0410_Tof_Firmware/        # ToF camera firmware
 ├── helpers/                   # Utility scripts and tools
 │   ├── joystic_test/          # Joystick testing utilities
+│   │   └── joystic.py         # Joystick controller interface with haptic feedback
 │   └── rviz2/                 # RViz2 visualization tools
 ├── pico_ware_imu/             # IMU sensor code and libraries
 ├── pico_ware_knives/          # Blade/knife control system
@@ -69,16 +76,19 @@ The ReloBot platform consists of the following major components:
 
 ### Prerequisites
 
+- Raspberry Pi 5 with Raspberry Pi OS
 - Docker and Docker Compose
 - ROS2 Humble (if running outside of Docker)
 - Python 3.x
 - USB access to hardware components
+- Bluetooth or USB joystick controller
 
 ### Hardware Setup
 
 1. Connect the Raspberry Pi Pico boards running the wheel and knife control firmware
 2. Connect the IMU sensor to a USB port
 3. Connect the ToF camera to a USB port
+4. Connect the joystick controller via Bluetooth or USB
 
 ### Software Setup
 
@@ -111,6 +121,9 @@ ReloBot uses multiple Docker containers to organize its functionality:
 4. **ToF Camera** (`ros2_tof_camera`) - Processes depth information
 5. **Web Server** (`ros2_web_server`) - Provides web interface
 6. **SLAM** (`ros2_slam`) - Handles mapping and localization
+7. **Joystick Controller** (`ros2_joystick`) - Manages joystick input and haptic feedback
+
+The container configurations are defined in the respective Dockerfiles and orchestrated through `docker-compose.yml`.
 
 ## Running RViz2 for Visualization
 
@@ -153,6 +166,41 @@ ros2 topic pub /diff_drive_controller/cmd_vel_unstamped geometry_msgs/msg/Twist 
 ros2 topic pub /diff_drive_controller/cmd_vel_unstamped geometry_msgs/msg/Twist \
   "{linear: {x: 0.0}, angular: {z: 0.0}}" --once
 ```
+
+### Joystick Controller
+
+The ReloBot supports control via a joystick/gamepad controller, providing intuitive manual control with haptic feedback.
+
+#### Setting Up the Controller
+
+1. Connect your controller via USB or pair it via Bluetooth:
+   ```bash
+   # For Bluetooth controllers
+   bluetoothctl
+   # Then in the bluetoothctl prompt:
+   scan on
+   # Wait for your controller to appear, note its MAC address
+   pair XX:XX:XX:XX:XX:XX
+   connect XX:XX:XX:XX:XX:XX
+   # Exit with:
+   exit
+   ```
+
+2. Test the controller:
+   ```bash
+   python3 helpers/joystic_test/joystic.py
+   ```
+
+#### Controller Features
+
+- Analog stick control for precise movement
+- Haptic feedback for obstacles and system events
+- Button mapping for special functions:
+  - Start/Stop cutting blades
+  - Reset navigation
+  - Emergency stop
+
+#### Controller Configuration
 
 ### Monitoring Robot State
 
@@ -219,6 +267,16 @@ usbipd attach --wsl --busid 2-2
    - Check encoder feedback
    - Run calibration scripts in the calibration directories
 
+4. **Joystick Controller Issues**
+   - Check controller battery/connection status
+   - Run `python3 helpers/joystic_test/joystic.py` to test controller functionality
+   - For Bluetooth controllers, reinitiate pairing if connection is lost
+
+5. **Autostart Problems**
+   - Check service status with `sudo systemctl status relobot.service`
+   - Verify logs with `sudo journalctl -u relobot.service`
+   - Ensure network connection is available before Docker containers start
+
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
@@ -232,3 +290,62 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## Contact
 
 For questions or support, please open an issue on the GitHub repository.
+
+## Raspberry Pi 5 Autostart Configuration
+
+To configure ReloBot to automatically start when the Raspberry Pi 5 boots up:
+
+1. Create a systemd service file:
+   ```bash
+   sudo nano /etc/systemd/system/relobot.service
+   ```
+
+2. Add the following content:
+   ```
+   [Unit]
+   Description=ReloBot ROS2 Service
+   After=network.target docker.service
+   Requires=docker.service
+
+   [Service]
+   Type=simple
+   User=admin
+   WorkingDirectory=/home/admin/Documents/relobot
+   ExecStart=/home/admin/Documents/relobot/start_app_helper.sh
+   Restart=on-failure
+   RestartSec=10
+
+   [Install]
+   WantedBy=multi-user.target
+   ```
+
+3. Enable and start the service:
+   ```bash
+   sudo systemctl daemon-reload
+   sudo systemctl enable relobot.service
+   sudo systemctl start relobot.service
+   ```
+
+4. Check service status:
+   ```bash
+   sudo systemctl status relobot.service
+   ```
+
+### Autostart Troubleshooting
+
+If the autostart service fails:
+
+1. Check the systemd logs:
+   ```bash
+   sudo journalctl -u relobot.service
+   ```
+
+2. Verify that the start_app_helper.sh script has execute permissions:
+   ```bash
+   chmod +x /home/admin/Documents/relobot/start_app_helper.sh
+   ```
+
+3. Make sure Docker service is running:
+   ```bash
+   sudo systemctl status docker
+   ```
