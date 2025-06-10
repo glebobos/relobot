@@ -22,6 +22,7 @@ from geometry_msgs.msg import Twist
 from std_msgs.msg import Float32
 from std_srvs.srv import SetBool
 from flask import Flask, render_template, request, jsonify
+from flask.logging import default_handler
 
 # Configure logging
 logging.basicConfig(
@@ -152,10 +153,10 @@ class KnifeController:
                             # Print logic: show non-zero RPM, but zero only once
                             if rpm == 0:
                                 if not self.zero_message_shown:
-                                    logger.info("Setting knife RPM to 0")
+                                    # logger.info("Setting knife RPM to 0")
                                     self.zero_message_shown = True
                             else:
-                                logger.info(f"Setting knife RPM to {rpm:.0f}")
+                                # logger.info(f"Setting knife RPM to {rpm:.0f}")
                                 self.zero_message_shown = False
                         except Exception as e:
                             logger.error(f"Error publishing knife RPM: {e}")
@@ -360,6 +361,14 @@ class RobotWebServer:
         
         # Initialize Flask app
         self.app = Flask(__name__, template_folder="./templates")
+        
+        # Disable Flask logging if environment variable is set
+        if os.environ.get('ENABLE_FLASK_LOGS', '').lower() not in ('true', '1', 'yes'):
+            self.app.logger.removeHandler(default_handler)
+            import logging
+            log = logging.getLogger('werkzeug')
+            log.setLevel(logging.ERROR)
+        
         self._setup_routes()
         
         # Thread handles
