@@ -191,6 +191,12 @@ class WebServerNode(Node):
 @app.route('/')
 def index():
     return render_template('index.html')
+@app.route('/gamepad', methods=['POST'])
+def gamepad():
+    data = request.get_json(force=True, silent=True)
+    print(f"[GAMEPAD] Incoming data: {data}") 
+    return jsonify(success=True)
+
 
 @app.route('/set_motors', methods=['POST'])
 def set_motors():
