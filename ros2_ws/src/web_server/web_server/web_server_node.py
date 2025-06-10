@@ -2,6 +2,8 @@
 import threading
 import gc
 import time
+import json
+import os
 
 import rclpy
 from rclpy.node import Node
@@ -10,20 +12,13 @@ from std_msgs.msg import Float32
 from std_srvs.srv import SetBool
 from flask import Flask, render_template, request, jsonify
 
-from web_server.controller import Controller
-
 # Flask
 app = Flask(__name__, template_folder="./templates")
 node = None
 
-# current axis values (from -1.0 to 1.0)
+# Global values for motor control
 _linear = 0.0
 _angular = 0.0
-
-# Scale coefficients for joystick
-# You can adjust the maximum robot speeds here
-SCALE_LINEAR = 1.0    # maximum linear speed
-SCALE_ANGULAR = 2.0   # maximum angular speed
 
 # Knife motor control variables
 _knife_speed_rpm = 0.0
@@ -37,41 +32,61 @@ _pid_enabled = True
 _last_pid_toggle = 0.0
 _pid_toggle_cooldown = 0.5  # Cooldown period to avoid multiple toggles
 
-# Store the controller instance for polling
-controller_instance = None
+# Controller configuration with defaults
+_config = {
+    "turn_axis": 0,              # Axis for turning left/right
+    "drive_axis": 3,             # Axis for forward/backward
+    "knife_button": 7,           # Button for knife control (trigger)
+    "pid_toggle_button": 9,      # Button for PID toggle
+    "scale_linear": 1.0,         # Maximum linear speed
+    "scale_angular": 2.0,        # Maximum angular speed
+    "invert_turn": True,         # Invert turn direction
+    "invert_drive": True,        # Invert drive direction
+    "invert_knife": False        # Invert knife control
+}
 
-def on_axis(axis_id: int, value: float):
-    """Callback for axes 0 and 3: update _linear/_angular and publish Twist."""
-    global _linear, _angular, node
-    if axis_id == 3:
-        _linear = -value * SCALE_LINEAR
-    elif axis_id == 0:
-        _angular = -value * SCALE_ANGULAR
-    if node and rclpy.ok():
-        node.publish_motor_commands(_linear, _angular)
-
-def process_knife_axis(value: float):
-    """Process knife axis value and store RPM."""
-    global _knife_speed_rpm
+def load_config():
+    """Load controller configuration from file or use defaults."""
+    global _config
     
-    # Calculate RPM based on axis value
-    if value <= -0.98:
-        rpm = 0  # Set to 0 RPM when under -0.98
+    config_path = os.path.join(os.path.dirname(__file__), 'controller_config.json')
+    
+    try:
+        if os.path.exists(config_path):
+            with open(config_path, 'r') as f:
+                loaded_config = json.load(f)
+                # Merge loaded config with defaults
+                _config.update(loaded_config)
+                print(f"Loaded controller config: {_config}")
+        else:
+            # Save default config for user to edit
+            with open(config_path, 'w') as f:
+                json.dump(_config, indent=2, fp=f)
+                print(f"Created default controller config at {config_path}")
+    except Exception as e:
+        print(f"Error loading config: {e}")
+
+def process_knife_button(value: float):
+    """Process knife button value (0-1) and store RPM."""
+    global _knife_speed_rpm, _config
+    
+    # Apply inversion if configured
+    if _config.get("invert_knife", False):
+        value = 1.0 - value
+    
+    # Calculate RPM based on button value (0-1 range)
+    if value <= 0.05:  # Small threshold to detect completely off
+        rpm = 0
     else:
-        # Map axis value from [-0.98,1] to [min_rpm, max_rpm]
-        normalized_value = (value + 0.98) / 1.98
-        rpm = _knife_min_rpm + normalized_value * (_knife_max_rpm - _knife_min_rpm)
+        # Map button value from 0-1 to min_rpm-max_rpm
+        rpm = _knife_min_rpm + value * (_knife_max_rpm - _knife_min_rpm)
     
     # Update the global variable
     _knife_speed_rpm = rpm
+    # print(f"Knife button value: {value}, RPM: {rpm:.0f}")
 
-def on_axis_knife(axis_id: int, value: float):
-    """Handle axis 4 for knife motor speed control."""
-    if axis_id == 4:
-        process_knife_axis(value)
-
-def on_button_7_pressed(button_id: int):
-    """Toggle PID control when button 7 is pressed."""
+def toggle_pid_control():
+    """Toggle PID control."""
     global _pid_enabled, _last_pid_toggle, node
     
     current_time = time.time()
@@ -113,17 +128,6 @@ def send_knife_commands():
             _knife_last_send_time = current_time
         
         time.sleep(0.1)  # Check frequently but don't overwhelm the CPU
-
-def poll_knife_axis():
-    """Continuously poll the knife axis position and update RPM."""
-    global controller_instance
-    
-    while rclpy.ok():
-        if controller_instance:
-            # Poll the knife axis value and update the global RPM value
-            knife_axis_value = controller_instance.get_axis_value(4)
-            process_knife_axis(knife_axis_value)
-        time.sleep(0.05)  # Poll at 20Hz
 
 class WebServerNode(Node):
     def __init__(self):
@@ -182,21 +186,68 @@ class WebServerNode(Node):
                 return
                 
             self.get_logger().info(f'PID toggle response: success={response.success}, ' +
-                                   f'message="{response.message}"')
+                                  f'message="{response.message}"')
         except Exception as e:
             self.get_logger().error(f'Failed to call PID toggle service: {e}')
-            # Let's log the state that was requested for debugging purposes
             self.get_logger().info(f'Note: We requested PID to be {"enabled" if enable_requested else "disabled"}')
 
 @app.route('/')
 def index():
     return render_template('index.html')
+
 @app.route('/gamepad', methods=['POST'])
 def gamepad():
-    data = request.get_json(force=True, silent=True)
-    print(f"[GAMEPAD] Incoming data: {data}") 
-    return jsonify(success=True)
-
+    global _linear, _angular, _config, node
+    
+    try:
+        data = request.get_json(force=True, silent=True)
+        # print(f"[GAMEPAD] Incoming data: {data}")
+        
+        if not data or not isinstance(data, dict):
+            return jsonify(success=False, message="Invalid data format")
+        
+        # Get axes and buttons from the incoming data
+        axes = data.get('axes', [])
+        buttons = data.get('buttons', [])
+        
+        # Make sure we have enough data
+        if len(axes) <= max(_config["turn_axis"], _config["drive_axis"]):
+            return jsonify(success=False, message="Not enough axis data provided")
+            
+        if len(buttons) <= max(_config["knife_button"], _config["pid_toggle_button"]):
+            return jsonify(success=False, message="Not enough button data provided")
+        
+        # Process movement controls
+        turn_value = axes[_config["turn_axis"]]
+        drive_value = axes[_config["drive_axis"]]
+        
+        # Apply inversions if configured
+        if _config.get("invert_turn", False):
+            turn_value = -turn_value
+        if _config.get("invert_drive", False):
+            drive_value = -drive_value
+        
+        # Calculate linear and angular velocities
+        _angular = turn_value * _config["scale_angular"]
+        _linear = drive_value * _config["scale_linear"]
+        
+        # Process knife control from button
+        knife_value = buttons[_config["knife_button"]]
+        process_knife_button(knife_value)
+        
+        # Check for PID toggle button press (1 = pressed, 0 = not pressed)
+        pid_button = _config["pid_toggle_button"]
+        if pid_button < len(buttons) and buttons[pid_button] == 1:
+            toggle_pid_control()
+            
+        # Publish motor commands if node is initialized
+        if node and rclpy.ok():
+            node.publish_motor_commands(_linear, _angular)
+            
+        return jsonify(success=True)
+    except Exception as e:
+        print(f"Error processing gamepad data: {e}")
+        return jsonify(success=False, error=str(e))
 
 @app.route('/set_motors', methods=['POST'])
 def set_motors():
@@ -205,17 +256,47 @@ def set_motors():
         x = float(data['x'])
         y = float(data['y'])
         # Apply scaling
-        linear_velocity  = y * SCALE_LINEAR
-        angular_velocity = -x * SCALE_ANGULAR
+        linear_velocity = y * _config["scale_linear"]
+        angular_velocity = -x * _config["scale_angular"]
         if node and rclpy.ok():
             node.publish_motor_commands(linear_velocity, angular_velocity)
         return jsonify(success=True)
     except Exception as e:
         return jsonify(success=False, error=str(e))
 
+@app.route('/config', methods=['GET'])
+def get_config():
+    return jsonify(success=True, config=_config)
+
+@app.route('/config', methods=['POST'])
+def update_config():
+    global _config
+    
+    try:
+        new_config = request.get_json(force=True, silent=True)
+        if not new_config:
+            return jsonify(success=False, message="Invalid data format")
+            
+        # Update the config
+        _config.update(new_config)
+        
+        # Save to file
+        config_path = os.path.join(os.path.dirname(__file__), 'controller_config.json')
+        with open(config_path, 'w') as f:
+            json.dump(_config, indent=2, fp=f)
+        
+        return jsonify(success=True, message="Configuration updated", config=_config)
+    except Exception as e:
+        return jsonify(success=False, error=str(e))
+
 def main(args=None):
-    global node, controller_instance
+    global node
+    
     rclpy.init(args=args)
+    
+    # Load controller configuration
+    load_config()
+    
     node = WebServerNode()
 
     # Run Flask in a separate thread
@@ -224,24 +305,6 @@ def main(args=None):
         daemon=True
     )
     flask_thread.start()
-
-    # Initialize joystick controller
-    ctrl = Controller()
-    controller_instance = ctrl  # Save for polling
-    ctrl.register_axis(0, on_axis)
-    ctrl.register_axis(3, on_axis)
-    # Register knife control callback for axis
-    ctrl.register_axis(4, on_axis_knife)
-    # Register button 7 for PID control toggle
-    ctrl.register_button_down(7, on_button_7_pressed)
-    
-    # Start controller thread
-    ctrl_thread = threading.Thread(target=ctrl.run, daemon=True)
-    ctrl_thread.start()
-
-    # Start polling thread for continuous knife axis updates
-    polling_thread = threading.Thread(target=poll_knife_axis, daemon=True)
-    polling_thread.start()
     
     # Start thread for sending knife commands
     knife_command_thread = threading.Thread(target=send_knife_commands, daemon=True)
