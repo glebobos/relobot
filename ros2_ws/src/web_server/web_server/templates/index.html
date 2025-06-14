@@ -17,7 +17,6 @@
         body { 
             font-family: Arial, sans-serif; 
             text-align: center; 
-            touch-action: pan-y;
             user-select: none;
             -webkit-user-select: none;
             margin: 0;
@@ -52,7 +51,7 @@
         .camera-section {
             width: 100%;
             height: 100vh;
-            height: 100dvh; /* Dynamic viewport height for mobile */
+            height: 100dvh;
             position: relative;
             background: #000;
             display: flex;
@@ -108,7 +107,7 @@
         .video-container img {
             width: 100%;
             height: 100%;
-            object-fit: contain; /* Changed from cover to contain */
+            object-fit: contain;
             max-width: 100%;
             max-height: 100%;
         }
@@ -122,7 +121,6 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            touch-action: none;
         }
         
         #joystick {
@@ -132,7 +130,6 @@
             background-color: #f0f0f0;
             position: relative;
             margin: 30px auto;
-            touch-action: none;
             border: 3px solid #007bff;
         }
         
@@ -144,7 +141,6 @@
             position: absolute;
             top: 125px;
             left: 125px;
-            touch-action: none;
             box-shadow: 0 2px 4px rgba(0,0,0,0.3);
         }
         
@@ -157,40 +153,12 @@
             min-width: 200px;
         }
         
-        .emergency-stop {
-            background-color: #dc3545;
-            color: white;
-            border: none;
-            padding: 15px 30px;
-            font-size: 18px;
-            border-radius: 8px;
-            cursor: pointer;
-            margin: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-            touch-action: manipulation;
-        }
-        
-        .emergency-stop:hover {
-            background-color: #c82333;
-        }
-        
-        .controls-section {
-            background: #f8f9fa;
-            padding: 40px 20px;
-            min-height: 60vh;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            touch-action: pan-y;
-        }
-        
-        .controls-row {
+        .controls-container {
             display: flex;
             gap: 40px;
             justify-content: center;
             flex-wrap: wrap;
-            margin: 20px 0;
+            margin: 30px 0;
             max-width: 600px;
             width: 100%;
         }
@@ -200,7 +168,7 @@
             min-width: 200px;
             max-width: 250px;
             text-align: center;
-            background: white;
+            background: #f8f9fa;
             padding: 20px;
             border-radius: 12px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
@@ -217,7 +185,6 @@
         .slider-container input {
             width: 100%;
             margin-bottom: 10px;
-            touch-action: pan-x;
         }
         
         .value-display {
@@ -226,11 +193,27 @@
             font-size: 18px;
         }
         
+        .emergency-stop {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .emergency-stop:hover {
+            background-color: #c82333;
+        }
+        
         /* Mobile specific styles */
         @media (max-width: 768px) {
             .camera-section {
                 height: 100vh;
-                height: 100svh; /* Small viewport height for mobile browsers */
+                height: 100svh;
             }
             
             .joystick-section {
@@ -249,7 +232,7 @@
                 left: 100px;
             }
             
-            .controls-row {
+            .controls-container {
                 flex-direction: column;
                 align-items: center;
                 gap: 20px;
@@ -362,12 +345,8 @@
             <strong>X:</strong> <span id="x-value">0</span> | <strong>Y:</strong> <span id="y-value">0</span>
         </div>
         
-        <button class="emergency-stop" onclick="emergencyStop()">🛑 EMERGENCY STOP</button>
-    </div>
-    
-    <!-- Controls Section - At Bottom -->
-    <div class="controls-section">
-        <div class="controls-row">
+        <!-- Speed and Turn Controls - Under the joystick -->
+        <div class="controls-container">
             <div class="slider-container">
                 <label for="speed-sensitivity">Max Speed</label>
                 <input type="range" id="speed-sensitivity" min="0" max="100" value="100">
@@ -380,17 +359,11 @@
                 <div class="value-display" id="turn-value">100%</div>
             </div>
         </div>
+        
+        <button class="emergency-stop" onclick="emergencyStop()">🛑 EMERGENCY STOP</button>
     </div>
 
     <script>
-        // Prevent default touch behaviors that might interfere with scrolling
-        document.addEventListener('touchstart', function(e) {
-            if (e.target.closest('#joystick') || e.target.closest('.emergency-stop') || e.target.closest('input[type="range"]') || e.target.closest('.camera-toggle')) {
-                // Allow touch events for interactive elements
-                return;
-            }
-        }, { passive: true });
-
         // Camera switching
         const cameraRadios = document.querySelectorAll('input[name="camera"]');
         const cameraStream = document.getElementById('cameraStream');
@@ -495,7 +468,6 @@
         function handleStart(e) {
             isActive = true;
             handleMove(e);
-            e.preventDefault();
         }
 
         function handleMove(e) {
@@ -505,33 +477,28 @@
             e.preventDefault();
         }
 
-        function handleEnd(e) {
+        function handleEnd() {
             isActive = false;
-            stick.style.left = '125px';
-            stick.style.top = '125px';
+            // Reset to center - calculate center position dynamically
+            const joystickRect = joystick.getBoundingClientRect();
+            const stickRect = stick.getBoundingClientRect();
+            const centerOffset = (joystickRect.width - stickRect.width) / 2;
+            
+            stick.style.left = `${centerOffset}px`;
+            stick.style.top = `${centerOffset}px`;
             xValue.textContent = '0';
             yValue.textContent = '0';
             throttleUpdateMotors(0, 0);
-            e.preventDefault();
         }
 
-        // Joystick event listeners - only prevent default on joystick interactions
         joystick.addEventListener('mousedown', handleStart);
-        joystick.addEventListener('touchstart', handleStart, { passive: false });
+        joystick.addEventListener('touchstart', handleStart);
 
         document.addEventListener('mousemove', handleMove);
-        document.addEventListener('touchmove', function(e) {
-            if (isActive) {
-                handleMove(e);
-            }
-        }, { passive: false });
+        document.addEventListener('touchmove', handleMove, { passive: false });
 
         document.addEventListener('mouseup', handleEnd);
-        document.addEventListener('touchend', function(e) {
-            if (isActive) {
-                handleEnd(e);
-            }
-        }, { passive: false });
+        document.addEventListener('touchend', handleEnd);
 
         // Video error handling
         cameraStream.onerror = function() {
@@ -542,7 +509,7 @@
             }, 1000);
         };
 
-        // Gamepad API (same as before)
+        // Gamepad API
         const IDLE_ZONE_CONFIG = { 0: 0.07, 3: 0.07 };
         const DISABLED_AXES = new Set([1, 2]);
 
