@@ -470,6 +470,9 @@ class RobotWebServer:
         @self.app.route('/robot-control.js')
         def serve_js():
             return send_from_directory('templates', 'robot-control.js', mimetype='application/javascript')
+        @self.app.route('/styles.css')
+        def serve_css():
+            return send_from_directory('templates', 'styles.css', mimetype='text/css')
         @self.app.route('/config')
         def config_page():
             return render_template('config.html')
