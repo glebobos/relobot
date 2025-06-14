@@ -3,62 +3,126 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Motor Control with Camera</title>
+    <title>Robot Control</title>
     <style>
+        * {
+            box-sizing: border-box;
+        }
+        
+        html {
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
+        }
+        
         body { 
             font-family: Arial, sans-serif; 
             text-align: center; 
-            touch-action: none;
+            touch-action: pan-y;
             user-select: none;
             -webkit-user-select: none;
             margin: 0;
-            padding: 10px;
+            padding: 0;
+            background-color: #f5f5f5;
+            overflow-x: hidden;
         }
         
-        .main-container {
+        .nav-links {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+        }
+        
+        .nav-links a {
+            color: #007bff;
+            text-decoration: none;
+            font-size: 14px;
+            margin-left: 10px;
+            padding: 6px 12px;
+            border-radius: 6px;
+            background: rgba(255,255,255,0.9);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .nav-links a:hover {
+            background-color: #007bff;
+            color: white;
+        }
+        
+        .camera-section {
+            width: 100%;
+            height: 100vh;
+            height: 100dvh; /* Dynamic viewport height for mobile */
+            position: relative;
+            background: #000;
             display: flex;
-            flex-wrap: wrap;
+            align-items: center;
             justify-content: center;
-            gap: 20px;
-            max-width: 1200px;
-            margin: 0 auto;
+            overflow: hidden;
         }
         
-        .control-panel {
-            flex: 1;
-            min-width: 320px;
-            max-width: 400px;
+        .camera-toggle {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            background: rgba(0,0,0,0.7);
+            border-radius: 20px;
+            padding: 8px;
         }
         
-        .video-panel {
-            flex: 1;
-            min-width: 320px;
-            max-width: 600px;
+        .toggle-switch {
+            display: flex;
+            background: rgba(255,255,255,0.1);
+            border-radius: 15px;
+            overflow: hidden;
+        }
+        
+        .toggle-switch input[type="radio"] {
+            display: none;
+        }
+        
+        .toggle-switch label {
+            padding: 8px 16px;
+            color: rgba(255,255,255,0.7);
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+            border-radius: 15px;
+        }
+        
+        .toggle-switch input[type="radio"]:checked + label {
+            background: #007bff;
+            color: white;
         }
         
         .video-container {
-            margin-bottom: 20px;
-            border: 2px solid #007bff;
-            border-radius: 8px;
-            overflow: hidden;
-            background-color: #000;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
         }
         
         .video-container img {
             width: 100%;
-            height: auto;
-            display: block;
-            max-height: 240px;
-            object-fit: contain;
+            height: 100%;
+            object-fit: contain; /* Changed from cover to contain */
+            max-width: 100%;
+            max-height: 100%;
         }
         
-        .video-title {
-            background-color: #007bff;
-            color: white;
-            padding: 8px;
-            margin: 0;
-            font-size: 14px;
-            font-weight: bold;
+        .joystick-section {
+            min-height: 100vh;
+            min-height: 100dvh;
+            padding: 40px 20px;
+            background: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            touch-action: none;
         }
         
         #joystick {
@@ -67,8 +131,9 @@
             border-radius: 50%;
             background-color: #f0f0f0;
             position: relative;
-            margin: 20px auto;
+            margin: 30px auto;
             touch-action: none;
+            border: 3px solid #007bff;
         }
         
         #stick {
@@ -80,33 +145,16 @@
             top: 125px;
             left: 125px;
             touch-action: none;
-        }
-        
-        .slider-container {
-            width: 300px;
-            margin: 15px auto;
-            text-align: left;
-        }
-        
-        .slider-container label {
-            display: block;
-            margin-bottom: 5px;
-            font-size: 14px;
-        }
-        
-        .slider-container input {
-            width: 100%;
-        }
-        
-        .value-display {
-            display: inline-block;
-            margin-left: 10px;
-            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
         }
         
         .status-info {
-            margin: 10px 0;
-            font-size: 16px;
+            margin: 20px 0;
+            font-size: 18px;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            min-width: 200px;
         }
         
         .emergency-stop {
@@ -118,36 +166,77 @@
             border-radius: 8px;
             cursor: pointer;
             margin: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            touch-action: manipulation;
         }
         
         .emergency-stop:hover {
             background-color: #c82333;
         }
         
-        h1 {
-            color: #333;
-            margin-bottom: 10px;
+        .controls-section {
+            background: #f8f9fa;
+            padding: 40px 20px;
+            min-height: 60vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            touch-action: pan-y;
         }
         
-        .config-link {
-            color: #007bff;
-            text-decoration: none;
+        .controls-row {
+            display: flex;
+            gap: 40px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 20px 0;
+            max-width: 600px;
+            width: 100%;
+        }
+        
+        .slider-container {
+            flex: 1;
+            min-width: 200px;
+            max-width: 250px;
+            text-align: center;
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .slider-container label {
+            display: block;
+            margin-bottom: 15px;
             font-size: 16px;
-            margin-bottom: 20px;
-            display: inline-block;
+            font-weight: 600;
+            color: #333;
         }
         
-        .config-link:hover {
-            text-decoration: underline;
+        .slider-container input {
+            width: 100%;
+            margin-bottom: 10px;
+            touch-action: pan-x;
         }
         
+        .value-display {
+            font-weight: bold;
+            color: #007bff;
+            font-size: 18px;
+        }
+        
+        /* Mobile specific styles */
         @media (max-width: 768px) {
-            .main-container {
-                flex-direction: column;
+            .camera-section {
+                height: 100vh;
+                height: 100svh; /* Small viewport height for mobile browsers */
             }
             
-            .video-panel {
-                order: -1;
+            .joystick-section {
+                min-height: 100vh;
+                min-height: 100svh;
+                padding: 20px 10px;
             }
             
             #joystick {
@@ -160,57 +249,161 @@
                 left: 100px;
             }
             
+            .controls-row {
+                flex-direction: column;
+                align-items: center;
+                gap: 20px;
+            }
+            
             .slider-container {
-                width: 250px;
+                max-width: 300px;
+                width: 90%;
+            }
+            
+            .camera-toggle {
+                top: 15px;
+                left: 15px;
+            }
+            
+            .toggle-switch label {
+                padding: 6px 12px;
+                font-size: 11px;
+            }
+            
+            .nav-links {
+                top: 15px;
+                right: 15px;
+            }
+            
+            .nav-links a {
+                font-size: 12px;
+                padding: 4px 8px;
+            }
+        }
+        
+        /* Portrait mobile specific */
+        @media (max-width: 480px) and (orientation: portrait) {
+            .video-container img {
+                width: 100%;
+                height: auto;
+                max-height: 100%;
+                object-fit: contain;
+            }
+            
+            #joystick {
+                width: 220px;
+                height: 220px;
+            }
+            
+            #stick {
+                width: 40px;
+                height: 40px;
+                top: 90px;
+                left: 90px;
+            }
+        }
+        
+        /* Landscape mobile specific */
+        @media (max-height: 500px) and (orientation: landscape) {
+            .video-container img {
+                width: auto;
+                height: 100%;
+                max-width: 100%;
+                object-fit: contain;
+            }
+            
+            .joystick-section {
+                padding: 20px 10px;
+            }
+            
+            #joystick {
+                width: 200px;
+                height: 200px;
+                margin: 20px auto;
+            }
+            
+            #stick {
+                width: 40px;
+                height: 40px;
+                top: 80px;
+                left: 80px;
             }
         }
     </style>
 </head>
 <body>
-    <h1>Robot Control with Camera</h1>
-    <a href="/config" class="config-link">⚙️ Configuration Settings</a>
+    <div class="nav-links">
+        <a href="/config">⚙️ Config</a>
+    </div>
     
-    <div class="main-container">
-        <!-- Video Panel -->
-        <div class="video-panel">
-            <div class="video-container">
-                <h3 class="video-title">🌈 Depth Camera (Colored)</h3>
-                <img id="depthStream" src="/video_feed/depth" alt="Depth Camera Stream">
-            </div>
-            
-            <div class="video-container">
-                <h3 class="video-title">⚫⚪ Confidence Camera (B&W)</h3>
-                <img id="confidenceStream" src="/video_feed/confidence" alt="Confidence Camera Stream">
+    <!-- Camera Section - Full Screen -->
+    <div class="camera-section">
+        <div class="camera-toggle">
+            <div class="toggle-switch">
+                <input type="radio" id="depth-radio" name="camera" value="depth" checked>
+                <label for="depth-radio">Depth</label>
+                <input type="radio" id="confidence-radio" name="camera" value="confidence">
+                <label for="confidence-radio">Confidence</label>
             </div>
         </div>
         
-        <!-- Control Panel -->
-        <div class="control-panel">
+        <div class="video-container">
+            <img id="cameraStream" src="/video_feed/depth" alt="Camera Stream">
+        </div>
+    </div>
+    
+    <!-- Joystick Section -->
+    <div class="joystick-section">
+        <div id="joystick">
+            <div id="stick"></div>
+        </div>
+        
+        <div class="status-info">
+            <strong>X:</strong> <span id="x-value">0</span> | <strong>Y:</strong> <span id="y-value">0</span>
+        </div>
+        
+        <button class="emergency-stop" onclick="emergencyStop()">🛑 EMERGENCY STOP</button>
+    </div>
+    
+    <!-- Controls Section - At Bottom -->
+    <div class="controls-section">
+        <div class="controls-row">
             <div class="slider-container">
-                <label for="speed-sensitivity">Maximum Speed (0-100%)</label>
+                <label for="speed-sensitivity">Max Speed</label>
                 <input type="range" id="speed-sensitivity" min="0" max="100" value="100">
-                <span class="value-display" id="speed-value">100%</span>
+                <div class="value-display" id="speed-value">100%</div>
             </div>
             
             <div class="slider-container">
-                <label for="turn-sensitivity">Turn Sensitivity (0-100%)</label>
+                <label for="turn-sensitivity">Turn Sensitivity</label>
                 <input type="range" id="turn-sensitivity" min="0" max="100" value="100">
-                <span class="value-display" id="turn-value">100%</span>
+                <div class="value-display" id="turn-value">100%</div>
             </div>
-            
-            <div id="joystick">
-                <div id="stick"></div>
-            </div>
-            
-            <div class="status-info">
-                <p>X: <span id="x-value">0</span>, Y: <span id="y-value">0</span></p>
-            </div>
-            
-            <button class="emergency-stop" onclick="emergencyStop()">🛑 EMERGENCY STOP</button>
         </div>
     </div>
 
     <script>
+        // Prevent default touch behaviors that might interfere with scrolling
+        document.addEventListener('touchstart', function(e) {
+            if (e.target.closest('#joystick') || e.target.closest('.emergency-stop') || e.target.closest('input[type="range"]') || e.target.closest('.camera-toggle')) {
+                // Allow touch events for interactive elements
+                return;
+            }
+        }, { passive: true });
+
+        // Camera switching
+        const cameraRadios = document.querySelectorAll('input[name="camera"]');
+        const cameraStream = document.getElementById('cameraStream');
+        
+        cameraRadios.forEach(radio => {
+            radio.addEventListener('change', function() {
+                if (this.checked) {
+                    cameraStream.src = `/video_feed/${this.value}`;
+                }
+            });
+        });
+        
+        // Joystick functionality
         const joystick = document.getElementById('joystick');
         const stick = document.getElementById('stick');
         const xValue = document.getElementById('x-value');
@@ -221,7 +414,6 @@
         const turnValue = document.getElementById('turn-value');
         let isActive = false;
 
-        // Update displayed values when sliders change
         speedSlider.addEventListener('input', () => {
             speedValue.textContent = speedSlider.value + '%';
         });
@@ -251,9 +443,8 @@
             stick.style.top = `${dy + radius}px`;
             
             let normalizedX = dx / radius;
-            let normalizedY = -dy / radius;  // Invert Y-axis
+            let normalizedY = -dy / radius;
 
-            // Apply sensitivity adjustments
             normalizedX *= turnSlider.value / 100;
             normalizedY *= speedSlider.value / 100;
             
@@ -266,9 +457,7 @@
         function updateMotors(x, y) {
             fetch('/set_motors', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ x, y }),
             });
         }
@@ -276,22 +465,15 @@
         function emergencyStop() {
             fetch('/emergency_stop', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                }
+                headers: { 'Content-Type': 'application/json' }
             }).then(response => response.json())
               .then(data => {
-                  if (data.success) {
-                      alert('Emergency stop activated!');
-                  } else {
-                      alert('Emergency stop failed: ' + data.error);
-                  }
+                  alert(data.success ? 'Emergency stop activated!' : 'Emergency stop failed: ' + data.error);
               });
         }
 
         function throttle(func, limit) {
-            let lastFunc;
-            let lastRan;
+            let lastFunc, lastRan;
             return function(...args) {
                 if (!lastRan) {
                     func.apply(this, args);
@@ -313,6 +495,7 @@
         function handleStart(e) {
             isActive = true;
             handleMove(e);
+            e.preventDefault();
         }
 
         function handleMove(e) {
@@ -322,50 +505,49 @@
             e.preventDefault();
         }
 
-        function handleEnd() {
+        function handleEnd(e) {
             isActive = false;
             stick.style.left = '125px';
             stick.style.top = '125px';
             xValue.textContent = '0';
             yValue.textContent = '0';
             throttleUpdateMotors(0, 0);
+            e.preventDefault();
         }
 
+        // Joystick event listeners - only prevent default on joystick interactions
         joystick.addEventListener('mousedown', handleStart);
-        joystick.addEventListener('touchstart', handleStart);
+        joystick.addEventListener('touchstart', handleStart, { passive: false });
 
         document.addEventListener('mousemove', handleMove);
-        document.addEventListener('touchmove', handleMove, { passive: false });
+        document.addEventListener('touchmove', function(e) {
+            if (isActive) {
+                handleMove(e);
+            }
+        }, { passive: false });
 
         document.addEventListener('mouseup', handleEnd);
-        document.addEventListener('touchend', handleEnd);
+        document.addEventListener('touchend', function(e) {
+            if (isActive) {
+                handleEnd(e);
+            }
+        }, { passive: false });
 
-        // Video stream error handling
-        document.getElementById('depthStream').onerror = function() {
-            console.log('Depth stream error, retrying...');
+        // Video error handling
+        cameraStream.onerror = function() {
+            console.log('Camera stream error, retrying...');
             setTimeout(() => {
-                this.src = '/video_feed/depth?' + new Date().getTime();
+                const selectedCamera = document.querySelector('input[name="camera"]:checked').value;
+                this.src = `/video_feed/${selectedCamera}?` + new Date().getTime();
             }, 1000);
         };
 
-        document.getElementById('confidenceStream').onerror = function() {
-            console.log('Confidence stream error, retrying...');
-            setTimeout(() => {
-                this.src = '/video_feed/confidence?' + new Date().getTime();
-            }, 1000);
-        };
-
-        // === Gamepad API ===
-        const IDLE_ZONE_CONFIG = {
-            0: 0.07,
-            3: 0.07
-        };
-
+        // Gamepad API (same as before)
+        const IDLE_ZONE_CONFIG = { 0: 0.07, 3: 0.07 };
         const DISABLED_AXES = new Set([1, 2]);
 
         function applyDeadZone(axisIndex, value) {
             if (DISABLED_AXES.has(axisIndex)) return 0.0;
-
             const threshold = IDLE_ZONE_CONFIG[axisIndex] ?? 0.0;
             if (Math.abs(value) < threshold) return 0.0;
             const sign = value > 0 ? 1 : -1;
@@ -376,39 +558,28 @@
         let lastSentNonZero = false;
 
         function isZeroOrAllFalse(axes, buttons) {
-            const allAxesZero = axes.every(val => Math.abs(val) < 1e-5);
-            const allButtonsZero = buttons.every(val => Math.abs(val) < 1e-5);
-            return allAxesZero && allButtonsZero;
+            return axes.every(val => Math.abs(val) < 1e-5) && buttons.every(val => Math.abs(val) < 1e-5);
         }
 
         function pollGamepad() {
             const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
-            if (!gamepads) return;
-
             const gp = gamepads[0];
             if (!gp) return;
 
             const processedAxes = gp.axes.map((val, idx) => applyDeadZone(idx, val));
             const buttons = gp.buttons.map(b => b.value);
-
             const now = Date.now();
+            
             if (now - lastGamepadSent > 100) {
                 const isZeroNow = isZeroOrAllFalse(processedAxes, buttons);
-
                 if (!isZeroNow || (isZeroNow && lastSentNonZero)) {
                     fetch('/gamepad', {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            axes: processedAxes,
-                            buttons: buttons
-                        }),
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ axes: processedAxes, buttons: buttons }),
                     });
                     lastSentNonZero = !isZeroNow;
                 }
-
                 lastGamepadSent = now;
             }
         }

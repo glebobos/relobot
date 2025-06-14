@@ -20,11 +20,12 @@ from rclpy.node import Node
 from geometry_msgs.msg import Twist
 from std_msgs.msg import Float32
 from std_srvs.srv import SetBool
-from sensor_msgs.msg import Image  # Add this import
+from sensor_msgs.msg import Image
 from flask import Flask, render_template, request, jsonify, Response
 from flask.logging import default_handler
 import cv2
-from cv_bridge import CvBridge  # Add this import
+import numpy as np  # Add this import
+from cv_bridge import CvBridge
 
 # Configure logging
 logging.basicConfig(
@@ -339,14 +340,27 @@ class RobotROSNode(Node):
     
     def _create_no_signal_image(self) -> bytes:
         """Create a 'No Signal' placeholder image."""
-        img = cv2.imread('no_signal.jpg') if os.path.exists('no_signal.jpg') else None
-        if img is None:
-            # Create a simple black image with text
-            img = cv2.zeros((240, 320, 3), dtype=cv2.uint8)
+        try:
+            # Try to load a custom no_signal image if it exists
+            if os.path.exists('no_signal.jpg'):
+                img = cv2.imread('no_signal.jpg')
+                if img is not None:
+                    _, jpeg_data = cv2.imencode('.jpg', img, [cv2.IMWRITE_JPEG_QUALITY, 85])
+                    return jpeg_data.tobytes()
+            
+            # Create a simple black image with text using numpy
+            img = np.zeros((240, 320, 3), dtype=np.uint8)  # Fixed: use np.zeros instead of cv2.zeros
             cv2.putText(img, 'No Signal', (80, 120), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
-        
-        _, jpeg_data = cv2.imencode('.jpg', img, [cv2.IMWRITE_JPEG_QUALITY, 85])
-        return jpeg_data.tobytes()
+            cv2.putText(img, 'Camera Offline', (50, 160), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (128, 128, 128), 1)
+            
+            _, jpeg_data = cv2.imencode('.jpg', img, [cv2.IMWRITE_JPEG_QUALITY, 85])
+            return jpeg_data.tobytes()
+        except Exception as e:
+            self.get_logger().error(f"Error creating no signal image: {e}")
+            # Return a minimal fallback
+            img = np.zeros((100, 200, 3), dtype=np.uint8)
+            _, jpeg_data = cv2.imencode('.jpg', img)
+            return jpeg_data.tobytes()
     
     def _gc_callback(self) -> None:
         """Perform garbage collection."""
