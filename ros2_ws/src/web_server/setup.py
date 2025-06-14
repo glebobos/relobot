@@ -8,7 +8,7 @@ setup(
     packages=find_packages(),
     include_package_data=True,  # Ensure package data is included
     package_data={
-        package_name: ['templates/*.html'],  # Include all HTML files in templates
+        package_name: ['templates/*.html', 'templates/*.js'],  # Include all HTML files in templates
     },
     install_requires=[
         'setuptools',

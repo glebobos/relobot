@@ -21,7 +21,7 @@ from geometry_msgs.msg import Twist
 from std_msgs.msg import Float32
 from std_srvs.srv import SetBool
 from sensor_msgs.msg import Image
-from flask import Flask, render_template, request, jsonify, Response
+from flask import Flask, render_template, request, jsonify, Response, send_from_directory
 from flask.logging import default_handler
 import cv2
 import numpy as np  # Add this import
@@ -461,7 +461,15 @@ class RobotWebServer:
         @self.app.route('/')
         def index():
             return render_template('index.html')
-            
+        
+        # @self.app.route('/robot-control.js')
+        # def serve_js():
+        #     js_content = render_template('robot-control.js')
+        #     return Response(js_content, mimetype='application/javascript')
+# Add this route in your _setup_routes method
+        @self.app.route('/robot-control.js')
+        def serve_js():
+            return send_from_directory('templates', 'robot-control.js', mimetype='application/javascript')
         @self.app.route('/config')
         def config_page():
             return render_template('config.html')
