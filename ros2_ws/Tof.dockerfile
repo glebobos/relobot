@@ -2,7 +2,7 @@ FROM ros:humble
 
 # Install additional dependencies
 RUN apt-get update && apt-get install -y \
-    python3-pip ros-humble-sensor-msgs-py ros-humble-pointcloud-to-laserscan python3-opencv python3-numpy &&  pip3 install ArducamDepthCamera
+    python3-pip ros-humble-sensor-msgs-py ros-humble-pointcloud-to-laserscan ros-humble-cv-bridge python3-opencv python3-numpy &&  pip3 install ArducamDepthCamera
 RUN apt install ros-humble-laser-filters -y
 # Create workspace
 WORKDIR /ros2_ws

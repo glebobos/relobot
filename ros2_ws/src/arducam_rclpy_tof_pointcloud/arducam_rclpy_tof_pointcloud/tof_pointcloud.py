@@ -3,11 +3,13 @@ from typing import Optional
 import rclpy
 from rclpy.node import Node
 from rclpy.executors import MultiThreadedExecutor
-from sensor_msgs.msg import PointCloud2
+from sensor_msgs.msg import PointCloud2, Image
 from sensor_msgs_py import point_cloud2
 from std_msgs.msg import Header
 import numpy as np
 from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy
+import cv2
+from cv_bridge import CvBridge
 
 from ArducamDepthCamera import (
     ArducamCamera,
@@ -18,7 +20,8 @@ from ArducamDepthCamera import (
     DepthData,
 )
 
-MAX_DISTANCE=4000
+MAX_DISTANCE = 4000
+CONFIDENCE_THRESHOLD = 30
 
 class Option:
     cfg: Optional[str]
@@ -33,10 +36,22 @@ class TOFPublisher(Node):
 
         self.header = Header()
         self.header.frame_id = "sensor_frame"
+        
+        # Initialize CV Bridge for image conversion
+        self.bridge = CvBridge()
 
-        # Создаём Publisher
+        # Create Publishers
         self.publisher_pcl_ = self.create_publisher(
             PointCloud2, "cloud_in", 10
+        )
+        
+        # Add image publishers
+        self.publisher_depth_image_ = self.create_publisher(
+            Image, "depth_image", 10
+        )
+        
+        self.publisher_confidence_image_ = self.create_publisher(
+            Image, "confidence_image", 10
         )
 
         self.fx = self.tof_.getControl(Control.INTRINSIC_FX) / 100
@@ -49,6 +64,9 @@ class TOFPublisher(Node):
             np.arange(self.width_), np.arange(self.height_)
         )
 
+        # Get camera range for image normalization
+        self.camera_range = self.tof_.getControl(Control.RANGE)
+        
         self.timer_ = self.create_timer(1.0 / 20.0, self.update)
 
     def __init_camera(self, options: Option):
@@ -75,7 +93,7 @@ class TOFPublisher(Node):
         if info.device_type == DeviceType.HQVGA:
             width = info.width
             height = info.height
-            tof.setControl(Control.RANGE, 4000)
+            tof.setControl(Control.RANGE, MAX_DISTANCE)
         elif info.device_type == DeviceType.VGA:
             width = info.width
             height = info.height // 10 - 1
@@ -89,6 +107,31 @@ class TOFPublisher(Node):
         print(f"Open camera success, width: {width}, height: {height}")
         return tof
 
+    def getPreviewRGB(self, preview: np.ndarray, confidence: np.ndarray) -> np.ndarray:
+        """Apply confidence filtering to preview image"""
+        preview = np.nan_to_num(preview)
+        preview[confidence < CONFIDENCE_THRESHOLD] = (0, 0, 0)
+        return preview
+
+    def create_depth_image(self, depth_buf: np.ndarray, confidence_buf: np.ndarray) -> np.ndarray:
+        """Create colored depth image similar to the example"""
+        # Normalize depth to 0-255 range
+        result_image = (depth_buf * (255.0 / self.camera_range)).astype(np.uint8)
+        
+        # Apply rainbow colormap
+        result_image = cv2.applyColorMap(result_image, cv2.COLORMAP_RAINBOW)
+        
+        # Apply confidence filtering
+        result_image = self.getPreviewRGB(result_image, confidence_buf)
+        
+        return result_image
+
+    def create_confidence_image(self, confidence_buf: np.ndarray) -> np.ndarray:
+        """Create normalized confidence image"""
+        confidence_normalized = confidence_buf.copy().astype(np.float32)
+        cv2.normalize(confidence_normalized, confidence_normalized, 0, 255, cv2.NORM_MINMAX)
+        return confidence_normalized.astype(np.uint8)
+
     def update(self):
         frame = self.tof_.requestFrame(20)
         if frame is None or not isinstance(frame, DepthData):
@@ -99,8 +142,13 @@ class TOFPublisher(Node):
         depth_buf = frame.depth_data
         confidence_buf = frame.confidence_data
 
-        depth_buf[confidence_buf < 30] = 0
-        z = depth_buf.astype(np.float32) / 1000.0
+        # Update timestamp
+        self.header.stamp = self.get_clock().now().to_msg()
+
+        # Create and publish point cloud
+        depth_buf_filtered = depth_buf.copy()
+        depth_buf_filtered[confidence_buf < CONFIDENCE_THRESHOLD] = 0
+        z = depth_buf_filtered.astype(np.float32) / 1000.0
 
         invalid_mask = (z <= 0.0)
         z[invalid_mask] = np.nan
@@ -112,10 +160,20 @@ class TOFPublisher(Node):
         valid_mask = ~np.isnan(points).any(axis=1)
         points = points[valid_mask]
 
-        self.header.stamp = self.get_clock().now().to_msg()
-
         pc2_msg = point_cloud2.create_cloud_xyz32(self.header, points)
         self.publisher_pcl_.publish(pc2_msg)
+
+        # Create and publish depth image
+        depth_image = self.create_depth_image(depth_buf, confidence_buf)
+        depth_image_msg = self.bridge.cv2_to_imgmsg(depth_image, "bgr8")
+        depth_image_msg.header = self.header
+        self.publisher_depth_image_.publish(depth_image_msg)
+
+        # Create and publish confidence image
+        confidence_image = self.create_confidence_image(confidence_buf)
+        confidence_image_msg = self.bridge.cv2_to_imgmsg(confidence_image, "mono8")
+        confidence_image_msg.header = self.header
+        self.publisher_confidence_image_.publish(confidence_image_msg)
 
         self.tof_.releaseFrame(frame)
 
