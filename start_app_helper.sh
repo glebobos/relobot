@@ -6,4 +6,5 @@ do
     sleep 5
 done
 export HOST_IP=$(hostname -I | awk '{print $1}')
+
 docker compose up $1

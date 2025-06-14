@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Motor Control</title>
+    <title>Motor Control with Camera</title>
     <style>
         body { 
             font-family: Arial, sans-serif; 
@@ -11,16 +11,66 @@
             touch-action: none;
             user-select: none;
             -webkit-user-select: none;
+            margin: 0;
+            padding: 10px;
         }
+        
+        .main-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .control-panel {
+            flex: 1;
+            min-width: 320px;
+            max-width: 400px;
+        }
+        
+        .video-panel {
+            flex: 1;
+            min-width: 320px;
+            max-width: 600px;
+        }
+        
+        .video-container {
+            margin-bottom: 20px;
+            border: 2px solid #007bff;
+            border-radius: 8px;
+            overflow: hidden;
+            background-color: #000;
+        }
+        
+        .video-container img {
+            width: 100%;
+            height: auto;
+            display: block;
+            max-height: 240px;
+            object-fit: contain;
+        }
+        
+        .video-title {
+            background-color: #007bff;
+            color: white;
+            padding: 8px;
+            margin: 0;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        
         #joystick {
             width: 300px;
             height: 300px;
             border-radius: 50%;
             background-color: #f0f0f0;
             position: relative;
-            margin: 50px auto;
+            margin: 20px auto;
             touch-action: none;
         }
+        
         #stick {
             width: 50px;
             height: 50px;
@@ -31,43 +81,134 @@
             left: 125px;
             touch-action: none;
         }
+        
         .slider-container {
             width: 300px;
-            margin: 20px auto;
+            margin: 15px auto;
             text-align: left;
         }
+        
         .slider-container label {
             display: block;
             margin-bottom: 5px;
+            font-size: 14px;
         }
+        
         .slider-container input {
             width: 100%;
         }
+        
         .value-display {
             display: inline-block;
             margin-left: 10px;
+            font-weight: bold;
+        }
+        
+        .status-info {
+            margin: 10px 0;
+            font-size: 16px;
+        }
+        
+        .emergency-stop {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 20px;
+        }
+        
+        .emergency-stop:hover {
+            background-color: #c82333;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .config-link {
+            color: #007bff;
+            text-decoration: none;
+            font-size: 16px;
+            margin-bottom: 20px;
+            display: inline-block;
+        }
+        
+        .config-link:hover {
+            text-decoration: underline;
+        }
+        
+        @media (max-width: 768px) {
+            .main-container {
+                flex-direction: column;
+            }
+            
+            .video-panel {
+                order: -1;
+            }
+            
+            #joystick {
+                width: 250px;
+                height: 250px;
+            }
+            
+            #stick {
+                top: 100px;
+                left: 100px;
+            }
+            
+            .slider-container {
+                width: 250px;
+            }
         }
     </style>
 </head>
 <body>
-    <h1>Motor Control</h1>
-    <div style="text-align: center; margin-bottom: 20px;">
-        <a href="/config" style="color: #007bff; text-decoration: none; font-size: 16px;">⚙️ Configuration Settings</a>
+    <h1>Robot Control with Camera</h1>
+    <a href="/config" class="config-link">⚙️ Configuration Settings</a>
+    
+    <div class="main-container">
+        <!-- Video Panel -->
+        <div class="video-panel">
+            <div class="video-container">
+                <h3 class="video-title">🌈 Depth Camera (Colored)</h3>
+                <img id="depthStream" src="/video_feed/depth" alt="Depth Camera Stream">
+            </div>
+            
+            <div class="video-container">
+                <h3 class="video-title">⚫⚪ Confidence Camera (B&W)</h3>
+                <img id="confidenceStream" src="/video_feed/confidence" alt="Confidence Camera Stream">
+            </div>
+        </div>
+        
+        <!-- Control Panel -->
+        <div class="control-panel">
+            <div class="slider-container">
+                <label for="speed-sensitivity">Maximum Speed (0-100%)</label>
+                <input type="range" id="speed-sensitivity" min="0" max="100" value="100">
+                <span class="value-display" id="speed-value">100%</span>
+            </div>
+            
+            <div class="slider-container">
+                <label for="turn-sensitivity">Turn Sensitivity (0-100%)</label>
+                <input type="range" id="turn-sensitivity" min="0" max="100" value="100">
+                <span class="value-display" id="turn-value">100%</span>
+            </div>
+            
+            <div id="joystick">
+                <div id="stick"></div>
+            </div>
+            
+            <div class="status-info">
+                <p>X: <span id="x-value">0</span>, Y: <span id="y-value">0</span></p>
+            </div>
+            
+            <button class="emergency-stop" onclick="emergencyStop()">🛑 EMERGENCY STOP</button>
+        </div>
     </div>
-    <div class="slider-container">
-        <label for="speed-sensitivity">Maximum Speed (0-100%)</label>
-        <input type="range" id="speed-sensitivity" min="0" max="100" value="100">
-        <span class="value-display" id="speed-value">100%</span>
-    </div>
-    <div class="slider-container">
-        <label for="turn-sensitivity">Turn Sensitivity (0-100%)</label>
-        <input type="range" id="turn-sensitivity" min="0" max="100" value="100">
-        <span class="value-display" id="turn-value">100%</span>
-    </div>
-    <div id="joystick">
-        <div id="stick"></div>
-    </div>
-    <p>X: <span id="x-value">0</span>, Y: <span id="y-value">0</span></p>
 
     <script>
         const joystick = document.getElementById('joystick');
@@ -132,6 +273,22 @@
             });
         }
 
+        function emergencyStop() {
+            fetch('/emergency_stop', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            }).then(response => response.json())
+              .then(data => {
+                  if (data.success) {
+                      alert('Emergency stop activated!');
+                  } else {
+                      alert('Emergency stop failed: ' + data.error);
+                  }
+              });
+        }
+
         function throttle(func, limit) {
             let lastFunc;
             let lastRan;
@@ -182,7 +339,23 @@
 
         document.addEventListener('mouseup', handleEnd);
         document.addEventListener('touchend', handleEnd);
-        // === Gamepad API with IDLE ZONE + DISABLED AXES ===
+
+        // Video stream error handling
+        document.getElementById('depthStream').onerror = function() {
+            console.log('Depth stream error, retrying...');
+            setTimeout(() => {
+                this.src = '/video_feed/depth?' + new Date().getTime();
+            }, 1000);
+        };
+
+        document.getElementById('confidenceStream').onerror = function() {
+            console.log('Confidence stream error, retrying...');
+            setTimeout(() => {
+                this.src = '/video_feed/confidence?' + new Date().getTime();
+            }, 1000);
+        };
+
+        // === Gamepad API ===
         const IDLE_ZONE_CONFIG = {
             0: 0.07,
             3: 0.07
@@ -191,10 +364,8 @@
         const DISABLED_AXES = new Set([1, 2]);
 
         function applyDeadZone(axisIndex, value) {
-            // Check disabled axes
             if (DISABLED_AXES.has(axisIndex)) return 0.0;
 
-            // Apply dead-zone
             const threshold = IDLE_ZONE_CONFIG[axisIndex] ?? 0.0;
             if (Math.abs(value) < threshold) return 0.0;
             const sign = value > 0 ? 1 : -1;
@@ -225,7 +396,6 @@
                 const isZeroNow = isZeroOrAllFalse(processedAxes, buttons);
 
                 if (!isZeroNow || (isZeroNow && lastSentNonZero)) {
-                    console.log('Processed axes:', processedAxes, 'buttons:', buttons);
                     fetch('/gamepad', {
                         method: 'POST',
                         headers: {
@@ -243,8 +413,6 @@
             }
         }
 
-
-
         function startGamepadPolling() {
             setInterval(pollGamepad, 20);
         }
@@ -253,7 +421,6 @@
             console.log("Gamepad connected:", e.gamepad);
             startGamepadPolling();
         });
-
     </script>
 </body>
 </html>

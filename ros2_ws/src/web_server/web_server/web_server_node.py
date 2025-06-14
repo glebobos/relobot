@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 """
-Robot Web Control Server
+Robot Web Control Server with Video Streaming
 
-This module provides a web interface for controlling a robot using ROS2.
-It allows for controlling the robot's movement and knife mechanism,
-with configuration options for controller mappings.
+Added video streaming capability for ToF camera images.
 """
 
 import threading
@@ -15,14 +13,18 @@ import os
 import logging
 from dataclasses import dataclass, asdict
 from typing import Dict, Any, Callable, Tuple
+import io
 
 import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Twist
 from std_msgs.msg import Float32
 from std_srvs.srv import SetBool
-from flask import Flask, render_template, request, jsonify
+from sensor_msgs.msg import Image  # Add this import
+from flask import Flask, render_template, request, jsonify, Response
 from flask.logging import default_handler
+import cv2
+from cv_bridge import CvBridge  # Add this import
 
 # Configure logging
 logging.basicConfig(
@@ -35,15 +37,15 @@ logger = logging.getLogger('robot_webserver')
 @dataclass
 class ControllerConfig:
     """Configuration for controller mappings and settings."""
-    turn_axis: int = 0                # Axis for turning left/right
-    drive_axis: int = 3               # Axis for forward/backward
-    knife_button: int = 7             # Button for knife control (trigger)
-    pid_toggle_button: int = 9        # Button for PID toggle
-    scale_linear: float = 1.0         # Maximum linear speed
-    scale_angular: float = 2.0        # Maximum angular speed
-    invert_turn: bool = True          # Invert turn direction
-    invert_drive: bool = True        # Invert drive direction
-    invert_knife: bool = False        # Invert knife control
+    turn_axis: int = 0
+    drive_axis: int = 3
+    knife_button: int = 7
+    pid_toggle_button: int = 9
+    scale_linear: float = 1.0
+    scale_angular: float = 2.0
+    invert_turn: bool = True
+    invert_drive: bool = True
+    invert_knife: bool = False
     
     def validate(self) -> Tuple[bool, str]:
         """Validate configuration values."""
@@ -70,7 +72,6 @@ class ControllerConfig:
     @classmethod
     def from_dict(cls, config_dict: Dict[str, Any]) -> 'ControllerConfig':
         """Create instance from dictionary."""
-        # Filter out any keys that aren't valid fields
         valid_fields = cls.__annotations__.keys()
         filtered_dict = {k: v for k, v in config_dict.items() if k in valid_fields}
         return cls(**filtered_dict)
@@ -94,14 +95,13 @@ class ControllerConfig:
                 logger.info(f"Loaded configuration from {filepath}")
                 return cls.from_dict(config_dict)
             else:
-                # Create default config
                 config = cls()
                 config.save_to_file(filepath)
                 logger.info(f"Created default configuration at {filepath}")
                 return config
         except Exception as e:
             logger.error(f"Error loading configuration: {e}")
-            return cls()  # Return default config on error
+            return cls()
 
 
 class KnifeController:
@@ -114,7 +114,7 @@ class KnifeController:
         self.max_rpm = 3000
         self.rpm = 0.0
         self.last_send_time = 0.0
-        self.send_interval = 0.2  # Send knife commands every 0.2 seconds
+        self.send_interval = 0.2
         self.lock = threading.Lock()
         self.zero_message_shown = False
         self._running = True
@@ -122,18 +122,14 @@ class KnifeController:
     def process_button_value(self, value: float) -> None:
         """Process knife button value (0-1) and store RPM."""
         with self.lock:
-            # Apply inversion if configured
             if self.config.invert_knife:
                 value = 1.0 - value
             
-            # Calculate RPM based on button value (0-1 range)
-            if value <= 0.05:  # Small threshold to detect completely off
+            if value <= 0.05:
                 rpm = 0
             else:
-                # Map button value from 0-1 to min_rpm-max_rpm
                 rpm = self.min_rpm + value * (self.max_rpm - self.min_rpm)
             
-            # Update the RPM
             self.rpm = rpm
     
     def send_commands_loop(self) -> None:
@@ -150,13 +146,10 @@ class KnifeController:
                         try:
                             self.publish_callback(rpm)
                             
-                            # Print logic: show non-zero RPM, but zero only once
                             if rpm == 0:
                                 if not self.zero_message_shown:
-                                    # logger.info("Setting knife RPM to 0")
                                     self.zero_message_shown = True
                             else:
-                                # logger.info(f"Setting knife RPM to {rpm:.0f}")
                                 self.zero_message_shown = False
                         except Exception as e:
                             logger.error(f"Error publishing knife RPM: {e}")
@@ -181,7 +174,7 @@ class PIDController:
         self.enabled = True
         self.toggle_callback = toggle_callback
         self.last_toggle_time = 0.0
-        self.toggle_cooldown = 0.5  # Cooldown period to avoid multiple toggles
+        self.toggle_cooldown = 0.5
         self.lock = threading.Lock()
     
     def toggle(self) -> None:
@@ -189,12 +182,11 @@ class PIDController:
         with self.lock:
             current_time = time.time()
             if current_time - self.last_toggle_time < self.toggle_cooldown:
-                return  # Avoid multiple toggles due to button bounce
+                return
             
             self.enabled = not self.enabled
             self.last_toggle_time = current_time
             
-            # Notify the callback
             try:
                 self.toggle_callback(self.enabled)
                 logger.info(f"PID control {'enabled' if self.enabled else 'disabled'}")
@@ -215,17 +207,14 @@ class MotorController:
     def process_joystick(self, turn_value: float, drive_value: float) -> None:
         """Process joystick values and update motor commands."""
         with self.lock:
-            # Apply inversions if configured
             if self.config.invert_turn:
                 turn_value = -turn_value
             if self.config.invert_drive:
                 drive_value = -drive_value
             
-            # Calculate linear and angular velocities
             self.angular = turn_value * self.config.scale_angular
             self.linear = drive_value * self.config.scale_linear
             
-            # Publish motor commands
             try:
                 self.publish_callback(self.linear, self.angular)
             except Exception as e:
@@ -234,11 +223,9 @@ class MotorController:
     def process_xy_input(self, x: float, y: float) -> None:
         """Process x,y input values from non-joystick source."""
         with self.lock:
-            # Apply scaling
             linear = y * self.config.scale_linear
             angular = -x * self.config.scale_angular
             
-            # Publish motor commands
             try:
                 self.publish_callback(linear, angular)
             except Exception as e:
@@ -254,10 +241,12 @@ class MotorController:
 
 
 class RobotROSNode(Node):
-    """ROS2 node for robot control."""
+    """ROS2 node for robot control with video streaming."""
     
     def __init__(self):
         super().__init__('robot_web_server_node')
+        
+        # Motor and knife publishers
         self.publisher = self.create_publisher(
             Twist, 
             '/diff_drive_controller/cmd_vel_unstamped', 
@@ -272,16 +261,92 @@ class RobotROSNode(Node):
         # Create client for PID control service
         self.pid_client = self.create_client(SetBool, 'knives/enable_pid')
         
-        # Wait for service
+        # Initialize CV Bridge for image conversion
+        self.bridge = CvBridge()
+        
+        # Image storage with thread safety
+        self.latest_depth_image = None
+        self.latest_confidence_image = None
+        self.image_lock = threading.Lock()
+        
+        # Subscribe to camera image topics
+        self.depth_image_sub = self.create_subscription(
+            Image,
+            'depth_image',
+            self.depth_image_callback,
+            10
+        )
+        
+        self.confidence_image_sub = self.create_subscription(
+            Image,
+            'confidence_image',
+            self.confidence_image_callback,
+            10
+        )
+        
         if not self.pid_client.wait_for_service(timeout_sec=5.0):
             self.get_logger().warning('PID control service not available after waiting!')
         else:
             self.get_logger().info('PID control service is available')
             
-        # Run garbage collector every 10 seconds
         self.create_timer(10.0, self._gc_callback)
         
-        self.get_logger().info('Robot ROS node initialized')
+        self.get_logger().info('Robot ROS node with video streaming initialized')
+    
+    def depth_image_callback(self, msg: Image) -> None:
+        """Callback for depth image topic."""
+        try:
+            with self.image_lock:
+                self.latest_depth_image = msg
+        except Exception as e:
+            self.get_logger().error(f"Error processing depth image: {e}")
+    
+    def confidence_image_callback(self, msg: Image) -> None:
+        """Callback for confidence image topic."""
+        try:
+            with self.image_lock:
+                self.latest_confidence_image = msg
+        except Exception as e:
+            self.get_logger().error(f"Error processing confidence image: {e}")
+    
+    def get_latest_depth_image(self) -> bytes:
+        """Get latest depth image as JPEG bytes."""
+        with self.image_lock:
+            if self.latest_depth_image is None:
+                return self._create_no_signal_image()
+            
+            try:
+                cv_image = self.bridge.imgmsg_to_cv2(self.latest_depth_image, "bgr8")
+                _, jpeg_data = cv2.imencode('.jpg', cv_image, [cv2.IMWRITE_JPEG_QUALITY, 85])
+                return jpeg_data.tobytes()
+            except Exception as e:
+                self.get_logger().error(f"Error converting depth image: {e}")
+                return self._create_no_signal_image()
+    
+    def get_latest_confidence_image(self) -> bytes:
+        """Get latest confidence image as JPEG bytes."""
+        with self.image_lock:
+            if self.latest_confidence_image is None:
+                return self._create_no_signal_image()
+            
+            try:
+                cv_image = self.bridge.imgmsg_to_cv2(self.latest_confidence_image, "mono8")
+                _, jpeg_data = cv2.imencode('.jpg', cv_image, [cv2.IMWRITE_JPEG_QUALITY, 85])
+                return jpeg_data.tobytes()
+            except Exception as e:
+                self.get_logger().error(f"Error converting confidence image: {e}")
+                return self._create_no_signal_image()
+    
+    def _create_no_signal_image(self) -> bytes:
+        """Create a 'No Signal' placeholder image."""
+        img = cv2.imread('no_signal.jpg') if os.path.exists('no_signal.jpg') else None
+        if img is None:
+            # Create a simple black image with text
+            img = cv2.zeros((240, 320, 3), dtype=cv2.uint8)
+            cv2.putText(img, 'No Signal', (80, 120), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+        
+        _, jpeg_data = cv2.imencode('.jpg', img, [cv2.IMWRITE_JPEG_QUALITY, 85])
+        return jpeg_data.tobytes()
     
     def _gc_callback(self) -> None:
         """Perform garbage collection."""
@@ -310,10 +375,7 @@ class RobotROSNode(Node):
         request = SetBool.Request()
         request.data = enable
         
-        # Create the future
         future = self.pid_client.call_async(request)
-        
-        # Add a callback that will be executed when the future completes
         future.add_done_callback(
             lambda f: self._handle_pid_toggle_callback(f, enable)
         )
@@ -335,7 +397,7 @@ class RobotROSNode(Node):
 
 
 class RobotWebServer:
-    """Main class that integrates ROS2, Flask, and robot control."""
+    """Main class that integrates ROS2, Flask, and robot control with video streaming."""
     
     def __init__(self):
         self.config_path = os.path.join(os.path.dirname(__file__), 'controller_config.json')
@@ -385,10 +447,47 @@ class RobotWebServer:
         @self.app.route('/')
         def index():
             return render_template('index.html')
+            
         @self.app.route('/config')
         def config_page():
             return render_template('config.html')
         
+        # === VIDEO STREAMING ROUTES ===
+        @self.app.route('/video_feed/depth')
+        def video_feed_depth():
+            """Video streaming route for depth camera."""
+            def generate():
+                while True:
+                    try:
+                        frame = self.node.get_latest_depth_image()
+                        yield (b'--frame\r\n'
+                               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+                        time.sleep(1/30)  # ~30 FPS
+                    except Exception as e:
+                        logger.error(f"Error in depth video feed: {e}")
+                        time.sleep(0.1)
+            
+            return Response(generate(),
+                          mimetype='multipart/x-mixed-replace; boundary=frame')
+        
+        @self.app.route('/video_feed/confidence')
+        def video_feed_confidence():
+            """Video streaming route for confidence camera."""
+            def generate():
+                while True:
+                    try:
+                        frame = self.node.get_latest_confidence_image()
+                        yield (b'--frame\r\n'
+                               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+                        time.sleep(1/30)  # ~30 FPS
+                    except Exception as e:
+                        logger.error(f"Error in confidence video feed: {e}")
+                        time.sleep(0.1)
+            
+            return Response(generate(),
+                          mimetype='multipart/x-mixed-replace; boundary=frame')
+        
+        # === EXISTING ROUTES ===
         @self.app.route('/gamepad', methods=['POST'])
         def gamepad():
             try:
@@ -396,27 +495,22 @@ class RobotWebServer:
                 if not data or not isinstance(data, dict):
                     return jsonify(success=False, message="Invalid data format")
                 
-                # Get axes and buttons
                 axes = data.get('axes', [])
                 buttons = data.get('buttons', [])
                 
-                # Validate data
                 if len(axes) <= max(self.config.turn_axis, self.config.drive_axis):
                     return jsonify(success=False, message="Not enough axis data provided")
                     
                 if len(buttons) <= max(self.config.knife_button, self.config.pid_toggle_button):
                     return jsonify(success=False, message="Not enough button data provided")
                 
-                # Process movement controls
                 turn_value = axes[self.config.turn_axis]
                 drive_value = axes[self.config.drive_axis]
                 self.motor_controller.process_joystick(turn_value, drive_value)
                 
-                # Process knife control
                 knife_value = buttons[self.config.knife_button]
                 self.knife_controller.process_button_value(knife_value)
                 
-                # Check for PID toggle button press
                 pid_button = self.config.pid_toggle_button
                 if buttons[pid_button] == 1:
                     self.pid_controller.toggle()
@@ -450,21 +544,17 @@ class RobotWebServer:
                 if not new_config_dict:
                     return jsonify(success=False, message="Invalid data format")
                     
-                # Create updated config
                 merged_dict = {**self.config.to_dict(), **new_config_dict}
                 updated_config = ControllerConfig.from_dict(merged_dict)
                 
-                # Validate the updated config
                 valid, error_msg = updated_config.validate()
                 if not valid:
                     return jsonify(success=False, message=f"Invalid configuration: {error_msg}")
                 
-                # Update the config everywhere it's used
                 self.config = updated_config
-                self.motor_controller.config = updated_config  # Update motor controller config
-                self.knife_controller.config = updated_config  # Update knife controller config
+                self.motor_controller.config = updated_config
+                self.knife_controller.config = updated_config
                 
-                # Save to file
                 self.config.save_to_file(self.config_path)
                 
                 return jsonify(
@@ -488,23 +578,20 @@ class RobotWebServer:
     
     def start(self) -> None:
         """Start the web server and ROS node."""
-        # Start knife command thread
         self.knife_thread = threading.Thread(
             target=self.knife_controller.send_commands_loop,
             daemon=True
         )
         self.knife_thread.start()
         
-        # Start the Flask server in a separate thread
         self.flask_thread = threading.Thread(
-            target=lambda: self.app.run(host='0.0.0.0', port=80, threaded=False, debug=False),
+            target=lambda: self.app.run(host='0.0.0.0', port=80, threaded=True, debug=False),
             daemon=True
         )
         self.flask_thread.start()
         
-        logger.info("Robot web server started")
+        logger.info("Robot web server with video streaming started")
         
-        # Start ROS spin in the main thread
         try:
             rclpy.spin(self.node)
         except KeyboardInterrupt:
@@ -516,14 +603,11 @@ class RobotWebServer:
         """Clean up resources and shutdown."""
         logger.info("Shutting down robot web server...")
         
-        # Send stop command to motors for safety
         self.motor_controller.stop()
         
-        # Stop the knife controller thread
         if self.knife_controller:
             self.knife_controller.stop()
         
-        # Clean up ROS node
         if self.node:
             self.node.destroy_node()
             
@@ -533,9 +617,7 @@ class RobotWebServer:
 def main():
     """Main entry point for the robot web server."""
     try:
-        # Initialize ROS
         rclpy.init()
-            
         server = RobotWebServer()
         server.start()
         return 0
