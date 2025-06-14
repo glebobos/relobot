@@ -42,7 +42,7 @@ class ControllerConfig:
     scale_linear: float = 1.0         # Maximum linear speed
     scale_angular: float = 2.0        # Maximum angular speed
     invert_turn: bool = True          # Invert turn direction
-    invert_drive: bool = True         # Invert drive direction
+    invert_drive: bool = True        # Invert drive direction
     invert_knife: bool = False        # Invert knife control
     
     def validate(self) -> Tuple[bool, str]:
@@ -385,6 +385,9 @@ class RobotWebServer:
         @self.app.route('/')
         def index():
             return render_template('index.html')
+        @self.app.route('/config')
+        def config_page():
+            return render_template('config.html')
         
         @self.app.route('/gamepad', methods=['POST'])
         def gamepad():
@@ -436,11 +439,11 @@ class RobotWebServer:
                 logger.error(f"Error setting motors: {e}", exc_info=True)
                 return jsonify(success=False, error=str(e))
         
-        @self.app.route('/config', methods=['GET'])
+        @self.app.route('/api/config', methods=['GET'])
         def get_config():
             return jsonify(success=True, config=self.config.to_dict())
         
-        @self.app.route('/config', methods=['POST'])
+        @self.app.route('/api/config', methods=['POST'])
         def update_config():
             try:
                 new_config_dict = request.get_json(force=True, silent=True)
@@ -456,8 +459,10 @@ class RobotWebServer:
                 if not valid:
                     return jsonify(success=False, message=f"Invalid configuration: {error_msg}")
                 
-                # Update the config
+                # Update the config everywhere it's used
                 self.config = updated_config
+                self.motor_controller.config = updated_config  # Update motor controller config
+                self.knife_controller.config = updated_config  # Update knife controller config
                 
                 # Save to file
                 self.config.save_to_file(self.config_path)

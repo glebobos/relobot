@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Robot Configuration</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+        .config-section {
+            margin-bottom: 25px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #fafafa;
+        }
+        .config-section h3 {
+            margin-top: 0;
+            color: #555;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .form-group label {
+            font-weight: bold;
+            color: #666;
+            flex: 1;
+            margin-right: 15px;
+        }
+        .form-group input {
+            flex: 0 0 150px;
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .form-group input[type="checkbox"] {
+            flex: 0 0 auto;
+            width: 20px;
+            height: 20px;
+        }
+        .form-group .description {
+            font-size: 12px;
+            color: #888;
+            margin-top: 5px;
+            flex: 1;
+        }
+        .button-group {
+            text-align: center;
+            margin-top: 30px;
+        }
+        .btn {
+            padding: 12px 25px;
+            margin: 0 10px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .btn-primary {
+            background-color: #007bff;
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #0056b3;
+        }
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background-color: #545b62;
+        }
+        .btn-success {
+            background-color: #28a745;
+            color: white;
+        }
+        .btn-success:hover {
+            background-color: #1e7e34;
+        }
+        .status-message {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+            display: none;
+        }
+        .status-success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status-error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .navigation {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .navigation a {
+            color: #007bff;
+            text-decoration: none;
+            font-size: 16px;
+        }
+        .navigation a:hover {
+            text-decoration: underline;
+        }
+        .current-values {
+            background-color: #e3f2fd;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .current-values h4 {
+            margin: 0 0 10px 0;
+            color: #1976d2;
+        }
+        .axis-info {
+            font-size: 12px;
+            color: #666;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="navigation">
+            <a href="/">&larr; Back to Robot Control</a>
+        </div>
+        
+        <h1>Robot Controller Configuration</h1>
+        
+        <div class="current-values">
+            <h4>Current Configuration Status</h4>
+            <div id="config-status">Loading...</div>
+        </div>
+
+        <form id="config-form">
+            <div class="config-section">
+                <h3>Controller Axes Mapping</h3>
+                <div class="axis-info">
+                    Common gamepad axes: 0=Left X, 1=Left Y, 2=Right X, 3=Right Y
+                </div>
+                
+                <div class="form-group">
+                    <label for="turn_axis">Turn Axis:</label>
+                    <input type="number" id="turn_axis" name="turn_axis" min="0" max="10" step="1">
+                    <div class="description">Gamepad axis for left/right turning</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="drive_axis">Drive Axis:</label>
+                    <input type="number" id="drive_axis" name="drive_axis" min="0" max="10" step="1">
+                    <div class="description">Gamepad axis for forward/backward movement</div>
+                </div>
+            </div>
+
+            <div class="config-section">
+                <h3>Controller Buttons Mapping</h3>
+                <div class="axis-info">
+                    Button indices vary by controller type. Test your controller to find the correct indices.
+                </div>
+                
+                <div class="form-group">
+                    <label for="knife_button">Knife Button:</label>
+                    <input type="number" id="knife_button" name="knife_button" min="0" max="20" step="1">
+                    <div class="description">Button to control knife speed (usually a trigger)</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="pid_toggle_button">PID Toggle Button:</label>
+                    <input type="number" id="pid_toggle_button" name="pid_toggle_button" min="0" max="20" step="1">
+                    <div class="description">Button to toggle PID control on/off</div>
+                </div>
+            </div>
+
+            <div class="config-section">
+                <h3>Speed Scaling</h3>
+                
+                <div class="form-group">
+                    <label for="scale_linear">Linear Scale:</label>
+                    <input type="number" id="scale_linear" name="scale_linear" min="0.1" max="5.0" step="0.1">
+                    <div class="description">Maximum linear speed multiplier</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="scale_angular">Angular Scale:</label>
+                    <input type="number" id="scale_angular" name="scale_angular" min="0.1" max="10.0" step="0.1">
+                    <div class="description">Maximum angular speed multiplier</div>
+                </div>
+            </div>
+
+            <div class="config-section">
+                <h3>Inversion Settings</h3>
+                
+                <div class="form-group">
+                    <label for="invert_turn">Invert Turn:</label>
+                    <input type="checkbox" id="invert_turn" name="invert_turn">
+                    <div class="description">Reverse the turn direction</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="invert_drive">Invert Drive:</label>
+                    <input type="checkbox" id="invert_drive" name="invert_drive">
+                    <div class="description">Reverse the drive direction</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="invert_knife">Invert Knife:</label>
+                    <input type="checkbox" id="invert_knife" name="invert_knife">
+                    <div class="description">Reverse the knife control</div>
+                </div>
+            </div>
+        </form>
+
+        <div class="button-group">
+            <button type="button" class="btn btn-secondary" onclick="loadConfig()">Reload Config</button>
+            <button type="button" class="btn btn-primary" onclick="saveConfig()">Save Configuration</button>
+            <button type="button" class="btn btn-success" onclick="testConfig()">Test Current Settings</button>
+        </div>
+
+        <div id="status-message" class="status-message"></div>
+    </div>
+
+    <script>
+        // Load configuration on page load
+        document.addEventListener('DOMContentLoaded', loadConfig);
+
+        function showStatus(message, isError = false) {
+            const statusDiv = document.getElementById('status-message');
+            statusDiv.textContent = message;
+            statusDiv.className = 'status-message ' + (isError ? 'status-error' : 'status-success');
+            statusDiv.style.display = 'block';
+            
+            // Hide after 5 seconds
+            setTimeout(() => {
+                statusDiv.style.display = 'none';
+            }, 5000);
+        }
+
+        function updateConfigStatus(config) {
+            const statusDiv = document.getElementById('config-status');
+            statusDiv.innerHTML = `
+                <strong>Axes:</strong> Turn=${config.turn_axis}, Drive=${config.drive_axis} | 
+                <strong>Buttons:</strong> Knife=${config.knife_button}, PID=${config.pid_toggle_button} | 
+                <strong>Scales:</strong> Linear=${config.scale_linear}, Angular=${config.scale_angular}
+            `;
+        }
+
+        async function loadConfig() {
+            try {
+                const response = await fetch('/api/config');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const config = data.config;
+                    
+                    // Update form fields
+                    document.getElementById('turn_axis').value = config.turn_axis;
+                    document.getElementById('drive_axis').value = config.drive_axis;
+                    document.getElementById('knife_button').value = config.knife_button;
+                    document.getElementById('pid_toggle_button').value = config.pid_toggle_button;
+                    document.getElementById('scale_linear').value = config.scale_linear;
+                    document.getElementById('scale_angular').value = config.scale_angular;
+                    document.getElementById('invert_turn').checked = config.invert_turn;
+                    document.getElementById('invert_drive').checked = config.invert_drive;
+                    document.getElementById('invert_knife').checked = config.invert_knife;
+                    
+                    // Update status display
+                    updateConfigStatus(config);
+                    showStatus('Configuration loaded successfully');
+                } else {
+                    showStatus('Failed to load configuration: ' + (data.message || 'Unknown error'), true);
+                }
+            } catch (error) {
+                console.error('Error loading config:', error);
+                showStatus('Error loading configuration: ' + error.message, true);
+            }
+        }
+
+        async function saveConfig() {
+            try {
+                // Collect form data
+                const config = {
+                    turn_axis: parseInt(document.getElementById('turn_axis').value),
+                    drive_axis: parseInt(document.getElementById('drive_axis').value),
+                    knife_button: parseInt(document.getElementById('knife_button').value),
+                    pid_toggle_button: parseInt(document.getElementById('pid_toggle_button').value),
+                    scale_linear: parseFloat(document.getElementById('scale_linear').value),
+                    scale_angular: parseFloat(document.getElementById('scale_angular').value),
+                    invert_turn: document.getElementById('invert_turn').checked,
+                    invert_drive: document.getElementById('invert_drive').checked,
+                    invert_knife: document.getElementById('invert_knife').checked
+                };
+
+                // Validate inputs
+                if (isNaN(config.turn_axis) || isNaN(config.drive_axis) || 
+                    isNaN(config.knife_button) || isNaN(config.pid_toggle_button) ||
+                    isNaN(config.scale_linear) || isNaN(config.scale_angular)) {
+                    showStatus('Please ensure all numeric fields are valid', true);
+                    return;
+                }
+
+                if (config.scale_linear <= 0 || config.scale_angular <= 0) {
+                    showStatus('Scale values must be positive', true);
+                    return;
+                }
+
+                const response = await fetch('/api/config', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(config)
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    updateConfigStatus(data.config);
+                    showStatus('Configuration saved successfully!');
+                } else {
+                    showStatus('Failed to save configuration: ' + (data.message || 'Unknown error'), true);
+                }
+            } catch (error) {
+                console.error('Error saving config:', error);
+                showStatus('Error saving configuration: ' + error.message, true);
+            }
+        }
+
+        function testConfig() {
+            showStatus('Testing current settings... Check the main control page to verify controller response');
+            // You could add more sophisticated testing here
+            setTimeout(() => {
+                window.open('/', '_blank');
+            }, 1000);
+        }
+
+        // Add input validation
+        document.addEventListener('input', function(e) {
+            if (e.target.type === 'number') {
+                const value = parseFloat(e.target.value);
+                const min = parseFloat(e.target.min);
+                const max = parseFloat(e.target.max);
+                
+                if (value < min || value > max) {
+                    e.target.style.borderColor = 'red';
+                } else {
+                    e.target.style.borderColor = '#ccc';
+                }
+            }
+        });
+    </script>
+</body>
+</html>
