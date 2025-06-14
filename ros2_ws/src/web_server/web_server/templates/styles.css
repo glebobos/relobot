@@ -1,0 +1,332 @@
+* {
+    box-sizing: border-box;
+}
+
+html {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+}
+
+body { 
+    font-family: Arial, sans-serif; 
+    text-align: center; 
+    user-select: none;
+    -webkit-user-select: none;
+    margin: 0;
+    padding: 0;
+    background-color: #f5f5f5;
+    overflow-x: hidden;
+}
+
+.nav-links {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    z-index: 1000;
+}
+
+.nav-links a {
+    color: #007bff;
+    text-decoration: none;
+    font-size: 14px;
+    margin-left: 10px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    background: rgba(255,255,255,0.9);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.nav-links a:hover {
+    background-color: #007bff;
+    color: white;
+}
+
+.camera-section {
+    width: 100%;
+    padding: 0;
+    background: #f5f5f5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    min-height: 400px;
+}
+
+.camera-toggle {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    z-index: 100;
+    background: rgba(0,0,0,0.7);
+    border-radius: 20px;
+    padding: 8px;
+}
+
+.toggle-switch {
+    display: flex;
+    background: rgba(255,255,255,0.1);
+    border-radius: 15px;
+    overflow: hidden;
+}
+
+.toggle-switch input[type="radio"] {
+    display: none;
+}
+
+.toggle-switch label {
+    padding: 8px 16px;
+    color: rgba(255,255,255,0.7);
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.3s ease;
+    border-radius: 15px;
+}
+
+.toggle-switch input[type="radio"]:checked + label {
+    background: #007bff;
+    color: white;
+}
+
+.video-container {
+    width: 100%;
+    background: #000;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    max-height: 70vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.video-container img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    object-fit: contain;
+}
+
+.joystick-section {
+    padding: 40px 20px;
+    background: white;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+#joystick {
+    width: 300px;
+    height: 300px;
+    border-radius: 50%;
+    background-color: #f0f0f0;
+    position: relative;
+    margin: 30px auto;
+    border: 3px solid #007bff;
+}
+
+#stick {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background-color: #007bff;
+    position: absolute;
+    top: 125px;
+    left: 125px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.status-info {
+    margin: 20px 0;
+    font-size: 18px;
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    min-width: 200px;
+}
+
+.controls-container {
+    display: flex;
+    gap: 40px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin: 30px 0;
+    max-width: 600px;
+    width: 100%;
+}
+
+.slider-container {
+    flex: 1;
+    min-width: 200px;
+    max-width: 250px;
+    text-align: center;
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.slider-container label {
+    display: block;
+    margin-bottom: 15px;
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+}
+
+.slider-container input {
+    width: 100%;
+    margin-bottom: 10px;
+}
+
+.value-display {
+    font-weight: bold;
+    color: #007bff;
+    font-size: 18px;
+}
+
+.emergency-stop {
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    padding: 15px 30px;
+    font-size: 18px;
+    border-radius: 8px;
+    cursor: pointer;
+    margin: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.emergency-stop:hover {
+    background-color: #c82333;
+}
+
+@media (max-width: 768px) {
+    .camera-section {
+        padding: 0;
+        min-height: 300px;
+    }
+    
+    .video-container {
+        width: 100%;
+        max-height: 60vh;
+    }
+    
+    .joystick-section {
+        min-height: auto;
+        padding: 20px 10px;
+    }
+    
+    #joystick {
+        width: 250px;
+        height: 250px;
+    }
+    
+    #stick {
+        top: 100px;
+        left: 100px;
+    }
+    
+    .controls-container {
+        flex-direction: column;
+        align-items: center;
+        gap: 20px;
+    }
+    
+    .slider-container {
+        max-width: 300px;
+        width: 90%;
+    }
+    
+    .camera-toggle {
+        top: 15px;
+        left: 15px;
+    }
+    
+    .toggle-switch label {
+        padding: 6px 12px;
+        font-size: 11px;
+    }
+    
+    .nav-links {
+        top: 15px;
+        right: 15px;
+    }
+    
+    .nav-links a {
+        font-size: 12px;
+        padding: 4px 8px;
+    }
+}
+
+@media (max-width: 480px) and (orientation: portrait) {
+    .camera-section {
+        padding: 10px;
+        min-height: 250px;
+    }
+    
+    .video-container {
+        max-width: 98%;
+        max-height: 50vh;
+    }
+    
+    .video-container img {
+        width: 100%;
+        height: auto;
+    }
+    
+    #joystick {
+        width: 220px;
+        height: 220px;
+    }
+    
+    #stick {
+        width: 40px;
+        height: 40px;
+        top: 90px;
+        left: 90px;
+    }
+}
+
+@media (max-height: 500px) and (orientation: landscape) {
+    .camera-section {
+        padding: 10px;
+        min-height: 200px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    
+    .video-container {
+        max-width: 70%;
+        max-height: 80vh;
+        margin: 0 auto;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    
+    .video-container img {
+        width: auto;
+        height: 100%;
+        max-width: 100%;
+        margin: 0 auto;
+    }
+    
+    .joystick-section {
+        padding: 20px 10px;
+    }
+    
+    #joystick {
+        width: 200px;
+        height: 200px;
+        margin: 20px auto;
+    }
+    
+    #stick {
+        width: 40px;
+        height: 40px;
+        top: 80px;
+        left: 80px;
+    }
+}
