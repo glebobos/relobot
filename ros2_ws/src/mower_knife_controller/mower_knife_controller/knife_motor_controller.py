@@ -1,5 +1,6 @@
 import time
 import serial
+import re
 
 class SerialKnifeMotorController:
     """Interface for controlling a mower knife motor via serial port."""

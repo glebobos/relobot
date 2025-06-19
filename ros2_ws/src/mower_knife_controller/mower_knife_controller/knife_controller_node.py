@@ -73,7 +73,7 @@ class KnifeControllerWithVoltage(Node):
     def set_rpm_cb(self, msg):
         rpm = msg.data
         if rpm != 0 or self.last_cmd in (None, 0):
-            self.get_logger().info(f"Command: set RPM → {rpm}")
+            self.get_logger().debug(f"Command: set RPM → {rpm}")
         self.last_cmd = rpm
         self.ctrl.set_rpm(rpm)
 
