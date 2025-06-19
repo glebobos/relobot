@@ -187,34 +187,62 @@ window.addEventListener("gamepadconnected", function(e) {
     console.log("Gamepad connected:", e.gamepad);
     startGamepadPolling();
 });
+/* ===== Shared helpers for the two status bars ========================= */
+const vinMask      = document.getElementById('vin-mask');     // green bar fill
+const vinSpan      = document.getElementById('vin-display');  // “26.4 V”
+const rpmMask      = document.getElementById('rpm-mask');     // blue→red bar fill
+const rpmSpan      = document.getElementById('rpm-display');  // “1250 RPM”
+
+function updateVoltage(volts, minV = 24.0, maxV = 28.0) {
+    if (!vinMask) return;
+    const pct = Math.max(0, Math.min(1, (volts - minV) / (maxV - minV))) * 100;
+    vinMask.style.width   = pct.toFixed(1) + '%';
+    vinSpan.textContent   = volts.toFixed(2) + ' V';
+}
+
+function updateRPM(rpm, maxRPM = 3100) {
+    if (!rpmMask) return;
+    const pct = Math.max(0, Math.min(1, rpm / maxRPM)) * 100;
+    rpmMask.style.width   = pct.toFixed(1) + '%';
+    rpmSpan.textContent   = Math.round(rpm) + ' RPM';
+}
 
 /* ===== Live battery-voltage bar ======================================= */
 (() => {
-    const vinSpan = document.getElementById('vin-display');
-    const mask    = document.getElementById('battery-mask');
-    if (!vinSpan || !mask) return;          // element not on page
+    if (!vinMask) return;          // bar not on this page
 
-    const MIN_V = 24.0;
-    const MAX_V = 28.0;
-
-    function updateBar(vin) {
-        // clamp to [24,28] → 0-100 %
-        const pct   = Math.max(0, Math.min(1, (vin - MIN_V) / (MAX_V - MIN_V)));
-        mask.style.width = (100 - pct * 100) + '%';
-        vinSpan.textContent = vin.toFixed(2);
-    }
-
-    // first shot (in case SSE hasn’t fired yet)
+    // first snapshot
     fetch('/api/voltage')
         .then(r => r.ok ? r.json() : null)
-        .then(j => j && j.success && updateBar(j.vin))
+        .then(j => j?.success && updateVoltage(j.vin))
         .catch(() => {});
 
-    // live updates
+    // live updates via SSE
     const es = new EventSource('/stream/voltage');
     es.onmessage = e => {
         const v = parseFloat(e.data);
-        if (isFinite(v)) updateBar(v);
+        if (isFinite(v)) updateVoltage(v);
     };
-    es.onerror = () => console.warn('Voltage SSE error – browser will auto-retry');
+    es.onerror = () =>
+        console.warn('Voltage SSE error – browser will auto-retry');
+})();
+
+/* ===== Live RPM bar =================================================== */
+(() => {
+    if (!rpmMask) return;          // bar not on this page
+
+    // first snapshot
+    fetch('/api/rpm')
+        .then(r => r.ok ? r.json() : null)
+        .then(j => j?.success && updateRPM(j.rpm))
+        .catch(() => {});
+
+    // live updates via SSE
+    const es = new EventSource('/stream/rpm');
+    es.onmessage = e => {
+        const r = parseFloat(e.data);
+        if (isFinite(r)) updateRPM(r);
+    };
+    es.onerror = () =>
+        console.warn('RPM SSE error – browser will auto-retry');
 })();

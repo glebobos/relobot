@@ -26,12 +26,18 @@
         </div>
         
         <div class="battery-container">
-            <div class="battery-bar">
-                <div class="battery-mask" id="battery-mask"></div>
+            <!-- Voltage bar -->
+            <div class="status-bar" id="vin-bar">
+            <div class="status-mask" id="vin-mask"></div>
+            <span class="status-label" id="vin-display">--.-- V</span>
             </div>
-            <div class="battery-label">
-                <span id="vin-display">--.--</span> V
+
+            <!-- RPM bar -->
+            <div class="status-bar rpm" id="rpm-bar">
+            <div class="status-mask" id="rpm-mask"></div>
+            <span class="status-label" id="rpm-display">--- RPM</span>
             </div>
+
         </div>
     </div>
     

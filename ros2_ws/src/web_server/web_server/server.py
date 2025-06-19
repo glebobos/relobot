@@ -94,6 +94,26 @@ class RobotWebServer:
                         last = vin
                     time.sleep(0.2)
             return Response(gen(), mimetype="text/event-stream")
+        
+        # ------------- rpm ----------------------------------------------------
+        @self.app.route("/api/rpm")
+        def api_rpm():
+            rpm = self.node.latest_rpm()
+            if rpm is None:
+                return jsonify(success=False, message="No data yet"), 503
+            return jsonify(success=True, rpm=rpm)
+
+        @self.app.route("/stream/rpm")
+        def sse_rpm():
+            def gen():
+                last = None
+                while True:
+                    rpm = self.node.latest_rpm()
+                    if rpm is not None and rpm != last:
+                        yield f"data: {rpm}\n\n"
+                        last = rpm
+                    time.sleep(0.2)
+            return Response(gen(), mimetype="text/event-stream")
 
         # ------------- gamepad ----------------------------------------------
         @self.app.route("/gamepad", methods=["POST"])

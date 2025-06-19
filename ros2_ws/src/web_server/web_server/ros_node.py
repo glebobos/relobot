@@ -7,14 +7,11 @@ Thin ROS2 wrapper that:
 
 import gc
 import logging
-import os
 import threading
-import time
 from typing import Optional
 
 import cv2
 import numpy as np
-import rclpy
 from cv_bridge import CvBridge
 from geometry_msgs.msg import Twist
 from rclpy.node import Node
@@ -54,6 +51,11 @@ class RobotROSNode(Node):
         self._vin_lock = threading.Lock()
         self.create_subscription(Float32, "knives/vin",
                                  self._vin_cb, 10)
+        # --- RPM ------------------------------------------------------------------
+        self._rpm: Optional[float] = None
+        self._rpm_lock = threading.Lock()
+        self.create_subscription(Float32, "knives/current_rpm",
+                                 self._rpm_cb, 10)
 
         # --- maintenance ----------------------------------------------------------
         self.create_timer(10.0, lambda: gc.collect())
@@ -73,6 +75,10 @@ class RobotROSNode(Node):
     def _vin_cb(self, msg: Float32) -> None:
         with self._vin_lock:
             self._vin = float(msg.data)
+    # -------- rpm --------
+    def _rpm_cb(self, msg: Float32) -> None:
+        with self._rpm_lock:
+            self._rpm = float(msg.data)
 
     # ------------------------------------------------------------------------- #
     #                         image helpers (JPEG)                              #
@@ -131,3 +137,6 @@ class RobotROSNode(Node):
     def latest_voltage(self) -> Optional[float]:
         with self._vin_lock:
             return self._vin
+    def latest_rpm(self) -> Optional[float]:
+        with self._rpm_lock:
+            return self._rpm
