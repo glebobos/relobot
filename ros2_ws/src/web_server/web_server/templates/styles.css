@@ -325,8 +325,7 @@ body {
 /* ===== Battery-voltage bar ============================================ */
 .battery-container {
     margin: 16px auto 0;
-    width: 90%;
-    max-width: 480px;
+    width: 100%;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -369,7 +368,7 @@ body {
 .status-bar{
   --fill: 0;                /* 0‒1 range, set from JS */
   position: relative;
-  width: 240px;
+  width: 100%;
   height: 22px;
   border: 2px solid #555;
   border-radius: 6px;
