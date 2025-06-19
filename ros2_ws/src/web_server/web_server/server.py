@@ -124,13 +124,20 @@ class RobotWebServer:
 
                 if len(axes) <= max(self.cfg.turn_axis, self.cfg.drive_axis):
                     return jsonify(success=False, message="Missing axis data")
-                if len(buttons) <= max(self.cfg.knife_button, self.cfg.pid_toggle_button):
+                    
+                # Check that we have all required buttons
+                required_buttons = max(self.cfg.knife_button, self.cfg.pid_toggle_button, self.knife.cruise_button)
+                if len(buttons) <= required_buttons:
                     return jsonify(success=False, message="Missing button data")
 
                 self.motors.process_joystick(
                     axes[self.cfg.turn_axis], axes[self.cfg.drive_axis])
 
-                self.knife.process_button_value(buttons[self.cfg.knife_button])
+                # Process both knife button and cruise control button together
+                self.knife.process_cruise_control(
+                    buttons[self.cfg.knife_button], 
+                    buttons[self.knife.cruise_button]
+                )
 
                 if buttons[self.cfg.pid_toggle_button] == 1:
                     self.pid.toggle()
