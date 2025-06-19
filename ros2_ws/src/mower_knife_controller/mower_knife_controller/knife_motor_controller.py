@@ -1,5 +1,6 @@
 import time
 import serial
+import re
 
 class SerialKnifeMotorController:
     """Interface for controlling a mower knife motor via serial port."""
@@ -113,6 +114,46 @@ class SerialKnifeMotorController:
         except Exception as e:
             print(f"Error sending command {command}: {e}")
             return None
+    # ─────────────────────────────────────────────────────────────────
+    def read_telemetry(self):
+        """
+        Return (rpm, vin) floats or (None, None) if nothing new.
+
+        Expects firmware lines like '123.4,11.9'
+        but still accepts old-style 'RPM: 123.4'.
+        """
+        if not self.serial and not self.connect():
+            return None, None
+
+        try:
+            lines = []
+            while self.serial.in_waiting > 0:
+                lines.append(self.serial.readline().decode().strip())
+
+            rpm = vin = None
+            for line in reversed(lines):               # newest first
+                # new CSV format ------------------------------------------------
+                if re.fullmatch(r'-?\d+(\.\d+)?,\d+(\.\d+)?', line):
+                    try:
+                        rpm_str, vin_str = line.split(',', 1)
+                        rpm, vin = float(rpm_str), float(vin_str)
+                        break
+                    except ValueError:
+                        continue
+
+                # legacy 'RPM: xxx' --------------------------------------------
+                if line.startswith("RPM:"):
+                    try:
+                        rpm = float(line.split("RPM:", 1)[1].strip())
+                    except ValueError:
+                        pass
+
+            return rpm, vin
+        except serial.SerialException as e:
+            print(f"Telemetry read error: {e}")
+            self.serial = None
+            return None, None
+
     
     def close(self):
         """Close the serial connection."""

@@ -24,6 +24,15 @@
         <div class="video-container">
             <img id="cameraStream" src="/video_feed/confidence" alt="Camera Stream">
         </div>
+        
+        <div class="battery-container">
+            <div class="battery-bar">
+                <div class="battery-mask" id="battery-mask"></div>
+            </div>
+            <div class="battery-label">
+                <span id="vin-display">--.--</span> V
+            </div>
+        </div>
     </div>
     
     <div class="joystick-section">
@@ -31,9 +40,8 @@
             <div id="stick"></div>
         </div>
         
-        <div class="status-info">
-            <strong>X:</strong> <span id="x-value">0</span> | <strong>Y:</strong> <span id="y-value">0</span>
-        </div>
+
+
         
         <div class="controls-container">
             <div class="slider-container">

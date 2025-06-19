@@ -284,6 +284,15 @@ class RobotROSNode(Node):
             self.confidence_image_callback,
             10
         )
+        self.latest_voltage = None
+        self.voltage_lock   = threading.Lock()
+
+        self.voltage_sub = self.create_subscription(
+            Float32,               # messages are std_msgs/Float32
+            'knives/vin',          # topic published by KnifeControllerWithVoltage
+            self._voltage_callback,
+            10
+        )
         
         if not self.pid_client.wait_for_service(timeout_sec=5.0):
             self.get_logger().warning('PID control service not available after waiting!')
@@ -293,6 +302,16 @@ class RobotROSNode(Node):
         self.create_timer(10.0, self._gc_callback)
         
         self.get_logger().info('Robot ROS node with video streaming initialized')
+
+    def _voltage_callback(self, msg: Float32):
+        """Store the newest Vin reading (thread-safe)."""
+        with self.voltage_lock:
+            self.latest_voltage = float(msg.data)
+
+    def get_latest_voltage(self):
+        """Return most-recent Vin or None if nothing yet."""
+        with self.voltage_lock:
+            return self.latest_voltage
     
     def depth_image_callback(self, msg: Image) -> None:
         """Callback for depth image topic."""
@@ -511,6 +530,30 @@ class RobotWebServer:
             
             return Response(generate(),
                           mimetype='multipart/x-mixed-replace; boundary=frame')
+
+        # ========= Voltage API & SSE ==============================================
+        @self.app.route('/api/voltage')
+        def api_voltage():
+            """Single JSON response with the latest Vin value."""
+            vin = self.node.get_latest_voltage()
+            if vin is None:
+                return jsonify(success=False, message="No data yet"), 503
+            return jsonify(success=True, vin=vin)
+
+        @self.app.route('/stream/voltage')
+        def stream_voltage():
+            """Continuous Vin stream via Server-Sent Events."""
+            def generator():
+                last_val = None
+                while True:
+                    vin = self.node.get_latest_voltage()
+                    # Only push when the value changes
+                    if vin is not None and vin != last_val:
+                        yield f"data: {vin}\n\n"
+                        last_val = vin
+                    time.sleep(0.2)          # 5 Hz
+            return Response(generator(), mimetype='text/event-stream')
+
         
         # === EXISTING ROUTES ===
         @self.app.route('/gamepad', methods=['POST'])
