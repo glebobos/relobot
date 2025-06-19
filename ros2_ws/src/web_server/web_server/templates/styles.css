@@ -50,6 +50,7 @@ body {
     justify-content: center;
     position: relative;
     min-height: 400px;
+    flex-direction: column; 
 }
 
 .camera-toggle {
@@ -134,15 +135,6 @@ body {
     top: 125px;
     left: 125px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-}
-
-.status-info {
-    margin: 20px 0;
-    font-size: 18px;
-    background: #f8f9fa;
-    padding: 15px;
-    border-radius: 8px;
-    min-width: 200px;
 }
 
 .controls-container {
@@ -329,4 +321,38 @@ body {
         top: 80px;
         left: 80px;
     }
+}
+/* ===== Battery-voltage bar ============================================ */
+.battery-container {
+    margin: 16px auto 0;
+    width: 90%;
+    max-width: 480px;
+}
+
+.battery-bar {
+    width: 100%;
+    height: 22px;
+    border-radius: 12px;
+    overflow: hidden;
+    background: linear-gradient(to right,
+        red 0%,                   /*  0 % … 20 %  */
+        red 15%,
+        #ffcc00 20%,             /* ~26 V – yellow */
+        green 100%);             /* 28 V          */
+    position: relative;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2) inset;
+}
+
+.battery-mask {
+    position: absolute;
+    top: 0; right: 0; bottom: 0;
+    width: 100%;                      /* shrinks as Vin rises */
+    background: rgba(240,240,240,0.85);
+    transition: width 0.3s ease;
+}
+
+.battery-label {
+    margin-top: 6px;
+    font-weight: 600;
+    font-size: 17px;
 }

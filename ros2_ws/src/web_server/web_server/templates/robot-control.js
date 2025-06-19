@@ -13,8 +13,6 @@ cameraRadios.forEach(radio => {
 // Joystick functionality
 const joystick = document.getElementById('joystick');
 const stick = document.getElementById('stick');
-const xValue = document.getElementById('x-value');
-const yValue = document.getElementById('y-value');
 const speedSlider = document.getElementById('speed-sensitivity');
 const turnSlider = document.getElementById('turn-sensitivity');
 const speedValue = document.getElementById('speed-value');
@@ -54,9 +52,6 @@ function setStickPosition(x, y) {
 
     normalizedX *= turnSlider.value / 100;
     normalizedY *= speedSlider.value / 100;
-    
-    xValue.textContent = normalizedX.toFixed(2);
-    yValue.textContent = normalizedY.toFixed(2);
     
     throttleUpdateMotors(normalizedX, normalizedY);
 }
@@ -120,8 +115,6 @@ function handleEnd() {
     
     stick.style.left = `${centerOffset}px`;
     stick.style.top = `${centerOffset}px`;
-    xValue.textContent = '0';
-    yValue.textContent = '0';
     throttleUpdateMotors(0, 0);
 }
 
@@ -194,3 +187,34 @@ window.addEventListener("gamepadconnected", function(e) {
     console.log("Gamepad connected:", e.gamepad);
     startGamepadPolling();
 });
+
+/* ===== Live battery-voltage bar ======================================= */
+(() => {
+    const vinSpan = document.getElementById('vin-display');
+    const mask    = document.getElementById('battery-mask');
+    if (!vinSpan || !mask) return;          // element not on page
+
+    const MIN_V = 24.0;
+    const MAX_V = 28.0;
+
+    function updateBar(vin) {
+        // clamp to [24,28] → 0-100 %
+        const pct   = Math.max(0, Math.min(1, (vin - MIN_V) / (MAX_V - MIN_V)));
+        mask.style.width = (100 - pct * 100) + '%';
+        vinSpan.textContent = vin.toFixed(2);
+    }
+
+    // first shot (in case SSE hasn’t fired yet)
+    fetch('/api/voltage')
+        .then(r => r.ok ? r.json() : null)
+        .then(j => j && j.success && updateBar(j.vin))
+        .catch(() => {});
+
+    // live updates
+    const es = new EventSource('/stream/voltage');
+    es.onmessage = e => {
+        const v = parseFloat(e.data);
+        if (isFinite(v)) updateBar(v);
+    };
+    es.onerror = () => console.warn('Voltage SSE error – browser will auto-retry');
+})();
