@@ -53,6 +53,10 @@ class RobotWebServer:
         @self.app.route("/")
         def index():
             return render_template("index.html")
+        
+        @self.app.route("/config")
+        def config():
+            return render_template("config.html")
 
         @self.app.route("/robot-control.js")
         def js():
