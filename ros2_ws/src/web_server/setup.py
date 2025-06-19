@@ -22,7 +22,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'web_server_node = web_server.web_server_node:main',
+            'web_server_node = web_server.main:main',
         ],
     },
 )

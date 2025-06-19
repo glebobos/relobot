@@ -20,8 +20,17 @@ body {
 
 .nav-links {
     position: fixed;
-    top: 10px;
-    right: 10px;
+    top.status-bar{
+  --fill: 0;                /* 0‒1 range, set from JS */
+  position: relative;
+  width: 100%;
+  height: 22px;
+  border: 2px solid #555;
+  border-radius: 6px;
+  overflow: hidden;
+  margin: 0 auto 6px;
+  background:#222;          /* "empty" part of the bar */
+} right: 10px;
     z-index: 1000;
 }
 
@@ -325,8 +334,10 @@ body {
 /* ===== Battery-voltage bar ============================================ */
 .battery-container {
     margin: 16px auto 0;
-    width: 90%;
-    max-width: 480px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
 .battery-bar {
@@ -356,3 +367,77 @@ body {
     font-weight: 600;
     font-size: 17px;
 }
+
+.rpm-label {
+    margin-top: 2px;
+    font-weight: 600;
+    font-size: 17px;
+}
+
+.status-bar{
+  --fill: 0;                /* 0‒1 range, set from JS */
+  position: relative;
+  width: 100%;
+  height: 22px;
+  border: 2px solid #555;
+  border-radius: 6px;
+  overflow: hidden;
+  margin: 0 auto 6px;
+  background:#222;          /* “empty” part of the bar */
+}
+
+.status-bar::before{        /* the coloured liquid */
+  content:"";
+  position:absolute;
+  inset:0;
+  transform-origin:left;
+  transform:scaleX(var(--fill));
+  transition:transform .25s linear;
+  background:linear-gradient(
+      90deg,
+      #4caf50 0%,
+      #ffeb3b 50%,
+      #f44336 100%);
+  background-size: calc(100% / var(--fill)) 100%;  /* Scale gradient to maintain color at edge */
+  background-position: 0 0;  /* Always start from left */
+}
+
+/* reverse colours for voltage */
+#vin-bar::before{
+  background:linear-gradient(
+      90deg,
+      #f44336 0%,
+      #ffeb3b 50%,
+      #4caf50 100%);
+  background-size: calc(100% / var(--fill)) 100%;  /* Scale gradient to maintain color at edge */
+  background-position: 0 0;  /* Always start from left */
+}
+
+/* optional custom colours for RPM */
+.rpm::before{
+  background:linear-gradient(
+      90deg,
+      #2196f3 0%,
+      #4caf50 40%,
+      #ffeb3b 70%,
+      #f44336 100%);
+  background-size: calc(100% / var(--fill)) 100%;  /* Scale gradient to maintain color at edge */
+  background-position: 0 0;  /* Always start from left */
+}
+
+/* text on top */
+.status-label{
+  position:absolute;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#fff;
+  font-weight:600;
+  font-size:.8rem;
+  pointer-events:none;
+  z-index:1;
+}
+.status-mask{display:none;}
+
+/* Voltage bar specific - reversed gradient (red to green) */
