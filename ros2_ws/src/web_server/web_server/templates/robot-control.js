@@ -187,29 +187,31 @@ window.addEventListener("gamepadconnected", function(e) {
     console.log("Gamepad connected:", e.gamepad);
     startGamepadPolling();
 });
-/* ===== Shared helpers for the two status bars ========================= */
-const vinMask      = document.getElementById('vin-mask');     // green bar fill
-const vinSpan      = document.getElementById('vin-display');  // “26.4 V”
-const rpmMask      = document.getElementById('rpm-mask');     // blue→red bar fill
-const rpmSpan      = document.getElementById('rpm-display');  // “1250 RPM”
+/* ===== Status-bar helpers ============================================ */
+const vinSpan = document.getElementById('vin-display');   // “26.4 V”
+const rpmSpan = document.getElementById('rpm-display');   // “1250 RPM”
 
-function updateVoltage(volts, minV = 24.0, maxV = 28.0) {
-    if (!vinMask) return;
-    const pct = Math.max(0, Math.min(1, (volts - minV) / (maxV - minV))) * 100;
-    vinMask.style.width   = pct.toFixed(1) + '%';
-    vinSpan.textContent   = volts.toFixed(2) + ' V';
+const vinBar  = document.getElementById('vin-bar');       // outer bar
+const rpmBar  = document.getElementById('rpm-bar');
+
+function clamp01(x){ return Math.max(0, Math.min(1, x)); }
+
+function updateVoltage(volts, minV = 24, maxV = 28){
+  const fill = clamp01((volts - minV) / (maxV - minV));
+  vinBar.style.setProperty('--fill', fill.toFixed(3));
+  vinSpan.textContent = volts.toFixed(2) + ' V';
 }
 
-function updateRPM(rpm, maxRPM = 3100) {
-    if (!rpmMask) return;
-    const pct = Math.max(0, Math.min(1, rpm / maxRPM)) * 100;
-    rpmMask.style.width   = pct.toFixed(1) + '%';
-    rpmSpan.textContent   = Math.round(rpm) + ' RPM';
+function updateRPM(rpm, maxRPM = 3100){
+  const fill = clamp01(rpm / maxRPM);
+  rpmBar.style.setProperty('--fill', fill.toFixed(3));
+  rpmSpan.textContent = Math.round(rpm) + ' RPM';
 }
+
 
 /* ===== Live battery-voltage bar ======================================= */
 (() => {
-    if (!vinMask) return;          // bar not on this page
+    if (!vinBar) return;          // bar not on this page
 
     // first snapshot
     fetch('/api/voltage')
@@ -229,8 +231,7 @@ function updateRPM(rpm, maxRPM = 3100) {
 
 /* ===== Live RPM bar =================================================== */
 (() => {
-    if (!rpmMask) return;          // bar not on this page
-
+    if (!rpmBar) return;
     // first snapshot
     fetch('/api/rpm')
         .then(r => r.ok ? r.json() : null)
