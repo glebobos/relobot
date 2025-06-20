@@ -46,6 +46,13 @@ class KnifeController:
         self.cruise_button = 4
         # Track button state for toggle action
         self._cruise_button_pressed = False
+        # Cruise control variables
+        self._cruise_rpm = 0.0
+        self._cruise_active = False
+        # Define cruise control button as button 4
+        self.cruise_button = 4
+        # Track button state for toggle action
+        self._cruise_button_pressed = False
 
     # --------------------------------------------------------------- #
     #                         public API                              #
