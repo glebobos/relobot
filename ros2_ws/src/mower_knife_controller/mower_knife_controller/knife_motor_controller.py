@@ -1,3 +1,17 @@
+# Copyright 2025 ReloBot Contributors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import time
 import serial
 import re
@@ -34,8 +48,11 @@ class SerialKnifeMotorController:
                 return False
                 
         try:
-            # Send the RPM value as a command
-            command = f"{rpm}\n"
+            # Send the RPM value as a command (ensure we send positive values as the firmware handles direction)
+            # The firmware expects positive values but we'll use the sign to determine direction
+            direction_multiplier = -1 if rpm < 0 else 1
+            absolute_rpm = abs(rpm)
+            command = f"{absolute_rpm * direction_multiplier}\n"
             self.serial.write(command.encode())
             return True
         except serial.SerialException as e:

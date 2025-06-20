@@ -3,8 +3,8 @@
   <name>icm_20948</name>
   <version>2.0.0</version>
   <description>ROS2 driver for the ICM-20948 with Seeeduino XIAO</description>
-  <maintainer email="zip@todo.todo">Alpaca-zip</maintainer>
-  <license>TODO</license>
+  <maintainer email="info@relobot.org">ReloBot Team</maintainer>
+  <license>Apache License, Version 2.0</license>
   <buildtool_depend>ament_cmake</buildtool_depend>
   <depend>rclcpp</depend>
   <depend>sensor_msgs</depend>

@@ -1,6 +1,6 @@
 # ReloBot - ROS2 Robotics Platform
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 ## Overview
 
@@ -137,7 +137,7 @@ docker run -it --rm -v /tmp/.X11-unix:/tmp/.X11-unix -v /mnt/wslg:/mnt/wslg -e D
 For RViz2 with DDS discovery:
 ```bash
 docker run -it --rm -v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY \
-  -e XDG_RUNTIME_DIR -e ROS_DISCOVERY_SERVER=192.168.40.120:11811 \
+  -e XDG_RUNTIME_DIR -e ROS_DISCOVERY_SERVER=192.168.18.120:11811 \
   -e ROS_SUPER_CLIENT=True -e RMW_IMPLEMENTATION=rmw_fastrtps_cpp \
   -e PULSE_SERVER -e FASTDDS_BUILTIN_TRANSPORTS=UDPv4 \
   --network host osrf/ros:jazzy-desktop rviz2

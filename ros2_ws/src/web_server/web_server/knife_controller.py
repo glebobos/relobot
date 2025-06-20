@@ -1,3 +1,17 @@
+# Copyright 2025 ReloBot Contributors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import logging
 import threading
 import time
@@ -39,10 +53,11 @@ class KnifeController:
     def process_button_value(self, val: float) -> None:
         """Map button pressure [0-1] → RPM."""
         with self._lock:
-            if self.cfg.invert_knife:
-                val = 1.0 - val
-            self._rpm = 0.0 if val <= 0.05 else \
+            rpm_value = 0.0 if val <= 0.05 else \
                 self.min_rpm + val * (self.max_rpm - self.min_rpm)
+            
+            # Apply inversion to the direction of rotation by negating the RPM value
+            self._rpm = -rpm_value if self.cfg.invert_knife and rpm_value != 0 else rpm_value
             
     def process_cruise_control(self, knife_val: float, cruise_btn_val: float) -> None:
         """
@@ -53,12 +68,12 @@ class KnifeController:
             cruise_btn_val: Value of cruise control button (0-1)
         """
         with self._lock:
-            # Process knife value to get current RPM setting
-            if self.cfg.invert_knife:
-                knife_val = 1.0 - knife_val
-                
-            current_rpm = 0.0 if knife_val <= 0.05 else \
+            # Calculate the raw RPM value based on the knife button value
+            raw_rpm = 0.0 if knife_val <= 0.05 else \
                 self.min_rpm + knife_val * (self.max_rpm - self.min_rpm)
+                
+            # Apply inversion to the direction of rotation by negating the RPM value
+            current_rpm = -raw_rpm if self.cfg.invert_knife and raw_rpm != 0 else raw_rpm
             
             # Keep track of knife button being actively pressed (>0.05)
             knife_is_active = knife_val > 0.05
