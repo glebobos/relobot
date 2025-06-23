@@ -1,5 +1,5 @@
 # ──────────────────────────────────────────────────────────────────────────────
-# CONFIGURATION
+# CONFIGURATION  ❱  tune all values here
 # ──────────────────────────────────────────────────────────────────────────────
 # Motor / PWM
 FREQUENCY                = 10_000     # Hz
@@ -22,7 +22,7 @@ PID_KD                   = 0.00001
 R1                       = 104_000    # Ω
 R2                       = 10_000     # Ω
 DIVIDER_RATIO            = (R1 + R2) / R2
-CAL                      = 1.0        # extra calibration factor
+CAL                      = 1.022        # extra calibration factor
 
 # ADC
 ADC_MAX                  = 65_535
@@ -222,7 +222,7 @@ def process_command(cmd, m: MotorController):
 
 def main():
     motor = MotorController()      # start stopped
-    motor.set_rpm(700) 
+    motor.set_rpm(0) 
     while True:
         # ─── USB-CDC command handler
         if usb_cdc.data.in_waiting:
@@ -248,4 +248,3 @@ if __name__ == "__main__":
         # fail-safe shutdown
         FWD_EN.value = REV_EN.value = False
         FWD_PWM.duty_cycle = REV_PWM.duty_cycle = 0
-
