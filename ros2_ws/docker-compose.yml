@@ -96,29 +96,29 @@ services:
       - ds
     restart: unless-stopped
 
-  # ros2_slam:
-  #   build:
-  #     context: .
-  #     dockerfile: Slam.dockerfile
-  #   ipc: host
-  #   volumes:
-  #     - .:/ros2_ws/
-  #   devices:
-  #     - /dev/:/dev/
-  #   environment:
-  #     - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
-  #     - FASTDDS_BUILTIN_TRANSPORTS=DEFAULT
-  #     - ROS_DISCOVERY_SERVER=${HOST_IP}:11811
-  #     - ROS_SUPER_CLIENT=True
-  #     - PYTHONUNBUFFERED=1
-  #   network_mode: host
-  #   privileged: true
-  #   depends_on:
-  #     - ds
-  #     - ros2_imu
-  #     - ros2_tof_camera
-  #     - ros2_diff_robot
-  #   restart: unless-stopped
+  ros2_slam:
+    build:
+      context: .
+      dockerfile: Slam.dockerfile
+    ipc: host
+    volumes:
+      - .:/ros2_ws/
+    devices:
+      - /dev/:/dev/
+    environment:
+      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+      - FASTDDS_BUILTIN_TRANSPORTS=DEFAULT
+      - ROS_DISCOVERY_SERVER=${HOST_IP}:11811
+      - ROS_SUPER_CLIENT=True
+      - PYTHONUNBUFFERED=1
+    network_mode: host
+    privileged: true
+    depends_on:
+      - ds
+      - ros2_imu
+      - ros2_tof_camera
+      - ros2_diff_robot
+    restart: unless-stopped
 
   ros2_knife_controller:
     build:

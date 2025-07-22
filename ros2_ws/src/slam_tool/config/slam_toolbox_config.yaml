@@ -9,7 +9,7 @@ slam_toolbox:
     scan_topic: "/scan_filtered"
     mode: mapping
     # use_map_saver: true
-
+    start_at_dock: true
     # Plugin params
     solver_plugin: solver_plugins::CeresSolver
     ceres_linear_solver: SPARSE_NORMAL_CHOLESKY
