@@ -1,27 +1,51 @@
-scan_to_scan_filter_chain:
+laser_filter:
   ros__parameters:
+    # ? Óäàëÿåì «òåíè» îò ðåçêèõ ïåðåïàäîâ äàëüíîñòè
     filter1:
-      type: laser_filters/LaserArrayFilter
-      name: median
-      params: 
-        range_filter_chain:
-          filter1: 
-            name: median
-            type: filters/MultiChannelMedianFilterFloat 
-            params:
-              number_of_observations: 5
-              unused: 10
-        intensity_filter_chain:
-          filter1:
-            name: median
-            type: filters/MultiChannelMedianFilterFloat 
-            params:
-              number_of_observations: 5
-              unused: 10
-    filter2:
-      name: intensity
-      type: laser_filters/LaserScanIntensityFilter
+      name: shadows
+      type: laser_filters/ScanShadowsFilter
       params:
-        lower_threshold: 8000.
-        upper_threshold: 100000.
-        disp_histogram: 0
+        min_angle: 5.            # áûëî 10 > áåð¸ì ÷óòü ÷óâñòâèòåëüíåé
+        max_angle: 175.          # áûëî 170 > îõâàòûâàåì ïî÷òè ïîëíûé ñåêòîð
+        neighbors: 40            # áûëî 20 > èùåì ñêà÷êè äàëüíîñòè óæå â äâîéíîì «îêíå»
+        window: 2                # øèðèíà ïðîâåðÿåìîãî ôðàãìåíòà â îáà áîêà
+
+    # ? Äàâèì îäèíî÷íûå/ìåëêèå áðûçãè
+    filter2:
+      name: speckle_filter
+      type: laser_filters/LaserScanSpeckleFilter
+      params:
+        filter_type: 1
+        max_range: 2.0
+        max_range_difference: 0.05   # áûëî 0.1 > æ¸ñò÷å ñðàâíèâàåì ñîñåäíèå ëó÷è
+        filter_window: 8             # áûëî 4  > òðåáóåì-ìèíèìóì 8 áëèçêèõ ñîñåäåé
+
+    # ? Óäàëÿåì çàñâåòêó êîðïóñà: áîêñ «òåëî ðîáîòà»
+    filter3:
+      name: box
+      type: laser_filters/LaserScanBoxFilter
+      params:
+        box_frame: laser
+        min_x: -0.15   # ÷óòü ðàñøèðèëè ïî áîêàì
+        max_x: 0.35
+        min_y: -0.35
+        max_y: 0.25
+        min_z: -0.15
+        max_z: 0.15
+
+    # ? Îãðàíè÷èâàåì useful-ñåêòîð ñïåðåäè (îñòàâëÿåì ±90°)
+    filter4:
+      name: angle
+      type: laser_filters/LaserScanAngularBoundsFilterInPlace
+      params:
+        lower_angle: -1.57   # -90°
+        upper_angle:  1.57   # +90°
+
+    # ? Ñãëàæèâàåì îñòàâøèåñÿ «çóáöû» ìåäèàíîé
+    filter5:
+      name: median
+      type: laser_filters/LaserScanMedianFilter
+      params:
+        window: 5            # ìåäèàíà ïî 5-òè ëó÷àì; ñãëàæèâàåò, íî íå ðàçìûâàåò êðàÿ
+
+    # ? Óêîðà÷èâàåì äàííûå ä
