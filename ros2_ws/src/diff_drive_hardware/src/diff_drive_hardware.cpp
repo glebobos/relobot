@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
+ 
 #include "diff_drive_hardware/diff_drive_hardware.hpp"
 
 #include <chrono>
@@ -22,6 +22,7 @@
 #include <string>
 #include <sstream>
 #include <iomanip>
+#include <thread>
 #include <dirent.h>  // Include for directory operations
 
 namespace diff_drive_hardware
@@ -99,10 +100,19 @@ hardware_interface::CallbackReturn DiffDriveHardware::on_activate(
   RCLCPP_INFO(rclcpp::get_logger("DiffDriveHardware"), "Starting controller ...");
   
   try {
+    // First send reset command to clear encoder counts and stop motors
+    std::string reset_command = "reset_counts\n";
+    serial_port_.Write(reset_command);
+    RCLCPP_INFO(rclcpp::get_logger("DiffDriveHardware"), "Sent encoder reset command");
+    
+    // Wait a bit for the reset to be processed
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    
+    // Then send zero command as backup
     std::string zero_command = "0.00,0.00\n";
     serial_port_.Write(zero_command);
   } catch (const std::exception& e) {
-    RCLCPP_ERROR(rclcpp::get_logger("DiffDriveHardware"), "Error sending zero command: %s", e.what());
+    RCLCPP_ERROR(rclcpp::get_logger("DiffDriveHardware"), "Error sending reset/zero command: %s", e.what());
     return hardware_interface::CallbackReturn::ERROR;
   }
 
@@ -114,10 +124,19 @@ hardware_interface::CallbackReturn DiffDriveHardware::on_deactivate(
 {
   RCLCPP_INFO(rclcpp::get_logger("DiffDriveHardware"), "Stopping controller...");
   try {
+    // Send reset command to clear encoder counts and stop motors
+    std::string reset_command = "reset_counts\n";
+    serial_port_.Write(reset_command);
+    RCLCPP_INFO(rclcpp::get_logger("DiffDriveHardware"), "Sent encoder reset command");
+    
+    // Wait a bit for the reset to be processed
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    
+    // Then send zero command as backup
     std::string zero_command = "0.00,0.00\n";
     serial_port_.Write(zero_command);
   } catch (const std::exception& e) {
-    RCLCPP_ERROR(rclcpp::get_logger("DiffDriveHardware"), "Error sending zero command: %s", e.what());
+    RCLCPP_ERROR(rclcpp::get_logger("DiffDriveHardware"), "Error sending reset/zero command: %s", e.what());
   }
   return hardware_interface::CallbackReturn::SUCCESS;
 }

@@ -3,7 +3,7 @@ import board
 import pwmio
 import usb_cdc
 import countio
-import math
+import math 
 
 # Constants
 MAX_SPEED_RAD_S = 7.5  # Specify maximum speed in rad/sec
@@ -94,6 +94,19 @@ def process_command(command):
         command = command.strip()
         if command.lower() == "whoyouare":
             usb_cdc.data.write(b"wheels\n")
+            return True
+        
+        if command.lower() == "reset_counts":
+            # Reset accumulated encoder counts and stop motors
+            encoder_state.accumulated_left_count = 0
+            encoder_state.accumulated_right_count = 0
+            encoder_state.prev_raw_left_count = encoder_left.count
+            encoder_state.prev_raw_right_count = encoder_right.count
+            set_motor_speed(1, 0)
+            set_motor_speed(2, 0)
+            encoder_state.prev_left_speed = 0
+            encoder_state.prev_right_speed = 0
+            print("Encoder counts reset and motors stopped")
             return True
         
         parts = command.split(',')
