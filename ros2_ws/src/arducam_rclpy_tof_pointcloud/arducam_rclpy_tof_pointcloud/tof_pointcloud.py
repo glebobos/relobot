@@ -42,10 +42,16 @@ from ArducamDepthCamera import (
 MAX_DISTANCE = 4000
 CONFIDENCE_THRESHOLD = 50
 FRAME_RATE = 20.0  # Hz
+DEFAULT_FRAME_SKIP = 1  # Process every Nth frame
 
 class Option:
     """Configuration options for camera setup"""
     cfg: Optional[str] = None
+    frame_rate: float = FRAME_RATE
+    frame_skip: int = DEFAULT_FRAME_SKIP
+    enable_pointcloud: bool = True
+    enable_depth_image: bool = True
+    enable_confidence_image: bool = True
 
 class TOFPublisher(Node):
     """
@@ -64,6 +70,10 @@ class TOFPublisher(Node):
         if self.tof_ is None:
             raise RuntimeError("Failed to initialize ArduCam ToF camera")
 
+        # Store configuration options
+        self.options = options
+        self.frame_counter = 0
+
         # Configure message headers
         self.header = Header()
         self.header.frame_id = "sensor_frame"
@@ -71,16 +81,23 @@ class TOFPublisher(Node):
         # Initialize CV Bridge for image conversion
         self.bridge = CvBridge()
 
-        # Create publishers
-        self.publisher_pcl_ = self.create_publisher(
-            PointCloud2, "cloud_in", 10
-        )
-        self.publisher_depth_image_ = self.create_publisher(
-            Image, "depth_image", 10
-        )
-        self.publisher_confidence_image_ = self.create_publisher(
-            Image, "confidence_image", 10
-        )
+        # Create publishers based on configuration
+        self.publisher_pcl_ = None
+        self.publisher_depth_image_ = None
+        self.publisher_confidence_image_ = None
+        
+        if options.enable_pointcloud:
+            self.publisher_pcl_ = self.create_publisher(
+                PointCloud2, "cloud_in", 10
+            )
+        if options.enable_depth_image:
+            self.publisher_depth_image_ = self.create_publisher(
+                Image, "depth_image", 10
+            )
+        if options.enable_confidence_image:
+            self.publisher_confidence_image_ = self.create_publisher(
+                Image, "confidence_image", 10
+            )
 
         # Get camera intrinsic parameters
         self.fx = self.tof_.getControl(Control.INTRINSIC_FX) / 100
@@ -95,7 +112,7 @@ class TOFPublisher(Node):
         )
         
         # Start the update timer
-        self.timer_ = self.create_timer(1.0 / FRAME_RATE, self.update)
+        self.timer_ = self.create_timer(1.0 / options.frame_rate, self.update)
 
     def _init_camera(self, options: Option) -> Optional[ArducamCamera]:
         """
@@ -174,14 +191,17 @@ class TOFPublisher(Node):
         Returns:
             Colorized depth image with confidence filtering
         """
-        # Normalize depth to 0-255 range
-        normalized = (depth_data * (255.0 / self.camera_range)).astype(np.uint8)
+        # Normalize depth to 0-255 range efficiently
+        normalized = np.clip((depth_data * (255.0 / self.camera_range)), 0, 255).astype(np.uint8)
         
         # Apply rainbow colormap
         colorized = cv2.applyColorMap(normalized, cv2.COLORMAP_RAINBOW)
         
-        # Apply confidence filtering
-        return self._apply_confidence_filter(colorized, confidence_data)
+        # Apply confidence filtering using boolean indexing (more efficient)
+        low_confidence_mask = confidence_data < CONFIDENCE_THRESHOLD
+        colorized[low_confidence_mask] = 0
+        
+        return colorized
 
     def create_confidence_image(self, confidence_data: np.ndarray) -> np.ndarray:
         """
@@ -212,30 +232,37 @@ class TOFPublisher(Node):
         Returns:
             Nx3 array of 3D points (z, -x, -y) in meters
         """
-        # Filter by confidence and convert to meters
-        depth_filtered = depth_data.copy()
-        depth_filtered[confidence_data < CONFIDENCE_THRESHOLD] = 0
-        z = depth_filtered.astype(np.float32) / 1000.0  # mm to meters
+        # Create combined mask for confidence and valid depth in one operation
+        valid_mask = (confidence_data >= CONFIDENCE_THRESHOLD) & (depth_data > 0)
         
-        # Mark invalid points as NaN
-        z[z <= 0.0] = np.nan
+        if not np.any(valid_mask):
+            return np.empty((0, 3), dtype=np.float32)
         
-        # Calculate x and y coordinates using camera intrinsics
-        x = (self.u_grid - (self.width_ / 2.0)) * z / self.fx
-        y = (self.v_grid - (self.height_ / 2.0)) * z / self.fy
+        # Apply mask early to reduce computation
+        valid_indices = np.where(valid_mask)
+        valid_depth = depth_data[valid_indices].astype(np.float32) / 1000.0  # mm to meters
+        valid_u = self.u_grid[valid_indices]
+        valid_v = self.v_grid[valid_indices]
         
-        # Stack points and filter out invalid ones
-        points = np.dstack((z, -x, -y)).reshape(-1, 3)
-        valid_mask = ~np.isnan(points).any(axis=1)
+        # Calculate x and y coordinates using camera intrinsics (vectorized)
+        z = valid_depth
+        x = (valid_u - (self.width_ / 2.0)) * z / self.fx
+        y = (valid_v - (self.height_ / 2.0)) * z / self.fy
         
-        return points[valid_mask]
+        # Stack points directly without reshape
+        return np.column_stack((z, -x, -y))
     
     def update(self) -> None:
         """
         Timer callback to process frame data and publish messages
         """
+        # Implement frame skipping for CPU optimization
+        self.frame_counter += 1
+        if self.frame_counter % self.options.frame_skip != 0:
+            return
+            
         # Request frame from camera
-        frame = self.tof_.requestFrame(int(1000/FRAME_RATE))
+        frame = self.tof_.requestFrame(int(1000/self.options.frame_rate))
         if frame is None or not isinstance(frame, DepthData):
             if frame:
                 self.tof_.releaseFrame(frame)
@@ -246,25 +273,39 @@ class TOFPublisher(Node):
             depth_data = frame.depth_data
             confidence_data = frame.confidence_data
             
+            # Check if any subscribers exist before processing
+            has_pcl_subscribers = (self.publisher_pcl_ is not None and 
+                                 self.publisher_pcl_.get_subscription_count() > 0)
+            has_depth_subscribers = (self.publisher_depth_image_ is not None and 
+                                   self.publisher_depth_image_.get_subscription_count() > 0)
+            has_conf_subscribers = (self.publisher_confidence_image_ is not None and 
+                                  self.publisher_confidence_image_.get_subscription_count() > 0)
+            
+            if not (has_pcl_subscribers or has_depth_subscribers or has_conf_subscribers):
+                return
+            
             # Update timestamp for all messages
             self.header.stamp = self.get_clock().now().to_msg()
             
-            # Process and publish point cloud
-            points = self._create_point_cloud(depth_data, confidence_data)
-            pc2_msg = point_cloud2.create_cloud_xyz32(self.header, points)
-            self.publisher_pcl_.publish(pc2_msg)
+            # Process and publish point cloud only if needed
+            if has_pcl_subscribers:
+                points = self._create_point_cloud(depth_data, confidence_data)
+                pc2_msg = point_cloud2.create_cloud_xyz32(self.header, points)
+                self.publisher_pcl_.publish(pc2_msg)
             
-            # Process and publish depth image
-            depth_image = self.create_depth_image(depth_data, confidence_data)
-            depth_image_msg = self.bridge.cv2_to_imgmsg(depth_image, "bgr8")
-            depth_image_msg.header = self.header
-            self.publisher_depth_image_.publish(depth_image_msg)
+            # Process and publish depth image only if needed
+            if has_depth_subscribers:
+                depth_image = self.create_depth_image(depth_data, confidence_data)
+                depth_image_msg = self.bridge.cv2_to_imgmsg(depth_image, "bgr8")
+                depth_image_msg.header = self.header
+                self.publisher_depth_image_.publish(depth_image_msg)
             
-            # Process and publish confidence image
-            confidence_image = self.create_confidence_image(confidence_data)
-            confidence_image_msg = self.bridge.cv2_to_imgmsg(confidence_image, "mono8")
-            confidence_image_msg.header = self.header
-            self.publisher_confidence_image_.publish(confidence_image_msg)
+            # Process and publish confidence image only if needed
+            if has_conf_subscribers:
+                confidence_image = self.create_confidence_image(confidence_data)
+                confidence_image_msg = self.bridge.cv2_to_imgmsg(confidence_image, "mono8")
+                confidence_image_msg.header = self.header
+                self.publisher_confidence_image_.publish(confidence_image_msg)
             
         finally:
             # Always release the frame
@@ -283,11 +324,26 @@ def main(args=None):
     # Parse command line arguments
     parser = ArgumentParser(description="ArduCam ToF pointcloud publisher for ROS2")
     parser.add_argument("--cfg", type=str, help="Path to camera configuration file")
+    parser.add_argument("--frame-rate", type=float, default=FRAME_RATE, 
+                       help="Frame rate in Hz (default: 20.0)")
+    parser.add_argument("--frame-skip", type=int, default=DEFAULT_FRAME_SKIP,
+                       help="Process every Nth frame (default: 1)")
+    parser.add_argument("--disable-pointcloud", action="store_true",
+                       help="Disable point cloud publishing")
+    parser.add_argument("--disable-depth-image", action="store_true",
+                       help="Disable depth image publishing")
+    parser.add_argument("--disable-confidence-image", action="store_true",
+                       help="Disable confidence image publishing")
     ns, _ = parser.parse_known_args()
     
     # Create camera options
     options = Option()
     options.cfg = ns.cfg
+    options.frame_rate = ns.frame_rate
+    options.frame_skip = ns.frame_skip
+    options.enable_pointcloud = not ns.disable_pointcloud
+    options.enable_depth_image = not ns.disable_depth_image
+    options.enable_confidence_image = not ns.disable_confidence_image
     
     try:
         # Create and initialize the ToF publisher node
