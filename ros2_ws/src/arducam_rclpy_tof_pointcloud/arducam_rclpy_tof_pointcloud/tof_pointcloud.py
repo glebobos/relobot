@@ -40,7 +40,7 @@ from ArducamDepthCamera import (
 
 # Constants
 MAX_DISTANCE = 4000
-CONFIDENCE_THRESHOLD = 90
+CONFIDENCE_THRESHOLD = 50
 FRAME_RATE = 20.0  # Hz
 
 class Option:
