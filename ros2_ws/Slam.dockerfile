@@ -2,7 +2,8 @@ FROM ros:humble
 
 # Install additional dependencies
 RUN apt-get update && apt-get install -y \
-    python3-pip ros-humble-sensor-msgs-py ros-humble-slam-toolbox ros-humble-robot-localization
+    python3-pip ros-humble-sensor-msgs-py ros-humble-slam-toolbox ros-humble-robot-localization \
+    ros-humble-navigation2 ros-humble-nav2-bringup
 
 # Create workspace
 WORKDIR /ros2_ws

@@ -11,8 +11,7 @@ setup(
         # Install package.xml, launch, and config files
         ('share/' + package_name, ['package.xml']),
         ('share/' + package_name + '/launch', ['launch/launch_slam.py']),
-        ('share/' + package_name + '/config', ['config/slam_toolbox_config.yaml']),
-        ('share/' + package_name + '/config', ['config/ekf.yaml']),
+        ('share/' + package_name + '/config', ['config/slam_toolbox_config.yaml', 'config/ekf.yaml', 'config/nav2_params.yaml']),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
