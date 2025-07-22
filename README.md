@@ -143,6 +143,54 @@ docker run -it --rm -v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY \
   --network host osrf/ros:jazzy-desktop rviz2
 ```
 
+### Creating Convenient Aliases
+
+To make running RViz2 and other ReloBot commands easier, you can create convenient aliases:
+
+#### RViz2 Alias
+
+1. Make the RViz2 script executable (if not already done):
+   ```bash
+   chmod +x /home/admin/Documents/relobot/start_rviz2.sh
+   ```
+
+2. Add the alias to your shell configuration:
+   ```bash
+   echo 'alias rviz="/home/admin/Documents/relobot/start_rviz2.sh"' >> ~/.bashrc
+   ```
+
+3. Reload your shell configuration:
+   ```bash
+   source ~/.bashrc
+   ```
+
+4. Now you can start RViz2 from any terminal with:
+   ```bash
+   rviz
+   ```
+
+#### Additional Useful Aliases
+
+You can also create aliases for other common tasks:
+
+```bash
+# Add more aliases to ~/.bashrc
+echo 'alias relobot-start="cd /home/admin/Documents/relobot/ros2_ws && docker compose up"' >> ~/.bashrc
+echo 'alias relobot-stop="cd /home/admin/Documents/relobot/ros2_ws && docker compose down"' >> ~/.bashrc
+echo 'alias relobot-logs="cd /home/admin/Documents/relobot/ros2_ws && docker compose logs -f"' >> ~/.bashrc
+echo 'alias relobot-find="python3 /home/admin/Documents/relobot/finddevice.py"' >> ~/.bashrc
+
+# Reload shell configuration
+source ~/.bashrc
+```
+
+After setting up these aliases, you can use:
+- `rviz` - Start RViz2 visualization
+- `relobot-start` - Start all ReloBot services
+- `relobot-stop` - Stop all ReloBot services  
+- `relobot-logs` - View live logs from all services
+- `relobot-find` - Find and identify connected devices
+
 ## Robot Control
 
 ### Basic Movement Commands
