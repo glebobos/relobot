@@ -120,6 +120,25 @@ services:
       - ros2_diff_robot
     restart: unless-stopped
 
+  ros2_rosbridge:
+    build:
+      context: .
+      dockerfile: Rosbridge.dockerfile
+    ipc: host
+    volumes:
+      - .:/ros2_ws/
+    environment:
+      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+      - FASTDDS_BUILTIN_TRANSPORTS=DEFAULT
+      - ROS_DISCOVERY_SERVER=${HOST_IP}:11811
+      - ROS_SUPER_CLIENT=True
+    network_mode: host
+    ports:
+      - "9090:9090"
+    depends_on:
+      - ds
+    restart: unless-stopped
+
   ros2_knife_controller:
     build:
       context: .

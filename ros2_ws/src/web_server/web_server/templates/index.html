@@ -38,6 +38,10 @@
         </div>
     </div>
     
+    <div class="map-section">
+        <div id="map"></div>
+    </div>
+
     <div class="joystick-section">
         <div id="joystick">
             <div id="stick"></div>
@@ -63,5 +67,9 @@
         <button class="emergency-stop" onclick="emergencyStop()">🛑 EMERGENCY STOP</button>
     </div>
     <script src="/robot-control.js"></script>
+    <script src="https://static.robotwebtools.org/EventEmitter2/current/eventemitter2.min.js"></script>
+    <script src="https://static.robotwebtools.org/roslibjs/current/roslib.min.js"></script>
+    <script src="https://static.robotwebtools.org/ros2djs/current/ros2d.min.js"></script>
+    <script src="/map-viewer.js"></script>
 </body>
 </html>
