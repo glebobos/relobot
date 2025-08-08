@@ -77,6 +77,11 @@ class RobotWebServer:
             return send_from_directory("templates", "robot-control.js",
                                        mimetype="application/javascript")
 
+        @self.app.route("/map-viewer.js")
+        def map_viewer_js():
+            return send_from_directory("templates", "map-viewer.js",
+                                       mimetype="application/javascript")
+
         @self.app.route("/styles.css")
         def css():
             return send_from_directory("templates", "styles.css",
