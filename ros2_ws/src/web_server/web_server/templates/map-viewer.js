@@ -1,10 +1,6 @@
 window.onload = function () {
     // Give ROS bridge some time to startup
     setTimeout(() => {
-        console.log('ROS3D available:', !!window.ROS3D);
-        console.log('THREE available:', !!window.THREE);
-        console.log('ROSLIB available:', !!window.ROSLIB);
-        
         if (!window.ROS3D) {
             console.error('ROS3D is not available!');
             return;
@@ -68,8 +64,6 @@ window.onload = function () {
             // Update robot orientation
             var q = message.pose.pose.orientation;
             robotMarker.quaternion.set(q.x, q.y, q.z, q.w);
-            
-            console.log('Robot position:', message.pose.pose.position);
         });
 
         // Handle window resize to make the viewer responsive
