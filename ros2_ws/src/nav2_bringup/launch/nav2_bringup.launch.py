@@ -25,6 +25,7 @@ def generate_launch_description():
     default_bt_xml_filename = LaunchConfiguration('default_bt_xml_filename')
     map_subscribe_transient_local = LaunchConfiguration('map_subscribe_transient_local')
     use_slam = LaunchConfiguration('use_slam')
+    map_yaml_file = LaunchConfiguration('map')
 
     lifecycle_nodes = ['controller_server',
                        'planner_server',
@@ -81,6 +82,11 @@ def generate_launch_description():
             'use_slam', default_value='True',
             description='Whether to run SLAM'),
 
+        DeclareLaunchArgument(
+            'map',
+            default_value='',
+            description='Full path to map yaml file to load'),
+
         GroupAction([
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(os.path.join(launch_dir, 'slam_launch.py')),
@@ -94,7 +100,7 @@ def generate_launch_description():
                 PythonLaunchDescriptionSource(os.path.join(launch_dir, 'localization_launch.py')),
                 condition=UnlessCondition(use_slam),
                 launch_arguments={'namespace': namespace,
-                                  'map': '',
+                                  'map': map_yaml_file,
                                   'use_sim_time': use_sim_time,
                                   'autostart': autostart,
                                   'params_file': params_file,

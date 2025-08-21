@@ -2,9 +2,9 @@
 <package format="3">
   <name>nav2_bringup</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
-  <maintainer email="todo@todo.com">TODO</maintainer>
-  <license>TODO: License declaration</license>
+  <description>A package to bring up the Nav2 stack.</description>
+  <maintainer email="jules@example.com">Jules</maintainer>
+  <license>Apache-2.0</license>
 
   <buildtool_depend>ament_python</buildtool_depend>
 
@@ -16,7 +16,7 @@
   <exec_depend>nav2_bt_navigator</exec_depend>
   <exec_depend>nav2_lifecycle_manager</exec_depend>
   <exec_depend>nav2_waypoint_follower</exec_depend>
-  <exec_depend>m-explore-ros2</exec_depend>
+  <exec_depend>explore_lite</exec_depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
