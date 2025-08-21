@@ -34,7 +34,7 @@ from sensor_msgs.msg import Image
 from std_msgs.msg import Float32, Empty
 from std_srvs.srv import SetBool
 from nav2_msgs.srv import SaveMap
-from m_explore_ros2.action import Explore
+from explore_lite.action import Explore
 
 logger = logging.getLogger(__name__)
 
@@ -191,6 +191,10 @@ class RobotROSNode(Node):
         result = future.result().result
         self.get_logger().info('Result: {0}'.format(result.success))
         self._explore_goal_handle = None
+
+    @property
+    def explorer_is_running(self) -> bool:
+        return self._explore_goal_handle is not None
 
     # ------------------------------------------------------------------------- #
     #                              telemetry                                    #

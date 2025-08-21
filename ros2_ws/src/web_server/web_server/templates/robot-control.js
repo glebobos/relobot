@@ -192,6 +192,14 @@ window.addEventListener("gamepadconnected", function(e) {
 const saveMapButton = document.getElementById('save-map-button');
 const explorerToggle = document.getElementById('explorer-toggle');
 
+fetch('/api/explorer/status')
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            explorerToggle.checked = data.is_running;
+        }
+    });
+
 saveMapButton.addEventListener('click', () => {
     fetch('/api/map/save', {
         method: 'POST',
@@ -230,7 +238,7 @@ tabs.forEach(tab => {
 });
 
 // Set default active tab
-document.querySelector('.nav-links a[href^="#"]').click();
+document.querySelector('.nav-links a[href="#map-section"]').click();
 /* ===== Status-bar helpers ============================================ */
 const vinSpan = document.getElementById('vin-display');   // “26.4 V”
 const rpmSpan = document.getElementById('rpm-display');   // “1250 RPM”

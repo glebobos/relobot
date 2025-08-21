@@ -217,6 +217,10 @@ class RobotWebServer:
             self.node.toggle_explorer()
             return jsonify(success=True, message="Explorer toggled")
 
+        @self.app.route("/api/explorer/status", methods=["GET"])
+        def explorer_status():
+            return jsonify(success=True, is_running=self.node.explorer_is_running)
+
     # --------------------------------------------------------------------- #
     #                          helpers & lifecycle                          #
     # --------------------------------------------------------------------- #
