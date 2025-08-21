@@ -130,7 +130,7 @@ document.addEventListener('touchend', handleEnd);
 
 // Video error handling
 cameraStream.onerror = function() {
-    console.log('Camera stream error, retrying...');
+    console.error('Camera stream error, retrying...');
     setTimeout(() => {
         const selectedCamera = document.querySelector('input[name="camera"]:checked').value;
         this.src = `/video_feed/${selectedCamera}?` + new Date().getTime();
@@ -226,7 +226,7 @@ function updateRPM(rpm, maxRPM = 3100){
         if (isFinite(v)) updateVoltage(v);
     };
     es.onerror = () =>
-        console.warn('Voltage SSE error – browser will auto-retry');
+        console.error('Voltage SSE error – browser will auto-retry');
 })();
 
 /* ===== Live RPM bar =================================================== */
@@ -245,5 +245,5 @@ function updateRPM(rpm, maxRPM = 3100){
         if (isFinite(r)) updateRPM(r);
     };
     es.onerror = () =>
-        console.warn('RPM SSE error – browser will auto-retry');
+        console.error('RPM SSE error – browser will auto-retry');
 })();
