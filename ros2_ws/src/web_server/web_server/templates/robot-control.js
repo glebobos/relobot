@@ -187,6 +187,50 @@ window.addEventListener("gamepadconnected", function(e) {
     console.log("Gamepad connected:", e.gamepad);
     startGamepadPolling();
 });
+
+// Map controls
+const saveMapButton = document.getElementById('save-map-button');
+const explorerToggle = document.getElementById('explorer-toggle');
+
+saveMapButton.addEventListener('click', () => {
+    fetch('/api/map/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+    }).then(response => response.json())
+      .then(data => {
+          alert(data.success ? 'Map saving triggered!' : 'Map saving failed: ' + data.error);
+      });
+});
+
+explorerToggle.addEventListener('change', function() {
+    fetch('/api/explorer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+    });
+});
+
+// Tab switching
+const tabs = document.querySelectorAll('.nav-links a');
+const tabContents = document.querySelectorAll('.tab-content');
+
+tabs.forEach(tab => {
+    tab.addEventListener('click', e => {
+        const href = tab.getAttribute('href');
+        if (href.startsWith('#')) {
+            e.preventDefault();
+            const target = document.querySelector(href);
+            tabContents.forEach(tc => {
+                tc.classList.remove('active');
+            });
+            target.classList.add('active');
+            tabs.forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+        }
+    });
+});
+
+// Set default active tab
+document.querySelector('.nav-links a[href^="#"]').click();
 /* ===== Status-bar helpers ============================================ */
 const vinSpan = document.getElementById('vin-display');   // “26.4 V”
 const rpmSpan = document.getElementById('rpm-display');   // “1250 RPM”

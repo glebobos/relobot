@@ -29,9 +29,12 @@ import numpy as np
 from cv_bridge import CvBridge
 from geometry_msgs.msg import Twist
 from rclpy.node import Node
+from rclpy.action import ActionClient
 from sensor_msgs.msg import Image
-from std_msgs.msg import Float32
+from std_msgs.msg import Float32, Empty
 from std_srvs.srv import SetBool
+from nav2_msgs.srv import SaveMap
+from m_explore_ros2.action import Explore
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +51,9 @@ class RobotROSNode(Node):
 
         # --- service client -------------------------------------------------------
         self._pid_client = self.create_client(SetBool, "knives/enable_pid")
+        self._map_saver_client = self.create_client(SaveMap, "/map_saver/save_map")
+        self._explore_action_client = ActionClient(self, Explore, 'explore')
+        self._explore_goal_handle = None
 
         # --- image stuff ----------------------------------------------------------
         self._bridge = CvBridge()
@@ -144,6 +150,47 @@ class RobotROSNode(Node):
             return
         req = SetBool.Request(data=enable)
         self._pid_client.call_async(req)   # we ignore response here
+
+    def save_map(self) -> None:
+        if not self._map_saver_client.service_is_ready():
+            self.get_logger().warning("Map saver service unavailable")
+            return
+        req = SaveMap.Request()
+        req.map_topic = "map"
+        req.map_url = "map"
+        req.image_format = "png"
+        req.free_thresh = 0.25
+        req.occupied_thresh = 0.65
+        self._map_saver_client.call_async(req)
+
+    def toggle_explorer(self) -> None:
+        if self._explore_goal_handle is not None:
+            self.get_logger().info('Cancelling explore goal')
+            self._explore_goal_handle.cancel_goal_async()
+            self._explore_goal_handle = None
+        else:
+            self.get_logger().info('Sending explore goal')
+            goal_msg = Explore.Goal()
+            self._explore_action_client.wait_for_server()
+            self._send_goal_future = self._explore_action_client.send_goal_async(goal_msg)
+            self._send_goal_future.add_done_callback(self.goal_response_callback)
+
+    def goal_response_callback(self, future):
+        goal_handle = future.result()
+        if not goal_handle.accepted:
+            self.get_logger().info('Goal rejected :(')
+            return
+
+        self.get_logger().info('Goal accepted :)')
+        self._explore_goal_handle = goal_handle
+
+        self._get_result_future = goal_handle.get_result_async()
+        self._get_result_future.add_done_callback(self.get_result_callback)
+
+    def get_result_callback(self, future):
+        result = future.result().result
+        self.get_logger().info('Result: {0}'.format(result.success))
+        self._explore_goal_handle = None
 
     # ------------------------------------------------------------------------- #
     #                              telemetry                                    #

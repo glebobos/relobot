@@ -112,6 +112,32 @@ body {
     border: 1px solid #ccc;
 }
 
+.map-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    margin-top: 10px;
+}
+
+.map-controls button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    background-color: #007bff;
+    color: white;
+    cursor: pointer;
+}
+
+.map-controls .toggle-switch {
+    display: flex;
+    align-items: center;
+}
+
+.map-controls .toggle-switch label {
+    margin-left: 10px;
+}
+
 .video-container img {
     display: block;
     max-width: 100%;
@@ -466,3 +492,24 @@ body {
 .status-mask{display:none;}
 
 /* Voltage bar specific - reversed gradient (red to green) */
+
+@media (max-width: 768px) {
+    .tabs .tab-content {
+        display: none;
+    }
+
+    .tabs .tab-content.active {
+        display: block;
+    }
+
+    .tabs .nav-links {
+        display: flex;
+        flex-direction: column;
+        position: static;
+        width: 100%;
+    }
+
+    .tabs .nav-links a {
+        border-bottom: 1px solid #ccc;
+    }
+}

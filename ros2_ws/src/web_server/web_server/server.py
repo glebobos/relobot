@@ -206,6 +206,17 @@ class RobotWebServer:
             self.motors.stop()
             return jsonify(success=True, message="Motors halted")
 
+        # ------------- map --------------------------------------------------
+        @self.app.route("/api/map/save", methods=["POST"])
+        def save_map():
+            self.node.save_map()
+            return jsonify(success=True, message="Map saving triggered")
+
+        @self.app.route("/api/explorer", methods=["POST"])
+        def explorer():
+            self.node.toggle_explorer()
+            return jsonify(success=True, message="Explorer toggled")
+
     # --------------------------------------------------------------------- #
     #                          helpers & lifecycle                          #
     # --------------------------------------------------------------------- #
