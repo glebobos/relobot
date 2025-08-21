@@ -1,6 +1,15 @@
 window.onload = function () {
     // Give ROS bridge some time to startup
     setTimeout(() => {
+        console.log('ROS3D available:', !!window.ROS3D);
+        console.log('THREE available:', !!window.THREE);
+        console.log('ROSLIB available:', !!window.ROSLIB);
+        
+        if (!window.ROS3D) {
+            console.error('ROS3D is not available!');
+            return;
+        }
+        
         // Connect to ROS.
         var ros = new ROSLIB.Ros({
             url: 'ws://' + window.location.hostname + ':9090'
@@ -18,65 +27,59 @@ window.onload = function () {
             console.log('Connection to websocket server closed.');
         });
 
-        // Create the main viewer.
-        var viewer = new ROS2D.Viewer({
+        // Get the map container dimensions
+        var mapContainer = document.getElementById('map');
+        var containerWidth = mapContainer.offsetWidth;
+        var containerHeight = mapContainer.offsetHeight;
+
+        // Create the main 3D viewer with responsive dimensions
+        var viewer = new ROS3D.Viewer({
             divID: 'map',
-            width: 800,
-            height: 600
+            width: containerWidth,
+            height: containerHeight,
+            antialias: true
         });
 
-        // Adjust viewer size to fit the container
-        function resizeViewer() {
-            var mapDiv = document.getElementById('map');
-            if (mapDiv.clientWidth > 0 && mapDiv.clientHeight > 0) {
-                viewer.width = mapDiv.clientWidth;
-                viewer.height = mapDiv.clientHeight;
-            }
-        }
-        window.addEventListener('resize', resizeViewer);
-        // Initial resize
-        resizeViewer();
-
-
-        // Setup the map client.
-        var gridClient = new ROS2D.OccupancyGridClient({
+        // Setup the map client using ROS3D.
+        var gridClient = new ROS3D.OccupancyGridClient({
             ros: ros,
-            rootObject: viewer.scene,
-            // Use continuous rendering
-            continuous: true
+            rootObject: viewer.scene
         });
 
-        // Scale the canvas to fit the map
-        gridClient.on('change', function () {
-            viewer.scaleToDimensions(gridClient.currentGrid.width, gridClient.currentGrid.height);
-            viewer.shift(gridClient.currentGrid.pose.position.x, gridClient.currentGrid.pose.position.y);
-        });
-
-        // Setup the robot marker.
-        var robotMarker = new ROS2D.RobotMarker({
-            size: 0.25,
-            strokeSize: 0.02,
-            fillColor: createjs.Graphics.getRGB(255, 0, 0, 0.8),
-            pulse: true
-        });
-        viewer.scene.addChild(robotMarker);
+        // Setup robot marker for odometry
+        var robotMarker = new THREE.Mesh(
+            new THREE.SphereGeometry(0.1, 16, 16),
+            new THREE.MeshBasicMaterial({ color: 0xff0000 })
+        );
+        viewer.scene.add(robotMarker);
 
         var odomSub = new ROSLIB.Topic({
-            ros : ros,
-            name : '/odometry/filtered',
-            messageType : 'nav_msgs/Odometry'
+            ros: ros,
+            name: '/odometry/filtered',
+            messageType: 'nav_msgs/Odometry'
         });
 
         odomSub.subscribe(function(message) {
-            // position
-            robotMarker.x = message.pose.pose.position.x;
-            robotMarker.y = -message.pose.pose.position.y;
+            // Update robot position
+            robotMarker.position.x = message.pose.pose.position.x;
+            robotMarker.position.y = message.pose.pose.position.y;
+            robotMarker.position.z = 0.1; // Slightly above ground
 
-            // orientation
-            var quat = new ROSLIB.Quaternion(message.pose.pose.orientation);
-            var euler = new ROSLIB.Euler();
-            euler.fromQuaternion(quat);
-            robotMarker.rotation = -euler.yaw * 180.0 / Math.PI;
+            // Update robot orientation
+            var q = message.pose.pose.orientation;
+            robotMarker.quaternion.set(q.x, q.y, q.z, q.w);
+            
+            console.log('Robot position:', message.pose.pose.position);
+        });
+
+        // Handle window resize to make the viewer responsive
+        window.addEventListener('resize', function() {
+            var newWidth = mapContainer.offsetWidth;
+            var newHeight = mapContainer.offsetHeight;
+            
+            viewer.camera.aspect = newWidth / newHeight;
+            viewer.camera.updateProjectionMatrix();
+            viewer.renderer.setSize(newWidth, newHeight);
         });
     }, 1000);
 }
