@@ -6,17 +6,21 @@ FREQUENCY                = 10_000     # Hz
 COUNTS_PER_REVOLUTION    = 1
 RPM_UPDATE_INTERVAL      = 0.60       # s
 INACTIVITY_TIMEOUT       = 5.0        # s
-SPEED_SMOOTHING_FACTOR   = 0.20
+SPEED_SMOOTHING_FACTOR   = 1.00
 
 # Motor – empirical calibration  (see calibration/test.py)
 K                        = 0.001381   # PWM = K·ω + C
 C                        = 0.048623
 
 # PID
-PID_SMOOTH_FACTOR        = 0.20
+PID_SMOOTH_FACTOR        = 0.50
 PID_KP                   = 0.00005
 PID_KI                   = 0.00001
 PID_KD                   = 0.00001
+
+# Active Braking
+BRAKE_RPM                = -300       # RPM to apply for active braking (negative = reverse)
+BRAKE_THRESHOLD          = 100       # RPM - stop braking when below this absolute value
 
 # Voltage divider  (A2 → R1 : R2)
 R1                       = 104_000    # Ω
@@ -89,6 +93,11 @@ class MotorController:
         self.pid_allowed      = True
         self.pwm_adj          = 0.0
 
+        # Active Braking
+        self.is_braking       = False
+        self.brake_rpm        = BRAKE_RPM
+        self.brake_threshold  = BRAKE_THRESHOLD
+
     # ───────────── low-level PWM helper
     def _set_pwm(self, norm, forward=True):
         duty = int(65_535 * max(0.0, min(1.0, norm)))
@@ -115,7 +124,17 @@ class MotorController:
             self.integral = self.prev_error = 0.0
             self.pid_active = False
             self.pwm_adj = 0.0
-        self.target_rpm = rpm
+            
+        # Check if we need to start active braking
+        if rpm == 0 and self.target_rpm != 0 and abs(self.measured_rpm) > self.brake_threshold:
+            print(f"Starting active brake: {self.brake_rpm} RPM")
+            self.is_braking = True
+            self.target_rpm = self.brake_rpm  # Apply braking RPM first
+        else:
+            self.target_rpm = rpm
+            if rpm != 0:
+                self.is_braking = False  # Cancel braking if new non-zero target
+                
         self.last_cmd_time = time.monotonic()
 
     def update(self):
@@ -129,8 +148,21 @@ class MotorController:
         # fresh measurement
         self.measured_rpm = self._calc_rpm()
 
-        # idle handling
-        if self.target_rpm == 0:
+        # active braking logic
+        if self.is_braking:
+            if abs(self.measured_rpm) <= self.brake_threshold:
+                print(f"Braking complete (RPM: {self.measured_rpm:.1f} <= {self.brake_threshold})")
+                self.is_braking = False
+                self.target_rpm = 0  # Now truly stop
+                self.current_rpm = 0
+                self.pid_active = False
+                self.pwm_adj = 0
+                self._set_pwm(0, True)
+                return self.measured_rpm
+            # Continue braking - fall through to normal control logic
+
+        # idle handling (only when not braking)
+        if self.target_rpm == 0 and not self.is_braking:
             self.current_rpm = 0
             self.pid_active = False
             self.pwm_adj = 0

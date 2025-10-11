@@ -14,12 +14,18 @@ COUNTS_PER_REVOLUTION = 60  # Specify encoder parameters
 # Functions for converting speed to PWM
 def speed_to_pwm_left(speed):
     abs_speed = abs(speed)
-    pwm_value = 0.13281 * abs_speed + 0.029637
+    if speed >= 0:  # Forward
+        pwm_value = 0.12281 * abs_speed + 0.029637
+    else:  # Backward
+        pwm_value = 0.12281 * abs_speed + 0.029637  # Same as forward for now
     return max(0, min(1, pwm_value))
 
 def speed_to_pwm_right(speed):
     abs_speed = abs(speed)
-    pwm_value = 0.13593 * abs_speed + 0.021466
+    if speed >= 0:  # Forward
+        pwm_value = 0.13593 * abs_speed + 0.021466
+    else:  # Backward
+        pwm_value = 0.11793 * abs_speed + 0.021466  # Same as forward for now
     return max(0, min(1, pwm_value))
 
 # Initialization of PWM and encoders
