@@ -1,8 +1,4 @@
-<?x  <name>web_server</name>
-  <version>0.0.0</version>
-  <description>Web server interface for ReloBot robot control</description>
-  <maintainer email="info@relobot.org">ReloBot Team</maintainer>
-  <license>Apache License, Version 2.0</license>rsion="1.0"?>
+<?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>web_server</name>
