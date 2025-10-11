@@ -9,6 +9,9 @@ RUN apt-get update && apt-get install -y \
 # Create workspace
 WORKDIR /ros2_ws
 
+# Copy the package
+COPY ./src/frontier_explorer /ros2_ws/src/frontier_explorer
+
 # Source the workspace
 RUN echo "source /opt/ros/humble/setup.bash" >> /root/.bashrc
 
