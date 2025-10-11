@@ -247,3 +247,23 @@ function updateRPM(rpm, maxRPM = 3100){
     es.onerror = () =>
         console.error('RPM SSE error – browser will auto-retry');
 })();
+
+function startExploration() {
+    fetch('/start_exploration', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+    }).then(response => response.json())
+      .then(data => {
+          alert(data.success ? 'Exploration started!' : 'Exploration failed: ' + data.error);
+      });
+}
+
+function stopExploration() {
+    fetch('/stop_exploration', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+    }).then(response => response.json())
+      .then(data => {
+          alert(data.success ? 'Exploration stopped!' : 'Exploration failed: ' + data.error);
+      });
+}
