@@ -28,8 +28,8 @@ class ControllerConfig:
     drive_axis: int = 3
     knife_button: int = 7
     pid_toggle_button: int = 9
-    scale_linear: float = 1.0
-    scale_angular: float = 2.0
+    scale_linear: float = 0.3
+    scale_angular: float = 1.0
     invert_turn: bool = True
     invert_drive: bool = True
     invert_knife: bool = False  # When true, inverts the knife rotation direction
