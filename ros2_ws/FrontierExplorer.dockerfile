@@ -4,6 +4,8 @@ FROM ros:humble
 RUN apt-get update && apt-get install -y \
     ros-humble-navigation2 \
     ros-humble-nav2-bringup \
+    ros-humble-ros2-control \
+    ros-humble-hardware-interface \
     && rm -rf /var/lib/apt/lists/*
 
 # Set up the workspace
