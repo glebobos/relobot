@@ -13,4 +13,4 @@ WORKDIR /ros2_ws
 COPY ./src/frontier_explorer /ros2_ws/src/frontier_explorer
 
 # Build and run
-CMD ["/bin/bash", "-c", "source /opt/ros/humble/setup.bash && colcon build && source install/setup.bash && ros2 launch frontier_explorer explore.launch.py"]
+CMD ["/bin/bash", "-c", "source /opt/ros/humble/setup.bash && colcon build --packages-select frontier_explorer && source install/setup.bash && ros2 launch frontier_explorer explore.launch.py"]

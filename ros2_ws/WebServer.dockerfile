@@ -2,7 +2,7 @@ FROM ros:humble
 
 # Install additional dependencies
 RUN apt-get update && apt-get install -y \
-    python3-pip ros-humble-cv-bridge python3-opencv &&  pip3 install flask numpy
+    python3-pip ros-humble-cv-bridge python3-opencv ros-humble-nav2-msgs &&  pip3 install flask numpy
 # Create workspace
 WORKDIR /ros2_ws
 
