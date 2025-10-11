@@ -2,8 +2,8 @@ FROM ros:humble
 
 # Install dependencies
 RUN apt-get update && apt-get install -y \
+    ros-humble-navigation2 \
     ros-humble-nav2-bringup \
-    ros-humble-nav2-exploration \
     && rm -rf /var/lib/apt/lists/*
 
 # Set up the workspace
