@@ -1,5 +1,5 @@
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument
+from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument, GroupAction
 from launch_ros.actions import Node
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
@@ -42,6 +42,15 @@ def generate_launch_description():
         }.items(),
     )
 
+    # Create topic relay to connect nav2 velocity smoother output to robot hardware
+    cmd_vel_relay_node = Node(
+        package='topic_tools',
+        executable='relay',
+        name='cmd_vel_relay',
+        arguments=['/cmd_vel', '/diff_drive_controller/cmd_vel_unstamped'],
+        output='screen'
+    )
+
     # Launch explore-lite node directly
     explore_lite_node = Node(
         package='explore_lite',
@@ -52,6 +61,7 @@ def generate_launch_description():
         remappings=[
             ('/tf', 'tf'),
             ('/tf_static', 'tf_static'),
+            ('costmap', '/global_costmap/costmap_raw'),
         ]
     )
 
@@ -59,5 +69,6 @@ def generate_launch_description():
         declare_use_sim_time_cmd,
         declare_params_file_cmd,
         nav2_bringup_launch,
+        cmd_vel_relay_node,
         explore_lite_node,
     ])
