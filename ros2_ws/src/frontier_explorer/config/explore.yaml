@@ -1,0 +1,236 @@
+# Configuration file for explore-lite frontier exploration
+# Based on Husarion tutorial and matching existing robot configuration
+
+# Explore-lite node parameters
+explore_node:
+  ros__parameters:
+    robot_base_frame: base_link
+    costmap_topic: /global_costmap/costmap
+    costmap_updates_topic: /global_costmap/costmap_updates
+    visualize: false
+    planner_frequency: 0.2
+    progress_timeout: 15.0
+    potential_scale: 5.0
+    orientation_scale: 0.5
+    gain_scale: 1.0
+    transform_tolerance: 0.1
+    min_frontier_size: 0.6
+
+# Global costmap parameters for navigation
+global_costmap:
+  global_costmap:
+    ros__parameters:
+      use_sim_time: false
+      robot_base_frame: base_link
+      global_frame: map
+      update_frequency: 1.0
+      publish_frequency: 1.0
+      resolution: 0.04  # Match SLAM resolution
+      track_unknown_space: true
+      plugins: ["static_layer", "obstacle_layer", "inflation_layer"]
+      
+      static_layer:
+        plugin: "nav2_costmap_2d::StaticLayer"
+        map_subscribe_transient_local: true
+        
+      obstacle_layer:
+        plugin: "nav2_costmap_2d::ObstacleLayer"
+        enabled: true
+        observation_sources: scan
+        scan:
+          topic: /scan_filtered  # Use filtered scan like SLAM
+          max_obstacle_height: 2.0
+          clearing: true
+          marking: true
+          data_type: "LaserScan"
+          raytrace_max_range: 3.9  # Match SLAM max range
+          raytrace_min_range: 0.0
+          obstacle_max_range: 2.5
+          obstacle_min_range: 0.0
+          
+      inflation_layer:
+        plugin: "nav2_costmap_2d::InflationLayer"
+        cost_scaling_factor: 3.0
+        inflation_radius: 0.55
+
+# Local costmap parameters for navigation  
+local_costmap:
+  local_costmap:
+    ros__parameters:
+      use_sim_time: false
+      robot_base_frame: base_link
+      global_frame: odom
+      update_frequency: 5.0
+      publish_frequency: 2.0
+      resolution: 0.04  # Match SLAM resolution
+      width: 3
+      height: 3
+      rolling_window: true
+      plugins: ["obstacle_layer", "inflation_layer"]
+      
+      obstacle_layer:
+        plugin: "nav2_costmap_2d::ObstacleLayer"
+        enabled: true
+        observation_sources: scan
+        scan:
+          topic: /scan_filtered  # Use filtered scan like SLAM
+          max_obstacle_height: 2.0
+          clearing: true
+          marking: true
+          data_type: "LaserScan"
+          raytrace_max_range: 3.9  # Match SLAM max range
+          raytrace_min_range: 0.0
+          obstacle_max_range: 2.5
+          obstacle_min_range: 0.0
+          
+      inflation_layer:
+        plugin: "nav2_costmap_2d::InflationLayer"
+        cost_scaling_factor: 3.0
+        inflation_radius: 0.55
+
+# Navigation controller parameters
+controller_server:
+  ros__parameters:
+    use_sim_time: false
+    controller_frequency: 20.0
+    min_x_velocity_threshold: 0.001
+    min_y_velocity_threshold: 0.5
+    min_theta_velocity_threshold: 0.001
+    failure_tolerance: 0.3
+    progress_checker_plugin: "progress_checker"
+    goal_checker_plugins: ["general_goal_checker"]
+    controller_plugins: ["FollowPath"]
+
+    progress_checker:
+      plugin: "nav2_controller::SimpleProgressChecker"
+      required_movement_radius: 0.5
+      movement_time_allowance: 10.0
+      
+    general_goal_checker:
+      stateful: True
+      plugin: "nav2_controller::SimpleGoalChecker"
+      xy_goal_tolerance: 0.25
+      yaw_goal_tolerance: 0.25
+      
+    FollowPath:
+      plugin: "dwb_core::DWBLocalPlanner"
+      debug_trajectory_details: false
+      min_vel_x: 0.0
+      min_vel_y: 0.0
+      max_vel_x: 0.25  # Match diff drive max velocity with margin
+      max_vel_y: 0.0
+      max_vel_theta: 0.8  # Match diff drive max angular velocity with margin
+      min_speed_xy: 0.0
+      max_speed_xy: 0.25
+      min_speed_theta: 0.0
+      acc_lim_x: 1.2  # Match diff drive acceleration limits
+      acc_lim_y: 0.0
+      acc_lim_theta: 4.5
+      decel_lim_x: -1.2
+      decel_lim_y: 0.0
+      decel_lim_theta: -4.5
+      vx_samples: 20
+      vy_samples: 5
+      vtheta_samples: 20
+      sim_time: 1.7
+      linear_granularity: 0.05
+      angular_granularity: 0.025
+      transform_tolerance: 0.2
+      xy_goal_tolerance: 0.25
+      trans_stopped_velocity: 0.25
+      short_circuit_trajectory_evaluation: true
+      stateful: true
+      critics: ["RotateToGoal", "Oscillation", "BaseObstacle", "GoalAlign", "PathAlign", "PathDist", "GoalDist"]
+      BaseObstacle.scale: 0.02
+      PathAlign.scale: 32.0
+      PathAlign.forward_point_distance: 0.1
+      GoalAlign.scale: 24.0
+      GoalAlign.forward_point_distance: 0.1
+      PathDist.scale: 32.0
+      GoalDist.scale: 24.0
+      RotateToGoal.scale: 32.0
+      RotateToGoal.slowing_factor: 5.0
+      RotateToGoal.lookahead_time: -1.0
+
+# Planner server parameters
+planner_server:
+  ros__parameters:
+    use_sim_time: false
+    planner_plugins: ["GridBased"]
+    
+    GridBased:
+      plugin: "nav2_navfn_planner/NavfnPlanner"
+      tolerance: 0.5
+      use_astar: false
+      allow_unknown: true
+
+# Behavior server parameters
+behavior_server:
+  ros__parameters:
+    use_sim_time: false
+    costmap_topic: local_costmap/costmap_raw
+    footprint_topic: local_costmap/published_footprint
+    cycle_frequency: 10.0
+    behavior_plugins: ["spin", "backup", "drive_on_heading", "assisted_teleop", "wait"]
+    
+    spin:
+      plugin: "nav2_behaviors/Spin"
+    backup:
+      plugin: "nav2_behaviors/BackUp"
+    drive_on_heading:
+      plugin: "nav2_behaviors/DriveOnHeading"
+    wait:
+      plugin: "nav2_behaviors/Wait"
+    assisted_teleop:
+      plugin: "nav2_behaviors/AssistedTeleop"
+    global_frame: odom
+    robot_base_frame: base_link
+    transform_tolerance: 0.1
+    simulate_ahead_time: 2.0
+    max_rotational_vel: 0.8  # Match our robot limits
+    min_rotational_vel: 0.4
+    rotational_acc_lim: 4.5  # Match diff drive limits
+
+# BT Navigator parameters
+bt_navigator:
+  ros__parameters:
+    use_sim_time: false
+    global_frame: map
+    robot_base_frame: base_link
+    odom_topic: /odometry/filtered  # Use filtered odometry from EKF
+    bt_loop_duration: 10
+    default_server_timeout: 20
+    enable_groot_monitoring: true
+    groot_zmq_publisher_port: 1666
+    groot_zmq_server_port: 1667
+    default_nav_to_pose_bt_xml: ""
+    default_nav_through_poses_bt_xml: ""
+
+# Waypoint follower parameters  
+waypoint_follower:
+  ros__parameters:
+    use_sim_time: false
+    loop_rate: 20
+    stop_on_failure: false
+    waypoint_task_executor_plugin: "wait_at_waypoint"
+    
+    wait_at_waypoint:
+      plugin: "nav2_waypoint_follower::WaitAtWaypoint"
+      enabled: true
+      waypoint_pause_duration: 200
+
+# Velocity smoother parameters
+velocity_smoother:
+  ros__parameters:
+    use_sim_time: false
+    smoothing_frequency: 20.0
+    scale_velocities: false
+    feedback: "OPEN_LOOP"
+    max_velocity: [0.3, 0.0, 1.0]  # Match diff drive limits
+    min_velocity: [-0.3, 0.0, -1.0]
+    max_accel: [1.2, 0.0, 4.5]  # Match diff drive acceleration limits
+    max_decel: [-1.2, 0.0, -4.5]
+    odom_topic: "/odometry/filtered"  # Use filtered odometry
+    odom_duration: 0.1
+    deadband_velocity: [0.0, 0.0, 0.0]
+    velocity_timeout: 1.0
