@@ -61,7 +61,7 @@ def generate_launch_description():
         remappings=[
             ('/tf', 'tf'),
             ('/tf_static', 'tf_static'),
-            ('costmap', '/global_costmap/costmap_raw'),
+            ('map', '/map'),
         ]
     )
 
