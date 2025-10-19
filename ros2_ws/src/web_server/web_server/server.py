@@ -206,17 +206,6 @@ class RobotWebServer:
             self.motors.stop()
             return jsonify(success=True, message="Motors halted")
 
-        # ------------- exploration ------------------------------------------
-        @self.app.route("/start_exploration", methods=["POST"])
-        def start_exploration():
-            self.node.start_exploration()
-            return jsonify(success=True, message="Exploration started")
-
-        @self.app.route("/stop_exploration", methods=["POST"])
-        def stop_exploration():
-            self.node.stop_exploration()
-            return jsonify(success=True, message="Exploration stopped")
-
     # --------------------------------------------------------------------- #
     #                          helpers & lifecycle                          #
     # --------------------------------------------------------------------- #

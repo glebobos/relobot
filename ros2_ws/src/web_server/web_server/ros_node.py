@@ -31,8 +31,7 @@ from geometry_msgs.msg import Twist
 from rclpy.node import Node
 from sensor_msgs.msg import Image
 from std_msgs.msg import Float32
-from std_srvs.srv import SetBool, Empty
-from nav2_msgs.srv import SaveMap
+from std_srvs.srv import SetBool
 
 logger = logging.getLogger(__name__)
 
@@ -49,9 +48,6 @@ class RobotROSNode(Node):
 
         # --- service client -------------------------------------------------------
         self._pid_client = self.create_client(SetBool, "knives/enable_pid")
-        self._start_exploration_client = self.create_client(Empty, "/explore/start")
-        self._stop_exploration_client = self.create_client(Empty, "/explore/stop")
-        self._save_map_client = self.create_client(SaveMap, "/slam_toolbox/save_map")
 
         # --- image stuff ----------------------------------------------------------
         self._bridge = CvBridge()
@@ -148,29 +144,6 @@ class RobotROSNode(Node):
             return
         req = SetBool.Request(data=enable)
         self._pid_client.call_async(req)   # we ignore response here
-
-    def start_exploration(self) -> None:
-        if not self._start_exploration_client.service_is_ready():
-            self.get_logger().warning("Start exploration service unavailable")
-            return
-        req = Empty.Request()
-        self._start_exploration_client.call_async(req)
-
-    def stop_exploration(self) -> None:
-        if not self._stop_exploration_client.service_is_ready():
-            self.get_logger().warning("Stop exploration service unavailable")
-            return
-        req = Empty.Request()
-        self._stop_exploration_client.call_async(req)
-        self.save_map("map")
-
-    def save_map(self, map_name: str) -> None:
-        if not self._save_map_client.service_is_ready():
-            self.get_logger().warning("Save map service unavailable")
-            return
-        req = SaveMap.Request()
-        req.name.data = map_name
-        self._save_map_client.call_async(req)
 
     # ------------------------------------------------------------------------- #
     #                              telemetry                                    #
