@@ -13,7 +13,7 @@ diff_drive_controller:
     right_wheel_names: ["right_wheel_joint"]
 
     wheel_separation: 0.295
-    wheel_radius: 0.0925
+    wheel_radius: 0.0937
 
     publish_tf: false        
     enable_odom_tf: false
