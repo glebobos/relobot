@@ -227,7 +227,7 @@ If your robot uses different ROS2 topics, modify the following lines in the `Rob
 ```python
 self.publisher = self.create_publisher(
     Twist, 
-    '/diff_drive_controller/cmd_vel_unstamped',  # Change this to your topic
+    '/cmd_vel',  # Change this to your topic
     10
 )
 self.knife_publisher = self.create_publisher(

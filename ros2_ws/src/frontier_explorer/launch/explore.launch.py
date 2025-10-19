@@ -42,15 +42,6 @@ def generate_launch_description():
         }.items(),
     )
 
-    # Create topic relay to connect nav2 velocity smoother output to robot hardware
-    cmd_vel_relay_node = Node(
-        package='topic_tools',
-        executable='relay',
-        name='cmd_vel_relay',
-        arguments=['/cmd_vel', '/diff_drive_controller/cmd_vel_unstamped'],
-        output='screen'
-    )
-
     # Launch explore-lite node directly
     explore_lite_node = Node(
         package='explore_lite',
@@ -69,6 +60,5 @@ def generate_launch_description():
         declare_use_sim_time_cmd,
         declare_params_file_cmd,
         nav2_bringup_launch,
-        cmd_vel_relay_node,
         explore_lite_node,
     ])

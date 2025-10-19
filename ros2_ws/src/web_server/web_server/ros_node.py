@@ -43,7 +43,7 @@ class RobotROSNode(Node):
 
         # --- pubs ----------------------------------------------------------------
         self._vel_pub = self.create_publisher(
-            Twist, "/diff_drive_controller/cmd_vel_unstamped", 10)
+            Twist, "/cmd_vel", 10)
         self._knife_pub = self.create_publisher(Float32, "knives/set_rpm", 10)
 
         # --- service client -------------------------------------------------------

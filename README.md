@@ -199,19 +199,19 @@ Control the robot via ROS2 topics:
 
 ```bash
 # Move forward (0.2 m/s)
-ros2 topic pub /diff_drive_controller/cmd_vel_unstamped geometry_msgs/msg/Twist \
+ros2 topic pub /cmd_vel geometry_msgs/msg/Twist \
   "{linear: {x: 0.2}, angular: {z: 0.0}}" --once
 
 # Turn left (0.5 rad/s)
-ros2 topic pub /diff_drive_controller/cmd_vel_unstamped geometry_msgs/msg/Twist \
+ros2 topic pub /cmd_vel geometry_msgs/msg/Twist \
   "{linear: {x: 0.0}, angular: {z: 0.5}}" --once
 
 # Turn right (-0.5 rad/s)
-ros2 topic pub /diff_drive_controller/cmd_vel_unstamped geometry_msgs/msg/Twist \
+ros2 topic pub /cmd_vel geometry_msgs/msg/Twist \
   "{linear: {x: 0.0}, angular: {z: -0.5}}" --once
 
 # Stop
-ros2 topic pub /diff_drive_controller/cmd_vel_unstamped geometry_msgs/msg/Twist \
+ros2 topic pub /cmd_vel geometry_msgs/msg/Twist \
   "{linear: {x: 0.0}, angular: {z: 0.0}}" --once
 ```
 
