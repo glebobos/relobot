@@ -13,7 +13,6 @@ RUN apt-get update && apt-get install -y \
     ros-humble-rclcpp-action \
     ros-humble-nav2-costmap-2d \
     ros-humble-nav2-util \
-    ros-humble-topic-tools \
     && rm -rf /var/lib/apt/lists/*
 
 # Create workspace
