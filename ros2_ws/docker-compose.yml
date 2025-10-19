@@ -8,6 +8,12 @@ services:
     command: fastdds discovery -i 0 -l $HOST_IP -p 11811
     volumes:
       - .:/ros2_ws/:ro
+    healthcheck:
+      test: ["CMD", "/ros2_ws/healthcheck.sh", "process", "fastdds discovery"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
 
   ros2_diff_robot:
     build:
@@ -25,7 +31,14 @@ services:
     ipc: host 
     privileged: true
     depends_on:
-      - ds
+      ds:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "/ros2_ws/healthcheck.sh", "topic", "cmd_vel"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 60s
     restart: unless-stopped
 
   ros2_frontier_explorer:
@@ -46,8 +59,16 @@ services:
     network_mode: host
     privileged: true
     depends_on:
-      - ds
-      - ros2_slam
+      ds:
+        condition: service_healthy
+      ros2_slam:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "/ros2_ws/healthcheck.sh", "node", "explore"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 90s
     restart: unless-stopped
 
   ros2_imu:
@@ -68,7 +89,14 @@ services:
     ipc: host 
     privileged: true
     depends_on:
-      - ds
+      ds:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "/ros2_ws/healthcheck.sh", "topic", "imu"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 60s
     restart: unless-stopped
 
   ros2_tof_camera:
@@ -89,7 +117,14 @@ services:
     network_mode: host
     privileged: true
     depends_on:
-      - ds
+      ds:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "/ros2_ws/healthcheck.sh", "topic", "scan_filtered"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 60s
     restart: unless-stopped
 
   ros2_web_server:
@@ -115,7 +150,14 @@ services:
       - "c 29:* rwm"
     ipc: host 
     depends_on:
-      - ds
+      ds:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "/ros2_ws/healthcheck.sh", "node", "robot_web_server_node"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 60s
     restart: unless-stopped
 
   ros2_slam:
@@ -136,10 +178,20 @@ services:
     network_mode: host
     privileged: true
     depends_on:
-      - ds
-      - ros2_imu
-      - ros2_tof_camera
-      - ros2_diff_robot
+      ds:
+        condition: service_healthy
+      ros2_imu:
+        condition: service_healthy
+      ros2_tof_camera:
+        condition: service_healthy
+      ros2_diff_robot:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "/ros2_ws/healthcheck.sh", "node", "slam"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 90s
     restart: unless-stopped
 
   ros2_rosbridge:
@@ -156,7 +208,14 @@ services:
       - ROS_SUPER_CLIENT=True
     network_mode: host
     depends_on:
-      - ds
+      ds:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "/ros2_ws/healthcheck.sh", "node", "rosbridge"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 30s
     restart: unless-stopped
 
   ros2_knife_controller:
@@ -177,5 +236,12 @@ services:
     ipc: host 
     privileged: true
     depends_on:
-      - ds
+      ds:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "/ros2_ws/healthcheck.sh", "node", "knife"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 60s
     restart: unless-stopped
