@@ -26,29 +26,31 @@ services:
     privileged: true
     depends_on:
       - ds
+      - ros2_imu
+      - ros2_lidar
     restart: unless-stopped
 
-  ros2_frontier_explorer:
-    build:
-      context: .
-      dockerfile: FrontierExplorer.dockerfile
-    ipc: host
-    volumes:
-      - .:/ros2_ws/
-    devices:
-      - /dev/:/dev/
-    environment:
-      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
-      - FASTDDS_BUILTIN_TRANSPORTS=DEFAULT
-      - ROS_DISCOVERY_SERVER=${HOST_IP}:11811
-      - ROS_SUPER_CLIENT=True
-      - PYTHONUNBUFFERED=1
-    network_mode: host
-    privileged: true
-    depends_on:
-      - ds
-      - ros2_slam
-    restart: unless-stopped
+  # ros2_frontier_explorer:
+  #   build:
+  #     context: .
+  #     dockerfile: FrontierExplorer.dockerfile
+  #   ipc: host
+  #   volumes:
+  #     - .:/ros2_ws/
+  #   devices:
+  #     - /dev/:/dev/
+  #   environment:
+  #     - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+  #     - FASTDDS_BUILTIN_TRANSPORTS=DEFAULT
+  #     - ROS_DISCOVERY_SERVER=${HOST_IP}:11811
+  #     - ROS_SUPER_CLIENT=True
+  #     - PYTHONUNBUFFERED=1
+  #   network_mode: host
+  #   privileged: true
+  #   depends_on:
+  #     - ds
+  #     - ros2_slam
+  #   restart: unless-stopped
 
   ros2_imu:
     build:
@@ -71,111 +73,131 @@ services:
       - ds
     restart: unless-stopped
 
-  ros2_tof_camera:
+  ros2_lidar:
     build:
       context: .
-      dockerfile: Tof.dockerfile
-    ipc: host
+      dockerfile: lidar.dockerfile
     volumes:
       - .:/ros2_ws/
     devices:
-      - /dev/:/dev/
+      - /dev/ttyUSB0:/dev/ttyUSB0
     environment:
       - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
       - FASTDDS_BUILTIN_TRANSPORTS=DEFAULT
       - ROS_DISCOVERY_SERVER=${HOST_IP}:11811
       - ROS_SUPER_CLIENT=True
-      - PYTHONUNBUFFERED=1
-    network_mode: host
-    privileged: true
-    depends_on:
-      - ds
-    restart: unless-stopped
-
-  ros2_web_server:
-    build:
-      context: .
-      dockerfile: WebServer.dockerfile
-    volumes:
-      - .:/ros2_ws/
-      - /dev/:/dev/
-    environment:
-      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
-      - FASTDDS_BUILTIN_TRANSPORTS=DEFAULT
-      - ROS_DISCOVERY_SERVER=${HOST_IP}:11811
-      - ROS_SUPER_CLIENT=True
-      - PYTHONUNBUFFERED=1
-      - ENABLE_FLASK_LOGS=false
-    network_mode: host
-    privileged: true
-    device_cgroup_rules:
-      - "c 13:* rwm"
-      - "c 240:* rwm"
-      - "c 189:* rwm" 
-      - "c 29:* rwm"
-    ipc: host 
-    depends_on:
-      - ds
-    restart: unless-stopped
-
-  ros2_slam:
-    build:
-      context: .
-      dockerfile: Slam.dockerfile
-    ipc: host
-    volumes:
-      - .:/ros2_ws/
-    devices:
-      - /dev/:/dev/
-    environment:
-      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
-      - FASTDDS_BUILTIN_TRANSPORTS=DEFAULT
-      - ROS_DISCOVERY_SERVER=${HOST_IP}:11811
-      - ROS_SUPER_CLIENT=True
-      - PYTHONUNBUFFERED=1
-    network_mode: host
-    privileged: true
-    depends_on:
-      - ds
-      - ros2_imu
-      - ros2_tof_camera
-      - ros2_diff_robot
-    restart: unless-stopped
-
-  ros2_rosbridge:
-    build:
-      context: .
-      dockerfile: Rosbridge.dockerfile
-    ipc: host
-    volumes:
-      - .:/ros2_ws/
-    environment:
-      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
-      - FASTDDS_BUILTIN_TRANSPORTS=DEFAULT
-      - ROS_DISCOVERY_SERVER=${HOST_IP}:11811
-      - ROS_SUPER_CLIENT=True
-    network_mode: host
-    depends_on:
-      - ds
-    restart: unless-stopped
-
-  ros2_knife_controller:
-    build:
-      context: .
-      dockerfile: KnifeMotorController.dockerfile
-    volumes:
-      - .:/ros2_ws/
-    devices:
-      - /dev/ttyACM4:/dev/ttyACM4
-    environment:
-      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
-      - FASTDDS_BUILTIN_TRANSPORTS=DEFAULT
-      - ROS_DISCOVERY_SERVER=${HOST_IP}:11811
-      - ROS_SUPER_CLIENT=True
-      - PYTHONUNBUFFERED=1
     network_mode: host
     ipc: host 
     privileged: true
     depends_on:
       - ds
     restart: unless-stopped
+
+  # ros2_tof_camera:
+  #   build:
+  #     context: .
+  #     dockerfile: Tof.dockerfile
+  #   ipc: host
+  #   volumes:
+  #     - .:/ros2_ws/
+  #   devices:
+  #     - /dev/:/dev/
+  #   environment:
+  #     - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+  #     - FASTDDS_BUILTIN_TRANSPORTS=DEFAULT
+  #     - ROS_DISCOVERY_SERVER=${HOST_IP}:11811
+  #     - ROS_SUPER_CLIENT=True
+  #     - PYTHONUNBUFFERED=1
+  #   network_mode: host
+  #   privileged: true
+  #   depends_on:
+  #     - ds
+  #   restart: unless-stopped
+
+  # ros2_web_server:
+  #   build:
+  #     context: .
+  #     dockerfile: WebServer.dockerfile
+  #   volumes:
+  #     - .:/ros2_ws/
+  #     - /dev/:/dev/
+  #   environment:
+  #     - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+  #     - FASTDDS_BUILTIN_TRANSPORTS=DEFAULT
+  #     - ROS_DISCOVERY_SERVER=${HOST_IP}:11811
+  #     - ROS_SUPER_CLIENT=True
+  #     - PYTHONUNBUFFERED=1
+  #     - ENABLE_FLASK_LOGS=false
+  #   network_mode: host
+  #   privileged: true
+  #   device_cgroup_rules:
+  #     - "c 13:* rwm"
+  #     - "c 240:* rwm"
+  #     - "c 189:* rwm" 
+  #     - "c 29:* rwm"
+  #   ipc: host 
+  #   depends_on:
+  #     - ds
+  #   restart: unless-stopped
+
+  # ros2_slam:
+  #   build:
+  #     context: .
+  #     dockerfile: Slam.dockerfile
+  #   ipc: host
+  #   volumes:
+  #     - .:/ros2_ws/
+  #   devices:
+  #     - /dev/:/dev/
+  #   environment:
+  #     - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+  #     - FASTDDS_BUILTIN_TRANSPORTS=DEFAULT
+  #     - ROS_DISCOVERY_SERVER=${HOST_IP}:11811
+  #     - ROS_SUPER_CLIENT=True
+  #     - PYTHONUNBUFFERED=1
+  #   network_mode: host
+  #   privileged: true
+  #   depends_on:
+  #     - ds
+  #     - ros2_imu
+  #     - ros2_tof_camera
+  #     - ros2_diff_robot
+  #   restart: unless-stopped
+
+  # ros2_rosbridge:
+  #   build:
+  #     context: .
+  #     dockerfile: Rosbridge.dockerfile
+  #   ipc: host
+  #   volumes:
+  #     - .:/ros2_ws/
+  #   environment:
+  #     - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+  #     - FASTDDS_BUILTIN_TRANSPORTS=DEFAULT
+  #     - ROS_DISCOVERY_SERVER=${HOST_IP}:11811
+  #     - ROS_SUPER_CLIENT=True
+  #   network_mode: host
+  #   depends_on:
+  #     - ds
+  #   restart: unless-stopped
+
+  # ros2_knife_controller:
+  #   build:
+  #     context: .
+  #     dockerfile: KnifeMotorController.dockerfile
+  #   volumes:
+  #     - .:/ros2_ws/
+  #   devices:
+  #     - /dev/ttyACM4:/dev/ttyACM4
+  #   environment:
+  #     - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+  #     - FASTDDS_BUILTIN_TRANSPORTS=DEFAULT
+  #     - ROS_DISCOVERY_SERVER=${HOST_IP}:11811
+  #     - ROS_SUPER_CLIENT=True
+  #     - PYTHONUNBUFFERED=1
+  #   network_mode: host
+  #   ipc: host 
+  #   privileged: true
+  #   depends_on:
+  #     - ds
+  #   restart: unless-stopped
