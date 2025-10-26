@@ -2,7 +2,7 @@
 global_costmap:
   global_costmap:
     ros__parameters:
-      footprint: "[[-0.15, -0.275], [-0.15, 0.275], [0.60, 0.275], [0.60, -0.275]]"
+      footprint: "[[-0.10, -0.275], [-0.10, 0.275], [0.55, 0.275], [0.55, -0.275]]"
       use_sim_time: false
       robot_base_frame: base_link
       global_frame: map
@@ -50,15 +50,16 @@ global_costmap:
 local_costmap:
   local_costmap:
     ros__parameters:
-      footprint: "[[-0.15, -0.275], [-0.15, 0.275], [0.60, 0.275], [0.60, -0.275]]"
+      footprint: "[[-0.10, -0.275], [-0.10, 0.275], [0.55, 0.275], [0.55, -0.275]]"
       use_sim_time: false
       robot_base_frame: base_link
       global_frame: odom
-      update_frequency: 5.0
-      publish_frequency: 2.0
+      use_radius: false
+      update_frequency: 10.0
+      publish_frequency: 5.0
       resolution: 0.04  # Match SLAM resolution
-      width: 3
-      height: 3
+      width: 5
+      height: 5
       rolling_window: true
       plugins: ["obstacle_layer", "inflation_layer"]
 
@@ -79,13 +80,13 @@ local_costmap:
 
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        cost_scaling_factor: 3.0
-        inflation_radius: 0.55
+        cost_scaling_factor: 5.0
+        inflation_radius: 0.35
 # Navigation controller parameters
 controller_server:
   ros__parameters:
     use_sim_time: false
-    controller_frequency: 30.0       # Reduced from 20.0 to 15.0 Hz for better performance
+    controller_frequency: 20.0       # Reduced from 20.0 to 15.0 Hz for better performance
     min_x_velocity_threshold: 0.2   # Increased from 0.001 to prevent very slow movement
     min_y_velocity_threshold: 0.0    # Set to 0.0 for differential drive robot
     min_theta_velocity_threshold: 0.2 # Increased from 0.001 to prevent very slow turns
@@ -102,12 +103,12 @@ controller_server:
     general_goal_checker:
       stateful: True
       plugin: "nav2_controller::SimpleGoalChecker"
-      xy_goal_tolerance: 0.25
-      yaw_goal_tolerance: 0.25
+      xy_goal_tolerance: 0.30
+      yaw_goal_tolerance: 1.0
       
     FollowPath:
       plugin: "dwb_core::DWBLocalPlanner"
-      footprint: "[[-0.15, -0.275], [-0.15, 0.275], [0.60, 0.275], [0.60, -0.275]]"
+      footprint: "[[-0.10, -0.275], [-0.10, 0.275], [0.55, 0.275], [0.55, -0.275]]"
       debug_trajectory_details: false
       min_vel_x: 0.05      # Set minimum linear velocity to prevent creeping
       min_vel_y: 0.0
@@ -134,17 +135,18 @@ controller_server:
       trans_stopped_velocity: 0.25
       short_circuit_trajectory_evaluation: true
       stateful: true
-      critics: ["RotateToGoal", "Oscillation", "BaseObstacle", "GoalAlign", "PathAlign", "PathDist", "GoalDist"]
-      BaseObstacle.scale: 0.02
-      PathAlign.scale: 32.0
+      critics: ["RotateToGoal", "Oscillation", "ObstacleFootprint", "BaseObstacle", "GoalAlign", "PathAlign", "PathDist", "GoalDist"]
+      BaseObstacle.scale: 0.1
+      PathAlign.scale: 20.0
       PathAlign.forward_point_distance: 0.1
-      GoalAlign.scale: 24.0
+      GoalAlign.scale: 18.0
       GoalAlign.forward_point_distance: 0.1
-      PathDist.scale: 32.0
-      GoalDist.scale: 24.0
-      RotateToGoal.scale: 32.0
+      PathDist.scale: 24.0
+      GoalDist.scale: 18.0
+      RotateToGoal.scale: 25.0
       RotateToGoal.slowing_factor: 5.0
       RotateToGoal.lookahead_time: -1.0
+      ObstacleFootprint.scale: 0.05
 
 # Planner server parameters
 planner_server:
@@ -270,16 +272,60 @@ velocity_smoother:
     smoothing_frequency: 15.0        # Reduced from 20.0 to 15.0 Hz for better performance
     scale_velocities: false
     feedback: "OPEN_LOOP"
-    max_velocity: [0.3, 0.0, 1.0]  # Match diff drive limits
-    min_velocity: [-0.3, 0.0, -1.0]
+    max_velocity: [0.25, 0.0, 1.0]  # Match diff drive limits
+    min_velocity: [-0.25, 0.0, -1.0]
     max_accel: [1.2, 0.0, 4.5]  # Match diff drive acceleration limits
     max_decel: [-1.2, 0.0, -4.5]
     odom_topic: "/odom"  # Use filtered odometry /odometry/filtered if something
     odom_duration: 0.1
-    deadband_velocity: [0.05, 0.0, 0.1]  # Set deadband to filter out very small velocities
+    deadband_velocity: [0.1, 0.0, 0.1]  # Set deadband to filter out very small velocities
     velocity_timeout: 1.0
+    enable_stamped_cmd_vel: false  # ? Missing - Set True for Jazzy+, False for Humble/Iron
 
 # Topic remapping for velocity smoother
 velocity_smoother_rclcpp_node:
   ros__parameters:
     use_sim_time: false
+
+collision_monitor:
+  ros__parameters:
+    enabled: True  # ? I was missing this!
+    base_frame_id: "base_link"
+    odom_frame_id: "odom"
+    cmd_vel_in_topic: "cmd_vel_smoothed"
+    cmd_vel_out_topic: "cmd_vel"
+    state_topic: "collision_monitor_state"
+    transform_tolerance: 0.2
+    source_timeout: 1.0
+    base_shift_correction: True
+    stop_pub_timeout: 2.0
+    enable_stamped_cmd_vel: false  # ? Missing - Set True for Jazzy+, False for Humble/Iron
+    use_realtime_priority: false   # ? Missing
+    polygons: ["PolygonStop", "FootprintApproach"]
+    
+    PolygonStop:
+      type: "circle"
+      radius: 0.25  # Emergency stop zone around robot center
+      action_type: "stop"
+      min_points: 4  # max_points: 3 for Humble
+      visualize: True
+      polygon_pub_topic: "polygon_stop"
+      enabled: True
+      
+    FootprintApproach:
+      type: "polygon"
+      action_type: "approach"
+      footprint_topic: "/local_costmap/published_footprint"  # ? I had this wrong!
+      time_before_collision: 1.5
+      simulation_time_step: 0.02
+      min_points: 4  # max_points: 3 for Humble
+      visualize: True
+      enabled: True
+      
+    observation_sources: ["scan"]
+    
+    scan:
+      type: "scan"
+      topic: "/scan"
+      source_timeout: 0.5  # ? I was missing this!
+      enabled: True
