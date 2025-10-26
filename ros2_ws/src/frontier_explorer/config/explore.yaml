@@ -1,66 +1,56 @@
-# Configuration file for explore-lite frontier exploration
-# Based on Husarion tutorial and matching existing robot configuration
-
-# Explore-lite node parameters
-explore:
-  ros__parameters:
-    robot_base_frame: base_link
-    costmap_topic: map
-    costmap_updates_topic: map_updates
-    visualize: true
-    planner_frequency: 0.15
-    progress_timeout: 30.0
-    potential_scale: 3.0
-    orientation_scale: 0.0
-    gain_scale: 1.0
-    transform_tolerance: 0.3
-    min_frontier_size: 0.75
-    return_to_init: false
-
 # Global costmap parameters for navigation
 global_costmap:
   global_costmap:
     ros__parameters:
+      footprint: "[[-0.15, -0.275], [-0.15, 0.275], [0.60, 0.275], [0.60, -0.275]]"
       use_sim_time: false
       robot_base_frame: base_link
       global_frame: map
       update_frequency: 1.0
       publish_frequency: 1.0
       resolution: 0.04  # Match SLAM resolution
-      track_unknown_space: true
-      # Large fixed bounds for exploration - no static layer needed
+      track_unknown_space: false
+      unknown_cost_value: 255
       width: 50
       height: 50
       origin_x: -25.0
       origin_y: -25.0
       rolling_window: false
       always_send_full_costmap: true
-      plugins: ["obstacle_layer", "inflation_layer"]
-        
+      plugins: ["static_layer", "obstacle_layer", "inflation_layer"]   # <-- added static_layer
+
+      # New Static Layer
+      static_layer:
+        plugin: "nav2_costmap_2d::StaticLayer"
+        map_topic: /map                      # slam_toolbox's published map
+        subscribe_to_updates: true
+        enabled: true
+
       obstacle_layer:
         plugin: "nav2_costmap_2d::ObstacleLayer"
         enabled: true
         observation_sources: scan
         scan:
-          topic: /scan_filtered  # Use filtered scan like SLAM
+          topic: /scan
           max_obstacle_height: 2.0
           clearing: true
           marking: true
           data_type: "LaserScan"
-          raytrace_max_range: 3.9  # Match SLAM max range
+          raytrace_max_range: 25.0  # Match SLAM max range
           raytrace_min_range: 0.0
           obstacle_max_range: 2.5
           obstacle_min_range: 0.0
-          
+
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         cost_scaling_factor: 3.0
-        inflation_radius: 0.55
+        inflation_radius: 0.3
 
 # Local costmap parameters for navigation  
 local_costmap:
   local_costmap:
     ros__parameters:
+      footprint: "[[-0.15, -0.275], [-0.15, 0.275], [0.60, 0.275], [0.60, -0.275]]"
       use_sim_time: false
       robot_base_frame: base_link
       global_frame: odom
@@ -71,32 +61,31 @@ local_costmap:
       height: 3
       rolling_window: true
       plugins: ["obstacle_layer", "inflation_layer"]
-      
+
       obstacle_layer:
         plugin: "nav2_costmap_2d::ObstacleLayer"
         enabled: true
         observation_sources: scan
         scan:
-          topic: /scan_filtered  # Use filtered scan like SLAM
+          topic: /scan
           max_obstacle_height: 2.0
           clearing: true
           marking: true
           data_type: "LaserScan"
-          raytrace_max_range: 3.9  # Match SLAM max range
+          raytrace_max_range: 25.0
           raytrace_min_range: 0.0
           obstacle_max_range: 2.5
           obstacle_min_range: 0.0
-          
+
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         cost_scaling_factor: 3.0
         inflation_radius: 0.55
-
 # Navigation controller parameters
 controller_server:
   ros__parameters:
     use_sim_time: false
-    controller_frequency: 15.0       # Reduced from 20.0 to 15.0 Hz for better performance
+    controller_frequency: 30.0       # Reduced from 20.0 to 15.0 Hz for better performance
     min_x_velocity_threshold: 0.2   # Increased from 0.001 to prevent very slow movement
     min_y_velocity_threshold: 0.0    # Set to 0.0 for differential drive robot
     min_theta_velocity_threshold: 0.2 # Increased from 0.001 to prevent very slow turns
@@ -118,6 +107,7 @@ controller_server:
       
     FollowPath:
       plugin: "dwb_core::DWBLocalPlanner"
+      footprint: "[[-0.15, -0.275], [-0.15, 0.275], [0.60, 0.275], [0.60, -0.275]]"
       debug_trajectory_details: false
       min_vel_x: 0.05      # Set minimum linear velocity to prevent creeping
       min_vel_y: 0.0
@@ -164,9 +154,9 @@ planner_server:
     
     GridBased:
       plugin: "nav2_navfn_planner/NavfnPlanner"
-      tolerance: 0.5
+      tolerance: 0.25
       use_astar: false
-      allow_unknown: true
+      allow_unknown: false
 
 # Behavior server parameters
 behavior_server:
@@ -188,6 +178,7 @@ behavior_server:
       plugin: "nav2_behaviors/DriveOnHeading"
     wait:
       plugin: "nav2_behaviors/Wait"
+      wait_duration: 0.2        # Duration to wait in seconds
     assisted_teleop:
       plugin: "nav2_behaviors/AssistedTeleop"
     global_frame: odom
@@ -204,7 +195,7 @@ bt_navigator:
     use_sim_time: false
     global_frame: map
     robot_base_frame: base_link
-    odom_topic: /odometry/filtered  # Use filtered odometry from EKF
+    odom_topic: /odom  # Use filtered odometry from EKF
     bt_loop_duration: 50           # Reduced from 10ms to 50ms (20Hz instead of 100Hz)
     default_server_timeout: 20
     enable_groot_monitoring: false
@@ -283,7 +274,7 @@ velocity_smoother:
     min_velocity: [-0.3, 0.0, -1.0]
     max_accel: [1.2, 0.0, 4.5]  # Match diff drive acceleration limits
     max_decel: [-1.2, 0.0, -4.5]
-    odom_topic: "/odometry/filtered"  # Use filtered odometry
+    odom_topic: "/odom"  # Use filtered odometry /odometry/filtered if something
     odom_duration: 0.1
     deadband_velocity: [0.05, 0.0, 0.1]  # Set deadband to filter out very small velocities
     velocity_timeout: 1.0

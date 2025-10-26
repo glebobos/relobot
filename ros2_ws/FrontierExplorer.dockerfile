@@ -29,27 +29,9 @@ RUN echo '#!/bin/bash\n\
 set -e\n\
 source /opt/ros/humble/setup.bash\n\
 cd /ros2_ws\n\
-echo "Cloning m-explore-ros2 repository..."\n\
-if [ ! -d "src/m-explore-ros2" ]; then\n\
-    git clone https://github.com/robo-friends/m-explore-ros2.git src/m-explore-ros2\n\
-else\n\
-    echo "m-explore-ros2 already exists, updating..."\n\
-    cd src/m-explore-ros2 && git pull && cd ../..\n\
-fi\n\
-echo "Checking available packages in m-explore-ros2..."\n\
-find src/m-explore-ros2 -name "package.xml" -exec dirname {} \\;\n\
-echo "Building all m-explore packages and frontier_explorer..."\n\
 colcon build --packages-up-to frontier_explorer --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release\n\
-if [ $? -eq 0 ]; then\n\
-    echo "Build completed successfully. Starting frontier explorer..."\n\
-    source install/setup.bash\n\
-    echo "Available packages:"\n\
-    ros2 pkg list | grep -E "(explore|frontier)"\n\
-    ros2 launch frontier_explorer explore.launch.py\n\
-else\n\
-    echo "Build failed! Check the build output above."\n\
-    exit 1\n\
-fi' > /start_dev.sh && \
+source install/setup.bash\n\
+ros2 launch frontier_explorer explore.launch.py' > /start_dev.sh && \
 chmod +x /start_dev.sh
 
 CMD ["/start_dev.sh"]

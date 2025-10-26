@@ -42,23 +42,8 @@ def generate_launch_description():
         }.items(),
     )
 
-    # Launch explore-lite node directly
-    explore_lite_node = Node(
-        package='explore_lite',
-        executable='explore',
-        name='explore',
-        output='screen',
-        parameters=[params_file],
-        remappings=[
-            ('/tf', 'tf'),
-            ('/tf_static', 'tf_static'),
-            ('map', '/map'),
-        ]
-    )
-
     return LaunchDescription([
         declare_use_sim_time_cmd,
         declare_params_file_cmd,
         nav2_bringup_launch,
-        explore_lite_node,
     ])
