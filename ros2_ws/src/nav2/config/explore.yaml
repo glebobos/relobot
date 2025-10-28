@@ -43,8 +43,8 @@ global_costmap:
 
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        cost_scaling_factor: 3.0
-        inflation_radius: 0.3
+        cost_scaling_factor: 2.0
+        inflation_radius: 0.2
 
 # Local costmap parameters for navigation  
 local_costmap:
@@ -136,7 +136,7 @@ controller_server:
       short_circuit_trajectory_evaluation: true
       stateful: true
       critics: ["RotateToGoal", "Oscillation", "ObstacleFootprint", "BaseObstacle", "GoalAlign", "PathAlign", "PathDist", "GoalDist"]
-      BaseObstacle.scale: 0.1
+      BaseObstacle.scale: 0.7
       PathAlign.scale: 20.0
       PathAlign.forward_point_distance: 0.1
       GoalAlign.scale: 18.0
@@ -305,7 +305,7 @@ collision_monitor:
     
     PolygonStop:
       type: "circle"
-      radius: 0.25  # Emergency stop zone around robot center
+      radius: 0.07  # Emergency stop zone around robot center
       action_type: "stop"
       min_points: 4  # max_points: 3 for Humble
       visualize: True

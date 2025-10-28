@@ -66,4 +66,11 @@ install(TARGETS ${PROJECT_NAME}_node
   DESTINATION lib/${PROJECT_NAME}
 )
 
+# Install launch files so they are available under install/share/<package>/launch
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/launch)
+  install(DIRECTORY launch
+    DESTINATION share/${PROJECT_NAME}
+  )
+endif()
+
 ament_package()

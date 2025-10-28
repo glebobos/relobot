@@ -13,7 +13,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+set -e
 # Check if command is provided
 if [ -z "$1" ]; then
     echo "Usage: $0 {up|down} [service]"
@@ -27,16 +27,18 @@ SERVICE=$2
 
 cd /home/admin/Documents/relobot/ros2_ws
 
+until ping -c 1 8.8.8.8 &> /dev/null
+do
+    echo "No internet connection. Retrying in 5 seconds..."
+    sleep 5
+done
+
+export HOST_IP=$(hostname -I | awk '{print $1}')
+echo "Starting services with HOST_IP=$HOST_IP"
+
 if [ "$COMMAND" == "up" ]; then
     # Wait for internet connection before starting
-    until ping -c 1 8.8.8.8 &> /dev/null
-    do
-        echo "No internet connection. Retrying in 5 seconds..."
-        sleep 5
-    done
-    
-    export HOST_IP=$(hostname -I | awk '{print $1}')
-    echo "Starting services with HOST_IP=$HOST_IP"
+
     
     if [ -z "$SERVICE" ]; then
         docker compose up

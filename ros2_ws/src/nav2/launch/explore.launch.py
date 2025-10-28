@@ -13,7 +13,7 @@ def generate_launch_description():
     params_file = LaunchConfiguration('params_file')
     
     # Package directories
-    frontier_explorer_dir = FindPackageShare('frontier_explorer')
+    nav2_dir = FindPackageShare('nav2')
     nav2_bringup_dir = FindPackageShare('nav2_bringup')
     
     # Declare launch arguments
@@ -25,7 +25,7 @@ def generate_launch_description():
     
     declare_params_file_cmd = DeclareLaunchArgument(
         'params_file',
-        default_value=PathJoinSubstitution([frontier_explorer_dir, 'config', 'explore.yaml']),
+        default_value=PathJoinSubstitution([nav2_dir, 'config', 'explore.yaml']),
         description='Full path to the ROS2 parameters file to use for all launched nodes'
     )
 

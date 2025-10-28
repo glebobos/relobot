@@ -19,7 +19,7 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /ros2_ws
 
 # Copy the package
-COPY ./src/frontier_explorer /ros2_ws/src/frontier_explorer
+COPY ./src/nav2 /ros2_ws/src/nav2
 
 # Source the workspace
 RUN echo "source /opt/ros/humble/setup.bash" >> /root/.bashrc
@@ -29,9 +29,9 @@ RUN echo '#!/bin/bash\n\
 set -e\n\
 source /opt/ros/humble/setup.bash\n\
 cd /ros2_ws\n\
-colcon build --packages-up-to frontier_explorer --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release\n\
+colcon build --packages-up-to nav2 --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release\n\
 source install/setup.bash\n\
-ros2 launch frontier_explorer explore.launch.py' > /start_dev.sh && \
+ros2 launch nav2 explore.launch.py' > /start_dev.sh && \
 chmod +x /start_dev.sh
 
 CMD ["/start_dev.sh"]

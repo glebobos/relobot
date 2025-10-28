@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>frontier_explorer</name>
+  <name>nav2</name>
   <version>0.0.0</version>
   <description>A package to control the frontier exploration.</description>
   <maintainer email="user@todo.todo">user</maintainer>
@@ -17,7 +17,6 @@
   <depend>geometry_msgs</depend>
   <depend>sensor_msgs</depend>
   <depend>tf2_ros</depend>
-  <exec_depend>explore_lite</exec_depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>

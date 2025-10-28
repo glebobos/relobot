@@ -101,35 +101,6 @@
     <origin xyz="0.4 0 0.05" rpy="0 0 0"/>
   </joint>
 
-
-  <!-- Laser Scanner Sensor -->
-  <link name="sensor_frame">
-    <visual>
-      <geometry>
-        <!-- A simple cylinder representation; customize as needed -->
-        <cylinder radius="0.01" length="0.02"/>
-      </geometry>
-      <material name="red">
-        <color rgba="1 0 0 1"/>
-      </material>
-    </visual>
-    <collision>
-      <geometry>
-        <cylinder radius="0.01" length="0.02"/>
-      </geometry>
-    </collision>
-    <inertial>
-      <mass value="0.05"/>
-      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
-    </inertial>
-  </link>
-
-  <joint name="sensor_joint" type="fixed">
-    <parent link="base_link"/>
-    <child link="sensor_frame"/>
-    <origin xyz="0.4 0 0.245" rpy="0 0 0"/>
-  </joint> 
-
   <!-- Lidar Link -->
   <link name="base_laser">
     <visual>
@@ -154,7 +125,7 @@
   <joint name="lidar_joint" type="fixed">
     <parent link="base_link"/>
     <child link="base_laser"/>
-    <origin xyz="0.15 0 0.18" rpy="0 3.14159 -1.5707"/>
+    <origin xyz="0.15 0 0.18" rpy="0 3.14159 -1.59116"/>
   </joint>
 
 </robot>
