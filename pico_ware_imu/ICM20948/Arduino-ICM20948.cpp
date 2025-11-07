@@ -19,7 +19,7 @@
 int chipSelectPin;
 int com_speed;
 
-uint8_t I2C_Address = 0x68;
+uint8_t I2C_Address = 0x69;
 
 float gyro[3];
 bool gyro_data_ready = false;
@@ -101,7 +101,7 @@ int spi_master_write_register(uint8_t reg, const uint8_t* wbuffer, uint32_t wlen
 
 int i2c_master_write_register(uint8_t address, uint8_t reg, uint32_t len, const uint8_t *data)
 {
-  if (address != 0x68)
+  if (address != 0x69)
   {
 
     Serial.print("Odd address:");
@@ -113,16 +113,16 @@ int i2c_master_write_register(uint8_t address, uint8_t reg, uint32_t len, const 
   //Serial.println(reg);
   //Serial.print("length = ");
   //Serial.println(len);
-  Wire.beginTransmission(address);
-  Wire.write(reg);
-  Wire.write(data, len);
-  Wire.endTransmission();
+  Wire1.beginTransmission(address);  // Changed to Wire1
+  Wire1.write(reg);                  // Changed to Wire1
+  Wire1.write(data, len);            // Changed to Wire1
+  Wire1.endTransmission();           // Changed to Wire1
   return 0;
 }
 
 int i2c_master_read_register(uint8_t address, uint8_t reg, uint32_t len, uint8_t *buff)
 {
-  if (address != 0x68)
+  if (address != 0x69)
   {
 
     Serial.print("Odd read address:");
@@ -135,12 +135,12 @@ int i2c_master_read_register(uint8_t address, uint8_t reg, uint32_t len, uint8_t
   //Serial.print("length = ");
   //Serial.println(len);
 
-  Wire.beginTransmission(address);
-  Wire.write(reg);
-  Wire.endTransmission(false); // Send repeated start
+  Wire1.beginTransmission(address);      // Changed to Wire1
+  Wire1.write(reg);                      // Changed to Wire1
+  Wire1.endTransmission(false);          // Changed to Wire1 - Send repeated start
 
   uint32_t offset = 0;
-  uint32_t num_received = Wire.requestFrom(address, len);
+  uint32_t num_received = Wire1.requestFrom(address, len);  // Changed to Wire1
   //Serial.print("received = ");
   //Serial.println(num_received);
   //Serial.println(buff[0]);
@@ -148,7 +148,7 @@ int i2c_master_read_register(uint8_t address, uint8_t reg, uint32_t len, uint8_t
   {
     for (uint8_t i = 0; i < len; i++)
     {
-      buff[i] = Wire.read();
+      buff[i] = Wire1.read();            // Changed to Wire1
     }
     return 0;
   }
@@ -169,7 +169,7 @@ static const uint8_t EXPECTED_WHOAMI[] = { 0xEA }; /* WHOAMI value for ICM20948 
 #define AK0991x_DEFAULT_I2C_ADDR  0x0C
 #define AK0991x_SECONDARY_I2C_ADDR  0x0E  /* The secondary I2C address for AK0991x Magnetometers */
 
-#define ICM_I2C_ADDR_REVA      0x68  /* I2C slave address for INV device on Rev A board */
+#define ICM_I2C_ADDR_REVA      0x69  /* I2C slave address for INV device on Rev A board */
 #define ICM_I2C_ADDR_REVB     0x69  /* I2C slave address for INV device on Rev B board */
 
 #define AD0_VAL   1     // The value of the last bit of the I2C address.
@@ -236,10 +236,15 @@ void initiliaze_SPI(void)
     SPI.transfer(0x00);
     SPI.endTransaction();
 }
+
 void initiliaze_I2C(void)
 {
-    Wire.begin();
-    Wire.setClock(com_speed);
+    // Configure Wire1 for GPIO 22 (SDA) and GPIO 23 (SCL)
+    Wire1.setSDA(22);                    // Changed to Wire1
+    Wire1.setSCL(23);                    // Changed to Wire1
+    Wire1.begin();                       // Changed to Wire1
+    Wire1.setClock(com_speed);           // Changed to Wire1
+    Serial.println("[I2C] Using Wire1 on GPIO 22 (SDA) and GPIO 23 (SCL)");
 }
 
 bool is_interface_SPI = false;
@@ -255,7 +260,7 @@ void set_comm_interface(ArduinoICM20948Settings settings)
     else
     {
         com_speed = settings.i2c_speed;
-        //initiliaze_I2C();
+        initiliaze_I2C();  // Now initializes Wire1 with GPIO 22/23
     }
 
 }

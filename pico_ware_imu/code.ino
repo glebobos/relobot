@@ -25,21 +25,6 @@ ArduinoICM20948Settings icmSettings =
   .quaternion6_frequency = 150
 };
 
-const uint8_t number_i2c_addr = 2;
-uint8_t poss_addresses[number_i2c_addr] = {0X69, 0X68};
-uint8_t ICM_address;
-bool ICM_found = false;
-
-void i2c_scan() {
-    for (uint8_t add_int = 0; add_int < number_i2c_addr; add_int++) {
-        Wire.beginTransmission(poss_addresses[add_int]);
-        if (Wire.endTransmission() == 0) {
-            ICM_address = poss_addresses[add_int];
-            ICM_found = true;
-            break;
-        }
-    }
-}
 
 void send_packet(byte packet_type, int16_t *data) {
     byte checksum = 0x55 + packet_type;
@@ -90,19 +75,12 @@ void run_icm20948_sensors() {
 
 void setup() {
     Serial.begin(115200);
-    Wire.begin();
-    Wire.setClock(400000);
-    delay(10);
-    i2c_scan();
-    if (ICM_found) {
-        icm20948.init(icmSettings);
-    }
+    delay(100);
+    icm20948.init(icmSettings);
 }
 
 void loop() {
-    if (ICM_found) {
-        icm20948.task();
-        run_icm20948_sensors();
-    }
+    icm20948.task();
+    run_icm20948_sensors();
     delay(1);
 }
