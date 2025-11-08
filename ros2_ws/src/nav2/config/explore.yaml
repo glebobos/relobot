@@ -2,7 +2,7 @@
 global_costmap:
   global_costmap:
     ros__parameters:
-      footprint: "[[-0.10, -0.275], [-0.10, 0.275], [0.55, 0.275], [0.55, -0.275]]"
+      footprint: "[[-0.10, -0.245], [-0.10, 0.175], [0.46, 0.175], [0.46, -0.245]]"
       use_sim_time: false
       robot_base_frame: base_link
       global_frame: map
@@ -17,12 +17,11 @@ global_costmap:
       origin_y: -25.0
       rolling_window: false
       always_send_full_costmap: true
-      plugins: ["static_layer", "obstacle_layer", "inflation_layer"]   # <-- added static_layer
+      plugins: ["static_layer", "obstacle_layer", "inflation_layer"]
 
-      # New Static Layer
       static_layer:
         plugin: "nav2_costmap_2d::StaticLayer"
-        map_topic: /map                      # slam_toolbox's published map
+        map_topic: /map
         subscribe_to_updates: true
         enabled: true
 
@@ -36,7 +35,7 @@ global_costmap:
           clearing: true
           marking: true
           data_type: "LaserScan"
-          raytrace_max_range: 25.0  # Match SLAM max range
+          raytrace_max_range: 10.0  # Match SLAM max range
           raytrace_min_range: 0.0
           obstacle_max_range: 2.5
           obstacle_min_range: 0.0
@@ -44,20 +43,20 @@ global_costmap:
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         cost_scaling_factor: 2.0
-        inflation_radius: 0.2
+        inflation_radius: 0.12
 
 # Local costmap parameters for navigation  
 local_costmap:
   local_costmap:
     ros__parameters:
-      footprint: "[[-0.10, -0.275], [-0.10, 0.275], [0.55, 0.275], [0.55, -0.275]]"
+      footprint: "[[-0.10, -0.245], [-0.10, 0.175], [0.46, 0.175], [0.46, -0.245]]"
       use_sim_time: false
       robot_base_frame: base_link
       global_frame: odom
       use_radius: false
       update_frequency: 10.0
       publish_frequency: 5.0
-      resolution: 0.04  # Match SLAM resolution
+      resolution: 0.04
       width: 5
       height: 5
       rolling_window: true
@@ -73,23 +72,23 @@ local_costmap:
           clearing: true
           marking: true
           data_type: "LaserScan"
-          raytrace_max_range: 25.0
+          raytrace_max_range: 10.0
           raytrace_min_range: 0.0
           obstacle_max_range: 2.5
           obstacle_min_range: 0.0
 
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        cost_scaling_factor: 5.0
-        inflation_radius: 0.35
+        cost_scaling_factor: 2.0
+        inflation_radius: 0.12
 # Navigation controller parameters
 controller_server:
   ros__parameters:
     use_sim_time: false
-    controller_frequency: 20.0       # Reduced from 20.0 to 15.0 Hz for better performance
-    min_x_velocity_threshold: 0.2   # Increased from 0.001 to prevent very slow movement
+    controller_frequency: 17.0       # Reduced from 20.0 to 15.0 Hz for better performance
+    min_x_velocity_threshold: 0.05   # Increased from 0.001 to prevent very slow movement
     min_y_velocity_threshold: 0.0    # Set to 0.0 for differential drive robot
-    min_theta_velocity_threshold: 0.2 # Increased from 0.001 to prevent very slow turns
+    min_theta_velocity_threshold: 0.35 # Increased to keep rotation above motor minimum
     failure_tolerance: 0.3
     progress_checker_plugin: "progress_checker"
     goal_checker_plugins: ["general_goal_checker"]
@@ -97,27 +96,27 @@ controller_server:
 
     progress_checker:
       plugin: "nav2_controller::SimpleProgressChecker"
-      required_movement_radius: 0.5
-      movement_time_allowance: 10.0
+      required_movement_radius: 0.4
+      movement_time_allowance: 20.0
       
     general_goal_checker:
       stateful: True
       plugin: "nav2_controller::SimpleGoalChecker"
-      xy_goal_tolerance: 0.30
-      yaw_goal_tolerance: 1.0
+      xy_goal_tolerance: 0.25
+      yaw_goal_tolerance: 0.8
       
     FollowPath:
       plugin: "dwb_core::DWBLocalPlanner"
-      footprint: "[[-0.10, -0.275], [-0.10, 0.275], [0.55, 0.275], [0.55, -0.275]]"
+      footprint: "[[-0.10, -0.245], [-0.10, 0.175], [0.46, 0.175], [0.46, -0.245]]"
       debug_trajectory_details: false
-      min_vel_x: 0.05      # Set minimum linear velocity to prevent creeping
+      min_vel_x: -0.25      # Set minimum linear velocity to prevent creeping
       min_vel_y: 0.0
       max_vel_x: 0.25      # Match diff drive max velocity with margin
       max_vel_y: 0.0
       max_vel_theta: 0.8   # Match diff drive max angular velocity with margin
       min_speed_xy: 0.05   # Set minimum speed to prevent very slow movement
       max_speed_xy: 0.25
-      min_speed_theta: 0.4 # Set minimum angular speed to prevent very slow turns
+      min_speed_theta: 0.35 # Set minimum angular speed to prevent very slow turns
       acc_lim_x: 1.2  # Match diff drive acceleration limits
       acc_lim_y: 0.0
       acc_lim_theta: 4.5
@@ -127,7 +126,7 @@ controller_server:
       vx_samples: 20
       vy_samples: 5
       vtheta_samples: 20
-      sim_time: 1.7
+      sim_time: 2.0
       linear_granularity: 0.05
       angular_granularity: 0.025
       transform_tolerance: 0.2
@@ -135,30 +134,72 @@ controller_server:
       trans_stopped_velocity: 0.25
       short_circuit_trajectory_evaluation: true
       stateful: true
-      critics: ["RotateToGoal", "Oscillation", "ObstacleFootprint", "BaseObstacle", "GoalAlign", "PathAlign", "PathDist", "GoalDist"]
-      BaseObstacle.scale: 0.7
-      PathAlign.scale: 20.0
-      PathAlign.forward_point_distance: 0.1
-      GoalAlign.scale: 18.0
-      GoalAlign.forward_point_distance: 0.1
-      PathDist.scale: 24.0
-      GoalDist.scale: 18.0
-      RotateToGoal.scale: 25.0
-      RotateToGoal.slowing_factor: 5.0
+      critics: ["RotateToGoal", "Oscillation", "ObstacleFootprint", "BaseObstacle", "PreferForward", "GoalAlign", "PathAlign", "PathDist", "GoalDist"]
+      BaseObstacle.scale: 0.02
+      PathAlign.scale: 32.0
+      PathAlign.forward_point_distance: 0.45
+      GoalAlign.scale: 24.0
+      GoalAlign.forward_point_distance: 0.45
+      PathDist.scale: 32.0
+      GoalDist.scale: 24.0
+      RotateToGoal.scale: 32.0
+      RotateToGoal.slowing_factor: 3.0
       RotateToGoal.lookahead_time: -1.0
-      ObstacleFootprint.scale: 0.05
+      ObstacleFootprint.scale: 0.2
+      PreferForward.scale: 5.0
+      PreferForward.penalty: 1.0
+      PreferForward.threshold: 0.1
 
-# Planner server parameters
 planner_server:
   ros__parameters:
     use_sim_time: false
     planner_plugins: ["GridBased"]
-    
+    expected_planner_frequency: 0.3
     GridBased:
-      plugin: "nav2_navfn_planner/NavfnPlanner"
-      tolerance: 0.25
-      use_astar: false
-      allow_unknown: false
+      plugin: "nav2_smac_planner/SmacPlannerLattice"
+      
+      # Basic parameters
+      tolerance: 0.25                       # Distance tolerance to goal
+      allow_unknown: false                  # Don't plan through unknown space
+      
+      # Search parameters
+      max_iterations: 1000000               
+      max_on_approach_iterations: 1000
+      terminal_checking_interval: 5000      
+      max_planning_time: 3.0
+      
+      # Analytic expansion parameters
+      analytic_expansion_ratio: 2.0         # Frequency of analytic expansions - reduced to minimize reverse paths
+      analytic_expansion_max_length: 3.0    # Max length for analytic shortcuts
+      analytic_expansion_max_cost: 200.0    # Max cost for analytic expansion
+      analytic_expansion_max_cost_override: false
+      
+      # Motion penalties (for differential drive)
+      reverse_penalty: 50.0                 # Very high penalty - use reverse only when absolutely necessary
+      change_penalty: 0.3                   # Penalty for changing direction (forward/backward)
+      non_straight_penalty: 1.05            # Penalty for non-straight motion
+      cost_penalty: 2.0                     # Penalty for high-cost areas
+      rotation_penalty: 0.2                 # Penalty for in-place rotations - helps prevent slow motor speeds!
+      retrospective_penalty: 0.015          # Prefer later maneuvers over earlier ones
+      
+      # Lattice configuration
+      lookup_table_size: 20.0               # Dubin/Reeds-Shepp distance cache size
+      cache_obstacle_heuristic: true        # Cache for 40x faster replanning!
+      allow_reverse_expansion: true        # Don't allow backing up (set true if needed)
+      
+      # Goal heading mode
+      goal_heading_mode: "DEFAULT"          # Options: DEFAULT, BIDIRECTIONAL, ALL_DIRECTION
+      coarse_search_resolution: 1           # For ALL_DIRECTION mode only
+      
+      # Path smoothing
+      smooth_path: true
+      smoother:
+        max_iterations: 1000
+        w_smooth: 0.30                     
+        w_data: 0.15
+        tolerance: 1.0e-10
+        do_refinement: true
+        refinement_num: 2
 
 # Behavior server parameters
 behavior_server:
@@ -173,9 +214,9 @@ behavior_server:
       plugin: "nav2_behaviors/Spin"
     backup:
       plugin: "nav2_behaviors/BackUp"
-      backup_speed: -0.3        # Speed for backing up (negative for reverse)
-      backup_distance: -0.50     # Distance to back up in meters (negative for reverse)
-      time_allowance: 10.0       # Maximum time allowed for the backup behavior
+      backup_speed: -0.15        # Speed for backing up (negative for reverse)
+      backup_distance: -0.35     # Distance to back up in meters (negative for reverse)
+      time_allowance: 10.0      # Maximum time allowed for the backup behavior
     drive_on_heading:
       plugin: "nav2_behaviors/DriveOnHeading"
     wait:
@@ -188,7 +229,7 @@ behavior_server:
     transform_tolerance: 0.1
     simulate_ahead_time: 2.0
     max_rotational_vel: 0.8  # Match our robot limits
-    min_rotational_vel: 0.4
+    min_rotational_vel: 0.2
     rotational_acc_lim: 4.5  # Match diff drive limits
 
 # BT Navigator parameters
@@ -204,6 +245,7 @@ bt_navigator:
     groot_zmq_publisher_port: 1666
     groot_zmq_server_port: 1667
     default_bt_xml_filename: "navigate_w_replanning_and_recovery.xml"
+    always_reload_bt_xml: false
     plugin_lib_names:
       - nav2_compute_path_to_pose_action_bt_node
       - nav2_compute_path_through_poses_action_bt_node
@@ -278,54 +320,54 @@ velocity_smoother:
     max_decel: [-1.2, 0.0, -4.5]
     odom_topic: "/odom"  # Use filtered odometry /odometry/filtered if something
     odom_duration: 0.1
-    deadband_velocity: [0.1, 0.0, 0.1]  # Set deadband to filter out very small velocities
+    deadband_velocity: [0.0, 0.0, 0.0]  # Set deadband to filter out very small velocities
     velocity_timeout: 1.0
-    enable_stamped_cmd_vel: false  # ? Missing - Set True for Jazzy+, False for Humble/Iron
+    enable_stamped_cmd_vel: false  # ? Missing - Set True for Jazzy, False for Humble/Iron
 
 # Topic remapping for velocity smoother
 velocity_smoother_rclcpp_node:
   ros__parameters:
     use_sim_time: false
 
-collision_monitor:
-  ros__parameters:
-    enabled: True  # ? I was missing this!
-    base_frame_id: "base_link"
-    odom_frame_id: "odom"
-    cmd_vel_in_topic: "cmd_vel_smoothed"
-    cmd_vel_out_topic: "cmd_vel"
-    state_topic: "collision_monitor_state"
-    transform_tolerance: 0.2
-    source_timeout: 1.0
-    base_shift_correction: True
-    stop_pub_timeout: 2.0
-    enable_stamped_cmd_vel: false  # ? Missing - Set True for Jazzy+, False for Humble/Iron
-    use_realtime_priority: false   # ? Missing
-    polygons: ["PolygonStop", "FootprintApproach"]
+# collision_monitor:
+#   ros__parameters:
+#     enabled: False
+#     base_frame_id: "base_link"
+#     odom_frame_id: "odom"
+#     cmd_vel_in_topic: "cmd_vel_smoothed"
+#     cmd_vel_out_topic: "cmd_vel"
+#     state_topic: "collision_monitor_state"
+#     transform_tolerance: 0.2
+#     source_timeout: 1.0
+#     base_shift_correction: True
+#     stop_pub_timeout: 2.0
+#     enable_stamped_cmd_vel: false  # ? Missing - Set True for Jazzy, False for Humble/Iron
+#     use_realtime_priority: false   # ? Missing
+#     polygons: ["PolygonStop", "FootprintApproach"]
     
-    PolygonStop:
-      type: "circle"
-      radius: 0.07  # Emergency stop zone around robot center
-      action_type: "stop"
-      min_points: 4  # max_points: 3 for Humble
-      visualize: True
-      polygon_pub_topic: "polygon_stop"
-      enabled: True
+#     PolygonStop:
+#       type: "polygon"
+#       points: "[[-0.15, -0.325], [-0.15, 0.325], [0.60, 0.325], [0.60, -0.325]]"
+#       action_type: "stop"
+#       min_points: 4  # max_points: 3 for Humble
+#       visualize: True
+#       polygon_pub_topic: "polygon_stop"
+#       enabled: True
       
-    FootprintApproach:
-      type: "polygon"
-      action_type: "approach"
-      footprint_topic: "/local_costmap/published_footprint"  # ? I had this wrong!
-      time_before_collision: 1.5
-      simulation_time_step: 0.02
-      min_points: 4  # max_points: 3 for Humble
-      visualize: True
-      enabled: True
+#     FootprintApproach:
+#       type: "polygon"
+#       action_type: "approach"
+#       footprint_topic: "/local_costmap/published_footprint"  # ? I had this wrong!
+#       time_before_collision: 1.5
+#       simulation_time_step: 0.02
+#       min_points: 4  # max_points: 3 for Humble
+#       visualize: True
+#       enabled: True
       
-    observation_sources: ["scan"]
+#     observation_sources: ["scan"]
     
-    scan:
-      type: "scan"
-      topic: "/scan"
-      source_timeout: 0.5  # ? I was missing this!
-      enabled: True
+#     scan:
+#       type: "scan"
+#       topic: "/scan"
+#       source_timeout: 0.5  # ? I was missing this!
+#       enabled: True
