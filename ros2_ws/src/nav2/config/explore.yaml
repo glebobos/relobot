@@ -88,7 +88,7 @@ controller_server:
     controller_frequency: 17.0       # Reduced from 20.0 to 15.0 Hz for better performance
     min_x_velocity_threshold: 0.05   # Increased from 0.001 to prevent very slow movement
     min_y_velocity_threshold: 0.0    # Set to 0.0 for differential drive robot
-    min_theta_velocity_threshold: 0.35 # Increased to keep rotation above motor minimum
+    min_theta_velocity_threshold: 0.45 # Increased to keep rotation above motor minimum
     failure_tolerance: 0.3
     progress_checker_plugin: "progress_checker"
     goal_checker_plugins: ["general_goal_checker"]
@@ -116,7 +116,7 @@ controller_server:
       max_vel_theta: 0.8   # Match diff drive max angular velocity with margin
       min_speed_xy: 0.05   # Set minimum speed to prevent very slow movement
       max_speed_xy: 0.25
-      min_speed_theta: 0.35 # Set minimum angular speed to prevent very slow turns
+      min_speed_theta: 0.45 # Set minimum angular speed to prevent very slow turns
       acc_lim_x: 1.2  # Match diff drive acceleration limits
       acc_lim_y: 0.0
       acc_lim_theta: 4.5
@@ -143,7 +143,7 @@ controller_server:
       PathDist.scale: 32.0
       GoalDist.scale: 24.0
       RotateToGoal.scale: 32.0
-      RotateToGoal.slowing_factor: 3.0
+      RotateToGoal.slowing_factor: 2.0
       RotateToGoal.lookahead_time: -1.0
       ObstacleFootprint.scale: 0.2
       PreferForward.scale: 5.0
@@ -185,7 +185,7 @@ planner_server:
       # Lattice configuration
       lookup_table_size: 20.0               # Dubin/Reeds-Shepp distance cache size
       cache_obstacle_heuristic: true        # Cache for 40x faster replanning!
-      allow_reverse_expansion: true        # Don't allow backing up (set true if needed)
+      allow_reverse_expansion: false        # Don't allow backing up (set true if needed)
       
       # Goal heading mode
       goal_heading_mode: "DEFAULT"          # Options: DEFAULT, BIDIRECTIONAL, ALL_DIRECTION
