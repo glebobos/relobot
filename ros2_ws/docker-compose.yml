@@ -182,3 +182,24 @@ services:
     depends_on:
       - ds
     restart: unless-stopped
+
+  ros2_camera_rp:
+    build:
+      context: .
+      dockerfile: CameraRp.dockerfile
+    volumes:
+      - .:/ros2_ws/
+    devices:
+      - /dev/:/dev/
+    environment:
+      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+      - FASTDDS_BUILTIN_TRANSPORTS=DEFAULT
+      - ROS_DISCOVERY_SERVER=${HOST_IP}:11811
+      - ROS_SUPER_CLIENT=True
+      - PYTHONUNBUFFERED=1
+    network_mode: host
+    ipc: host 
+    privileged: true
+    depends_on:
+      - ds
+    restart: unless-stopped
