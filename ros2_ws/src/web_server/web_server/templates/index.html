@@ -15,17 +15,14 @@
         <div class="video-container">
             <img id="cameraStream" src="" alt="Camera Stream">
         </div>
-        
-        <div class="battery-container">
-            <!-- Voltage bar -->
-            <div class="status-bar" id="vin-bar">
-                <span class="status-label" id="vin-display">--.-- V</span>
-            </div>
-
-            <!-- RPM bar -->
-            <div class="status-bar rpm" id="rpm-bar">
-                <span class="status-label" id="rpm-display">--- RPM</span>
-            </div>
+    </div>
+    
+    <div class="status-container">
+        <div class="status-bar" id="vin-bar">
+            <span class="status-label" id="vin-display">--.-- V</span>
+        </div>
+        <div class="status-bar rpm" id="rpm-bar">
+            <span class="status-label" id="rpm-display">--- RPM</span>
         </div>
     </div>
     
@@ -57,11 +54,10 @@
         
         <button class="emergency-stop" onclick="emergencyStop()">🛑 EMERGENCY STOP</button>
     </div>
+    <script src="https://cdn.jsdelivr.net/npm/roslib@1.4.1/build/roslib.js"></script>
     <script src="/robot-control.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.89.0/build/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/stats.js@0.17.0/build/stats.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/eventemitter2@6.4.9/eventemitter2.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/roslib@1.4.1/build/roslib.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/ros3d@1.1.0/build/ros3d.min.js"></script>
     <script src="/map-viewer.js"></script>
 </body>

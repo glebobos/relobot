@@ -20,27 +20,30 @@ const cameraStream = document.getElementById('cameraStream');
         ros.on('error', err => console.error('[ROSBridge] Error', err));
         ros.on('close', () => console.warn('[ROSBridge] Connection closed'));
 
+        // Throttle camera updates to max 10 FPS to reduce load
+        let lastCameraUpdate = 0;
+        const CAMERA_THROTTLE_MS = 100; // 10 FPS max
+
         function setImageSrc(url) {
             if (cameraStream.src === url) return;
             cameraStream.src = url;
         }
 
-        const topicNames = [
-            '/camera/image_raw/compressed',
-            '/camera/image/compressed'
-        ];
+        // Subscribe to only ONE compressed image topic
+        const topic = new ROSLIB.Topic({
+            ros,
+            name: '/camera/image_raw/compressed',
+            messageType: 'sensor_msgs/msg/CompressedImage',
+            throttle_rate: 100  // Throttle at ROSBridge level to 10 FPS
+        });
 
-        topicNames.forEach(name => {
-            const topic = new ROSLIB.Topic({
-                ros,
-                name,
-                messageType: 'sensor_msgs/msg/CompressedImage'
-            });
-
-            topic.subscribe(msg => {
-                const format = msg.format || 'image/jpeg';
-                setImageSrc(`data:${format};base64,${msg.data}`);
-            });
+        topic.subscribe(msg => {
+            const now = Date.now();
+            if (now - lastCameraUpdate < CAMERA_THROTTLE_MS) return;
+            lastCameraUpdate = now;
+            
+            const format = msg.format || 'image/jpeg';
+            setImageSrc(`data:${format};base64,${msg.data}`);
         });
     }
 
@@ -165,9 +168,18 @@ document.addEventListener('touchmove', handleMove, { passive: false });
 document.addEventListener('mouseup', handleEnd);
 document.addEventListener('touchend', handleEnd);
 
-// Video error handling
+// Camera connection status
+let cameraConnected = false;
+cameraStream.onload = function() {
+    if (!cameraConnected) {
+        cameraConnected = true;
+        console.log('Camera stream connected');
+    }
+};
+
 cameraStream.onerror = function() {
-    console.error('Camera stream element reported an error; waiting for next ROS frame.');
+    cameraConnected = false;
+    console.warn('Camera stream interrupted, reconnecting...');
 };
 
 // Gamepad API

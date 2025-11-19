@@ -53,41 +53,6 @@ body {
     flex-direction: column; 
 }
 
-.camera-toggle {
-    position: absolute;
-    top: 20px;
-    left: 20px;
-    z-index: 100;
-    background: rgba(0,0,0,0.7);
-    border-radius: 20px;
-    padding: 8px;
-}
-
-.toggle-switch {
-    display: flex;
-    background: rgba(255,255,255,0.1);
-    border-radius: 15px;
-    overflow: hidden;
-}
-
-.toggle-switch input[type="radio"] {
-    display: none;
-}
-
-.toggle-switch label {
-    padding: 8px 16px;
-    color: rgba(255,255,255,0.7);
-    cursor: pointer;
-    font-size: 12px;
-    transition: all 0.3s ease;
-    border-radius: 15px;
-}
-
-.toggle-switch input[type="radio"]:checked + label {
-    background: #007bff;
-    color: white;
-}
-
 .video-container {
     width: 100%;
     background: #000;
@@ -98,6 +63,20 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
+    position: relative;
+}
+
+.video-container::before {
+    content: 'Connecting to camera...';
+    position: absolute;
+    color: rgba(255,255,255,0.7);
+    font-size: 14px;
+    z-index: 0;
+}
+
+.video-container img[src] {
+    position: relative;
+    z-index: 1;
 }
 
 .map-section {
@@ -212,8 +191,12 @@ body {
     }
     
     .video-container {
-        width: 100%;
         max-height: 60vh;
+    }
+    
+    .status-container {
+        padding: 15px;
+        gap: 15px;
     }
     
     .map-section {
@@ -221,14 +204,10 @@ body {
     }
     
     #map {
-        width: 100%;
         height: 300px;
-        background-color: #f0f0f0;
-        border: 1px solid #ccc;
     }
     
     .joystick-section {
-        min-height: auto;
         padding: 20px 10px;
     }
     
@@ -253,16 +232,6 @@ body {
         width: 90%;
     }
     
-    .camera-toggle {
-        top: 15px;
-        left: 15px;
-    }
-    
-    .toggle-switch label {
-        padding: 6px 12px;
-        font-size: 11px;
-    }
-    
     .nav-links {
         top: 15px;
         right: 15px;
@@ -276,29 +245,19 @@ body {
 
 @media (max-width: 480px) and (orientation: portrait) {
     .camera-section {
-        padding: 10px;
         min-height: 250px;
     }
     
     .video-container {
-        max-width: 98%;
         max-height: 50vh;
     }
     
-    .video-container img {
-        width: 100%;
-        height: auto;
-    }
-    
-    .map-section {
-        padding: 5px;
+    .status-container {
+        padding: 10px;
     }
     
     #map {
-        width: 100%;
         height: 250px;
-        background-color: #f0f0f0;
-        border: 1px solid #ccc;
     }
     
     #joystick {
@@ -316,31 +275,15 @@ body {
 
 @media (max-height: 500px) and (orientation: landscape) {
     .camera-section {
-        padding: 10px;
         min-height: 200px;
-        display: flex;
-        justify-content: center;
-        align-items: center;
     }
     
     .video-container {
-        max-width: 70%;
         max-height: 80vh;
-        margin: 0 auto;
-        display: flex;
-        justify-content: center;
-        align-items: center;
     }
     
-    .video-container img {
-        width: auto;
-        height: 100%;
-        max-width: 100%;
-        margin: 0 auto;
-    }
-    
-    .joystick-section {
-        padding: 20px 10px;
+    .status-container {
+        padding: 10px;
     }
     
     #joystick {
@@ -356,47 +299,20 @@ body {
         left: 80px;
     }
 }
-/* ===== Battery-voltage bar ============================================ */
-.battery-container {
-    margin: 16px auto 0;
-    width: 100%;
+/* ===== Status bars (voltage & RPM) ==================================== */
+.status-container {
+    padding: 20px;
+    background: #f8f9fa;
     display: flex;
-    flex-direction: column;
-    align-items: center;
+    gap: 20px;
+    justify-content: center;
+    flex-wrap: wrap;
 }
 
-.battery-bar {
-    width: 100%;
-    height: 22px;
-    border-radius: 12px;
-    overflow: hidden;
-    background: linear-gradient(to right,
-        red 0%,                   /*  0 % … 20 %  */
-        red 15%,
-        #ffcc00 20%,             /* ~26 V – yellow */
-        green 100%);             /* 28 V          */
-    position: relative;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2) inset;
-}
-
-.battery-mask {
-    position: absolute;
-    top: 0; right: 0; bottom: 0;
-    width: 100%;                      /* shrinks as Vin rises */
-    background: rgba(240,240,240,0.85);
-    transition: width 0.3s ease;
-}
-
-.battery-label {
-    margin-top: 6px;
-    font-weight: 600;
-    font-size: 17px;
-}
-
-.rpm-label {
-    margin-top: 2px;
-    font-weight: 600;
-    font-size: 17px;
+.status-container .status-bar {
+    flex: 1;
+    min-width: 200px;
+    max-width: 400px;
 }
 
 .status-bar{
@@ -411,46 +327,24 @@ body {
   background:#222;          /* “empty” part of the bar */
 }
 
-.status-bar::before{        /* the coloured liquid */
+.status-bar::before{
   content:"";
   position:absolute;
   inset:0;
   transform-origin:left;
   transform:scaleX(var(--fill));
   transition:transform .25s linear;
-  background:linear-gradient(
-      90deg,
-      #4caf50 0%,
-      #ffeb3b 50%,
-      #f44336 100%);
-  background-size: calc(100% / var(--fill)) 100%;  /* Scale gradient to maintain color at edge */
-  background-position: 0 0;  /* Always start from left */
+  background:linear-gradient(90deg, #4caf50 0%, #ffeb3b 50%, #f44336 100%);
 }
 
-/* reverse colours for voltage */
 #vin-bar::before{
-  background:linear-gradient(
-      90deg,
-      #f44336 0%,
-      #ffeb3b 50%,
-      #4caf50 100%);
-  background-size: calc(100% / var(--fill)) 100%;  /* Scale gradient to maintain color at edge */
-  background-position: 0 0;  /* Always start from left */
+  background:linear-gradient(90deg, #f44336 0%, #ffeb3b 50%, #4caf50 100%);
 }
 
-/* optional custom colours for RPM */
 .rpm::before{
-  background:linear-gradient(
-      90deg,
-      #2196f3 0%,
-      #4caf50 40%,
-      #ffeb3b 70%,
-      #f44336 100%);
-  background-size: calc(100% / var(--fill)) 100%;  /* Scale gradient to maintain color at edge */
-  background-position: 0 0;  /* Always start from left */
+  background:linear-gradient(90deg, #2196f3 0%, #4caf50 40%, #ffeb3b 70%, #f44336 100%);
 }
 
-/* text on top */
 .status-label{
   position:absolute;
   inset:0;
@@ -463,6 +357,3 @@ body {
   pointer-events:none;
   z-index:1;
 }
-.status-mask{display:none;}
-
-/* Voltage bar specific - reversed gradient (red to green) */
