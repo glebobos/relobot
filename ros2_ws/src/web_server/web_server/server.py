@@ -87,17 +87,6 @@ class RobotWebServer:
             return send_from_directory("templates", "styles.css",
                                        mimetype="text/css")
 
-        # ------------- video ------------------------------------------------
-        @self.app.route("/video_feed/depth")
-        def vid_depth():
-            return Response(self._stream(self.node.depth_frame),
-                            mimetype="multipart/x-mixed-replace; boundary=frame")
-
-        @self.app.route("/video_feed/confidence")
-        def vid_conf():
-            return Response(self._stream(self.node.confidence_frame),
-                            mimetype="multipart/x-mixed-replace; boundary=frame")
-
         # ------------- voltage ----------------------------------------------
         @self.app.route("/api/voltage")
         def api_voltage():
@@ -209,16 +198,6 @@ class RobotWebServer:
     # --------------------------------------------------------------------- #
     #                          helpers & lifecycle                          #
     # --------------------------------------------------------------------- #
-    @staticmethod
-    def _stream(frame_supplier):
-        def gen():
-            while True:
-                frame = frame_supplier()
-                yield (b"--frame\r\nContent-Type: image/jpeg\r\n\r\n" +
-                       frame + b"\r\n")
-                time.sleep(1 / 30)
-        return gen()
-
     def start(self) -> None:
         # start knife RPM loop
         self.knife.start()

@@ -1,14 +1,51 @@
-// Camera switching
-const cameraRadios = document.querySelectorAll('input[name="camera"]');
 const cameraStream = document.getElementById('cameraStream');
 
-cameraRadios.forEach(radio => {
-    radio.addEventListener('change', function() {
-        if (this.checked) {
-            cameraStream.src = `/video_feed/${this.value}`;
+(function initCameraFeed() {
+    if (!cameraStream) return;
+
+    const waitForRoslib = (delay = 250) => {
+        if (typeof ROSLIB === 'undefined') {
+            console.warn('ROSLIB not loaded yet, retrying...');
+            setTimeout(() => waitForRoslib(Math.min(delay * 2, 2000)), delay);
+            return;
         }
-    });
-});
+        startRosCamera();
+    };
+
+    function startRosCamera() {
+        const rosbridgeUrl = `ws://${window.location.hostname}:9090`;
+        const ros = new ROSLIB.Ros({ url: rosbridgeUrl });
+
+        ros.on('connection', () => console.log(`[ROSBridge] Connected ${rosbridgeUrl}`));
+        ros.on('error', err => console.error('[ROSBridge] Error', err));
+        ros.on('close', () => console.warn('[ROSBridge] Connection closed'));
+
+        function setImageSrc(url) {
+            if (cameraStream.src === url) return;
+            cameraStream.src = url;
+        }
+
+        const topicNames = [
+            '/camera/image_raw/compressed',
+            '/camera/image/compressed'
+        ];
+
+        topicNames.forEach(name => {
+            const topic = new ROSLIB.Topic({
+                ros,
+                name,
+                messageType: 'sensor_msgs/msg/CompressedImage'
+            });
+
+            topic.subscribe(msg => {
+                const format = msg.format || 'image/jpeg';
+                setImageSrc(`data:${format};base64,${msg.data}`);
+            });
+        });
+    }
+
+    waitForRoslib();
+})();
 
 // Joystick functionality
 const joystick = document.getElementById('joystick');
@@ -130,11 +167,7 @@ document.addEventListener('touchend', handleEnd);
 
 // Video error handling
 cameraStream.onerror = function() {
-    console.error('Camera stream error, retrying...');
-    setTimeout(() => {
-        const selectedCamera = document.querySelector('input[name="camera"]:checked').value;
-        this.src = `/video_feed/${selectedCamera}?` + new Date().getTime();
-    }, 1000);
+    console.error('Camera stream element reported an error; waiting for next ROS frame.');
 };
 
 // Gamepad API
