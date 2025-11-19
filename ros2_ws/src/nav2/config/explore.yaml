@@ -9,7 +9,7 @@ global_costmap:
       update_frequency: 1.0
       publish_frequency: 1.0
       resolution: 0.04  # Match SLAM resolution
-      track_unknown_space: false
+      track_unknown_space: true
       unknown_cost_value: 255
       width: 50
       height: 50
@@ -37,13 +37,13 @@ global_costmap:
           data_type: "LaserScan"
           raytrace_max_range: 5.0  # Match SLAM max range
           raytrace_min_range: 0.0
-          obstacle_max_range: 2.5
+          obstacle_max_range: 4.5
           obstacle_min_range: 0.0
 
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        cost_scaling_factor: 2.0
-        inflation_radius: 0.12
+        cost_scaling_factor: 5.0
+        inflation_radius: 0.2
 
 # Local costmap parameters for navigation  
 local_costmap:
@@ -72,15 +72,15 @@ local_costmap:
           clearing: true
           marking: true
           data_type: "LaserScan"
-          raytrace_max_range: 10.0
+          raytrace_max_range: 5.0
           raytrace_min_range: 0.0
-          obstacle_max_range: 2.5
+          obstacle_max_range: 4.5
           obstacle_min_range: 0.0
 
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        cost_scaling_factor: 2.0
-        inflation_radius: 0.12
+        cost_scaling_factor: 5.0
+        inflation_radius: 0.2
 # Navigation controller parameters
 controller_server:
   ros__parameters:
@@ -154,7 +154,7 @@ controller_server:
         repulsion_weight: 4.0
         critical_weight: 20.0
         consider_footprint: True
-        collision_cost: 10000.0
+        collision_cost: 100000.0
         collision_margin_distance: 0.1
         near_goal_distance: 0.5
         inflation_radius: 0.2 # (only in Humble)
