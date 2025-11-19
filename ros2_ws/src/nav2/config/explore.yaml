@@ -1,0 +1,370 @@
+# Global costmap parameters for navigation
+global_costmap:
+  global_costmap:
+    ros__parameters:
+      footprint: "[[-0.10, -0.245], [-0.10, 0.175], [0.46, 0.175], [0.46, -0.245]]"
+      use_sim_time: false
+      robot_base_frame: base_link
+      global_frame: map
+      update_frequency: 1.0
+      publish_frequency: 1.0
+      resolution: 0.04  # Match SLAM resolution
+      track_unknown_space: true
+      unknown_cost_value: 255
+      width: 50
+      height: 50
+      origin_x: -25.0
+      origin_y: -25.0
+      rolling_window: false
+      always_send_full_costmap: true
+      plugins: ["static_layer", "obstacle_layer", "inflation_layer"]
+
+      static_layer:
+        plugin: "nav2_costmap_2d::StaticLayer"
+        map_topic: /map
+        subscribe_to_updates: true
+        enabled: true
+
+      obstacle_layer:
+        plugin: "nav2_costmap_2d::ObstacleLayer"
+        enabled: true
+        observation_sources: scan
+        scan:
+          topic: /scan
+          max_obstacle_height: 2.0
+          clearing: true
+          marking: true
+          data_type: "LaserScan"
+          raytrace_max_range: 5.0  # Match SLAM max range
+          raytrace_min_range: 0.0
+          obstacle_max_range: 4.5
+          obstacle_min_range: 0.0
+
+      inflation_layer:
+        plugin: "nav2_costmap_2d::InflationLayer"
+        cost_scaling_factor: 5.0
+        inflation_radius: 0.2
+
+# Local costmap parameters for navigation  
+local_costmap:
+  local_costmap:
+    ros__parameters:
+      footprint: "[[-0.10, -0.245], [-0.10, 0.175], [0.46, 0.175], [0.46, -0.245]]"
+      use_sim_time: false
+      robot_base_frame: base_link
+      global_frame: odom
+      use_radius: false
+      update_frequency: 10.0
+      publish_frequency: 5.0
+      resolution: 0.04
+      width: 5
+      height: 5
+      rolling_window: true
+      plugins: ["obstacle_layer", "inflation_layer"]
+
+      obstacle_layer:
+        plugin: "nav2_costmap_2d::ObstacleLayer"
+        enabled: true
+        observation_sources: scan
+        scan:
+          topic: /scan
+          max_obstacle_height: 2.0
+          clearing: true
+          marking: true
+          data_type: "LaserScan"
+          raytrace_max_range: 5.0
+          raytrace_min_range: 0.0
+          obstacle_max_range: 4.5
+          obstacle_min_range: 0.0
+
+      inflation_layer:
+        plugin: "nav2_costmap_2d::InflationLayer"
+        cost_scaling_factor: 5.0
+        inflation_radius: 0.2
+# Navigation controller parameters
+controller_server:
+  ros__parameters:
+    use_sim_time: false
+    controller_frequency: 17.0
+    min_x_velocity_threshold: 0.05   # Increased from 0.001 to prevent very slow movement
+    min_y_velocity_threshold: 0.5    # Set to 0.0 for differential drive robot
+    min_theta_velocity_threshold: 0.45 # Increased to keep rotation above motor minimum
+    failure_tolerance: 0.3
+    odom_topic: /odometry/filtered  # Use filtered odometry from EKF
+    progress_checker_plugin: "progress_checker"
+    goal_checker_plugins: ["goal_checker"]
+    controller_plugins: ["FollowPath"]
+
+    progress_checker:
+      plugin: "nav2_controller::SimpleProgressChecker"
+      required_movement_radius: 0.4
+      movement_time_allowance: 10.0
+      
+    goal_checker:
+      stateful: True
+      plugin: "nav2_controller::SimpleGoalChecker"
+      xy_goal_tolerance: 0.25
+      yaw_goal_tolerance: 0.8
+      
+    FollowPath:
+      plugin: "nav2_mppi_controller::MPPIController"
+      time_steps: 56
+      model_dt: 0.06
+      batch_size: 2000
+      vx_std: 0.2
+      wz_std: 0.4
+      vx_max: 0.3
+      vx_min: -0.3
+      wz_max: 1.0
+      iteration_count: 1
+      prune_distance: 1.7
+      transform_tolerance: 0.1
+      temperature: 0.3
+      gamma: 0.015
+      motion_model: "DiffDrive"
+      visualize: false
+      reset_period: 1.0 # (only in Humble)
+      regenerate_noises: false
+      TrajectoryVisualizer:
+        trajectory_step: 5
+        time_step: 3
+      critics: ["ConstraintCritic", "CostCritic", "ObstaclesCritic", "GoalCritic", "GoalAngleCritic", "PathAlignCritic", "PathFollowCritic", "PathAngleCritic", "PreferForwardCritic"]
+      ConstraintCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 4.0
+      GoalCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 5.0
+        threshold_to_consider: 1.4
+      GoalAngleCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 3.0
+        threshold_to_consider: 0.5
+      PreferForwardCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 5.0
+        threshold_to_consider: 0.5
+      ObstaclesCritic:
+        enabled: true
+        cost_power: 1
+        repulsion_weight: 4.0
+        critical_weight: 20.0
+        consider_footprint: True
+        collision_cost: 100000.0
+        collision_margin_distance: 0.1
+        near_goal_distance: 0.5
+        inflation_radius: 0.2 # (only in Humble)
+        cost_scaling_factor: 2.0 # (only in Humble)
+        CostCritic:
+          enabled: true
+          cost_power: 1
+          cost_weight: 3.81
+          critical_cost: 300.0
+          consider_footprint: true
+          collision_cost: 1000000.0
+          near_goal_distance: 1.0
+          trajectory_point_step: 2
+      PathAlignCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 14.0
+        max_path_occupancy_ratio: 0.05
+        trajectory_point_step: 3
+        threshold_to_consider: 0.5
+        offset_from_furthest: 20
+        use_path_orientations: false
+      PathFollowCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 5.0
+        offset_from_furthest: 5
+        threshold_to_consider: 1.4
+      PathAngleCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 2.0
+        offset_from_furthest: 4
+        threshold_to_consider: 0.5
+        max_angle_to_furthest: 1.0
+        mode: 0 # check
+
+planner_server:
+  ros__parameters:
+    use_sim_time: false
+    planner_plugins: ["GridBased"]
+    expected_planner_frequency: 15.0
+    GridBased:
+      plugin: "nav2_smac_planner/SmacPlannerHybrid"
+      downsample_costmap: false # whether or not to downsample the map
+      downsampling_factor: 1 # multiplier for the resolution of the costmap layer (e.g. 2 on a 5cm costmap would be 10cm)
+      tolerance: 0.25 # dist-to-goal heuristic cost (distance) for valid tolerance endpoints if exact goal cannot be found.
+      allow_unknown: false # allow traveling in unknown space
+      max_iterations: 1000000 # maximum total iterations to search for before failing (in case unreachable), set to -1 to disable
+      max_on_approach_iterations: 1000 # Maximum number of iterations after within tolerances to continue to try to find exact solution
+      max_planning_time: 5.0 # max time in s for planner to plan, smooth
+      motion_model_for_search: "REEDS_SHEPP" # Hybrid-A* Dubin, Redds-Shepp
+      angle_quantization_bins: 72 # Number of angle bins for search
+      analytic_expansion_ratio: 3.5 # The ratio to attempt analytic expansions during search for final approach.
+      analytic_expansion_max_length: 1.5 # For Hybrid/Lattice nodes: The maximum length of the analytic expansion to be considered valid to prevent unsafe shortcutting
+      minimum_turning_radius: 0.10 # minimum turning radius in m of path / vehicle
+      reverse_penalty: 2.0 # Penalty to apply if motion is reversing, must be => 1
+      change_penalty: 0.0 # Penalty to apply if motion is changing directions (L to R), must be >= 0
+      non_straight_penalty: 1.2 # Penalty to apply if motion is non-straight, must be => 1
+      cost_penalty: 3.0 # Penalty to apply to higher cost areas when adding into the obstacle map dynamic programming distance expansion heuristic. This drives the robot more towards the center of passages. A value between 1.3 - 3.5 is reasonable.
+      retrospective_penalty: 0.015
+      lookup_table_size: 20.0 # Size of the dubin/reeds-sheep distance window to cache, in meters.
+      cache_obstacle_heuristic: false # Cache the obstacle map dynamic programming distance expansion heuristic between subsiquent replannings of the same goal location. Dramatically speeds up replanning performance (40x) if costmap is largely static.
+      debug_visualizations: false # For Hybrid nodes: Whether to publish expansions on the /expansions topic as an array of poses (the orientation has no meaning) and the path's footprints on the /planned_footprints topic. WARNING: heavy to compute and to display, for debug only as it degrades the performance.
+      use_quadratic_cost_penalty: False
+      downsample_obstacle_heuristic: True
+      allow_primitive_interpolation: False
+      smooth_path: True # If true, does a simple and quick smoothing post-processing to the path
+      smoother:
+        max_iterations: 1000
+        w_smooth: 0.3
+        w_data: 0.2
+        tolerance: 1.0e-10
+        do_refinement: true
+        refinement_num: 2
+
+smoother_server:
+  ros__parameters:
+    use_sim_time: false
+    smoother_plugins: ["simple_smoother"]
+    simple_smoother:
+      plugin: "nav2_smoother::SimpleSmoother"
+      tolerance: 1.0e-10
+      max_its: 1000
+      do_refinement: True
+
+# Behavior server parameters
+behavior_server:
+  ros__parameters:
+    use_sim_time: false
+    costmap_topic: local_costmap/costmap_raw
+    footprint_topic: local_costmap/published_footprint
+    cycle_frequency: 5.0             # Reduced from 10.0 to 5.0 Hz for better performance
+    behavior_plugins: ["spin", "backup", "drive_on_heading", "assisted_teleop", "wait"]
+    
+    spin:
+      plugin: "nav2_behaviors/Spin"
+    backup:
+      plugin: "nav2_behaviors/BackUp"
+      backup_speed: -0.15        # Speed for backing up (negative for reverse)
+      backup_distance: -0.35     # Distance to back up in meters (negative for reverse)
+      time_allowance: 10.0      # Maximum time allowed for the backup behavior
+    drive_on_heading:
+      plugin: "nav2_behaviors/DriveOnHeading"
+    wait:
+      plugin: "nav2_behaviors/Wait"
+      wait_duration: 0.2        # Duration to wait in seconds
+    assisted_teleop:
+      plugin: "nav2_behaviors/AssistedTeleop"
+    global_frame: odom
+    robot_base_frame: base_link
+    transform_tolerance: 0.1
+    simulate_ahead_time: 2.0
+    max_rotational_vel: 0.8  # Match our robot limits
+    min_rotational_vel: 0.2
+    rotational_acc_lim: 4.5  # Match diff drive limits
+
+# BT Navigator parameters
+bt_navigator:
+  ros__parameters:
+    use_sim_time: false
+    global_frame: map
+    robot_base_frame: base_link
+    odom_topic: /odometry/filtered  # Use filtered odometry from EKF
+    bt_loop_duration: 50           # Reduced from 10ms to 50ms (20Hz instead of 100Hz)
+    default_server_timeout: 20
+    enable_groot_monitoring: false
+    groot_zmq_publisher_port: 1666
+    groot_zmq_server_port: 1667
+    default_bt_xml_filename: "navigate_w_replanning_and_recovery.xml"
+    always_reload_bt_xml: false
+    plugin_lib_names:
+      - nav2_compute_path_to_pose_action_bt_node
+      - nav2_compute_path_through_poses_action_bt_node
+      - nav2_smooth_path_action_bt_node
+      - nav2_follow_path_action_bt_node
+      - nav2_spin_action_bt_node
+      - nav2_wait_action_bt_node
+      - nav2_assisted_teleop_action_bt_node
+      - nav2_back_up_action_bt_node
+      - nav2_drive_on_heading_bt_node
+      - nav2_clear_costmap_service_bt_node
+      - nav2_is_stuck_condition_bt_node
+      - nav2_goal_reached_condition_bt_node
+      - nav2_goal_updated_condition_bt_node
+      - nav2_globally_updated_goal_condition_bt_node
+      - nav2_is_path_valid_condition_bt_node
+      - nav2_initial_pose_received_condition_bt_node
+      - nav2_reinitialize_global_localization_service_bt_node
+      - nav2_rate_controller_bt_node
+      - nav2_distance_controller_bt_node
+      - nav2_speed_controller_bt_node
+      - nav2_truncate_path_action_bt_node
+      - nav2_truncate_path_local_action_bt_node
+      - nav2_goal_updater_node_bt_node
+      - nav2_recovery_node_bt_node
+      - nav2_pipeline_sequence_bt_node
+      - nav2_round_robin_node_bt_node
+      - nav2_transform_available_condition_bt_node
+      - nav2_time_expired_condition_bt_node
+      - nav2_path_expiring_timer_condition
+      - nav2_distance_traveled_condition_bt_node
+      - nav2_single_trigger_bt_node
+      - nav2_goal_updated_controller_bt_node
+      - nav2_is_battery_low_condition_bt_node
+      - nav2_navigate_through_poses_action_bt_node
+      - nav2_navigate_to_pose_action_bt_node
+      - nav2_remove_passed_goals_action_bt_node
+      - nav2_planner_selector_bt_node
+      - nav2_controller_selector_bt_node
+      - nav2_goal_checker_selector_bt_node
+      - nav2_controller_cancel_bt_node
+      - nav2_path_longer_on_approach_bt_node
+      - nav2_wait_cancel_bt_node
+      - nav2_spin_cancel_bt_node
+      - nav2_back_up_cancel_bt_node
+      - nav2_assisted_teleop_cancel_bt_node
+      - nav2_drive_on_heading_cancel_bt_node
+
+# Waypoint follower parameters  
+waypoint_follower:
+  ros__parameters:
+    use_sim_time: false
+    loop_rate: 20
+    stop_on_failure: false
+    waypoint_task_executor_plugin: "wait_at_waypoint"
+    
+    wait_at_waypoint:
+      plugin: "nav2_waypoint_follower::WaitAtWaypoint"
+      enabled: true
+      waypoint_pause_duration: 200
+
+# Velocity smoother parameters
+velocity_smoother:
+  ros__parameters:
+    use_sim_time: false
+    smoothing_frequency: 15.0        # Reduced from 20.0 to 15.0 Hz for better performance
+    scale_velocities: false
+    feedback: "OPEN_LOOP"
+    max_velocity: [0.3, 0.0, 1.0]  # Match diff drive limits
+    min_velocity: [-0.3, 0.0, -1.0]
+    max_accel: [1.2, 0.0, 4.5]  # Match diff drive acceleration limits
+    max_decel: [-1.2, 0.0, -4.5]
+    odom_topic: "/odometry/filtered"  # Use filtered odometry /odometry/filtered if something
+    odom_duration: 0.1
+    deadband_velocity: [0.0, 0.0, 0.0]  # Set deadband to filter out very small velocities
+    velocity_timeout: 1.0
+    enable_stamped_cmd_vel: false  # ? Missing - Set True for Jazzy, False for Humble/Iron
+
+# Topic remapping for velocity smoother
+velocity_smoother_rclcpp_node:
+  ros__parameters:
+    use_sim_time: false

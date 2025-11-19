@@ -23,10 +23,7 @@ import gc
 import logging
 import threading
 from typing import Optional
-
-import cv2
-import numpy as np
-from cv_bridge import CvBridge
+# image handling removed: depth/confidence frames are not used in the web server
 from geometry_msgs.msg import Twist
 from rclpy.node import Node
 from sensor_msgs.msg import Image
@@ -49,16 +46,7 @@ class RobotROSNode(Node):
         # --- service client -------------------------------------------------------
         self._pid_client = self.create_client(SetBool, "knives/enable_pid")
 
-        # --- image stuff ----------------------------------------------------------
-        self._bridge = CvBridge()
-        self._depth_msg: Optional[Image] = None
-        self._conf_msg: Optional[Image] = None
-        self._img_lock = threading.Lock()
-
-        self.create_subscription(Image, "depth_image",
-                                 self._depth_cb, 10)
-        self.create_subscription(Image, "confidence_image",
-                                 self._conf_cb, 10)
+    # image subscriptions removed (depth/confidence frames not used)
 
         # --- voltage --------------------------------------------------------------
         self._vin: Optional[float] = None
@@ -78,13 +66,7 @@ class RobotROSNode(Node):
     # ------------------------------------------------------------------------- #
     #                               callbacks                                    #
     # ------------------------------------------------------------------------- #
-    def _depth_cb(self, msg: Image) -> None:
-        with self._img_lock:
-            self._depth_msg = msg
-
-    def _conf_cb(self, msg: Image) -> None:
-        with self._img_lock:
-            self._conf_msg = msg
+    # depth/confidence callbacks removed
 
     def _vin_cb(self, msg: Float32) -> None:
         with self._vin_lock:
@@ -94,37 +76,7 @@ class RobotROSNode(Node):
         with self._rpm_lock:
             self._rpm = float(msg.data)
 
-    # ------------------------------------------------------------------------- #
-    #                         image helpers (JPEG)                              #
-    # ------------------------------------------------------------------------- #
-    def _img_to_jpeg(self, msg: Optional[Image],
-                     encoding: str) -> bytes:
-        if msg is None:
-            return self._no_signal()
-        try:
-            cv_img = self._bridge.imgmsg_to_cv2(msg, encoding)
-            ok, jpeg = cv2.imencode(".jpg", cv_img,
-                                    [cv2.IMWRITE_JPEG_QUALITY, 85])
-            return jpeg.tobytes() if ok else self._no_signal()
-        except Exception:                                    # pragma: no cover
-            logger.exception("CV bridge failed")
-            return self._no_signal()
-
-    def depth_frame(self) -> bytes:
-        with self._img_lock:
-            return self._img_to_jpeg(self._depth_msg, "bgr8")
-
-    def confidence_frame(self) -> bytes:
-        with self._img_lock:
-            return self._img_to_jpeg(self._conf_msg, "mono8")
-
-    def _no_signal(self) -> bytes:
-        """Return a black placeholder JPEG."""
-        img = np.zeros((240, 320, 3), np.uint8)
-        cv2.putText(img, "No Signal", (65, 130),
-                    cv2.FONT_HERSHEY_SIMPLEX, 1,
-                    (255, 255, 255), 2)
-        return cv2.imencode(".jpg", img)[1].tobytes()
+    # image helpers removed
 
     # ------------------------------------------------------------------------- #
     #                        publishing wrappers                                #
