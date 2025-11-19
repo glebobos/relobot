@@ -22,6 +22,7 @@ docker run -ti \
     --network=host \
     -v /tmp/.X11-unix:/tmp/.X11-unix \
     -v /dev/shm:/dev/shm \
+    -v $PWD/.rviz2:/root/.rviz2 \
     -e DISPLAY=:0 \
     -e QT_QPA_PLATFORM=xcb \
     -e ROS_SUPER_CLIENT=True \
