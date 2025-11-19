@@ -36,9 +36,9 @@ global_costmap:
           marking: true
           data_type: "LaserScan"
           raytrace_max_range: 5.0  # Match SLAM max range
-          raytrace_min_range: 0.2
+          raytrace_min_range: 0.0
           obstacle_max_range: 2.5
-          obstacle_min_range: 0.2
+          obstacle_min_range: 0.0
 
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
