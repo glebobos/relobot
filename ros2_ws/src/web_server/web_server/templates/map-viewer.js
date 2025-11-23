@@ -42,11 +42,15 @@ window.onload = function () {
             rootObject: viewer.scene
         });
 
-        // Setup robot marker for odometry
-        var robotMarker = new THREE.Mesh(
-            new THREE.SphereGeometry(0.1, 16, 16),
-            new THREE.MeshBasicMaterial({ color: 0xff0000 })
-        );
+        // Setup robot marker as an arrow for odometry
+        var robotMarker = new ROS3D.Arrow({
+            length: 0.5,
+            headLength: 0.25,
+            shaftDiameter: 0.4,
+            headDiameter: 0.45,
+            material: new THREE.MeshBasicMaterial({ color: 0xff0000 })
+        });
+        robotMarker.rotation.z = Math.PI / 2;
         viewer.scene.add(robotMarker);
 
         var odomSub = new ROSLIB.Topic({
