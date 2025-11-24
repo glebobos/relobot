@@ -31,6 +31,7 @@ source /opt/ros/humble/setup.bash\n\
 cd /ros2_ws\n\
 colcon build --packages-up-to nav2 --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release\n\
 source install/setup.bash\n\
+python3 /ros2_ws/wait_for_topic.py && \\\n\
 ros2 launch nav2 explore.launch.py' > /start_dev.sh && \
 chmod +x /start_dev.sh
 

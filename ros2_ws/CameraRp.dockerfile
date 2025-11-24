@@ -54,6 +54,7 @@ cd /ros2_ws\n\
 # rosdep install -y --from-paths src/camera_ros --ignore-src --rosdistro humble --skip-keys=libcamera\n\
 colcon build --packages-select camera_ros\n\
 source install/setup.bash\n\
+python3 /ros2_ws/wait_for_topic.py && \\\n\
 ros2 launch camera_ros camera.launch.py' > /start_dev.sh && \
 chmod +x /start_dev.sh
 
