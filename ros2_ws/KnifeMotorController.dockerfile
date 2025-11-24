@@ -18,6 +18,7 @@ source /opt/ros/humble/setup.bash\n\
 cd /ros2_ws\n\
 colcon build --packages-select mower_knife_controller\n\
 source install/setup.bash\n\
+python3 /ros2_ws/wait_for_topic.py && \\\n\
 ros2 run mower_knife_controller knife_controller_node' > /start_dev.sh && \
 chmod +x /start_dev.sh
 
