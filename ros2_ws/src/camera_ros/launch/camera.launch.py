@@ -49,6 +49,7 @@ def generate_launch_description() -> LaunchDescription:
             "height": 480,
             "format": "YUYV",
             "jpeg_quality": 50,
+            "parameter_update_interval": 30,
         }],
         output='screen',
     )
