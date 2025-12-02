@@ -38,6 +38,18 @@ def generate_launch_description() -> LaunchDescription:
         description="pixel format"
     )
 
+    parameter_update_interval_name = "parameter_update_interval"
+    parameter_update_interval_default = "30"
+    parameter_update_interval_param = LaunchConfiguration(
+        parameter_update_interval_name,
+        default=parameter_update_interval_default,
+    )
+    parameter_update_interval_arg = DeclareLaunchArgument(
+        parameter_update_interval_name,
+        default_value=parameter_update_interval_default,
+        description="Interval (in frames) for checking parameter updates"
+    )
+
     # Standalone camera node - lightweight, no container overhead
     camera_node = Node(
         package='camera_ros',
@@ -49,6 +61,7 @@ def generate_launch_description() -> LaunchDescription:
             "height": 480,
             "format": "YUYV",
             "jpeg_quality": 50,
+            "parameter_update_interval": parameter_update_interval_param,
         }],
         output='screen',
     )
@@ -56,5 +69,6 @@ def generate_launch_description() -> LaunchDescription:
     return LaunchDescription([
         camera_launch_arg,
         format_launch_arg,
+        parameter_update_interval_arg,
         camera_node,
     ])
