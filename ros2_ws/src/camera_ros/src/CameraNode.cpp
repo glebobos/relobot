@@ -7,6 +7,7 @@
 #include <cassert>
 #include <cctype>
 #include <cerrno>
+#include <chrono>
 #include <cstdint>
 #include <cstring>
 #if __has_include(<cv_bridge/cv_bridge.hpp>)
@@ -88,6 +89,8 @@ private:
   std::unordered_map<const libcamera::Request *, std::mutex> request_mutexes;
   std::unordered_map<const libcamera::Request *, std::condition_variable> request_condvars;
   std::atomic<bool> running;
+  std::atomic<bool> is_streaming;  // Lazy camera: track if actively capturing
+  static constexpr int SUBSCRIBER_POLL_MS = 200;  // How often to check for subscribers when idle
 
   struct buffer_info_t
   {
@@ -332,7 +335,7 @@ CameraNode::CameraNode(const rclcpp::NodeOptions &options)
   rcl_interfaces::msg::ParameterDescriptor param_descr_update_interval;
   param_descr_update_interval.description = "Interval (in frames) for checking parameter updates/redeclarations";
   param_descr_update_interval.read_only = false;
-  parameter_update_interval = declare_parameter<int64_t>("parameter_update_interval", 30, param_descr_update_interval);
+  parameter_update_interval = declare_parameter<int64_t>("parameter_update_interval", 100, param_descr_update_interval);
 
   // publisher for raw and compressed image
   pub_image = this->create_publisher<sensor_msgs::msg::Image>("~/image_raw", 1);
@@ -569,6 +572,7 @@ CameraNode::CameraNode(const rclcpp::NodeOptions &options)
 
   // create a processing thread per request
   running = true;
+  is_streaming = true;  // Start in streaming mode
   for (const std::unique_ptr<libcamera::Request> &request : requests) {
     // create mutexes in-place
     request_mutexes[request.get()];
@@ -629,22 +633,57 @@ void
 CameraNode::process(libcamera::Request *const request)
 {
   size_t loop_count = 0;
+  bool has_subscribers = false;
+  bool was_streaming = true;  // Start true since camera starts with all requests queued
+  
   while (true) {
-    // block until request is available
+    // block until request is available or timeout for subscriber check
     std::unique_lock lk(request_mutexes.at(request));
-    request_condvars.at(request).wait(lk);
+    
+    // Use timed wait to periodically check for subscribers when idle
+    auto wait_result = request_condvars.at(request).wait_for(
+        lk, std::chrono::milliseconds(SUBSCRIBER_POLL_MS));
 
     if (!running)
       return;
 
+    // Check subscriber count
+    size_t n_raw_subs = pub_image->get_subscription_count();
+    size_t n_compressed_subs = pub_image_compressed->get_subscription_count();
+    size_t n_ci_subs = pub_ci->get_subscription_count();
+    has_subscribers = (n_raw_subs > 0 || n_compressed_subs > 0 || n_ci_subs > 0);
+
+    // Lazy camera: if no subscribers and we timed out (no frame), just continue waiting
+    if (!has_subscribers) {
+      if (was_streaming) {
+        RCLCPP_INFO(get_logger(), "No subscribers, pausing camera capture to save CPU");
+        was_streaming = false;
+        is_streaming = false;
+      }
+      // Don't re-queue request - camera will idle
+      continue;
+    }
+
+    // We have subscribers - check if we need to resume streaming
+    if (!was_streaming) {
+      RCLCPP_INFO(get_logger(), "Subscribers detected, resuming camera capture");
+      was_streaming = true;
+      is_streaming = true;
+      // Re-queue this request to start capturing again
+      request->reuse(libcamera::Request::ReuseBuffers);
+      camera->queueRequest(request);
+      continue;  // Wait for the actual frame
+    }
+
+    // If we timed out but are streaming, just keep waiting for frame
+    if (wait_result == std::cv_status::timeout) {
+      continue;
+    }
+
     if (request->status() == libcamera::Request::RequestComplete) {
       assert(request->buffers().size() == 1);
-
-      size_t n_raw_subs = pub_image->get_subscription_count();
-      size_t n_compressed_subs = pub_image_compressed->get_subscription_count();
-      size_t n_ci_subs = pub_ci->get_subscription_count();
-
-      if (n_raw_subs > 0 || n_compressed_subs > 0 || n_ci_subs > 0) {
+      
+      if (has_subscribers) {
         // get the stream and buffer from the request
         const libcamera::FrameBuffer *buffer = request->findBuffer(stream);
         const libcamera::FrameMetadata &metadata = buffer->metadata();
@@ -808,18 +847,25 @@ CameraNode::process(libcamera::Request *const request)
     int64_t interval = parameter_update_interval.load();
     if (interval <= 0) interval = 1;
 
-    if (loop_count++ % interval == 0) {
+    // Only update parameters if we have subscribers OR occasionally to catch changes
+    if (has_subscribers && (loop_count++ % interval == 0)) {
       parameter_handler.redeclare();
     }
 
     // queue the request again for the next frame and update controls
-    request->reuse(libcamera::Request::ReuseBuffers);
-    parameter_handler.move_control_values(request->controls());
-    camera->queueRequest(request);
+    // Lazy camera: only re-queue if we have subscribers
+    if (has_subscribers) {
+      request->reuse(libcamera::Request::ReuseBuffers);
+      parameter_handler.move_control_values(request->controls());
+      camera->queueRequest(request);
+    }
 
-    for (const auto &[id, value] : request->controls()) {
-      const std::string &name = libcamera::controls::controls.at(id)->name();
-      RCLCPP_DEBUG_STREAM(get_logger(), "applied control '" << name << "': " << (value.isNone() ? "NONE" : value.toString()));
+    // Skip debug logging overhead - only iterate when debug level is actually enabled
+    if (rcutils_logging_logger_is_enabled_for(get_logger().get_name(), RCUTILS_LOG_SEVERITY_DEBUG)) {
+      for (const auto &[id, value] : request->controls()) {
+        const std::string &name = libcamera::controls::controls.at(id)->name();
+        RCLCPP_DEBUG_STREAM(get_logger(), "applied control '" << name << "': " << (value.isNone() ? "NONE" : value.toString()));
+      }
     }
   }
 }
