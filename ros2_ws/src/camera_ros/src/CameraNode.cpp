@@ -7,6 +7,7 @@
 #include <cassert>
 #include <cctype>
 #include <cerrno>
+#include <chrono>
 #include <cstdint>
 #include <cstring>
 #if __has_include(<cv_bridge/cv_bridge.hpp>)
@@ -618,13 +619,46 @@ CameraNode::requestComplete(libcamera::Request *const request)
 void
 CameraNode::process(libcamera::Request *const request)
 {
+  constexpr int SUBSCRIBER_POLL_MS = 200;  // How often to check for subscribers when idle
+  bool was_streaming = true;  // Start true since camera starts with all requests queued
+
   while (true) {
-    // block until request is available
+    // block until request is available or timeout for subscriber check
     std::unique_lock lk(request_mutexes.at(request));
-    request_condvars.at(request).wait(lk);
+    auto wait_result = request_condvars.at(request).wait_for(
+        lk, std::chrono::milliseconds(SUBSCRIBER_POLL_MS));
 
     if (!running)
       return;
+
+    // Check subscriber count
+    const size_t n_raw_subs = pub_image->get_subscription_count();
+    const size_t n_compressed_subs = pub_image_compressed->get_subscription_count();
+    const size_t n_ci_subs = pub_ci->get_subscription_count();
+    const bool has_subscribers = (n_raw_subs > 0 || n_compressed_subs > 0 || n_ci_subs > 0);
+
+    // Lazy camera: if no subscribers, don't re-queue requests
+    if (!has_subscribers) {
+      if (was_streaming) {
+        RCLCPP_INFO(get_logger(), "No subscribers, pausing camera capture to save CPU");
+        was_streaming = false;
+      }
+      continue;
+    }
+
+    // We have subscribers - check if we need to resume streaming
+    if (!was_streaming) {
+      RCLCPP_INFO(get_logger(), "Subscribers detected, resuming camera capture");
+      was_streaming = true;
+      request->reuse(libcamera::Request::ReuseBuffers);
+      camera->queueRequest(request);
+      continue;  // Wait for the actual frame
+    }
+
+    // If we timed out but are streaming, just keep waiting for frame
+    if (wait_result == std::cv_status::timeout) {
+      continue;
+    }
 
     if (request->status() == libcamera::Request::RequestComplete) {
       assert(request->buffers().size() == 1);
@@ -658,26 +692,47 @@ CameraNode::process(libcamera::Request *const request)
       // prepare image messages
       const libcamera::StreamConfiguration &cfg = stream->configuration();
 
-      auto msg_img = std::make_unique<sensor_msgs::msg::Image>();
-      auto msg_img_compressed = std::make_unique<sensor_msgs::msg::CompressedImage>();
+      std::unique_ptr<sensor_msgs::msg::Image> msg_img;
+      std::unique_ptr<sensor_msgs::msg::CompressedImage> msg_img_compressed;
 
       if (format_type(cfg.pixelFormat) == FormatType::RAW) {
         // raw uncompressed image
         assert(buffer_info[buffer].size == bytesused);
-        msg_img->header = hdr;
-        msg_img->width = cfg.size.width;
-        msg_img->height = cfg.size.height;
-        msg_img->step = cfg.stride;
-        msg_img->encoding = get_ros_encoding(cfg.pixelFormat);
-        msg_img->is_bigendian = (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__);
-        msg_img->data.resize(buffer_info[buffer].size);
-        memcpy(msg_img->data.data(), buffer_info[buffer].data, buffer_info[buffer].size);
 
-        // compress to jpeg
-        if (pub_image_compressed->get_subscription_count()) {
+        // Only create raw image if someone is subscribed
+        if (n_raw_subs > 0) {
+          msg_img = std::make_unique<sensor_msgs::msg::Image>();
+          msg_img->header = hdr;
+          msg_img->width = cfg.size.width;
+          msg_img->height = cfg.size.height;
+          msg_img->step = cfg.stride;
+          msg_img->encoding = get_ros_encoding(cfg.pixelFormat);
+          msg_img->is_bigendian = (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__);
+          msg_img->data.resize(buffer_info[buffer].size);
+          memcpy(msg_img->data.data(), buffer_info[buffer].data, buffer_info[buffer].size);
+        }
+
+        // compress to jpeg only if someone is subscribed
+        if (n_compressed_subs > 0) {
+          msg_img_compressed = std::make_unique<sensor_msgs::msg::CompressedImage>();
           try {
-            compressImageMsg(*msg_img, *msg_img_compressed,
-                             {cv::IMWRITE_JPEG_QUALITY, jpeg_quality});
+            if (msg_img) {
+              compressImageMsg(*msg_img, *msg_img_compressed,
+                               {cv::IMWRITE_JPEG_QUALITY, jpeg_quality});
+            } else {
+              // Create temporary image for compression
+              sensor_msgs::msg::Image temp_img;
+              temp_img.header = hdr;
+              temp_img.width = cfg.size.width;
+              temp_img.height = cfg.size.height;
+              temp_img.step = cfg.stride;
+              temp_img.encoding = get_ros_encoding(cfg.pixelFormat);
+              temp_img.is_bigendian = (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__);
+              temp_img.data.resize(buffer_info[buffer].size);
+              memcpy(temp_img.data.data(), buffer_info[buffer].data, buffer_info[buffer].size);
+              compressImageMsg(temp_img, *msg_img_compressed,
+                               {cv::IMWRITE_JPEG_QUALITY, jpeg_quality});
+            }
           }
           catch (const cv_bridge::Exception &e) {
             RCLCPP_ERROR_STREAM(get_logger(), e.what());
@@ -687,43 +742,60 @@ CameraNode::process(libcamera::Request *const request)
       else if (format_type(cfg.pixelFormat) == FormatType::COMPRESSED) {
         // compressed image
         assert(bytesused < buffer_info[buffer].size);
-        msg_img_compressed->header = hdr;
-        msg_img_compressed->format = get_ros_encoding(cfg.pixelFormat);
-        msg_img_compressed->data.resize(bytesused);
-        memcpy(msg_img_compressed->data.data(), buffer_info[buffer].data, bytesused);
 
-        // decompress into raw rgb8 image
-        if (pub_image->get_subscription_count())
-          cv_bridge::toCvCopy(*msg_img_compressed, "rgb8")->toImageMsg(*msg_img);
+        if (n_compressed_subs > 0) {
+          msg_img_compressed = std::make_unique<sensor_msgs::msg::CompressedImage>();
+          msg_img_compressed->header = hdr;
+          msg_img_compressed->format = get_ros_encoding(cfg.pixelFormat);
+          msg_img_compressed->data.resize(bytesused);
+          memcpy(msg_img_compressed->data.data(), buffer_info[buffer].data, bytesused);
+        }
+
+        // decompress into raw rgb8 image only if someone is subscribed
+        if (n_raw_subs > 0) {
+          msg_img = std::make_unique<sensor_msgs::msg::Image>();
+          if (msg_img_compressed) {
+            cv_bridge::toCvCopy(*msg_img_compressed, "rgb8")->toImageMsg(*msg_img);
+          } else {
+            // Create temporary compressed image for decompression
+            sensor_msgs::msg::CompressedImage temp_compressed;
+            temp_compressed.header = hdr;
+            temp_compressed.format = get_ros_encoding(cfg.pixelFormat);
+            temp_compressed.data.resize(bytesused);
+            memcpy(temp_compressed.data.data(), buffer_info[buffer].data, bytesused);
+            cv_bridge::toCvCopy(temp_compressed, "rgb8")->toImageMsg(*msg_img);
+          }
+        }
       }
       else {
         throw std::runtime_error("unsupported pixel format: " +
                                  stream->configuration().pixelFormat.toString());
       }
 
-      pub_image->publish(std::move(msg_img));
-      pub_image_compressed->publish(std::move(msg_img_compressed));
-
-      sensor_msgs::msg::CameraInfo ci = cim.getCameraInfo();
-      ci.header = hdr;
-      pub_ci->publish(ci);
+      // Only publish if we have messages and subscribers
+      if (msg_img) {
+        pub_image->publish(std::move(msg_img));
+      }
+      if (msg_img_compressed) {
+        pub_image_compressed->publish(std::move(msg_img_compressed));
+      }
+      if (n_ci_subs > 0) {
+        sensor_msgs::msg::CameraInfo ci = cim.getCameraInfo();
+        ci.header = hdr;
+        pub_ci->publish(ci);
+      }
     }
     else if (request->status() == libcamera::Request::RequestCancelled) {
       RCLCPP_ERROR_STREAM(get_logger(), "request '" << request->toString() << "' cancelled");
     }
 
-    // redeclare implicitly undeclared parameters
+    // redeclare implicitly undeclared parameters (only when actively streaming)
     parameter_handler.redeclare();
 
     // queue the request again for the next frame and update controls
     request->reuse(libcamera::Request::ReuseBuffers);
     parameter_handler.move_control_values(request->controls());
     camera->queueRequest(request);
-
-    for (const auto &[id, value] : request->controls()) {
-      const std::string &name = libcamera::controls::controls.at(id)->name();
-      RCLCPP_DEBUG_STREAM(get_logger(), "applied control '" << name << "': " << (value.isNone() ? "NONE" : value.toString()));
-    }
   }
 }
 
