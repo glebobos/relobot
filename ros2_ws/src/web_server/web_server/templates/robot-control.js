@@ -50,48 +50,20 @@ const cameraStream = document.getElementById('cameraStream');
     waitForRoslib();
 })();
 
-// Joystick functionality
-const joystick = document.getElementById('joystick');
-const stick = document.getElementById('stick');
-const speedSlider = document.getElementById('speed-sensitivity');
-const turnSlider = document.getElementById('turn-sensitivity');
-const speedValue = document.getElementById('speed-value');
-const turnValue = document.getElementById('turn-value');
+// Invisible touch control on video
+const videoContainer = document.querySelector('.video-container');
 let isActive = false;
+let startX = 0;
+let startY = 0;
+const CONTROL_RADIUS = 80; // pixels to reach full speed
 
-speedSlider.addEventListener('input', () => {
-    speedValue.textContent = speedSlider.value + '%';
-});
-
-turnSlider.addEventListener('input', () => {
-    turnValue.textContent = turnSlider.value + '%';
-});
-
-function setStickPosition(x, y) {
-    const joystickRect = joystick.getBoundingClientRect();
-    const stickRect = stick.getBoundingClientRect();
-    const radius = (joystickRect.width - stickRect.width) / 2;
+function handleControl(x, y) {
+    const dx = x - startX;
+    const dy = y - startY;
     
-    const centerX = joystickRect.left + joystickRect.width / 2;
-    const centerY = joystickRect.top + joystickRect.height / 2;
-    
-    let dx = x - centerX;
-    let dy = y - centerY;
-    
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    if (distance > radius) {
-        dx *= radius / distance;
-        dy *= radius / distance;
-    }
-    
-    stick.style.left = `${dx + radius}px`;
-    stick.style.top = `${dy + radius}px`;
-    
-    let normalizedX = dx / radius;
-    let normalizedY = -dy / radius;
-
-    normalizedX *= turnSlider.value / 100;
-    normalizedY *= speedSlider.value / 100;
+    // Normalize based on control radius, clamp to -1 to 1
+    let normalizedX = Math.max(-1, Math.min(1, dx / CONTROL_RADIUS));
+    let normalizedY = Math.max(-1, Math.min(1, -dy / CONTROL_RADIUS));
     
     throttleUpdateMotors(normalizedX, normalizedY);
 }
@@ -135,32 +107,34 @@ function throttle(func, limit) {
 const throttleUpdateMotors = throttle(updateMotors, 100);
 
 function handleStart(e) {
+    // Only start if touch/click is on video container
+    if (!videoContainer.contains(e.target) && e.target !== videoContainer) return;
+    // Don't activate if clicking emergency stop button
+    if (e.target.closest('.emergency-stop-overlay')) return;
+    
     isActive = true;
-    handleMove(e);
+    const touch = e.touches ? e.touches[0] : e;
+    startX = touch.clientX;
+    startY = touch.clientY;
+    e.preventDefault();
 }
 
 function handleMove(e) {
     if (!isActive) return;
     const touch = e.touches ? e.touches[0] : e;
-    setStickPosition(touch.clientX, touch.clientY);
+    handleControl(touch.clientX, touch.clientY);
     e.preventDefault();
 }
 
 function handleEnd() {
+    if (!isActive) return;
     isActive = false;
-    // Reset to center - calculate center position dynamically
-    const joystickRect = joystick.getBoundingClientRect();
-    const stickRect = stick.getBoundingClientRect();
-    const centerOffset = (joystickRect.width - stickRect.width) / 2;
-    
-    stick.style.left = `${centerOffset}px`;
-    stick.style.top = `${centerOffset}px`;
     throttleUpdateMotors(0, 0);
 }
 
-// Event listeners
-joystick.addEventListener('mousedown', handleStart);
-joystick.addEventListener('touchstart', handleStart);
+// Event listeners on video container
+videoContainer.addEventListener('mousedown', handleStart);
+videoContainer.addEventListener('touchstart', handleStart, { passive: false });
 
 document.addEventListener('mousemove', handleMove);
 document.addEventListener('touchmove', handleMove, { passive: false });
@@ -232,31 +206,29 @@ window.addEventListener("gamepadconnected", function(e) {
     console.log("Gamepad connected:", e.gamepad);
     startGamepadPolling();
 });
-/* ===== Status-bar helpers ============================================ */
-const vinSpan = document.getElementById('vin-display');   // “26.4 V”
-const rpmSpan = document.getElementById('rpm-display');   // “1250 RPM”
+/* ===== Video overlay helpers ========================================== */
+const vinSpan = document.getElementById('vin-display');
+const rpmSpan = document.getElementById('rpm-display');
 
-const vinBar  = document.getElementById('vin-bar');       // outer bar
-const rpmBar  = document.getElementById('rpm-bar');
+const VOLTAGE_THRESHOLD = 24;
 
-function clamp01(x){ return Math.max(0, Math.min(1, x)); }
-
-function updateVoltage(volts, minV = 24, maxV = 28){
-  const fill = clamp01((volts - minV) / (maxV - minV));
-  vinBar.style.setProperty('--fill', fill.toFixed(3));
-  vinSpan.textContent = volts.toFixed(2) + ' V';
+function updateVoltage(volts){
+  vinSpan.textContent = volts.toFixed(1) + ' V';
+  if (volts < VOLTAGE_THRESHOLD) {
+    vinSpan.classList.add('warning');
+  } else {
+    vinSpan.classList.remove('warning');
+  }
 }
 
-function updateRPM(rpm, maxRPM = 3100){
-  const fill = clamp01(rpm / maxRPM);
-  rpmBar.style.setProperty('--fill', fill.toFixed(3));
+function updateRPM(rpm){
   rpmSpan.textContent = Math.round(rpm) + ' RPM';
 }
 
 
-/* ===== Live battery-voltage bar ======================================= */
+/* ===== Live voltage overlay =========================================== */
 (() => {
-    if (!vinBar) return;          // bar not on this page
+    if (!vinSpan) return;
 
     // first snapshot
     fetch('/api/voltage')
@@ -274,9 +246,10 @@ function updateRPM(rpm, maxRPM = 3100){
         console.error('Voltage SSE error – browser will auto-retry');
 })();
 
-/* ===== Live RPM bar =================================================== */
+/* ===== Live RPM overlay =============================================== */
 (() => {
-    if (!rpmBar) return;
+    if (!rpmSpan) return;
+
     // first snapshot
     fetch('/api/rpm')
         .then(r => r.ok ? r.json() : null)

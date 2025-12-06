@@ -98,90 +98,29 @@ body {
     object-fit: contain;
 }
 
-.joystick-section {
-    padding: 40px 20px;
-    background: white;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
+/* Touch control area on video */
+.video-container {
+    touch-action: none;
+    cursor: crosshair;
 }
 
-#joystick {
-    width: 300px;
-    height: 300px;
-    border-radius: 50%;
-    background-color: #f0f0f0;
-    position: relative;
-    margin: 30px auto;
-    border: 3px solid #007bff;
-}
-
-#stick {
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    background-color: #007bff;
+.emergency-stop-overlay {
     position: absolute;
-    top: 125px;
-    left: 125px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-}
-
-.controls-container {
-    display: flex;
-    gap: 40px;
-    justify-content: center;
-    flex-wrap: wrap;
-    margin: 30px 0;
-    max-width: 600px;
-    width: 100%;
-}
-
-.slider-container {
-    flex: 1;
-    min-width: 200px;
-    max-width: 250px;
-    text-align: center;
-    background: #f8f9fa;
-    padding: 20px;
-    border-radius: 12px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.slider-container label {
-    display: block;
-    margin-bottom: 15px;
-    font-size: 16px;
-    font-weight: 600;
-    color: #333;
-}
-
-.slider-container input {
-    width: 100%;
-    margin-bottom: 10px;
-}
-
-.value-display {
-    font-weight: bold;
-    color: #007bff;
-    font-size: 18px;
-}
-
-.emergency-stop {
-    background-color: #dc3545;
+    bottom: 20px;
+    left: 20px;
+    background-color: rgba(220, 53, 69, 0.85);
     color: white;
     border: none;
-    padding: 15px 30px;
-    font-size: 18px;
+    padding: 12px 16px;
+    font-size: 20px;
     border-radius: 8px;
     cursor: pointer;
-    margin: 20px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    z-index: 20;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
 }
 
-.emergency-stop:hover {
-    background-color: #c82333;
+.emergency-stop-overlay:hover {
+    background-color: #dc3545;
 }
 
 @media (max-width: 768px) {
@@ -194,11 +133,6 @@ body {
         max-height: 60vh;
     }
     
-    .status-container {
-        padding: 15px;
-        gap: 15px;
-    }
-    
     .map-section {
         padding: 10px;
     }
@@ -207,29 +141,11 @@ body {
         height: 300px;
     }
     
-    .joystick-section {
-        padding: 20px 10px;
-    }
-    
-    #joystick {
-        width: 250px;
-        height: 250px;
-    }
-    
-    #stick {
-        top: 100px;
-        left: 100px;
-    }
-    
-    .controls-container {
-        flex-direction: column;
-        align-items: center;
-        gap: 20px;
-    }
-    
-    .slider-container {
-        max-width: 300px;
-        width: 90%;
+    .emergency-stop-overlay {
+        bottom: 15px;
+        left: 15px;
+        padding: 10px 14px;
+        font-size: 18px;
     }
     
     .nav-links {
@@ -252,24 +168,15 @@ body {
         max-height: 50vh;
     }
     
-    .status-container {
-        padding: 10px;
-    }
-    
     #map {
         height: 250px;
     }
     
-    #joystick {
-        width: 220px;
-        height: 220px;
-    }
-    
-    #stick {
-        width: 40px;
-        height: 40px;
-        top: 90px;
-        left: 90px;
+    .emergency-stop-overlay {
+        bottom: 10px;
+        left: 10px;
+        padding: 8px 12px;
+        font-size: 16px;
     }
 }
 
@@ -282,78 +189,43 @@ body {
         max-height: 80vh;
     }
     
-    .status-container {
-        padding: 10px;
-    }
-    
-    #joystick {
-        width: 200px;
-        height: 200px;
-        margin: 20px auto;
-    }
-    
-    #stick {
-        width: 40px;
-        height: 40px;
-        top: 80px;
-        left: 80px;
+    .emergency-stop-overlay {
+        bottom: 10px;
+        left: 10px;
+        padding: 8px 10px;
+        font-size: 14px;
     }
 }
-/* ===== Status bars (voltage & RPM) ==================================== */
-.status-container {
-    padding: 20px;
-    background: #f8f9fa;
+/* ===== Video overlay (voltage & RPM) ================================== */
+.video-overlay {
+    position: absolute;
+    top: 12px;
+    left: 12px;
     display: flex;
-    gap: 20px;
-    justify-content: center;
-    flex-wrap: wrap;
+    flex-direction: column;
+    gap: 4px;
+    z-index: 10;
+    pointer-events: none;
 }
 
-.status-container .status-bar {
-    flex: 1;
-    min-width: 200px;
-    max-width: 400px;
+.overlay-value {
+    font-family: 'Courier New', monospace;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #fff;
+    text-shadow: 0 0 4px rgba(0,0,0,0.8), 0 0 8px rgba(0,0,0,0.5);
+    transition: opacity 0.3s ease, color 0.3s ease;
 }
 
-.status-bar{
-  --fill: 0;                /* 0‒1 range, set from JS */
-  position: relative;
-  width: 100%;
-  height: 22px;
-  border: 2px solid #555;
-  border-radius: 6px;
-  overflow: hidden;
-  margin: 0 auto 6px;
-  background:#222;          /* “empty” part of the bar */
+#vin-display {
+    opacity: 0.5;
 }
 
-.status-bar::before{
-  content:"";
-  position:absolute;
-  inset:0;
-  transform-origin:left;
-  transform:scaleX(var(--fill));
-  transition:transform .25s linear;
-  background:linear-gradient(90deg, #4caf50 0%, #ffeb3b 50%, #f44336 100%);
+#vin-display.warning {
+    opacity: 1;
+    color: #ff4444;
 }
 
-#vin-bar::before{
-  background:linear-gradient(90deg, #f44336 0%, #ffeb3b 50%, #4caf50 100%);
-}
-
-.rpm::before{
-  background:linear-gradient(90deg, #2196f3 0%, #4caf50 40%, #ffeb3b 70%, #f44336 100%);
-}
-
-.status-label{
-  position:absolute;
-  inset:0;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  color:#fff;
-  font-weight:600;
-  font-size:.8rem;
-  pointer-events:none;
-  z-index:1;
+#rpm-display {
+    opacity: 0.85;
 }
