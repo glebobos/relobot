@@ -67,10 +67,6 @@ class RobotWebServer:
         @self.app.route("/")
         def index():
             return render_template("index.html")
-        
-        @self.app.route("/config")
-        def config():
-            return render_template("config.html")
 
         @self.app.route("/robot-control.js")
         def js():
@@ -169,25 +165,6 @@ class RobotWebServer:
             except Exception as exc:
                 logger.exception("set_motors failed")
                 return jsonify(success=False, error=str(exc))
-
-        # ------------- config -----------------------------------------------
-        @self.app.route("/api/config", methods=["GET"])
-        def get_cfg():
-            return jsonify(success=True, config=self.cfg.to_dict())
-
-        @self.app.route("/api/config", methods=["POST"])
-        def set_cfg():
-            new = request.get_json(force=True, silent=True) or {}
-            merged = {**self.cfg.to_dict(), **new}
-            updated = ControllerConfig.from_dict(merged)
-            ok, msg = updated.validate()
-            if not ok:
-                return jsonify(success=False, message=msg)
-            self.cfg = updated
-            self.motors.cfg = updated
-            self.knife.cfg = updated
-            self.cfg.save_to_file(self._cfg_path)
-            return jsonify(success=True, config=self.cfg.to_dict())
 
         # ------------- e-stop -----------------------------------------------
         @self.app.route("/emergency_stop", methods=["POST"])

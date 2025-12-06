@@ -50,7 +50,8 @@ const cameraStream = document.getElementById('cameraStream');
     waitForRoslib();
 })();
 
-// Joystick functionality
+// Joystick functionality - overlay on video
+const videoContainer = document.getElementById('videoContainer');
 const joystick = document.getElementById('joystick');
 const stick = document.getElementById('stick');
 const speedSlider = document.getElementById('speed-sensitivity');
@@ -58,6 +59,11 @@ const turnSlider = document.getElementById('turn-sensitivity');
 const speedValue = document.getElementById('speed-value');
 const turnValue = document.getElementById('turn-value');
 let isActive = false;
+let joystickOriginX = 0;
+let joystickOriginY = 0;
+const JOYSTICK_RADIUS = 75; // Half of 150px joystick size
+const STICK_RADIUS = 25;    // Half of 50px stick size
+const MAX_STICK_DISTANCE = JOYSTICK_RADIUS - STICK_RADIUS;
 
 speedSlider.addEventListener('input', () => {
     speedValue.textContent = speedSlider.value + '%';
@@ -67,28 +73,54 @@ turnSlider.addEventListener('input', () => {
     turnValue.textContent = turnSlider.value + '%';
 });
 
+function showJoystickAt(x, y) {
+    const containerRect = videoContainer.getBoundingClientRect();
+    const relX = x - containerRect.left;
+    const relY = y - containerRect.top;
+    
+    joystick.style.left = relX + 'px';
+    joystick.style.top = relY + 'px';
+    joystick.style.display = 'block';
+    
+    joystickOriginX = x;
+    joystickOriginY = y;
+    
+    // Reset stick to center
+    stick.style.left = '50%';
+    stick.style.top = '50%';
+    
+    // Trigger fade-in transition
+    requestAnimationFrame(() => {
+        stick.classList.add('visible');
+    });
+}
+
+function hideJoystick() {
+    stick.classList.remove('visible');
+    // Wait for transition to finish before hiding
+    setTimeout(() => {
+        if (!isActive) {
+            joystick.style.display = 'none';
+        }
+    }, 200);
+}
+
 function setStickPosition(x, y) {
-    const joystickRect = joystick.getBoundingClientRect();
-    const stickRect = stick.getBoundingClientRect();
-    const radius = (joystickRect.width - stickRect.width) / 2;
-    
-    const centerX = joystickRect.left + joystickRect.width / 2;
-    const centerY = joystickRect.top + joystickRect.height / 2;
-    
-    let dx = x - centerX;
-    let dy = y - centerY;
+    let dx = x - joystickOriginX;
+    let dy = y - joystickOriginY;
     
     const distance = Math.sqrt(dx * dx + dy * dy);
-    if (distance > radius) {
-        dx *= radius / distance;
-        dy *= radius / distance;
+    if (distance > MAX_STICK_DISTANCE) {
+        dx *= MAX_STICK_DISTANCE / distance;
+        dy *= MAX_STICK_DISTANCE / distance;
     }
     
-    stick.style.left = `${dx + radius}px`;
-    stick.style.top = `${dy + radius}px`;
+    // Position stick relative to joystick center
+    stick.style.left = `calc(50% + ${dx}px)`;
+    stick.style.top = `calc(50% + ${dy}px)`;
     
-    let normalizedX = dx / radius;
-    let normalizedY = -dy / radius;
+    let normalizedX = dx / MAX_STICK_DISTANCE;
+    let normalizedY = -dy / MAX_STICK_DISTANCE;
 
     normalizedX *= turnSlider.value / 100;
     normalizedY *= speedSlider.value / 100;
@@ -135,8 +167,10 @@ function throttle(func, limit) {
 const throttleUpdateMotors = throttle(updateMotors, 100);
 
 function handleStart(e) {
+    const touch = e.touches ? e.touches[0] : e;
     isActive = true;
-    handleMove(e);
+    showJoystickAt(touch.clientX, touch.clientY);
+    e.preventDefault();
 }
 
 function handleMove(e) {
@@ -147,20 +181,15 @@ function handleMove(e) {
 }
 
 function handleEnd() {
+    if (!isActive) return;
     isActive = false;
-    // Reset to center - calculate center position dynamically
-    const joystickRect = joystick.getBoundingClientRect();
-    const stickRect = stick.getBoundingClientRect();
-    const centerOffset = (joystickRect.width - stickRect.width) / 2;
-    
-    stick.style.left = `${centerOffset}px`;
-    stick.style.top = `${centerOffset}px`;
+    hideJoystick();
     throttleUpdateMotors(0, 0);
 }
 
-// Event listeners
-joystick.addEventListener('mousedown', handleStart);
-joystick.addEventListener('touchstart', handleStart);
+// Event listeners - on video container
+videoContainer.addEventListener('mousedown', handleStart);
+videoContainer.addEventListener('touchstart', handleStart, { passive: false });
 
 document.addEventListener('mousemove', handleMove);
 document.addEventListener('touchmove', handleMove, { passive: false });

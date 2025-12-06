@@ -7,13 +7,15 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="nav-links">
-        <a href="/config">⚙️ Config</a>
-    </div>
     
     <div class="camera-section">
-        <div class="video-container">
+        <div class="video-container" id="videoContainer">
             <img id="cameraStream" src="" alt="Camera Stream">
+            <div id="joystick-overlay">
+                <div id="joystick">
+                    <div id="stick"></div>
+                </div>
+            </div>
         </div>
     </div>
     
@@ -31,13 +33,6 @@
     </div>
 
     <div class="joystick-section">
-        <div id="joystick">
-            <div id="stick"></div>
-        </div>
-        
-
-
-        
         <div class="controls-container">
             <div class="slider-container">
                 <label for="speed-sensitivity">Max Speed</label>
