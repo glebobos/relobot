@@ -18,29 +18,6 @@ body {
     overflow-x: hidden;
 }
 
-.nav-links {
-    position: fixed;
-    top: 10px;
-    right: 10px;
-    z-index: 1000;
-}
-
-.nav-links a {
-    color: #007bff;
-    text-decoration: none;
-    font-size: 14px;
-    margin-left: 10px;
-    padding: 6px 12px;
-    border-radius: 6px;
-    background: rgba(255,255,255,0.9);
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.nav-links a:hover {
-    background-color: #007bff;
-    color: white;
-}
-
 .camera-section {
     width: 100%;
     padding: 0;
@@ -104,24 +81,6 @@ body {
     cursor: crosshair;
 }
 
-.emergency-stop-overlay {
-    position: absolute;
-    bottom: 20px;
-    left: 20px;
-    background-color: rgba(220, 53, 69, 0.85);
-    color: white;
-    border: none;
-    padding: 12px 16px;
-    font-size: 20px;
-    border-radius: 8px;
-    cursor: pointer;
-    z-index: 20;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-}
-
-.emergency-stop-overlay:hover {
-    background-color: #dc3545;
-}
 
 @media (max-width: 768px) {
     .camera-section {
@@ -140,23 +99,6 @@ body {
     #map {
         height: 300px;
     }
-    
-    .emergency-stop-overlay {
-        bottom: 15px;
-        left: 15px;
-        padding: 10px 14px;
-        font-size: 18px;
-    }
-    
-    .nav-links {
-        top: 15px;
-        right: 15px;
-    }
-    
-    .nav-links a {
-        font-size: 12px;
-        padding: 4px 8px;
-    }
 }
 
 @media (max-width: 480px) and (orientation: portrait) {
@@ -171,13 +113,6 @@ body {
     #map {
         height: 250px;
     }
-    
-    .emergency-stop-overlay {
-        bottom: 10px;
-        left: 10px;
-        padding: 8px 12px;
-        font-size: 16px;
-    }
 }
 
 @media (max-height: 500px) and (orientation: landscape) {
@@ -187,13 +122,6 @@ body {
     
     .video-container {
         max-height: 80vh;
-    }
-    
-    .emergency-stop-overlay {
-        bottom: 10px;
-        left: 10px;
-        padding: 8px 10px;
-        font-size: 14px;
     }
 }
 /* ===== Video overlay (voltage & RPM) ================================== */

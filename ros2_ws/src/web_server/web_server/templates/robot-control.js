@@ -76,15 +76,6 @@ function updateMotors(x, y) {
     });
 }
 
-function emergencyStop() {
-    fetch('/emergency_stop', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-    }).then(response => response.json())
-      .then(data => {
-          alert(data.success ? 'Emergency stop activated!' : 'Emergency stop failed: ' + data.error);
-      });
-}
 
 function throttle(func, limit) {
     let lastFunc, lastRan;
@@ -109,8 +100,6 @@ const throttleUpdateMotors = throttle(updateMotors, 100);
 function handleStart(e) {
     // Only start if touch/click is on video container
     if (!videoContainer.contains(e.target) && e.target !== videoContainer) return;
-    // Don't activate if clicking emergency stop button
-    if (e.target.closest('.emergency-stop-overlay')) return;
     
     isActive = true;
     const touch = e.touches ? e.touches[0] : e;
