@@ -50,80 +50,20 @@ const cameraStream = document.getElementById('cameraStream');
     waitForRoslib();
 })();
 
-// Joystick functionality - overlay on video
-const videoContainer = document.getElementById('videoContainer');
-const joystick = document.getElementById('joystick');
-const stick = document.getElementById('stick');
-const speedSlider = document.getElementById('speed-sensitivity');
-const turnSlider = document.getElementById('turn-sensitivity');
-const speedValue = document.getElementById('speed-value');
-const turnValue = document.getElementById('turn-value');
+// Invisible touch control on video
+const videoContainer = document.querySelector('.video-container');
 let isActive = false;
-let joystickOriginX = 0;
-let joystickOriginY = 0;
-const JOYSTICK_RADIUS = 75; // Half of 150px joystick size
-const STICK_RADIUS = 25;    // Half of 50px stick size
-const MAX_STICK_DISTANCE = JOYSTICK_RADIUS - STICK_RADIUS;
+let startX = 0;
+let startY = 0;
+const CONTROL_RADIUS = 80; // pixels to reach full speed
 
-speedSlider.addEventListener('input', () => {
-    speedValue.textContent = speedSlider.value + '%';
-});
-
-turnSlider.addEventListener('input', () => {
-    turnValue.textContent = turnSlider.value + '%';
-});
-
-function showJoystickAt(x, y) {
-    const containerRect = videoContainer.getBoundingClientRect();
-    const relX = x - containerRect.left;
-    const relY = y - containerRect.top;
+function handleControl(x, y) {
+    const dx = x - startX;
+    const dy = y - startY;
     
-    joystick.style.left = relX + 'px';
-    joystick.style.top = relY + 'px';
-    joystick.style.display = 'block';
-    
-    joystickOriginX = x;
-    joystickOriginY = y;
-    
-    // Reset stick to center
-    stick.style.left = '50%';
-    stick.style.top = '50%';
-    
-    // Trigger fade-in transition
-    requestAnimationFrame(() => {
-        stick.classList.add('visible');
-    });
-}
-
-function hideJoystick() {
-    stick.classList.remove('visible');
-    // Wait for transition to finish before hiding
-    setTimeout(() => {
-        if (!isActive) {
-            joystick.style.display = 'none';
-        }
-    }, 200);
-}
-
-function setStickPosition(x, y) {
-    let dx = x - joystickOriginX;
-    let dy = y - joystickOriginY;
-    
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    if (distance > MAX_STICK_DISTANCE) {
-        dx *= MAX_STICK_DISTANCE / distance;
-        dy *= MAX_STICK_DISTANCE / distance;
-    }
-    
-    // Position stick relative to joystick center
-    stick.style.left = `calc(50% + ${dx}px)`;
-    stick.style.top = `calc(50% + ${dy}px)`;
-    
-    let normalizedX = dx / MAX_STICK_DISTANCE;
-    let normalizedY = -dy / MAX_STICK_DISTANCE;
-
-    normalizedX *= turnSlider.value / 100;
-    normalizedY *= speedSlider.value / 100;
+    // Normalize based on control radius, clamp to -1 to 1
+    let normalizedX = Math.max(-1, Math.min(1, dx / CONTROL_RADIUS));
+    let normalizedY = Math.max(-1, Math.min(1, -dy / CONTROL_RADIUS));
     
     throttleUpdateMotors(normalizedX, normalizedY);
 }
@@ -136,15 +76,6 @@ function updateMotors(x, y) {
     });
 }
 
-function emergencyStop() {
-    fetch('/emergency_stop', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-    }).then(response => response.json())
-      .then(data => {
-          alert(data.success ? 'Emergency stop activated!' : 'Emergency stop failed: ' + data.error);
-      });
-}
 
 function throttle(func, limit) {
     let lastFunc, lastRan;
@@ -167,27 +98,30 @@ function throttle(func, limit) {
 const throttleUpdateMotors = throttle(updateMotors, 100);
 
 function handleStart(e) {
-    const touch = e.touches ? e.touches[0] : e;
+    // Only start if touch/click is on video container
+    if (!videoContainer.contains(e.target) && e.target !== videoContainer) return;
+    
     isActive = true;
-    showJoystickAt(touch.clientX, touch.clientY);
+    const touch = e.touches ? e.touches[0] : e;
+    startX = touch.clientX;
+    startY = touch.clientY;
     e.preventDefault();
 }
 
 function handleMove(e) {
     if (!isActive) return;
     const touch = e.touches ? e.touches[0] : e;
-    setStickPosition(touch.clientX, touch.clientY);
+    handleControl(touch.clientX, touch.clientY);
     e.preventDefault();
 }
 
 function handleEnd() {
     if (!isActive) return;
     isActive = false;
-    hideJoystick();
     throttleUpdateMotors(0, 0);
 }
 
-// Event listeners - on video container
+// Event listeners on video container
 videoContainer.addEventListener('mousedown', handleStart);
 videoContainer.addEventListener('touchstart', handleStart, { passive: false });
 
@@ -261,31 +195,29 @@ window.addEventListener("gamepadconnected", function(e) {
     console.log("Gamepad connected:", e.gamepad);
     startGamepadPolling();
 });
-/* ===== Status-bar helpers ============================================ */
-const vinSpan = document.getElementById('vin-display');   // “26.4 V”
-const rpmSpan = document.getElementById('rpm-display');   // “1250 RPM”
+/* ===== Video overlay helpers ========================================== */
+const vinSpan = document.getElementById('vin-display');
+const rpmSpan = document.getElementById('rpm-display');
 
-const vinBar  = document.getElementById('vin-bar');       // outer bar
-const rpmBar  = document.getElementById('rpm-bar');
+const VOLTAGE_THRESHOLD = 24;
 
-function clamp01(x){ return Math.max(0, Math.min(1, x)); }
-
-function updateVoltage(volts, minV = 24, maxV = 28){
-  const fill = clamp01((volts - minV) / (maxV - minV));
-  vinBar.style.setProperty('--fill', fill.toFixed(3));
-  vinSpan.textContent = volts.toFixed(2) + ' V';
+function updateVoltage(volts){
+  vinSpan.textContent = volts.toFixed(1) + ' V';
+  if (volts < VOLTAGE_THRESHOLD) {
+    vinSpan.classList.add('warning');
+  } else {
+    vinSpan.classList.remove('warning');
+  }
 }
 
-function updateRPM(rpm, maxRPM = 3100){
-  const fill = clamp01(rpm / maxRPM);
-  rpmBar.style.setProperty('--fill', fill.toFixed(3));
+function updateRPM(rpm){
   rpmSpan.textContent = Math.round(rpm) + ' RPM';
 }
 
 
-/* ===== Live battery-voltage bar ======================================= */
+/* ===== Live voltage overlay =========================================== */
 (() => {
-    if (!vinBar) return;          // bar not on this page
+    if (!vinSpan) return;
 
     // first snapshot
     fetch('/api/voltage')
@@ -303,9 +235,10 @@ function updateRPM(rpm, maxRPM = 3100){
         console.error('Voltage SSE error – browser will auto-retry');
 })();
 
-/* ===== Live RPM bar =================================================== */
+/* ===== Live RPM overlay =============================================== */
 (() => {
-    if (!rpmBar) return;
+    if (!rpmSpan) return;
+
     // first snapshot
     fetch('/api/rpm')
         .then(r => r.ok ? r.json() : null)

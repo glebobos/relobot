@@ -7,47 +7,18 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    
     <div class="camera-section">
         <div class="video-container" id="videoContainer">
             <img id="cameraStream" src="" alt="Camera Stream">
-            <div id="joystick-overlay">
-                <div id="joystick">
-                    <div id="stick"></div>
-                </div>
+            <div class="video-overlay">
+                <span id="vin-display" class="overlay-value">--.-- V</span>
+                <span id="rpm-display" class="overlay-value">--- RPM</span>
             </div>
-        </div>
-    </div>
-    
-    <div class="status-container">
-        <div class="status-bar" id="vin-bar">
-            <span class="status-label" id="vin-display">--.-- V</span>
-        </div>
-        <div class="status-bar rpm" id="rpm-bar">
-            <span class="status-label" id="rpm-display">--- RPM</span>
         </div>
     </div>
     
     <div class="map-section">
         <div id="map"></div>
-    </div>
-
-    <div class="joystick-section">
-        <div class="controls-container">
-            <div class="slider-container">
-                <label for="speed-sensitivity">Max Speed</label>
-                <input type="range" id="speed-sensitivity" min="0" max="100" value="100">
-                <div class="value-display" id="speed-value">100%</div>
-            </div>
-            
-            <div class="slider-container">
-                <label for="turn-sensitivity">Turn Sensitivity</label>
-                <input type="range" id="turn-sensitivity" min="0" max="100" value="100">
-                <div class="value-display" id="turn-value">100%</div>
-            </div>
-        </div>
-        
-        <button class="emergency-stop" onclick="emergencyStop()">🛑 EMERGENCY STOP</button>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/roslib@1.4.1/build/roslib.js"></script>
     <script src="/robot-control.js"></script>

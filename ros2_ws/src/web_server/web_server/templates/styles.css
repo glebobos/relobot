@@ -75,111 +75,12 @@ body {
     object-fit: contain;
 }
 
-/* Joystick overlay on video */
-#joystick-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-    z-index: 10;
+/* Touch control area on video */
+.video-container {
+    touch-action: none;
+    cursor: crosshair;
 }
 
-#joystick-overlay #joystick {
-    position: absolute;
-    width: 150px;
-    height: 150px;
-    border-radius: 50%;
-    background-color: transparent;
-    border: none;
-    display: none;
-    pointer-events: none;
-    transform: translate(-50%, -50%);
-    margin: 0;
-}
-
-#joystick-overlay #stick {
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    background-color: rgba(255, 255, 255, 0);
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    box-shadow: none;
-    transition: background-color 0.2s ease-out;
-}
-
-#joystick-overlay #stick.visible {
-    background-color: rgba(255, 255, 255, 0.3);
-}
-
-.joystick-section {
-    padding: 40px 20px;
-    background: white;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-}
-
-.controls-container {
-    display: flex;
-    gap: 40px;
-    justify-content: center;
-    flex-wrap: wrap;
-    margin: 30px 0;
-    max-width: 600px;
-    width: 100%;
-}
-
-.slider-container {
-    flex: 1;
-    min-width: 200px;
-    max-width: 250px;
-    text-align: center;
-    background: #f8f9fa;
-    padding: 20px;
-    border-radius: 12px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.slider-container label {
-    display: block;
-    margin-bottom: 15px;
-    font-size: 16px;
-    font-weight: 600;
-    color: #333;
-}
-
-.slider-container input {
-    width: 100%;
-    margin-bottom: 10px;
-}
-
-.value-display {
-    font-weight: bold;
-    color: #007bff;
-    font-size: 18px;
-}
-
-.emergency-stop {
-    background-color: #dc3545;
-    color: white;
-    border: none;
-    padding: 15px 30px;
-    font-size: 18px;
-    border-radius: 8px;
-    cursor: pointer;
-    margin: 20px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-}
-
-.emergency-stop:hover {
-    background-color: #c82333;
-}
 
 @media (max-width: 768px) {
     .camera-section {
@@ -191,32 +92,12 @@ body {
         max-height: 60vh;
     }
     
-    .status-container {
-        padding: 15px;
-        gap: 15px;
-    }
-    
     .map-section {
         padding: 10px;
     }
     
     #map {
         height: 300px;
-    }
-    
-    .joystick-section {
-        padding: 20px 10px;
-    }
-    
-    .controls-container {
-        flex-direction: column;
-        align-items: center;
-        gap: 20px;
-    }
-    
-    .slider-container {
-        max-width: 300px;
-        width: 90%;
     }
 }
 
@@ -227,10 +108,6 @@ body {
     
     .video-container {
         max-height: 50vh;
-    }
-    
-    .status-container {
-        padding: 10px;
     }
     
     #map {
@@ -246,66 +123,37 @@ body {
     .video-container {
         max-height: 80vh;
     }
-    
-    .status-container {
-        padding: 10px;
-    }
 }
-/* ===== Status bars (voltage & RPM) ==================================== */
-.status-container {
-    padding: 20px;
-    background: #f8f9fa;
+/* ===== Video overlay (voltage & RPM) ================================== */
+.video-overlay {
+    position: absolute;
+    top: 12px;
+    left: 12px;
     display: flex;
-    gap: 20px;
-    justify-content: center;
-    flex-wrap: wrap;
+    flex-direction: column;
+    gap: 4px;
+    z-index: 10;
+    pointer-events: none;
 }
 
-.status-container .status-bar {
-    flex: 1;
-    min-width: 200px;
-    max-width: 400px;
+.overlay-value {
+    font-family: 'Courier New', monospace;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #fff;
+    text-shadow: 0 0 4px rgba(0,0,0,0.8), 0 0 8px rgba(0,0,0,0.5);
+    transition: opacity 0.3s ease, color 0.3s ease;
 }
 
-.status-bar{
-  --fill: 0;                /* 0‒1 range, set from JS */
-  position: relative;
-  width: 100%;
-  height: 22px;
-  border: 2px solid #555;
-  border-radius: 6px;
-  overflow: hidden;
-  margin: 0 auto 6px;
-  background:#222;          /* “empty” part of the bar */
+#vin-display {
+    opacity: 0.5;
 }
 
-.status-bar::before{
-  content:"";
-  position:absolute;
-  inset:0;
-  transform-origin:left;
-  transform:scaleX(var(--fill));
-  transition:transform .25s linear;
-  background:linear-gradient(90deg, #4caf50 0%, #ffeb3b 50%, #f44336 100%);
+#vin-display.warning {
+    opacity: 1;
+    color: #ff4444;
 }
 
-#vin-bar::before{
-  background:linear-gradient(90deg, #f44336 0%, #ffeb3b 50%, #4caf50 100%);
-}
-
-.rpm::before{
-  background:linear-gradient(90deg, #2196f3 0%, #4caf50 40%, #ffeb3b 70%, #f44336 100%);
-}
-
-.status-label{
-  position:absolute;
-  inset:0;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  color:#fff;
-  font-weight:600;
-  font-size:.8rem;
-  pointer-events:none;
-  z-index:1;
+#rpm-display {
+    opacity: 0.85;
 }

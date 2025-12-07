@@ -68,6 +68,7 @@ class RobotWebServer:
         def index():
             return render_template("index.html")
 
+
         @self.app.route("/robot-control.js")
         def js():
             return send_from_directory("templates", "robot-control.js",
@@ -165,12 +166,6 @@ class RobotWebServer:
             except Exception as exc:
                 logger.exception("set_motors failed")
                 return jsonify(success=False, error=str(exc))
-
-        # ------------- e-stop -----------------------------------------------
-        @self.app.route("/emergency_stop", methods=["POST"])
-        def estop():
-            self.motors.stop()
-            return jsonify(success=True, message="Motors halted")
 
     # --------------------------------------------------------------------- #
     #                          helpers & lifecycle                          #
