@@ -3,3 +3,4 @@ build
 log
 core
 ./src/serial
+map_serialized.*
