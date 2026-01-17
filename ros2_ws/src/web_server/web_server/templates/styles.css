@@ -59,6 +59,33 @@ body {
 .map-section {
     padding: 20px;
     background: #e0e0e0;
+    position: relative;
+}
+
+.map-controls {
+    position: absolute;
+    top: 30px;
+    right: 30px;
+    z-index: 100;
+}
+
+.map-btn {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.map-btn:hover {
+    background-color: #0056b3;
+}
+
+.map-btn:active {
+    transform: translateY(1px);
 }
 
 #map {

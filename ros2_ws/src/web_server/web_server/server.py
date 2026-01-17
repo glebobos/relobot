@@ -167,6 +167,16 @@ class RobotWebServer:
                 logger.exception("set_motors failed")
                 return jsonify(success=False, error=str(exc))
 
+        # ------------- map saving -------------------------------------------
+        @self.app.route("/api/save_map", methods=["POST"])
+        def api_save_map():
+            try:
+                self.node.save_map("map_serialized")
+                return jsonify(success=True)
+            except Exception as exc:
+                logger.exception("save_map failed")
+                return jsonify(success=False, error=str(exc))
+
     # --------------------------------------------------------------------- #
     #                          helpers & lifecycle                          #
     # --------------------------------------------------------------------- #

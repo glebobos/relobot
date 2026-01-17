@@ -41,7 +41,7 @@ const cameraStream = document.getElementById('cameraStream');
             const now = Date.now();
             if (now - lastCameraUpdate < CAMERA_THROTTLE_MS) return;
             lastCameraUpdate = now;
-            
+
             const format = msg.format || 'image/jpeg';
             setImageSrc(`data:${format};base64,${msg.data}`);
         });
@@ -60,11 +60,11 @@ const CONTROL_RADIUS = 80; // pixels to reach full speed
 function handleControl(x, y) {
     const dx = x - startX;
     const dy = y - startY;
-    
+
     // Normalize based on control radius, clamp to -1 to 1
     let normalizedX = Math.max(-1, Math.min(1, dx / CONTROL_RADIUS));
     let normalizedY = Math.max(-1, Math.min(1, -dy / CONTROL_RADIUS));
-    
+
     throttleUpdateMotors(normalizedX, normalizedY);
 }
 
@@ -79,7 +79,7 @@ function updateMotors(x, y) {
 
 function throttle(func, limit) {
     let lastFunc, lastRan;
-    return function(...args) {
+    return function (...args) {
         if (!lastRan) {
             func.apply(this, args);
             lastRan = Date.now();
@@ -100,7 +100,7 @@ const throttleUpdateMotors = throttle(updateMotors, 100);
 function handleStart(e) {
     // Only start if touch/click is on video container
     if (!videoContainer.contains(e.target) && e.target !== videoContainer) return;
-    
+
     isActive = true;
     const touch = e.touches ? e.touches[0] : e;
     startX = touch.clientX;
@@ -133,14 +133,14 @@ document.addEventListener('touchend', handleEnd);
 
 // Camera connection status
 let cameraConnected = false;
-cameraStream.onload = function() {
+cameraStream.onload = function () {
     if (!cameraConnected) {
         cameraConnected = true;
         console.log('Camera stream connected');
     }
 };
 
-cameraStream.onerror = function() {
+cameraStream.onerror = function () {
     cameraConnected = false;
     console.warn('Camera stream interrupted, reconnecting...');
 };
@@ -172,7 +172,7 @@ function pollGamepad() {
     const processedAxes = gp.axes.map((val, idx) => applyDeadZone(idx, val));
     const buttons = gp.buttons.map(b => b.value);
     const now = Date.now();
-    
+
     if (now - lastGamepadSent > 100) {
         const isZeroNow = isZeroOrAllFalse(processedAxes, buttons);
         if (!isZeroNow || (isZeroNow && lastSentNonZero)) {
@@ -191,7 +191,7 @@ function startGamepadPolling() {
     setInterval(pollGamepad, 20);
 }
 
-window.addEventListener("gamepadconnected", function(e) {
+window.addEventListener("gamepadconnected", function (e) {
     console.log("Gamepad connected:", e.gamepad);
     startGamepadPolling();
 });
@@ -201,17 +201,17 @@ const rpmSpan = document.getElementById('rpm-display');
 
 const VOLTAGE_THRESHOLD = 24;
 
-function updateVoltage(volts){
-  vinSpan.textContent = volts.toFixed(1) + ' V';
-  if (volts < VOLTAGE_THRESHOLD) {
-    vinSpan.classList.add('warning');
-  } else {
-    vinSpan.classList.remove('warning');
-  }
+function updateVoltage(volts) {
+    vinSpan.textContent = volts.toFixed(1) + ' V';
+    if (volts < VOLTAGE_THRESHOLD) {
+        vinSpan.classList.add('warning');
+    } else {
+        vinSpan.classList.remove('warning');
+    }
 }
 
-function updateRPM(rpm){
-  rpmSpan.textContent = Math.round(rpm) + ' RPM';
+function updateRPM(rpm) {
+    rpmSpan.textContent = Math.round(rpm) + ' RPM';
 }
 
 
@@ -223,7 +223,7 @@ function updateRPM(rpm){
     fetch('/api/voltage')
         .then(r => r.ok ? r.json() : null)
         .then(j => j?.success && updateVoltage(j.vin))
-        .catch(() => {});
+        .catch(() => { });
 
     // live updates via SSE
     const es = new EventSource('/stream/voltage');
@@ -243,7 +243,7 @@ function updateRPM(rpm){
     fetch('/api/rpm')
         .then(r => r.ok ? r.json() : null)
         .then(j => j?.success && updateRPM(j.rpm))
-        .catch(() => {});
+        .catch(() => { });
 
     // live updates via SSE
     const es = new EventSource('/stream/rpm');
@@ -254,3 +254,19 @@ function updateRPM(rpm){
     es.onerror = () =>
         console.error('RPM SSE error – browser will auto-retry');
 })();
+
+/* ===== Map Config ==================================================== */
+const saveMapBtn = document.getElementById('save-map-btn');
+if (saveMapBtn) {
+    saveMapBtn.addEventListener('click', () => {
+        if (confirm('Save current map? This will overwrite the previous save.')) {
+            fetch('/api/save_map', { method: 'POST' })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) alert('Map saved successfully!');
+                    else alert('Error: ' + data.error);
+                })
+                .catch(err => alert('Network error: ' + err));
+        }
+    });
+}

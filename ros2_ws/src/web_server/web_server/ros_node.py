@@ -29,6 +29,7 @@ from rclpy.node import Node
 from sensor_msgs.msg import Image
 from std_msgs.msg import Float32
 from std_srvs.srv import SetBool
+from slam_toolbox.srv import SerializePoseGraph
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +46,7 @@ class RobotROSNode(Node):
 
         # --- service client -------------------------------------------------------
         self._pid_client = self.create_client(SetBool, "knives/enable_pid")
+        self._map_saver_client = self.create_client(SerializePoseGraph, "/slam_toolbox/serialize_map")
 
     # image subscriptions removed (depth/confidence frames not used)
 
@@ -96,6 +98,15 @@ class RobotROSNode(Node):
             return
         req = SetBool.Request(data=enable)
         self._pid_client.call_async(req)   # we ignore response here
+
+    def save_map(self, filename: str) -> None:
+        if not self._map_saver_client.service_is_ready():
+            self.get_logger().warning("Map Saver service unavailable")
+            return
+        
+        req = SerializePoseGraph.Request()
+        req.filename = filename 
+        self._map_saver_client.call_async(req)
 
     # ------------------------------------------------------------------------- #
     #                              telemetry                                    #
