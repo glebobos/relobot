@@ -56,6 +56,7 @@ window.onload = function () {
       ros: ros,
       name: "/odometry/filtered",
       messageType: "nav_msgs/Odometry",
+      throttle_rate: 100  // Throttle to 10 Hz to reduce CPU usage
     });
 
     odomSub.subscribe(function (message) {
