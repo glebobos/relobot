@@ -30,6 +30,15 @@ services:
       - ds
     restart: unless-stopped
 
+  ros2_frontend:
+    build:
+      context: .
+      dockerfile: Frontend.dockerfile
+    network_mode: host
+    restart: unless-stopped
+    depends_on:
+      - ros2_web_server
+
   ros2_lidar:
     build:
       context: .
