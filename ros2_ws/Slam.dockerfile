@@ -15,7 +15,9 @@ RUN echo '#!/bin/bash\n\
 set -e\n\
 source /opt/ros/humble/setup.bash\n\
 cd /ros2_ws\n\
-colcon build --packages-select slam_tool\n\
+if [ "$DEV" = "true" ]; then\n\
+  colcon build --packages-select slam_tool\n\
+fi\n\
 source /ros2_ws/install/setup.bash\n\
 ros2 pkg list | grep slam_tool && ros2 launch slam_tool launch_slam.py' > /start_dev.sh && \
 chmod +x /start_dev.sh

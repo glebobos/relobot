@@ -29,7 +29,9 @@ RUN echo '#!/bin/bash\n\
 set -e\n\
 source /opt/ros/humble/setup.bash\n\
 cd /ros2_ws\n\
-colcon build --packages-up-to nav2 --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release\n\
+if [ "$DEV" = "true" ]; then\n\
+  colcon build --packages-up-to nav2 --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release\n\
+fi\n\
 source install/setup.bash\n\
 ros2 launch nav2 explore.launch.py' > /start_dev.sh && \
 chmod +x /start_dev.sh

@@ -14,16 +14,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 set -e
+
+# Parse arguments
+COMMAND=""
+SERVICE=""
+DEV=false
+
+for arg in "$@"; do
+    if [ "$arg" == "--dev" ]; then
+        DEV=true
+    elif [ -z "$COMMAND" ]; then
+        COMMAND=$arg
+    elif [ -z "$SERVICE" ]; then
+        SERVICE=$arg
+    fi
+done
+
 # Check if command is provided
-if [ -z "$1" ]; then
-    echo "Usage: $0 {up|down} [service]"
+if [ -z "$COMMAND" ]; then
+    echo "Usage: $0 {up|down} [service] [--dev]"
     echo "  up [service]   - Start all services or a specific service"
     echo "  down           - Stop all services"
+    echo "  --dev          - Enable development mode (rebuilds code)"
     exit 1
 fi
-
-COMMAND=$1
-SERVICE=$2
 
 cd /home/admin/Documents/relobot/ros2_ws
 
@@ -34,7 +48,8 @@ do
 done
 
 export HOST_IP=$(hostname -I | awk '{print $1}')
-echo "Starting services with HOST_IP=$HOST_IP"
+export DEV=$DEV
+echo "Starting services with HOST_IP=$HOST_IP and DEV=$DEV"
 
 if [ "$COMMAND" == "up" ]; then
     # Wait for internet connection before starting
@@ -52,6 +67,6 @@ elif [ "$COMMAND" == "down" ]; then
     
 else
     echo "Error: Invalid command '$COMMAND'"
-    echo "Usage: $0 {up|down} [service]"
+    echo "Usage: $0 {up|down} [service] [--dev]"
     exit 1
 fi
