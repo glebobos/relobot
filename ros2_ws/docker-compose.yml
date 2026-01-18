@@ -162,6 +162,15 @@ services:
       - ds
     restart: unless-stopped
 
+  web_ui:
+    build:
+      context: .
+      dockerfile: WebUI.dockerfile
+    network_mode: host
+    depends_on:
+      - ds
+    restart: unless-stopped
+
   ros2_slam:
     build:
       context: .

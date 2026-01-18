@@ -52,7 +52,7 @@ class RobotWebServer:
         self.pid = PIDController(self.node.toggle_pid)
 
         # ---------------- Flask app --------------------- #
-        self.app = Flask(__name__, template_folder="./templates")
+        self.app = Flask(__name__)
         if os.environ.get("ENABLE_FLASK_LOGS", "").lower() not in ("true", "1"):
             self.app.logger.removeHandler(default_handler)
             logging.getLogger("werkzeug").setLevel(logging.ERROR)
@@ -63,26 +63,6 @@ class RobotWebServer:
     #                           Flask routes                                #
     # --------------------------------------------------------------------- #
     def _register_routes(self) -> None:
-
-        @self.app.route("/")
-        def index():
-            return render_template("index.html")
-
-
-        @self.app.route("/robot-control.js")
-        def js():
-            return send_from_directory("templates", "robot-control.js",
-                                       mimetype="application/javascript")
-
-        @self.app.route("/map-viewer.js")
-        def map_viewer_js():
-            return send_from_directory("templates", "map-viewer.js",
-                                       mimetype="application/javascript")
-
-        @self.app.route("/styles.css")
-        def css():
-            return send_from_directory("templates", "styles.css",
-                                       mimetype="text/css")
 
         # ------------- voltage ----------------------------------------------
         @self.app.route("/api/voltage")
@@ -186,7 +166,7 @@ class RobotWebServer:
 
         # start Flask in its own thread so rclpy.spin blocks main
         threading.Thread(target=lambda: self.app.run(
-            host="0.0.0.0", port=80, threaded=True, debug=False),
+            host="0.0.0.0", port=5000, threaded=True, debug=False),
             name="FlaskThread", daemon=True).start()
 
         logger.info("WebServer up – spinning ROS ...")
