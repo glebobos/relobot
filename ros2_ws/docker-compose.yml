@@ -1,3 +1,11 @@
+x-ros-env: &ros-env
+  DEV: ${DEV:-false}
+  RMW_IMPLEMENTATION: rmw_fastrtps_cpp
+  FASTDDS_BUILTIN_TRANSPORTS: DEFAULT
+  ROS_DISCOVERY_SERVER: ${HOST_IP}:11811
+  ROS_SUPER_CLIENT: True
+  PYTHONUNBUFFERED: 1
+
 services:
   ds:
     image: ros:humble-ros-core
@@ -18,12 +26,8 @@ services:
     devices:
       - /dev/ttyACM0:/dev/ttyACM0
     environment:
-      - DEV=${DEV:-false}
-      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
-      - FASTDDS_BUILTIN_TRANSPORTS=DEFAULT
-      - ROS_DISCOVERY_SERVER=${HOST_IP}:11811
-      - SERIAL_PORT=/dev/ttyACM0
-      - ROS_SUPER_CLIENT=True
+      <<: *ros-env
+      SERIAL_PORT: /dev/ttyACM0
     network_mode: host
     ipc: host 
     privileged: true
@@ -50,11 +54,7 @@ services:
     devices:
       - /dev/ttyUSB0:/dev/ttyUSB0
     environment:
-      - DEV=${DEV:-false}
-      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
-      - FASTDDS_BUILTIN_TRANSPORTS=DEFAULT
-      - ROS_DISCOVERY_SERVER=${HOST_IP}:11811
-      - ROS_SUPER_CLIENT=True
+      <<: *ros-env
     network_mode: host
     ipc: host 
     privileged: true
@@ -71,10 +71,7 @@ services:
     devices:
       - /dev/:/dev/
     environment:
-      - DEV=${DEV:-false}
-      - FASTDDS_BUILTIN_TRANSPORTS=DEFAULT
-      - ROS_DISCOVERY_SERVER=${HOST_IP}:11811
-      - ROS_SUPER_CLIENT=True
+      <<: *ros-env
     network_mode: host
     ipc: host 
     privileged: true
@@ -93,12 +90,7 @@ services:
     devices:
       - /dev/ttyACM4:/dev/ttyACM4
     environment:
-      - DEV=${DEV:-false}
-      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
-      - FASTDDS_BUILTIN_TRANSPORTS=DEFAULT
-      - ROS_DISCOVERY_SERVER=${HOST_IP}:11811
-      - ROS_SUPER_CLIENT=True
-      - PYTHONUNBUFFERED=1
+      <<: *ros-env
     network_mode: host
     ipc: host 
     privileged: true
@@ -115,12 +107,7 @@ services:
     devices:
       - /dev/:/dev/
     environment:
-      - DEV=${DEV:-false}
-      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
-      - FASTDDS_BUILTIN_TRANSPORTS=DEFAULT
-      - ROS_DISCOVERY_SERVER=${HOST_IP}:11811
-      - ROS_SUPER_CLIENT=True
-      - PYTHONUNBUFFERED=1
+      <<: *ros-env
     network_mode: host
     ipc: host 
     privileged: true
@@ -139,12 +126,7 @@ services:
     devices:
       - /dev/:/dev/
     environment:
-      - DEV=${DEV:-false}
-      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
-      - FASTDDS_BUILTIN_TRANSPORTS=DEFAULT
-      - ROS_DISCOVERY_SERVER=${HOST_IP}:11811
-      - ROS_SUPER_CLIENT=True
-      - PYTHONUNBUFFERED=1
+      <<: *ros-env
     network_mode: host
     privileged: true
     depends_on:
@@ -160,13 +142,8 @@ services:
       - .:/ros2_ws/
       - /dev/:/dev/
     environment:
-      - DEV=${DEV:-false}
-      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
-      - FASTDDS_BUILTIN_TRANSPORTS=DEFAULT
-      - ROS_DISCOVERY_SERVER=${HOST_IP}:11811
-      - ROS_SUPER_CLIENT=True
-      - PYTHONUNBUFFERED=1
-      - ENABLE_FLASK_LOGS=false
+      <<: *ros-env
+      ENABLE_FLASK_LOGS: false
     network_mode: host
     privileged: true
     device_cgroup_rules:
@@ -189,12 +166,7 @@ services:
     devices:
       - /dev/:/dev/
     environment:
-      - DEV=${DEV:-false}
-      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
-      - FASTDDS_BUILTIN_TRANSPORTS=DEFAULT
-      - ROS_DISCOVERY_SERVER=${HOST_IP}:11811
-      - ROS_SUPER_CLIENT=True
-      - PYTHONUNBUFFERED=1
+      <<: *ros-env
     network_mode: host
     privileged: true
     depends_on:
@@ -212,11 +184,7 @@ services:
     volumes:
       - .:/ros2_ws/
     environment:
-      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
-      - FASTDDS_BUILTIN_TRANSPORTS=DEFAULT
-      - ROS_DISCOVERY_SERVER=${HOST_IP}:11811
-      - ROS_SUPER_CLIENT=True
-      - PYTHONUNBUFFERED=1
+      <<: *ros-env
     network_mode: host
     depends_on:
       - ds
