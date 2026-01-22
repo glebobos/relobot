@@ -47,8 +47,7 @@ def generate_launch_description() -> LaunchDescription:
             "camera": camera_param,
             "width": 800,
             "height": 600,
-            "format": "YUYV",
-            "jpeg_quality": 50,
+            "format": "UYVY",
         }],
         output='screen',
     )

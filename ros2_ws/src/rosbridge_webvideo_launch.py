@@ -30,7 +30,7 @@ def generate_launch_description():
             output='screen',
             parameters=[{
                 'port': 8080,
-                'server_threads': 4,
+                'server_threads': 1,
                 'ros_threads': 2,
                 'default_stream_type': 'mjpeg',
             }]
