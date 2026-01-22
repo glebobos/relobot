@@ -52,7 +52,9 @@ source /opt/ros/humble/setup.bash\n\
 cd /ros2_ws\n\
 # Skip libcamera key because we installed it manually\n\
 # rosdep install -y --from-paths src/camera_ros --ignore-src --rosdistro humble --skip-keys=libcamera\n\
-colcon build --packages-select camera_ros\n\
+if [ "$DEV" = "true" ]; then\n\
+  colcon build --packages-select camera_ros\n\
+fi\n\
 source install/setup.bash\n\
 ros2 launch camera_ros camera.launch.py' > /start_dev.sh && \
 chmod +x /start_dev.sh

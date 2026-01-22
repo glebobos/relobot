@@ -15,7 +15,9 @@ RUN echo '#!/bin/bash\n\
 set -e\n\
 source /opt/ros/humble/setup.bash\n\
 cd /ros2_ws\n\
-colcon build --packages-select arducam_rclpy_tof_pointcloud\n\
+if [ "$DEV" = "true" ]; then\n\
+  colcon build --packages-select arducam_rclpy_tof_pointcloud\n\
+fi\n\
 source install/setup.bash\n\
 ros2 launch arducam_rclpy_tof_pointcloud launch.py' > /start_dev.sh && \
 chmod +x /start_dev.sh

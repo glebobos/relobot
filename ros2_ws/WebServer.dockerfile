@@ -14,7 +14,9 @@ RUN echo '#!/bin/bash\n\
 set -e\n\
 source /opt/ros/humble/setup.bash\n\
 cd /ros2_ws\n\
-colcon build --packages-select web_server\n\
+if [ "$DEV" = "true" ]; then\n\
+  colcon build --packages-select web_server\n\
+fi\n\
 source install/setup.bash\n\
 ros2 run web_server web_server_node' > /start_dev.sh && \
 chmod +x /start_dev.sh
