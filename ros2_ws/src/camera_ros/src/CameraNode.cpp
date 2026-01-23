@@ -88,6 +88,7 @@ private:
   std::unordered_map<const libcamera::Request *, std::mutex> request_mutexes;
   std::unordered_map<const libcamera::Request *, std::condition_variable> request_condvars;
   std::atomic<bool> running;
+  std::atomic<bool> is_streaming;  // Shared state for all threads
 
   struct buffer_info_t
   {
@@ -560,6 +561,7 @@ CameraNode::CameraNode(const rclcpp::NodeOptions &options)
 
   // create a processing thread per request
   running = true;
+  is_streaming = true;  // Start true since camera starts with all requests queued
   for (const std::unique_ptr<libcamera::Request> &request : requests) {
     // create mutexes in-place
     request_mutexes[request.get()];
@@ -620,7 +622,7 @@ void
 CameraNode::process(libcamera::Request *const request)
 {
   constexpr int SUBSCRIBER_POLL_MS = 200;  // How often to check for subscribers when idle
-  bool was_streaming = true;  // Start true since camera starts with all requests queued
+  const bool is_first_thread = (request == requests[0].get());
 
   while (true) {
     // block until request is available or timeout for subscriber check
@@ -639,17 +641,17 @@ CameraNode::process(libcamera::Request *const request)
 
     // Lazy camera: if no subscribers, don't re-queue requests
     if (!has_subscribers) {
-      if (was_streaming) {
+      if (is_streaming.exchange(false) && is_first_thread) {
         RCLCPP_INFO(get_logger(), "No subscribers, pausing camera capture to save CPU");
-        was_streaming = false;
       }
       continue;
     }
 
     // We have subscribers - check if we need to resume streaming
-    if (!was_streaming) {
-      RCLCPP_INFO(get_logger(), "Subscribers detected, resuming camera capture");
-      was_streaming = true;
+    if (!is_streaming.exchange(true)) {
+      if (is_first_thread) {
+        RCLCPP_INFO(get_logger(), "Subscribers detected, resuming camera capture");
+      }
       request->reuse(libcamera::Request::ReuseBuffers);
       camera->queueRequest(request);
       continue;  // Wait for the actual frame
