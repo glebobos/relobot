@@ -45,8 +45,8 @@ def generate_launch_description() -> LaunchDescription:
         name='camera',
         parameters=[{
             "camera": camera_param,
-            # "width": 800,
-            # "height": 600,
+            "width": 800,
+            "height": 600,
             "format": "UYVY",
             "FrameDurationLimits": [100000,100000]
         }],
