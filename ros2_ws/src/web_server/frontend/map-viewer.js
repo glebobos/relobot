@@ -49,7 +49,7 @@ window.onload = function () {
       angularThres: 0.01,
       transThres: 0.01,
       rate: 10.0,
-      fixedFrame: '/map' // Important: coordinates relative to the Map
+      fixedFrame: 'map' // Important: coordinates relative to the Map
     });
 
     // 2. Create the arrow (robot marker)
@@ -60,6 +60,8 @@ window.onload = function () {
       headDiameter: 0.2,
       material: new THREE.MeshBasicMaterial({ color: 0xff0000 }),
     });
+    // Lift the arrow up so it's not hidden by the map
+    robotMarker.position.z = 1.0;
 
     // 3. Create SceneNode
     // This object will move and rotate everything inside it
