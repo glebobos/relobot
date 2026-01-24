@@ -49,7 +49,7 @@ window.onload = function () {
       angularThres: 0.01,
       transThres: 0.01,
       rate: 10.0,
-      fixedFrame: '/map' // Important: coordinates relative to the Map
+      fixedFrame: 'map' // Important: coordinates relative to the Map
     });
 
     // 2. Create the arrow (robot marker)
@@ -61,19 +61,13 @@ window.onload = function () {
       material: new THREE.MeshBasicMaterial({ color: 0xff0000 }),
     });
 
-    // Wrap marker in a container to apply offset
-    // SceneNode overwrites the position of its direct child, so we need a container.
-    var container = new THREE.Object3D();
-    container.add(robotMarker);
-    robotMarker.position.z = 1.0; // Lift above map
-
     // 3. Create SceneNode
     // This object will move and rotate everything inside it
     // based on the robot's TF transform.
     var robotNode = new ROS3D.SceneNode({
       tfClient: tfClient,
       frameID: 'base_link',
-      object: container
+      object: robotMarker
     });
 
     // Add node to scene
