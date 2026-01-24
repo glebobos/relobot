@@ -22,3 +22,15 @@
 127.0.0.1 - - [24/Jan/2026 13:00:14] "GET /stream/rpm HTTP/1.1" 404 -
 127.0.0.1 - - [24/Jan/2026 13:00:14] code 404, message File not found
 127.0.0.1 - - [24/Jan/2026 13:00:14] "GET /api/rpm HTTP/1.1" 404 -
+127.0.0.1 - - [24/Jan/2026 13:13:57] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [24/Jan/2026 13:13:57] "GET /styles.css HTTP/1.1" 200 -
+127.0.0.1 - - [24/Jan/2026 13:13:57] "GET /map-viewer.js HTTP/1.1" 200 -
+127.0.0.1 - - [24/Jan/2026 13:13:57] "GET /robot-control.js HTTP/1.1" 200 -
+127.0.0.1 - - [24/Jan/2026 13:13:58] code 404, message File not found
+127.0.0.1 - - [24/Jan/2026 13:13:58] "GET /api/voltage HTTP/1.1" 404 -
+127.0.0.1 - - [24/Jan/2026 13:13:58] code 404, message File not found
+127.0.0.1 - - [24/Jan/2026 13:13:58] "GET /api/rpm HTTP/1.1" 404 -
+127.0.0.1 - - [24/Jan/2026 13:13:58] code 404, message File not found
+127.0.0.1 - - [24/Jan/2026 13:13:58] "GET /stream/voltage HTTP/1.1" 404 -
+127.0.0.1 - - [24/Jan/2026 13:13:58] code 404, message File not found
+127.0.0.1 - - [24/Jan/2026 13:13:58] "GET /stream/rpm HTTP/1.1" 404 -
