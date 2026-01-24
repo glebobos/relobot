@@ -48,6 +48,7 @@ def generate_launch_description() -> LaunchDescription:
             "width": 800,
             "height": 600,
             "format": "UYVY",
+            "FrameDurationLimits": [100000,100000]
         }],
         output='screen',
     )
