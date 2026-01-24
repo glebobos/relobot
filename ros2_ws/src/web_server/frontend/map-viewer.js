@@ -42,36 +42,39 @@ window.onload = function () {
       rootObject: viewer.scene,
     });
 
-    // 1. Configure TF Client
-    // It will listen for transforms relative to the 'map' frame
-    var tfClient = new ROSLIB.TFClient({
+    // Setup robot marker as a polygon for footprint
+    var robotFootprint = null;
+
+    var footprintSub = new ROSLIB.Topic({
       ros: ros,
-      angularThres: 0.01,
-      transThres: 0.01,
-      rate: 10.0,
-      fixedFrame: 'map' // Important: coordinates relative to the Map
+      name: "/local_costmap/published_footprint",
+      messageType: "geometry_msgs/PolygonStamped",
+      throttle_rate: 100  // Throttle to 10 Hz to reduce CPU usage
     });
 
-    // 2. Create the arrow (robot marker)
-    var robotMarker = new ROS3D.Arrow({
-      length: 0.5,
-      headLength: 0.25,
-      shaftDiameter: 0.1, // Slightly thinner for neatness
-      headDiameter: 0.2,
-      material: new THREE.MeshBasicMaterial({ color: 0xff0000 }),
-    });
+    footprintSub.subscribe(function (message) {
+      // Remove old footprint if it exists
+      if (robotFootprint) {
+        viewer.scene.remove(robotFootprint);
+      }
 
-    // 3. Create SceneNode
-    // This object will move and rotate everything inside it
-    // based on the robot's TF transform.
-    var robotNode = new ROS3D.SceneNode({
-      tfClient: tfClient,
-      frameID: 'base_link',
-      object: robotMarker
-    });
+      // Create polygon shape from footprint points
+      var points = message.polygon.points.map(function(p) {
+        return new THREE.Vector2(p.x, p.y);
+      });
 
-    // Add node to scene
-    viewer.scene.add(robotNode);
+      // Create shape and geometry
+      var shape = new THREE.Shape(points);
+      var geometry = new THREE.ShapeGeometry(shape);
+      var material = new THREE.MeshBasicMaterial({ 
+        color: 0xff0000, 
+        side: THREE.DoubleSide 
+      });
+      
+      robotFootprint = new THREE.Mesh(geometry, material);
+      robotFootprint.position.z = 0.1;
+      viewer.scene.add(robotFootprint);
+    });
 
     // Handle window resize to make the viewer responsive
     window.addEventListener("resize", function () {
