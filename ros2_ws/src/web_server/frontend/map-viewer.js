@@ -42,40 +42,36 @@ window.onload = function () {
       rootObject: viewer.scene,
     });
 
-    // Setup robot marker as an arrow for odometry
+    // 1. Configure TF Client
+    // It will listen for transforms relative to the 'map' frame
+    var tfClient = new ROSLIB.TFClient({
+      ros: ros,
+      angularThres: 0.01,
+      transThres: 0.01,
+      rate: 10.0,
+      fixedFrame: '/map' // Important: coordinates relative to the Map
+    });
+
+    // 2. Create the arrow (robot marker)
     var robotMarker = new ROS3D.Arrow({
       length: 0.5,
       headLength: 0.25,
-      shaftDiameter: 0.4,
-      headDiameter: 0.4,
+      shaftDiameter: 0.1, // Slightly thinner for neatness
+      headDiameter: 0.2,
       material: new THREE.MeshBasicMaterial({ color: 0xff0000 }),
     });
-    viewer.scene.add(robotMarker);
 
-    var odomSub = new ROSLIB.Topic({
-      ros: ros,
-      name: "/odometry/filtered",
-      messageType: "nav_msgs/Odometry",
-      throttle_rate: 100  // Throttle to 10 Hz to reduce CPU usage
+    // 3. Create SceneNode
+    // This object will move and rotate everything inside it
+    // based on the robot's TF transform.
+    var robotNode = new ROS3D.SceneNode({
+      tfClient: tfClient,
+      frameID: 'base_link',
+      object: robotMarker
     });
 
-    odomSub.subscribe(function (message) {
-      // Update robot position
-      robotMarker.position.x = message.pose.pose.position.x;
-      robotMarker.position.y = message.pose.pose.position.y;
-      robotMarker.position.z = 0.1;
-
-      // Convert robot orientation quaternion to direction vector
-      var q = message.pose.pose.orientation;
-      var quaternion = new THREE.Quaternion(q.x, q.y, q.z, q.w);
-
-      // Get the forward direction: Robot forward is +X in ROS
-      var direction = new THREE.Vector3(1, 0, 0);
-      direction.applyQuaternion(quaternion);
-
-      // Set arrow direction using native method
-      robotMarker.setDirection(direction);
-    });
+    // Add node to scene
+    viewer.scene.add(robotNode);
 
     // Handle window resize to make the viewer responsive
     window.addEventListener("resize", function () {
