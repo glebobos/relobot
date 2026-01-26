@@ -42,39 +42,38 @@ window.onload = function () {
       rootObject: viewer.scene,
     });
 
-    // Setup robot marker as an arrow for odometry
-    var robotMarker = new ROS3D.Arrow({
-      length: 0.5,
-      headLength: 0.25,
-      shaftDiameter: 0.4,
-      headDiameter: 0.4,
-      material: new THREE.MeshBasicMaterial({ color: 0xff0000 }),
-    });
-    viewer.scene.add(robotMarker);
+    // Setup robot marker as a polygon for footprint
+    var robotFootprint = null;
 
-    var odomSub = new ROSLIB.Topic({
+    var footprintSub = new ROSLIB.Topic({
       ros: ros,
-      name: "/odometry/filtered",
-      messageType: "nav_msgs/Odometry",
+      name: "/local_costmap/published_footprint",
+      messageType: "geometry_msgs/PolygonStamped",
       throttle_rate: 100  // Throttle to 10 Hz to reduce CPU usage
     });
 
-    odomSub.subscribe(function (message) {
-      // Update robot position
-      robotMarker.position.x = message.pose.pose.position.x;
-      robotMarker.position.y = message.pose.pose.position.y;
-      robotMarker.position.z = 0.1;
+    footprintSub.subscribe(function (message) {
+      // Remove old footprint if it exists
+      if (robotFootprint) {
+        viewer.scene.remove(robotFootprint);
+      }
 
-      // Convert robot orientation quaternion to direction vector
-      var q = message.pose.pose.orientation;
-      var quaternion = new THREE.Quaternion(q.x, q.y, q.z, q.w);
+      // Create polygon shape from footprint points
+      var points = message.polygon.points.map(function(p) {
+        return new THREE.Vector2(p.x, p.y);
+      });
 
-      // Get the forward direction: Robot forward is +X in ROS
-      var direction = new THREE.Vector3(1, 0, 0);
-      direction.applyQuaternion(quaternion);
-
-      // Set arrow direction using native method
-      robotMarker.setDirection(direction);
+      // Create shape and geometry
+      var shape = new THREE.Shape(points);
+      var geometry = new THREE.ShapeGeometry(shape);
+      var material = new THREE.MeshBasicMaterial({ 
+        color: 0xff0000, 
+        side: THREE.DoubleSide 
+      });
+      
+      robotFootprint = new THREE.Mesh(geometry, material);
+      robotFootprint.position.z = 0.1;
+      viewer.scene.add(robotFootprint);
     });
 
     // Handle window resize to make the viewer responsive
