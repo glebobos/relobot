@@ -1,5 +1,5 @@
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument, GroupAction
+from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument
 from launch_ros.actions import Node
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
@@ -42,8 +42,31 @@ def generate_launch_description():
         }.items(),
     )
 
+    # Docking server node - runs standalone
+    docking_server_cmd = Node(
+        package='opennav_docking',
+        executable='opennav_docking',
+        name='docking_server',
+        output='screen',
+        parameters=[params_file],
+        respawn=True,
+        respawn_delay=2.0
+    )
+    
+    # Lifecycle manager for docking server
+    docking_lifecycle_manager_cmd = Node(
+        package='nav2_lifecycle_manager',
+        executable='lifecycle_manager',
+        name='lifecycle_manager_docking',
+        output='screen',
+        parameters=[{'autostart': True},
+                    {'node_names': ['docking_server']}]
+    )
+
     return LaunchDescription([
         declare_use_sim_time_cmd,
         declare_params_file_cmd,
         nav2_bringup_launch,
+        docking_server_cmd,
+        docking_lifecycle_manager_cmd,
     ])

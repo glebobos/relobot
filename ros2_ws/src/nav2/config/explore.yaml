@@ -368,3 +368,65 @@ velocity_smoother:
 velocity_smoother_rclcpp_node:
   ros__parameters:
     use_sim_time: false
+
+# Docking server parameters
+docking_server:
+  ros__parameters:
+    use_sim_time: false
+    controller_frequency: 50.0
+    initial_perception_timeout: 5.0
+    wait_charge_timeout: 5.0
+    dock_approach_timeout: 30.0
+    undock_linear_tolerance: 0.05
+    undock_angular_tolerance: 0.1
+    max_retries: 3
+    base_frame: "base_link"
+    fixed_frame: "odom"
+    dock_prestaging_tolerance: 0.5
+    
+    # Dock plugins - using SimpleChargingDock (no battery status = non-charging mode)
+    dock_plugins: ['manual_dock']
+    manual_dock:
+      plugin: 'opennav_docking::SimpleChargingDock'
+      docking_threshold: 0.05
+      staging_x_offset: -0.5  # 50cm staging distance before dock
+      staging_yaw_offset: 0.0
+      use_external_detection_pose: false  # Manual mode, no detection
+      use_battery_status: false  # No battery feedback = non-charging mode
+      use_stall_detection: false  # No motor feedback available
+      dock_direction: "forward"  # Forward docking
+      rotate_to_dock: false
+
+    # Dock instances - single dock at map origin
+    docks: ['home_dock']
+    home_dock:
+      type: 'manual_dock'
+      frame: map
+      pose: [0.0, 0.0, 0.0]  # Dock at map origin
+
+    # Controller parameters for docking approach
+    controller:
+      k_phi: 3.0
+      k_delta: 2.0
+      beta: 0.4
+      lambda: 2.0
+      v_linear_min: 0.10
+      v_linear_max: 0.15  # Slow approach speed
+      v_angular_max: 0.75
+      slowdown_radius: 0.25
+      use_collision_detection: true
+      costmap_topic: "local_costmap/costmap_raw"
+      footprint_topic: "local_costmap/published_footprint"
+      transform_tolerance: 0.1
+      projection_time: 1.0
+      simulation_time_step: 0.1
+      dock_collision_threshold: 0.3
+
+# Lifecycle manager for navigation
+lifecycle_manager_navigation:
+  ros__parameters:
+    use_sim_time: false
+    autostart: true
+    node_names: ['controller_server', 'smoother_server', 'planner_server', 
+                 'behavior_server', 'bt_navigator', 'waypoint_follower', 
+                 'velocity_smoother', 'docking_server']

@@ -26,10 +26,12 @@ from typing import Optional
 # image handling removed: depth/confidence frames are not used in the web server
 from geometry_msgs.msg import Twist
 from rclpy.node import Node
+from rclpy.action import ActionClient
 from sensor_msgs.msg import Image
 from std_msgs.msg import Float32
 from std_srvs.srv import SetBool
 from slam_toolbox.srv import SerializePoseGraph
+from opennav_docking_msgs.action import DockRobot, UndockRobot
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +49,10 @@ class RobotROSNode(Node):
         # --- service client -------------------------------------------------------
         self._pid_client = self.create_client(SetBool, "knives/enable_pid")
         self._map_saver_client = self.create_client(SerializePoseGraph, "/slam_toolbox/serialize_map")
+
+        # --- action clients -------------------------------------------------------
+        self._dock_action_client = ActionClient(self, DockRobot, 'dock_robot')
+        self._undock_action_client = ActionClient(self, UndockRobot, 'undock_robot')
 
     # image subscriptions removed (depth/confidence frames not used)
 
@@ -107,6 +113,40 @@ class RobotROSNode(Node):
         req = SerializePoseGraph.Request()
         req.filename = filename 
         self._map_saver_client.call_async(req)
+
+    def dock_robot(self, dock_id: str = 'home_dock', navigate_to_staging: bool = True) -> bool:
+        """Send dock robot action request."""
+        self.get_logger().info(f"Attempting to dock at: {dock_id}")
+        if not self._dock_action_client.wait_for_server(timeout_sec=5.0):
+            self.get_logger().error("Dock action server unavailable after 5s timeout")
+            return False
+        
+        goal_msg = DockRobot.Goal()
+        goal_msg.use_dock_id = True
+        goal_msg.dock_id = dock_id
+        goal_msg.navigate_to_staging_pose = navigate_to_staging
+        goal_msg.max_staging_time = 60.0
+        
+        self.get_logger().info(f"Sending dock request to: {dock_id}")
+        future = self._dock_action_client.send_goal_async(goal_msg)
+        self.get_logger().info("Dock goal sent successfully")
+        return True
+
+    def undock_robot(self) -> bool:
+        """Send undock robot action request."""
+        self.get_logger().info("Attempting to undock")
+        if not self._undock_action_client.wait_for_server(timeout_sec=5.0):
+            self.get_logger().error("Undock action server unavailable after 5s timeout")
+            return False
+        
+        goal_msg = UndockRobot.Goal()
+        goal_msg.dock_type = 'manual_dock'
+        goal_msg.max_undocking_time = 30.0
+        
+        self.get_logger().info("Sending undock request")
+        future = self._undock_action_client.send_goal_async(goal_msg)
+        self.get_logger().info("Undock goal sent successfully")
+        return True
 
     # ------------------------------------------------------------------------- #
     #                              telemetry                                    #

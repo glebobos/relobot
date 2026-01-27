@@ -13,6 +13,9 @@ RUN apt-get update && apt-get install -y \
     ros-humble-rclcpp-action \
     ros-humble-nav2-costmap-2d \
     ros-humble-nav2-util \
+    ros-humble-opennav-docking \
+    ros-humble-opennav-docking-core \
+    ros-humble-opennav-docking-bt \
     && rm -rf /var/lib/apt/lists/*
 
 # Create workspace
