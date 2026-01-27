@@ -14,7 +14,6 @@ def generate_launch_description():
     
     # Package directories
     nav2_dir = FindPackageShare('nav2')
-    nav2_bringup_dir = FindPackageShare('nav2_bringup')
     
     # Declare launch arguments
     declare_use_sim_time_cmd = DeclareLaunchArgument(
@@ -29,9 +28,9 @@ def generate_launch_description():
         description='Full path to the ROS2 parameters file to use for all launched nodes'
     )
 
-    # Path to the core navigation launch file
+    # Path to the custom navigation launch file (includes docking_server in lifecycle management)
     nav_launch_file = os.path.join(
-        get_package_share_directory('nav2_bringup'), 'launch', 'navigation_launch.py')
+        get_package_share_directory('nav2'), 'launch', 'navigation_launch.py')
 
     # Launch navigation stack
     nav2_bringup_launch = IncludeLaunchDescription(
@@ -42,31 +41,8 @@ def generate_launch_description():
         }.items(),
     )
 
-    # Docking server node - runs standalone
-    docking_server_cmd = Node(
-        package='opennav_docking',
-        executable='opennav_docking',
-        name='docking_server',
-        output='screen',
-        parameters=[params_file],
-        respawn=True,
-        respawn_delay=2.0
-    )
-    
-    # Lifecycle manager for docking server
-    docking_lifecycle_manager_cmd = Node(
-        package='nav2_lifecycle_manager',
-        executable='lifecycle_manager',
-        name='lifecycle_manager_docking',
-        output='screen',
-        parameters=[{'autostart': True},
-                    {'node_names': ['docking_server']}]
-    )
-
     return LaunchDescription([
         declare_use_sim_time_cmd,
         declare_params_file_cmd,
         nav2_bringup_launch,
-        docking_server_cmd,
-        docking_lifecycle_manager_cmd,
     ])

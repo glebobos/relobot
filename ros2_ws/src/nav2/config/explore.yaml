@@ -421,12 +421,3 @@ docking_server:
       projection_time: 1.0
       simulation_time_step: 0.1
       dock_collision_threshold: 0.3
-
-# Lifecycle manager for navigation
-lifecycle_manager_navigation:
-  ros__parameters:
-    use_sim_time: false
-    autostart: true
-    node_names: ['controller_server', 'smoother_server', 'planner_server', 
-                 'behavior_server', 'bt_navigator', 'waypoint_follower', 
-                 'velocity_smoother', 'docking_server']
