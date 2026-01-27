@@ -1,5 +1,5 @@
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument, GroupAction
+from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument
 from launch_ros.actions import Node
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
@@ -14,7 +14,6 @@ def generate_launch_description():
     
     # Package directories
     nav2_dir = FindPackageShare('nav2')
-    nav2_bringup_dir = FindPackageShare('nav2_bringup')
     
     # Declare launch arguments
     declare_use_sim_time_cmd = DeclareLaunchArgument(
@@ -29,9 +28,9 @@ def generate_launch_description():
         description='Full path to the ROS2 parameters file to use for all launched nodes'
     )
 
-    # Path to the core navigation launch file
+    # Path to the custom navigation launch file (includes docking_server in lifecycle management)
     nav_launch_file = os.path.join(
-        get_package_share_directory('nav2_bringup'), 'launch', 'navigation_launch.py')
+        get_package_share_directory('nav2'), 'launch', 'navigation_launch.py')
 
     # Launch navigation stack
     nav2_bringup_launch = IncludeLaunchDescription(
