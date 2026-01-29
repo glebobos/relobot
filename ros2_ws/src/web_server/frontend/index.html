@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Robot Control</title>
     <link rel="stylesheet" href="styles.css">
 </head>
+
 <body>
     <div class="camera-section">
         <div class="video-container" id="videoContainer">
@@ -16,12 +18,14 @@
             </div>
         </div>
     </div>
-    
+
     <div class="map-section">
+        <div id="map"></div>
         <div class="map-controls">
+            <button id="dock-btn" class="map-btn map-btn-small">Dock</button>
+            <button id="undock-btn" class="map-btn map-btn-small">Undock</button>
             <button id="save-map-btn" class="map-btn">Save Map</button>
         </div>
-        <div id="map"></div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/roslib@1.4.1/build/roslib.js"></script>
     <script src="/robot-control.js"></script>
@@ -30,4 +34,5 @@
     <script src="https://cdn.jsdelivr.net/npm/ros3d@1.1.0/build/ros3d.min.js"></script>
     <script src="/map-viewer.js"></script>
 </body>
+
 </html>

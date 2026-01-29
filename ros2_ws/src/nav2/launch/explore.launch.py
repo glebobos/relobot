@@ -1,6 +1,5 @@
 from launch import LaunchDescription
 from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument
-from launch_ros.actions import Node
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.substitutions import FindPackageShare
@@ -32,7 +31,7 @@ def generate_launch_description():
     nav_launch_file = os.path.join(
         get_package_share_directory('nav2'), 'launch', 'navigation_launch.py')
 
-    # Launch navigation stack
+    # Launch navigation stack with composition enabled by default
     nav2_bringup_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(nav_launch_file),
         launch_arguments={
