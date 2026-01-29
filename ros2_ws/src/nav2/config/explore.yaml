@@ -85,7 +85,7 @@ local_costmap:
 controller_server:
   ros__parameters:
     use_sim_time: false
-    controller_frequency: 17.0
+    controller_frequency: 15.0
     min_x_velocity_threshold: 0.05   # Increased from 0.001 to prevent very slow movement
     min_y_velocity_threshold: 0.5    # Set to 0.0 for differential drive robot
     min_theta_velocity_threshold: 0.45 # Increased to keep rotation above motor minimum
@@ -109,7 +109,7 @@ controller_server:
     FollowPath:
       plugin: "nav2_mppi_controller::MPPIController"
       time_steps: 56
-      model_dt: 0.06
+      model_dt: 0.067
       batch_size: 2000
       vx_std: 0.2
       wz_std: 0.4
@@ -118,7 +118,7 @@ controller_server:
       wz_max: 1.0
       iteration_count: 1
       prune_distance: 1.7
-      transform_tolerance: 0.1
+      transform_tolerance: 0.2
       temperature: 0.3
       gamma: 0.015
       motion_model: "DiffDrive"
@@ -151,27 +151,27 @@ controller_server:
       ObstaclesCritic:
         enabled: true
         cost_power: 1
-        repulsion_weight: 4.0
+        repulsion_weight: 1.5
         critical_weight: 20.0
         consider_footprint: True
         collision_cost: 100000.0
-        collision_margin_distance: 0.1
+        collision_margin_distance: 0.3  # Increased from 0.1 for earlier slowdown near obstacles
         near_goal_distance: 0.5
         inflation_radius: 0.2 # (only in Humble)
         cost_scaling_factor: 2.0 # (only in Humble)
-        CostCritic:
-          enabled: true
-          cost_power: 1
-          cost_weight: 3.81
-          critical_cost: 300.0
-          consider_footprint: true
-          collision_cost: 1000000.0
-          near_goal_distance: 1.0
-          trajectory_point_step: 2
+      CostCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 3.81
+        critical_cost: 300.0
+        consider_footprint: true
+        collision_cost: 1000000.0
+        near_goal_distance: 1.0
+        trajectory_point_step: 2
       PathAlignCritic:
         enabled: true
         cost_power: 1
-        cost_weight: 14.0
+        cost_weight: 10.0
         max_path_occupancy_ratio: 0.05
         trajectory_point_step: 3
         threshold_to_consider: 0.5
@@ -212,7 +212,7 @@ planner_server:
       analytic_expansion_max_length: 1.5 # For Hybrid/Lattice nodes: The maximum length of the analytic expansion to be considered valid to prevent unsafe shortcutting
       minimum_turning_radius: 0.10 # minimum turning radius in m of path / vehicle
       reverse_penalty: 2.0 # Penalty to apply if motion is reversing, must be => 1
-      change_penalty: 0.0 # Penalty to apply if motion is changing directions (L to R), must be >= 0
+      change_penalty: 0.5 # Penalty to apply if motion is changing directions (L to R), must be >= 0
       non_straight_penalty: 1.2 # Penalty to apply if motion is non-straight, must be => 1
       cost_penalty: 3.0 # Penalty to apply to higher cost areas when adding into the obstacle map dynamic programming distance expansion heuristic. This drives the robot more towards the center of passages. A value between 1.3 - 3.5 is reasonable.
       retrospective_penalty: 0.015
@@ -266,7 +266,7 @@ behavior_server:
       plugin: "nav2_behaviors/AssistedTeleop"
     global_frame: odom
     robot_base_frame: base_link
-    transform_tolerance: 0.1
+    transform_tolerance: 0.2
     simulate_ahead_time: 2.0
     max_rotational_vel: 0.8  # Match our robot limits
     min_rotational_vel: 0.2
@@ -389,7 +389,7 @@ docking_server:
     manual_dock:
       plugin: 'opennav_docking::SimpleChargingDock'
       docking_threshold: 0.05
-      staging_x_offset: -0.5  # 50cm staging distance before dock
+      staging_x_offset: -1.0  # 100cm staging distance before dock
       staging_yaw_offset: 0.0
       use_external_detection_pose: false  # Manual mode, no detection
       use_battery_status: false  # No battery feedback = non-charging mode
@@ -412,7 +412,7 @@ docking_server:
       lambda: 2.0
       v_linear_min: 0.10
       v_linear_max: 0.15  # Slow approach speed
-      v_angular_max: 0.75
+      v_angular_max: 0.5
       slowdown_radius: 0.25
       use_collision_detection: true
       costmap_topic: "local_costmap/costmap_raw"
@@ -420,4 +420,4 @@ docking_server:
       transform_tolerance: 0.1
       projection_time: 1.0
       simulation_time_step: 0.1
-      dock_collision_threshold: 0.3
+      dock_collision_threshold: 0.4

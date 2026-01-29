@@ -250,7 +250,8 @@ const dockBtn = document.getElementById('dock-btn');
 const undockBtn = document.getElementById('undock-btn');
 
 if (dockBtn) {
-    dockBtn.addEventListener('click', () => {
+    dockBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
         fetch('/api/dock', { method: 'POST' })
             .then(r => r.json())
             .then(data => {
@@ -261,7 +262,8 @@ if (dockBtn) {
 }
 
 if (undockBtn) {
-    undockBtn.addEventListener('click', () => {
+    undockBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
         fetch('/api/undock', { method: 'POST' })
             .then(r => r.json())
             .then(data => {
