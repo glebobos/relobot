@@ -67,6 +67,13 @@ body {
     top: 30px;
     right: 30px;
     z-index: 100;
+    display: flex;
+    gap: 8px;
+}
+
+.map-btn-small {
+    padding: 6px 12px;
+    font-size: 13px;
 }
 
 .map-btn {

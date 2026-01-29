@@ -244,3 +244,29 @@ if (saveMapBtn) {
         }
     });
 }
+
+/* ===== Dock/Undock Controls ========================================== */
+const dockBtn = document.getElementById('dock-btn');
+const undockBtn = document.getElementById('undock-btn');
+
+if (dockBtn) {
+    dockBtn.addEventListener('click', () => {
+        fetch('/api/dock', { method: 'POST' })
+            .then(r => r.json())
+            .then(data => {
+                if (!data.success) alert('Error: ' + (data.message || data.error));
+            })
+            .catch(err => alert('Network error: ' + err));
+    });
+}
+
+if (undockBtn) {
+    undockBtn.addEventListener('click', () => {
+        fetch('/api/undock', { method: 'POST' })
+            .then(r => r.json())
+            .then(data => {
+                if (!data.success) alert('Error: ' + (data.message || data.error));
+            })
+            .catch(err => alert('Network error: ' + err));
+    });
+}
