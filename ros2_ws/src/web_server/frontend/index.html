@@ -1,38 +1,97 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Robot Control</title>
-    <link rel="stylesheet" href="styles.css">
-</head>
-
-<body>
-    <div class="camera-section">
-        <div class="video-container" id="videoContainer">
-            <img id="cameraStream" src="" alt="Camera Stream">
-            <div class="video-overlay">
-                <span id="vin-display" class="overlay-value">--.-- V</span>
-                <span id="rpm-display" class="overlay-value">--- RPM</span>
-            </div>
-        </div>
-    </div>
-
-    <div class="map-section">
-        <div id="map"></div>
-        <div class="map-controls">
-            <button id="dock-btn" class="map-btn map-btn-small">Dock</button>
-            <button id="undock-btn" class="map-btn map-btn-small">Undock</button>
-            <button id="save-map-btn" class="map-btn">Save Map</button>
-        </div>
-    </div>
+    <title>ReloBot Control</title>
+    <!-- External Dependencies (Global Scope) -->
     <script src="https://cdn.jsdelivr.net/npm/roslib@1.4.1/build/roslib.js"></script>
-    <script src="/robot-control.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.89.0/build/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/eventemitter2@6.4.9/lib/eventemitter2.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/ros3d@1.1.0/build/ros3d.min.js"></script>
-    <script src="/map-viewer.js"></script>
-</body>
+</head>
+<body class="bg-gray-900 text-gray-100 h-screen flex flex-col overflow-hidden select-none">
 
+    <!-- Main Content Area -->
+    <main class="flex-1 relative overflow-hidden bg-black">
+
+        <!-- DRIVE VIEW -->
+        <div id="view-drive" class="view-section absolute inset-0 flex items-center justify-center">
+            <div id="video-container" class="relative w-full h-full flex items-center justify-center bg-black touch-none">
+                <img id="camera-stream" src="" alt="Camera Stream" class="max-w-full max-h-full object-contain">
+
+                <!-- Overlay Telemetry -->
+                <div class="absolute top-4 left-4 flex flex-col gap-1 pointer-events-none">
+                    <span id="vin-display" class="video-overlay-text text-xl opacity-70">--.-- V</span>
+                    <span id="rpm-display" class="video-overlay-text text-lg opacity-90">--- RPM</span>
+                </div>
+
+                <!-- Connection Status Overlay -->
+                <div id="camera-status" class="absolute inset-0 flex items-center justify-center bg-black/50 hidden">
+                    <span class="text-white animate-pulse">Connecting to Camera...</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- MAP VIEW -->
+        <div id="view-map" class="view-section absolute inset-0 hidden bg-gray-800">
+            <div id="map-canvas" class="w-full h-full"></div>
+
+            <!-- Map Controls Overlay -->
+            <div class="absolute bottom-4 right-4 flex flex-col gap-2">
+                <button id="save-map-btn" class="btn-primary shadow-lg bg-opacity-90 backdrop-blur-sm">Save Map</button>
+                <div class="flex gap-2">
+                    <button id="dock-btn" class="btn-primary bg-green-600 hover:bg-green-700 shadow-lg bg-opacity-90 backdrop-blur-sm">Dock</button>
+                    <button id="undock-btn" class="btn-danger shadow-lg bg-opacity-90 backdrop-blur-sm">Undock</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- SYSTEM VIEW -->
+        <div id="view-system" class="view-section absolute inset-0 hidden bg-gray-900 p-6 overflow-y-auto">
+            <h2 class="text-2xl font-bold mb-6 border-b border-gray-700 pb-2">System Status</h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="bg-gray-800 p-4 rounded-lg">
+                    <h3 class="text-gray-400 text-sm uppercase tracking-wider mb-2">Power</h3>
+                    <div class="flex justify-between items-end">
+                        <span class="text-3xl font-mono" id="sys-vin">--.--</span>
+                        <span class="text-gray-500 mb-1">Volts</span>
+                    </div>
+                </div>
+
+                <div class="bg-gray-800 p-4 rounded-lg">
+                    <h3 class="text-gray-400 text-sm uppercase tracking-wider mb-2">Blade Motor</h3>
+                    <div class="flex justify-between items-end">
+                        <span class="text-3xl font-mono" id="sys-rpm">---</span>
+                        <span class="text-gray-500 mb-1">RPM</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-8 bg-gray-800 p-4 rounded-lg">
+                <h3 class="text-gray-400 text-sm uppercase tracking-wider mb-4">Manual Controls</h3>
+                <div class="grid grid-cols-2 gap-4">
+                     <!-- Placeholders for future controls -->
+                     <div class="text-center text-gray-500 py-4 italic">No additional controls configured</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Bottom Navigation -->
+    <nav class="bg-gray-900 border-t border-gray-800 h-16 flex z-50 shadow-2xl">
+        <button class="tab-btn active" data-target="view-drive">
+            <div class="text-sm font-bold uppercase tracking-wider">Drive</div>
+        </button>
+        <button class="tab-btn" data-target="view-map">
+            <div class="text-sm font-bold uppercase tracking-wider">Map</div>
+        </button>
+        <button class="tab-btn" data-target="view-system">
+            <div class="text-sm font-bold uppercase tracking-wider">System</div>
+        </button>
+    </nav>
+
+    <script type="module" src="/src/js/main.js"></script>
+</body>
 </html>
