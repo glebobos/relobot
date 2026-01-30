@@ -36,10 +36,14 @@ services:
     restart: unless-stopped
 
   ros2_frontend:
-    image: nginx:alpine
+    build:
+      context: .
+      dockerfile: Frontend.dockerfile
     volumes:
-      - ./src/web_server/frontend:/usr/share/nginx/html
+      - ./src/web_server/frontend:/app
       - ./src/web_server/frontend/nginx.conf:/etc/nginx/conf.d/default.conf
+    environment:
+      <<: *ros-env
     network_mode: host
     restart: unless-stopped
     depends_on:

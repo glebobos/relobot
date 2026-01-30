@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom Utilities */
+.video-overlay-text {
+  @apply font-mono font-bold text-white drop-shadow-md;
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
+}
+
+.btn-primary {
+  @apply bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow transition transform active:scale-95;
+}
+
+.btn-danger {
+  @apply bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded shadow transition transform active:scale-95;
+}
+
+.tab-btn {
+  @apply flex-1 py-4 text-center text-gray-400 hover:text-white hover:bg-gray-800 transition-colors duration-200 border-t-2 border-transparent;
+}
+
+.tab-btn.active {
+  @apply text-blue-400 border-blue-500 bg-gray-800;
+}
