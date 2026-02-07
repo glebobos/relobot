@@ -11,6 +11,7 @@ slam_toolbox:
     # use_map_saver: true
     start_at_dock: true
     map_start_at_dock: true
+    scan_queue_size: 1
     # Plugin params
     solver_plugin: solver_plugins::CeresSolver
     ceres_linear_solver: SPARSE_NORMAL_CHOLESKY
@@ -21,7 +22,7 @@ slam_toolbox:
 
     debug_logging: false
     throttle_scans: 1
-    transform_publish_period: 0.02 #if 0 never publishes odometry
+    transform_publish_period: 0.05 #if 0 never publishes odometry
     map_update_interval: 0.2
     resolution: 0.04
     min_laser_range: 0.1 #for rastering images
@@ -30,7 +31,7 @@ slam_toolbox:
     transform_timeout: 0.5
     tf_buffer_duration: 30.0
     stack_size_to_use: 40000000 #// program needs a larger stack size to serialize large maps
-    enable_interactive_mode: true
+    enable_interactive_mode: false
 
     # General Parameters
     use_scan_matching: true

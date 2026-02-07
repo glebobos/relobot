@@ -36,7 +36,7 @@ if [ "$DEV" = "true" ]; then\n\
   colcon build --packages-up-to nav2 --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release\n\
 fi\n\
 source install/setup.bash\n\
-ros2 launch nav2 explore.launch.py' > /start_dev.sh && \
+ros2 launch nav2 navigation_launch.py' > /start_dev.sh && \
 chmod +x /start_dev.sh
 
 CMD ["/start_dev.sh"]
