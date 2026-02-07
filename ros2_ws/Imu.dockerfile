@@ -1,17 +1,20 @@
-FROM ros:humble
+ARG ROS_DISTRO
+FROM ros:${ROS_DISTRO}-ros-base
 
 # Install additional dependencies
-RUN apt-get update 
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    rm -rf /var/lib/apt/lists/*
 # Create workspace
 WORKDIR /ros2_ws
 
 # Source the workspace
-RUN echo "source /opt/ros/humble/setup.bash" >> /root/.bashrc
+RUN echo "source /opt/ros/${ROS_DISTRO}/setup.bash" >> /root/.bashrc
 
 # Create development script
 RUN echo '#!/bin/bash\n\
 set -e\n\
-source /opt/ros/humble/setup.bash\n\
+source /opt/ros/'"${ROS_DISTRO}"'/setup.bash\n\
 cd /ros2_ws\n\
 git clone https://github.com/RoverRobotics-forks/serial-ros2.git ./src/serial || true\n\
 if [ "$DEV" = "true" ]; then\n\

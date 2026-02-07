@@ -28,6 +28,8 @@
 namespace diff_drive_hardware
 {
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 hardware_interface::CallbackReturn DiffDriveHardware::on_init(
   const hardware_interface::HardwareInfo & info)
 {
@@ -48,6 +50,7 @@ hardware_interface::CallbackReturn DiffDriveHardware::on_init(
 
   return hardware_interface::CallbackReturn::SUCCESS;
 }
+#pragma GCC diagnostic pop
 
 bool DiffDriveHardware::reconnect_serial()
 {

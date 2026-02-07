@@ -1,8 +1,8 @@
-FROM ros:humble
+ARG ROS_DISTRO
+FROM ros:${ROS_DISTRO}-ros-base
 
 # Install build dependencies
 RUN apt-get update && apt-get install -y \
-    python3-pip \
     git \
     meson \
     ninja-build \
@@ -14,14 +14,12 @@ RUN apt-get update && apt-get install -y \
     python3-ply \
     python3-jinja2 \
     nlohmann-json3-dev \
-    ros-humble-camera-info-manager \
-    ros-humble-cv-bridge \
-    ros-humble-rclcpp-components \
-    ros-humble-sensor-msgs \
-    ros-humble-image-view
+    ros-${ROS_DISTRO}-camera-info-manager \
+    ros-${ROS_DISTRO}-cv-bridge \
+    ros-${ROS_DISTRO}-rclcpp-components \
+    ros-${ROS_DISTRO}-sensor-msgs \
+    ros-${ROS_DISTRO}-image-view
 
-# Install newer meson via pip
-RUN pip3 install --upgrade meson
 
 WORKDIR /tmp
 
@@ -43,15 +41,15 @@ RUN git clone https://github.com/raspberrypi/libcamera.git && \
 WORKDIR /ros2_ws
 
 # Source the workspace
-RUN echo "source /opt/ros/humble/setup.bash" >> /root/.bashrc
+RUN echo "source /opt/ros/${ROS_DISTRO}/setup.bash" >> /root/.bashrc
 
 # Create development script
 RUN echo '#!/bin/bash\n\
 set -e\n\
-source /opt/ros/humble/setup.bash\n\
+source /opt/ros/'"${ROS_DISTRO}"'/setup.bash\n\
 cd /ros2_ws\n\
 # Skip libcamera key because we installed it manually\n\
-# rosdep install -y --from-paths src/camera_ros --ignore-src --rosdistro humble --skip-keys=libcamera\n\
+# rosdep install -y --from-paths src/camera_ros --ignore-src --rosdistro '"${ROS_DISTRO}"' --skip-keys=libcamera\n\
 if [ "$DEV" = "true" ]; then\n\
   colcon build --packages-select camera_ros\n\
 fi\n\

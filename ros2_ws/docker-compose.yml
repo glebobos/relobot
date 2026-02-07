@@ -1,26 +1,21 @@
 x-ros-env: &ros-env
   DEV: ${DEV:-false}
+  ROS_DISTRO: ${ROS_DISTRO:-jazzy}
   RMW_IMPLEMENTATION: rmw_fastrtps_cpp
   FASTDDS_BUILTIN_TRANSPORTS: DEFAULT
-  ROS_DISCOVERY_SERVER: ${HOST_IP}:11811
-  ROS_SUPER_CLIENT: True
   PYTHONUNBUFFERED: 1
 
+x-build-args: &build-args
+  ROS_DISTRO: ${ROS_DISTRO:-jazzy}
+
 services:
-  ds:
-    image: ros:humble-ros-core
-    network_mode: host
-    ipc: host 
-    environment:
-      - FASTDDS_BUILTIN_TRANSPORTS=DEFAULT
-    command: fastdds discovery -i 0 -l $HOST_IP -p 11811
-    volumes:
-      - .:/ros2_ws/:ro
 
   ros2_imu:
     build:
       context: .
       dockerfile: Imu.dockerfile
+      args:
+        <<: *build-args
     volumes:
       - .:/ros2_ws/
     devices:
@@ -31,8 +26,6 @@ services:
     network_mode: host
     ipc: host 
     privileged: true
-    depends_on:
-      - ds
     restart: unless-stopped
 
   ros2_frontend:
@@ -49,6 +42,8 @@ services:
     build:
       context: .
       dockerfile: lidar.dockerfile
+      args:
+        <<: *build-args
     volumes:
       - .:/ros2_ws/
     devices:
@@ -58,14 +53,14 @@ services:
     network_mode: host
     ipc: host 
     privileged: true
-    depends_on:
-      - ds
     restart: unless-stopped
 
   ros2_diff_robot:
     build:
       context: .
       dockerfile: DiffDriveHardware.dockerfile
+      args:
+        <<: *build-args
     volumes:
       - .:/ros2_ws/
     devices:
@@ -76,7 +71,6 @@ services:
     ipc: host 
     privileged: true
     depends_on:
-      - ds
       - ros2_imu
       - ros2_lidar
     restart: unless-stopped
@@ -85,6 +79,8 @@ services:
     build:
       context: .
       dockerfile: KnifeMotorController.dockerfile
+      args:
+        <<: *build-args
     volumes:
       - .:/ros2_ws/
     devices:
@@ -94,14 +90,14 @@ services:
     network_mode: host
     ipc: host 
     privileged: true
-    depends_on:
-      - ds
     restart: unless-stopped
 
   ros2_camera_rp:
     build:
       context: .
       dockerfile: CameraRp.dockerfile
+      args:
+        <<: *build-args
     volumes:
       - .:/ros2_ws/
     devices:
@@ -111,8 +107,6 @@ services:
     network_mode: host
     ipc: host 
     privileged: true
-    depends_on:
-      - ds
     restart: unless-stopped
 
 
@@ -120,6 +114,8 @@ services:
     build:
       context: .
       dockerfile: nav2.dockerfile
+      args:
+        <<: *build-args
     ipc: host
     volumes:
       - .:/ros2_ws/
@@ -130,7 +126,6 @@ services:
     network_mode: host
     privileged: true
     depends_on:
-      - ds
       - ros2_slam
     restart: unless-stopped
 
@@ -138,12 +133,14 @@ services:
     build:
       context: .
       dockerfile: WebServer.dockerfile
+      args:
+        <<: *build-args
     volumes:
       - .:/ros2_ws/
       - /dev/:/dev/
     environment:
       <<: *ros-env
-      ENABLE_FLASK_LOGS: false
+      ENABLE_FLASK_LOGS: true
     network_mode: host
     privileged: true
     device_cgroup_rules:
@@ -152,14 +149,14 @@ services:
       - "c 189:* rwm" 
       - "c 29:* rwm"
     ipc: host 
-    depends_on:
-      - ds
     restart: unless-stopped
 
   ros2_slam:
     build:
       context: .
       dockerfile: Slam.dockerfile
+      args:
+        <<: *build-args
     ipc: host
     volumes:
       - .:/ros2_ws/
@@ -170,7 +167,6 @@ services:
     network_mode: host
     privileged: true
     depends_on:
-      - ds
       - ros2_imu
       - ros2_lidar
       - ros2_diff_robot
@@ -180,12 +176,12 @@ services:
     build:
       context: .
       dockerfile: Rosbridge.dockerfile
+      args:
+        <<: *build-args
     ipc: host
     volumes:
       - .:/ros2_ws/
     environment:
       <<: *ros-env
     network_mode: host
-    depends_on:
-      - ds
     restart: unless-stopped
