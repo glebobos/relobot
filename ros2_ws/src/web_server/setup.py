@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from setuptools import setup, find_packages
+import os
 
 package_name = 'web_server'
 
@@ -20,6 +21,10 @@ setup(
     name=package_name,
     version='0.0.0',
     packages=find_packages(),
+    data_files=[
+        ('share/ament_index/resource_index/packages', ['resource/' + package_name]),
+        ('share/' + package_name, ['package.xml']),
+    ],
     include_package_data=True,  # Ensure package data is included
     package_data={
         package_name: ['templates/*.html', 'templates/*.js', 'templates/*.css'],  # Include all HTML files in templates

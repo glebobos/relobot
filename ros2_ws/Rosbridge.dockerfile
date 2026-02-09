@@ -10,8 +10,5 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 ENV ROS_DOMAIN_ID=0
 ENV FASTDDS_DEFAULT_PROFILES_FILE=/usr/share/fastdds/profiles/default_profiles.xml
 
-# Copy launch file
-COPY src/rosbridge_webvideo_launch.py /tmp/rosbridge_webvideo_launch.py
-
-# Launch both rosbridge and web_video_server
-CMD ["ros2", "launch", "/tmp/rosbridge_webvideo_launch.py"]
+# Launch both rosbridge and web_video_server (launch file mounted via docker-compose)
+CMD ["ros2", "launch", "/ros2_ws/src/rosbridge_webvideo_launch.py"]
