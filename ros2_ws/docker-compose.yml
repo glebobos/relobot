@@ -6,17 +6,7 @@ x-ros-env: &ros-env
   # ROS_SUPER_CLIENT: True
   PYTHONUNBUFFERED: 1
 
-# services:
-#   ds:
-#     image: ros:humble-ros-core
-#     network_mode: host
-#     ipc: host 
-#     environment:
-#       - FASTDDS_BUILTIN_TRANSPORTS=DEFAULT
-#     command: fastdds discovery -i 0 -l $HOST_IP -p 11811
-#     volumes:
-#       - .:/ros2_ws/:ro
-
+services:
   ros2_imu:
     build:
       context: .
@@ -58,8 +48,8 @@ x-ros-env: &ros-env
     network_mode: host
     ipc: host 
     privileged: true
-    depends_on:
-      - ds
+    # depends_on:
+    #   - ds
     restart: unless-stopped
 
   ros2_diff_robot:
@@ -76,7 +66,7 @@ x-ros-env: &ros-env
     ipc: host 
     privileged: true
     depends_on:
-      - ds
+      # - ds
       - ros2_imu
       - ros2_lidar
     restart: unless-stopped
@@ -94,8 +84,8 @@ x-ros-env: &ros-env
     network_mode: host
     ipc: host 
     privileged: true
-    depends_on:
-      - ds
+    # depends_on:
+    #   - ds
     restart: unless-stopped
 
   ros2_camera_rp:
@@ -111,8 +101,8 @@ x-ros-env: &ros-env
     network_mode: host
     ipc: host 
     privileged: true
-    depends_on:
-      - ds
+    # depends_on:
+    #   - ds
     restart: unless-stopped
 
 
@@ -130,7 +120,7 @@ x-ros-env: &ros-env
     network_mode: host
     privileged: true
     depends_on:
-      - ds
+      # - ds
       - ros2_slam
     restart: unless-stopped
 
@@ -152,8 +142,8 @@ x-ros-env: &ros-env
       - "c 189:* rwm" 
       - "c 29:* rwm"
     ipc: host 
-    depends_on:
-      - ds
+    # depends_on:
+    #   - ds
     restart: unless-stopped
 
   ros2_slam:
@@ -170,7 +160,7 @@ x-ros-env: &ros-env
     network_mode: host
     privileged: true
     depends_on:
-      - ds
+      # - ds
       - ros2_imu
       - ros2_lidar
       - ros2_diff_robot
@@ -186,6 +176,6 @@ x-ros-env: &ros-env
     environment:
       <<: *ros-env
     network_mode: host
-    depends_on:
-      - ds
+    # depends_on:
+    #   - ds
     restart: unless-stopped

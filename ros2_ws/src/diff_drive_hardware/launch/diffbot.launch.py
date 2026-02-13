@@ -43,7 +43,7 @@ def generate_launch_description():
     control_node = Node(
         package="controller_manager",
         executable="ros2_control_node",
-        parameters=[robot_controllers],
+        parameters=[robot_description, robot_controllers],
         output="both",
         remappings=[
             ("diff_drive_controller/cmd_vel_unstamped", "cmd_vel"),
