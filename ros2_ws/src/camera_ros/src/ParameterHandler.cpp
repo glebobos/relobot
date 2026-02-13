@@ -217,10 +217,11 @@ ParameterHandler::get_control_values()
 void
 ParameterHandler::move_control_values(libcamera::ControlList &controls)
 {
-  // move the control values to the reference
-  // this will clear the internal control values
+  // merge control values into the provided control list
+  // (libcamera 0.6.0+ does not allow overwriting Request::controls() after reuse())
   const std::lock_guard<std::mutex> lock(control_values_lock);
-  controls = std::move(control_values);
+  controls.merge(control_values);
+  control_values.clear();
 }
 
 void

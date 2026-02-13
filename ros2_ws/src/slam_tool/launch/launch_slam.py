@@ -30,7 +30,7 @@ def generate_launch_description():
     print(f"DEBUG: Map exists: {map_exists}")
 
     slam_params = {
-        'mode': 'mapping', # if map_exists else 'mapping', TODO optimize localisation mode
+        'mode': 'localization' if map_exists else 'mapping',
         'map_file_name': map_serialized_path if map_exists else '',
     }
     
