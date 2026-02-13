@@ -1,9 +1,5 @@
 x-ros-env: &ros-env
   DEV: ${DEV:-false}
-  # RMW_IMPLEMENTATION: rmw_fastrtps_cpp
-  # FASTDDS_BUILTIN_TRANSPORTS: DEFAULT
-  # ROS_DISCOVERY_SERVER: ${HOST_IP}:11811
-  # ROS_SUPER_CLIENT: True
   PYTHONUNBUFFERED: 1
 
 services:
@@ -21,8 +17,6 @@ services:
     network_mode: host
     ipc: host 
     privileged: true
-    # depends_on:
-    #   - ds
     restart: unless-stopped
 
   ros2_frontend:
@@ -48,8 +42,6 @@ services:
     network_mode: host
     ipc: host 
     privileged: true
-    # depends_on:
-    #   - ds
     restart: unless-stopped
 
   ros2_diff_robot:
@@ -66,7 +58,6 @@ services:
     ipc: host 
     privileged: true
     depends_on:
-      # - ds
       - ros2_imu
       - ros2_lidar
     restart: unless-stopped
@@ -84,8 +75,6 @@ services:
     network_mode: host
     ipc: host 
     privileged: true
-    # depends_on:
-    #   - ds
     restart: unless-stopped
 
   ros2_camera_rp:
@@ -101,8 +90,6 @@ services:
     network_mode: host
     ipc: host 
     privileged: true
-    # depends_on:
-    #   - ds
     restart: unless-stopped
 
 
@@ -120,7 +107,6 @@ services:
     network_mode: host
     privileged: true
     depends_on:
-      # - ds
       - ros2_slam
     restart: unless-stopped
 
@@ -142,8 +128,6 @@ services:
       - "c 189:* rwm" 
       - "c 29:* rwm"
     ipc: host 
-    # depends_on:
-    #   - ds
     restart: unless-stopped
 
   ros2_slam:
@@ -160,7 +144,6 @@ services:
     network_mode: host
     privileged: true
     depends_on:
-      # - ds
       - ros2_imu
       - ros2_lidar
       - ros2_diff_robot
@@ -176,6 +159,4 @@ services:
     environment:
       <<: *ros-env
     network_mode: host
-    # depends_on:
-    #   - ds
     restart: unless-stopped

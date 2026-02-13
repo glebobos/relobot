@@ -57,6 +57,5 @@ def generate_launch_description() -> LaunchDescription:
     return LaunchDescription([
         camera_launch_arg,
         format_launch_arg,
-
         camera_node,
     ])
