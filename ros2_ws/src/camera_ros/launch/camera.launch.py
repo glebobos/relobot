@@ -38,6 +38,18 @@ def generate_launch_description() -> LaunchDescription:
         description="pixel format"
     )
 
+    camera_info_url_param_name = "camera_info_url"
+    camera_info_url_param_default = "file:///ros2_ws/src/camera_ros/calibration/camera.yaml"
+    camera_info_url_param = LaunchConfiguration(
+        camera_info_url_param_name,
+        default=camera_info_url_param_default,
+    )
+    camera_info_url_launch_arg = DeclareLaunchArgument(
+        camera_info_url_param_name,
+        default_value=camera_info_url_param_default,
+        description="camera info url"
+    )
+
     # Standalone camera node - lightweight, no container overhead
     camera_node = Node(
         package='camera_ros',
@@ -48,7 +60,8 @@ def generate_launch_description() -> LaunchDescription:
             "width": 800,
             "height": 600,
             "format": "UYVY",
-            "FrameDurationLimits": [100000,100000]
+            "FrameDurationLimits": [100000,100000],
+            "camera_info_url": camera_info_url_param
         }],
         output='screen',
     )
@@ -56,5 +69,6 @@ def generate_launch_description() -> LaunchDescription:
     return LaunchDescription([
         camera_launch_arg,
         format_launch_arg,
+        camera_info_url_launch_arg,
         camera_node,
     ])
