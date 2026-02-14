@@ -93,6 +93,7 @@ install(TARGETS camera_component
 
 install(DIRECTORY
   launch
+  config
   DESTINATION share/${PROJECT_NAME}/
 )
 

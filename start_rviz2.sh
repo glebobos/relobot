@@ -30,8 +30,6 @@ docker run -ti \
     -e DISPLAY=$DISPLAY \
     -e XAUTHORITY=/root/.Xauthority \
     -e QT_QPA_PLATFORM=xcb \
-    -e ROS_SUPER_CLIENT=True \
-    -e ROS_DISCOVERY_SERVER="$HOST_IP:11811" \
     rviz2:latest \
     rviz2
 
