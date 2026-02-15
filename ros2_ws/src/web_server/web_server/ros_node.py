@@ -140,7 +140,7 @@ class RobotROSNode(Node):
             return False
         
         goal_msg = UndockRobot.Goal()
-        goal_msg.dock_type = 'manual_dock'
+        goal_msg.dock_type = 'apriltag_dock'
         goal_msg.max_undocking_time = 30.0
         
         self.get_logger().info("Sending undock request")
