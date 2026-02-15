@@ -39,6 +39,16 @@ RUN git clone https://github.com/raspberrypi/libcamera.git && \
     ninja -C build install && \
     cd .. && rm -rf libcamera
 
+# Build apriltag_ros
+WORKDIR /opt/apriltag_ros_ws
+RUN git clone https://github.com/christianrauch/apriltag_ros.git src/apriltag_ros && \
+    . /opt/ros/humble/setup.sh && \
+    apt-get update && \
+    rosdep update && \
+    rosdep install -y --from-paths src --ignore-src --rosdistro humble && \
+    colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release && \
+    echo "source /opt/apriltag_ros_ws/install/setup.bash" >> /root/.bashrc
+
 # Create workspace
 WORKDIR /ros2_ws
 
@@ -49,6 +59,7 @@ RUN echo "source /opt/ros/humble/setup.bash" >> /root/.bashrc
 RUN echo '#!/bin/bash\n\
 set -e\n\
 source /opt/ros/humble/setup.bash\n\
+source /opt/apriltag_ros_ws/install/setup.bash\n\
 cd /ros2_ws\n\
 # Skip libcamera key because we installed it manually\n\
 # rosdep install -y --from-paths src/camera_ros --ignore-src --rosdistro humble --skip-keys=libcamera\n\
@@ -56,7 +67,7 @@ if [ "$DEV" = "true" ]; then\n\
   colcon build --packages-select camera_ros\n\
 fi\n\
 source install/setup.bash\n\
-ros2 launch camera_ros camera.launch.py' > /start_dev.sh && \
+ros2 launch camera_ros camera_with_apriltag.launch.py' > /start_dev.sh && \
 chmod +x /start_dev.sh
 
 CMD ["/start_dev.sh"]
