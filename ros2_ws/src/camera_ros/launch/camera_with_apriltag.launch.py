@@ -1,14 +1,15 @@
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration
-from launch_ros.actions import ComposableNodeContainer
+from launch_ros.actions import ComposableNodeContainer, Node
 from launch_ros.descriptions import ComposableNode
 import os
 from ament_index_python.packages import get_package_share_directory
 
 def generate_launch_description():
     """
-    Generate a launch description for the camera node with AprilTag detection.
+    Generate a launch description for the camera node with AprilTag detection
+    and dock pose publisher bridge.
 
     Returns
     -------
@@ -65,7 +66,21 @@ def generate_launch_description():
         output='screen',
     )
 
+    # Bridge node: looks up AprilTag TF and publishes PoseStamped for docking server
+    dock_pose_publisher = Node(
+        package='camera_ros',
+        executable='dock_pose_publisher.py',
+        name='dock_pose_publisher',
+        parameters=[{
+            'dock_tag_frame': 'tag25h9:0',
+            'base_frame': 'odom',
+        }],
+        output='screen',
+    )
+
     return LaunchDescription([
         camera_launch_arg,
         container,
+        dock_pose_publisher,
     ])
+

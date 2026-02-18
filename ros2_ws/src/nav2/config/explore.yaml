@@ -385,25 +385,32 @@ docking_server:
     fixed_frame: "odom"
     dock_prestaging_tolerance: 0.5
     
-    # Dock plugins - using SimpleChargingDock (no battery status = non-charging mode)
-    dock_plugins: ['manual_dock']
-    manual_dock:
+    # Dock plugins - AprilTag-guided docking via SimpleChargingDock
+    dock_plugins: ['apriltag_dock']
+    apriltag_dock:
       plugin: 'opennav_docking::SimpleChargingDock'
       docking_threshold: 0.05
       staging_x_offset: -1.0  # 100cm staging distance before dock
       staging_yaw_offset: 0.0
-      use_external_detection_pose: false  # Manual mode, no detection
+      use_external_detection_pose: true  # Use AprilTag detection
       use_battery_status: false  # No battery feedback = non-charging mode
       use_stall_detection: false  # No motor feedback available
       dock_direction: "forward"  # Forward docking
       rotate_to_dock: false
+      external_detection_timeout: 1.0
+      external_detection_translation_x: -0.54  # Offset from tag to dock contact (m) - measure on physical dock
+      external_detection_translation_y: 0.0
+      external_detection_rotation_roll: -1.57   # Default for apriltag_ros
+      external_detection_rotation_pitch: 1.57   # Default for apriltag_ros
+      external_detection_rotation_yaw: 0.0
+      filter_coef: 0.1
 
     # Dock instances - single dock at map origin
     docks: ['home_dock']
     home_dock:
-      type: 'manual_dock'
+      type: 'apriltag_dock'
       frame: map
-      pose: [0.0, 0.0, 0.0]  # Dock at map origin
+      pose: [0.0, 0.0, 0.0]  # Approximate dock location for staging navigation
 
     # Controller parameters for docking approach
     controller:
