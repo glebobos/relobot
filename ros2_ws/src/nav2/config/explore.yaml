@@ -43,7 +43,7 @@ global_costmap:
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         cost_scaling_factor: 5.0
-        inflation_radius: 0.2
+        inflation_radius: 0.25
 
 # Local costmap parameters for navigation  
 local_costmap:
@@ -80,7 +80,7 @@ local_costmap:
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         cost_scaling_factor: 5.0
-        inflation_radius: 0.2
+        inflation_radius: 0.25
 # Navigation controller parameters
 controller_server:
   ros__parameters:
@@ -152,23 +152,23 @@ controller_server:
       ObstaclesCritic:
         enabled: true
         cost_power: 1
-        repulsion_weight: 1.5
+        repulsion_weight: 3.0       # Increased from 1.5 to push trajectories further from obstacles
         critical_weight: 20.0
-        consider_footprint: True
+        consider_footprint: true
         collision_cost: 100000.0
-        collision_margin_distance: 0.3  # Increased from 0.1 for earlier slowdown near obstacles
+        collision_margin_distance: 0.6  # Increased from 0.5 for wider obstacle avoidance margin during turns
         near_goal_distance: 0.5
-        inflation_radius: 0.2 # (only in Humble)
-        cost_scaling_factor: 2.0 # (only in Humble)
+        inflation_radius: 0.25 # (only in Humble) — match local costmap inflation
+        cost_scaling_factor: 3.0 # (only in Humble) — slower decay = wider repulsion zone
       CostCritic:
         enabled: true
         cost_power: 1
-        cost_weight: 3.81
+        cost_weight: 6.0             # Increased from 3.81 to penalize paths near high-cost (obstacle-adjacent) cells more
         critical_cost: 300.0
         consider_footprint: true
         collision_cost: 1000000.0
         near_goal_distance: 1.0
-        trajectory_point_step: 2
+        trajectory_point_step: 1  # Check footprint at every point to catch corners sweeping through obstacles during turns
       PathAlignCritic:
         enabled: true
         cost_power: 1
@@ -355,8 +355,8 @@ velocity_smoother:
     smoothing_frequency: 15.0        # Reduced from 20.0 to 15.0 Hz for better performance
     scale_velocities: false
     feedback: "OPEN_LOOP"
-    max_velocity: [0.3, 0.0, 1.0]  # Match diff drive limits
-    min_velocity: [-0.3, 0.0, -1.0]
+    max_velocity: [0.3, 0.0, 0.8]  # Match diff drive limits
+    min_velocity: [-0.3, 0.0, -0.8]
     max_accel: [1.2, 0.0, 4.5]  # Match diff drive acceleration limits
     max_decel: [-1.2, 0.0, -4.5]
     odom_topic: "/odometry/filtered"  # Use filtered odometry /odometry/filtered if something
@@ -418,8 +418,8 @@ docking_server:
       k_delta: 3.0
       beta: 0.4
       lambda: 2.0
-      v_linear_min: 0.10
-      v_linear_max: 0.15  # Slow approach speed
+      v_linear_min: 0.13
+      v_linear_max: 0.20  # Slow approach speed
       v_angular_max: 0.5
       slowdown_radius: 0.25
       use_collision_detection: true

@@ -162,7 +162,7 @@
   <joint name="camera_joint" type="fixed">
     <parent link="base_link"/>
     <child link="camera"/>
-    <origin xyz="0.47 0 0.125" rpy="-1.6100 0 -1.5400"/>
+    <origin xyz="0.47 0 0.125" rpy="-1.6100 0 -1.5500"/>
   </joint>
 
 </robot>

@@ -88,7 +88,6 @@ private:
   std::unordered_map<const libcamera::Request *, std::mutex> request_mutexes;
   std::unordered_map<const libcamera::Request *, std::condition_variable> request_condvars;
   std::atomic<bool> running;
-  std::atomic<bool> is_streaming;  // Shared state for all threads
 
   struct buffer_info_t
   {
@@ -561,7 +560,6 @@ CameraNode::CameraNode(const rclcpp::NodeOptions &options)
 
   // create a processing thread per request
   running = true;
-  is_streaming = true;  // Start true since camera starts with all requests queued
   for (const std::unique_ptr<libcamera::Request> &request : requests) {
     // create mutexes in-place
     request_mutexes[request.get()];
@@ -621,46 +619,20 @@ CameraNode::requestComplete(libcamera::Request *const request)
 void
 CameraNode::process(libcamera::Request *const request)
 {
-  constexpr int SUBSCRIBER_POLL_MS = 200;  // How often to check for subscribers when idle
-  const bool is_first_thread = (request == requests[0].get());
-
   while (true) {
-    // block until request is available or timeout for subscriber check
-    std::unique_lock lk(request_mutexes.at(request));
-    auto wait_result = request_condvars.at(request).wait_for(
-        lk, std::chrono::milliseconds(SUBSCRIBER_POLL_MS));
+    // block until request is complete
+    {
+      std::unique_lock lk(request_mutexes.at(request));
+      request_condvars.at(request).wait(lk);
+    }
 
     if (!running)
       return;
 
-    // Check subscriber count
+    // Check subscriber count (only to skip expensive publish, NOT to pause streaming)
     const size_t n_raw_subs = pub_image->get_subscription_count();
     const size_t n_compressed_subs = pub_image_compressed->get_subscription_count();
     const size_t n_ci_subs = pub_ci->get_subscription_count();
-    const bool has_subscribers = (n_raw_subs > 0 || n_compressed_subs > 0 || n_ci_subs > 0);
-
-    // Lazy camera: if no subscribers, don't re-queue requests
-    if (!has_subscribers) {
-      if (is_streaming.exchange(false) && is_first_thread) {
-        RCLCPP_INFO(get_logger(), "No subscribers, pausing camera capture to save CPU");
-      }
-      continue;
-    }
-
-    // We have subscribers - check if we need to resume streaming
-    if (!is_streaming.exchange(true)) {
-      if (is_first_thread) {
-        RCLCPP_INFO(get_logger(), "Subscribers detected, resuming camera capture");
-      }
-      request->reuse(libcamera::Request::ReuseBuffers);
-      camera->queueRequest(request);
-      continue;  // Wait for the actual frame
-    }
-
-    // If we timed out but are streaming, just keep waiting for frame
-    if (wait_result == std::cv_status::timeout) {
-      continue;
-    }
 
     if (request->status() == libcamera::Request::RequestComplete) {
       assert(request->buffers().size() == 1);
@@ -791,10 +763,10 @@ CameraNode::process(libcamera::Request *const request)
       RCLCPP_ERROR_STREAM(get_logger(), "request '" << request->toString() << "' cancelled");
     }
 
-    // redeclare implicitly undeclared parameters (only when actively streaming)
+    // redeclare implicitly undeclared parameters
     parameter_handler.redeclare();
 
-    // queue the request again for the next frame and update controls
+    // always requeue the request immediately to keep steady flow to libcamera
     request->reuse(libcamera::Request::ReuseBuffers);
     parameter_handler.move_control_values(request->controls());
     camera->queueRequest(request);
