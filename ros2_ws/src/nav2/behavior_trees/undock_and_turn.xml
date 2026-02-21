@@ -3,7 +3,7 @@
     <Sequence>
       <UndockRobot dock_type="apriltag_dock" max_undocking_time="30.0"/>
       <Wait wait_duration="1"/>
-      <ComputePathToPose goal="{goal}" path="{path}" planner_id="GridBased"/>
+      <ComputePathToPose goal="0;map;-1.0;0.0;0.0;0.0;0.0;1.0;0.0" path="{path}" planner_id="GridBased"/>
       <FollowPath path="{path}" controller_id="FollowPath"/>
     </Sequence>
   </BehaviorTree>
