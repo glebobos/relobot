@@ -148,8 +148,9 @@ class RobotROSNode(Node):
     def undock_robot(self) -> bool:
         """Send undock robot request via behavior tree.
         
-        Undock is safe to run through bt_navigator because it does not
-        trigger internal navigate_to_pose calls.
+        The BT undocks the robot, then navigates to a pose 0.5m behind
+        the staging position facing away from the dock — this makes the
+        robot turn around after undocking.
         """
         self.get_logger().info("Attempting to undock")
         if not self._navigate_action_client.wait_for_server(timeout_sec=5.0):
@@ -157,10 +158,14 @@ class RobotROSNode(Node):
             return False
 
         goal_msg = NavigateToPose.Goal()
-        # Dummy pose — the custom BT will ignore it
-        goal_msg.pose.header.frame_id = "base_link"
-        goal_msg.pose.pose.position.x = 0.0
-        goal_msg.pose.pose.orientation.w = 1.0
+        # Target pose: 0.5m behind the staging pose, facing away from dock
+        # Dock is at (0, 0), staging is at (-1, 0), so target is (-1.5, 0)
+        # Orientation: yaw=π (facing away from dock) → quaternion z=1, w=0
+        goal_msg.pose.header.frame_id = "map"
+        goal_msg.pose.pose.position.x = -1.5
+        goal_msg.pose.pose.position.y = 0.0
+        goal_msg.pose.pose.orientation.z = 1.0  # yaw = π
+        goal_msg.pose.pose.orientation.w = 0.0
         goal_msg.behavior_tree = f"{BT_DIR}/undock_and_turn.xml"
 
         self.get_logger().info("Sending undock behavior tree request")
