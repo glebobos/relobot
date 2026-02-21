@@ -392,7 +392,7 @@ docking_server:
     apriltag_dock:
       plugin: 'opennav_docking::SimpleChargingDock'
       docking_threshold: 0.05
-      staging_x_offset: -1.0  # 100cm staging distance before dock
+      staging_x_offset: -0.9  # 100cm staging distance before dock
       staging_yaw_offset: 0.0
       use_external_detection_pose: true  # Use AprilTag detection
       use_battery_status: false  # No battery feedback = non-charging mode

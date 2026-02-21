@@ -2,7 +2,7 @@
   <BehaviorTree ID="MainTree">
     <Sequence>
       <UndockRobot dock_type="apriltag_dock" max_undocking_time="30.0"/>
-      <Wait wait_duration="3"/>
+      <Wait wait_duration="1"/>
       <ComputePathToPose goal="{goal}" path="{path}" planner_id="GridBased"/>
       <FollowPath path="{path}" controller_id="FollowPath"/>
     </Sequence>

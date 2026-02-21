@@ -162,7 +162,7 @@ class RobotROSNode(Node):
         # Dock is at (0, 0), staging is at (-1, 0), so target is (-1.5, 0)
         # Orientation: yaw=π (facing away from dock) → quaternion z=1, w=0
         goal_msg.pose.header.frame_id = "map"
-        goal_msg.pose.pose.position.x = -1.5
+        goal_msg.pose.pose.position.x = -1.2
         goal_msg.pose.pose.position.y = 0.0
         goal_msg.pose.pose.orientation.z = 1.0  # yaw = π
         goal_msg.pose.pose.orientation.w = 0.0

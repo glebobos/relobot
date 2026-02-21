@@ -39,6 +39,8 @@ RUN git clone https://github.com/raspberrypi/libcamera.git && \
     ninja -C build install && \
     cd .. && rm -rf libcamera
 
+
+
 # Build apriltag_ros
 WORKDIR /opt/apriltag_ros_ws
 RUN git clone https://github.com/christianrauch/apriltag_ros.git src/apriltag_ros && \
@@ -48,6 +50,16 @@ RUN git clone https://github.com/christianrauch/apriltag_ros.git src/apriltag_ro
     rosdep install -y --from-paths src --ignore-src --rosdistro humble && \
     colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release && \
     echo "source /opt/apriltag_ros_ws/install/setup.bash" >> /root/.bashrc
+
+# Remove the old libcamera 0.1 shipped with ros-humble packages.
+# rosdep install above may have reinstalled it. Our manually-built 0.7
+# has PiSP pipeline support required for RPi 5.
+# Remove libs, headers, pkg-config, and cmake files to avoid ABI/API conflicts.
+RUN rm -f /opt/ros/humble/lib/libcamera.so* /opt/ros/humble/lib/libcamera-base.so* && \
+    rm -rf /opt/ros/humble/include/libcamera && \
+    rm -f /opt/ros/humble/lib/pkgconfig/libcamera.pc /opt/ros/humble/lib/pkgconfig/libcamera-base.pc && \
+    rm -rf /opt/ros/humble/lib/libcamera && \
+    ldconfig
 
 # Create workspace
 WORKDIR /ros2_ws
@@ -61,10 +73,8 @@ set -e\n\
 source /opt/ros/humble/setup.bash\n\
 source /opt/apriltag_ros_ws/install/setup.bash\n\
 cd /ros2_ws\n\
-# Skip libcamera key because we installed it manually\n\
-# rosdep install -y --from-paths src/camera_ros --ignore-src --rosdistro humble --skip-keys=libcamera\n\
 if [ "$DEV" = "true" ]; then\n\
-  colcon build --packages-select camera_ros\n\
+  colcon build --packages-select camera_ros --cmake-clean-cache\n\
 fi\n\
 source install/setup.bash\n\
 ros2 launch camera_ros camera_with_apriltag.launch.py' > /start_dev.sh && \
