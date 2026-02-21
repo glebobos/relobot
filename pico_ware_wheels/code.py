@@ -23,7 +23,7 @@ def speed_to_pwm_left(speed):
 def speed_to_pwm_right(speed):
     abs_speed = abs(speed)
     if speed >= 0:  # Forward
-        pwm_value = 0.13593 * abs_speed + 0.021466
+        pwm_value = 0.12681 * abs_speed + 0.021466
     else:  # Backward
         pwm_value = 0.11793 * abs_speed + 0.021466  # Same as forward for now
     return max(0, min(1, pwm_value))
