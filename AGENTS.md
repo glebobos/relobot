@@ -53,6 +53,53 @@ docker compose up
 | **View Logs** | `docker compose logs -f` |
 | **Find Devices** | `python3 finddevice.py` |
 
+## Inspecting ROS2 (via Docker)
+All ROS2 tools must be run **inside** the containers via `docker compose exec`. The compose file is at `ros2_ws/docker-compose.yml`.
+
+```bash
+# General pattern (run from the repo root):
+# NOTE: `bash -c` does not load .bashrc, so you MUST source ROS2 setup first.
+docker compose -f ros2_ws/docker-compose.yml exec <service_name> bash -c "source /opt/ros/humble/setup.bash && <command>"
+```
+
+### Common service names
+| Service | Container | Purpose |
+| :--- | :--- | :--- |
+| `ros2_nav2` | Nav2 stack | Navigation, BT navigator, docking server |
+| `ros2_diff_robot` | Diff drive | Hardware controller, robot description |
+| `ros2_slam` | SLAM | Mapping |
+| `ros2_web_server` | Web server | Flask API, ROS node bridge |
+| `ros2_camera_rp` | Camera | Camera node, AprilTag detection |
+| `ros2_lidar` | LiDAR | Laser scan |
+| `ros2_imu` | IMU | Inertial measurement |
+
+### Common checks
+```bash
+# List active topics
+docker compose -f ros2_ws/docker-compose.yml exec ros2_nav2 bash -c "source /opt/ros/humble/setup.bash && ros2 topic list"
+
+# Echo a topic
+docker compose -f ros2_ws/docker-compose.yml exec ros2_nav2 bash -c "source /opt/ros/humble/setup.bash && ros2 topic echo /scan --once"
+
+# List running nodes
+docker compose -f ros2_ws/docker-compose.yml exec ros2_nav2 bash -c "source /opt/ros/humble/setup.bash && ros2 node list"
+
+# Check node parameters
+docker compose -f ros2_ws/docker-compose.yml exec ros2_nav2 bash -c "source /opt/ros/humble/setup.bash && ros2 param list /bt_navigator"
+
+# Find an installed shared library (.so) — no sourcing needed
+docker compose -f ros2_ws/docker-compose.yml exec ros2_nav2 find /opt/ros/humble -name "libsome_plugin.so"
+
+# List files from an apt package — no sourcing needed
+docker compose -f ros2_ws/docker-compose.yml exec ros2_nav2 dpkg -L ros-humble-some-package
+
+# Check installed BT XMLs — no sourcing needed
+docker compose -f ros2_ws/docker-compose.yml exec ros2_nav2 ls /opt/ros/humble/share/nav2_bt_navigator/behavior_trees/
+
+# Interactive shell (sources automatically via .bashrc)
+docker compose -f ros2_ws/docker-compose.yml exec ros2_nav2 bash
+```
+
 ## Style & Conventions
 - **Language**: Python (preferred for logic) or C++ (for performance).
 - **ROS2**: Use ROS2 Humble.
