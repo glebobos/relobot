@@ -1,0 +1,7 @@
+<root main_tree_to_execute="MainTree">
+  <BehaviorTree ID="MainTree">
+    <Sequence>
+      <UndockRobot dock_type="apriltag_dock" max_undocking_time="30.0"/>
+    </Sequence>
+  </BehaviorTree>
+</root>
