@@ -1,3 +1,5 @@
+import os
+from glob import glob
 from setuptools import setup, find_packages
 
 package_name = 'nav2'
@@ -13,6 +15,7 @@ setup(
         ('share/' + package_name, ['package.xml']),
         ('share/' + package_name + '/launch', ['launch/navigation_launch.py']),
         ('share/' + package_name + '/config', ['config/explore.yaml']),
+        ('share/' + package_name + '/behavior_trees', glob('behavior_trees/*.xml')),
     ],
     install_requires=['setuptools'],
     zip_safe=True,

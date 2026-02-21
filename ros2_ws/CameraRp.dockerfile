@@ -1,6 +1,6 @@
 FROM ros:humble
 
-# Install build dependencies
+# Install build dependencies for libcamera + camera_ros + apriltag_ros
 RUN apt-get update && apt-get install -y \
     python3-pip \
     git \
@@ -20,7 +20,7 @@ RUN apt-get update && apt-get install -y \
     ros-humble-sensor-msgs \
     ros-humble-image-view
 
-# Install newer meson via pip
+# Install newer meson via pip (required for libcamera build)
 RUN pip3 install --upgrade meson
 
 WORKDIR /tmp
@@ -32,22 +32,25 @@ RUN git clone https://github.com/raspberrypi/libpisp.git && \
     ninja -C build install && \
     cd .. && rm -rf libpisp
 
-# Build libcamera (Raspberry Pi fork)
+# Build libcamera (Raspberry Pi fork) with PiSP support explicitly
 RUN git clone https://github.com/raspberrypi/libcamera.git && \
     cd libcamera && \
     meson setup build --prefix=/usr -Dpipelines=rpi/vc4,rpi/pisp -Dipas=rpi/vc4,rpi/pisp -Dv4l2=true -Dgstreamer=disabled -Dtest=false -Dlc-compliance=disabled -Dcam=disabled -Dqcam=disabled -Ddocumentation=disabled -Dpycamera=disabled && \
     ninja -C build install && \
     cd .. && rm -rf libcamera
 
-# Build apriltag_ros
-WORKDIR /opt/apriltag_ros_ws
-RUN git clone https://github.com/christianrauch/apriltag_ros.git src/apriltag_ros && \
-    . /opt/ros/humble/setup.sh && \
+# Build camera_ros and apriltag_ros in a colcon workspace
+WORKDIR /opt/camera_ws/src
+RUN git clone https://github.com/christianrauch/camera_ros.git && \
+    git clone https://github.com/christianrauch/apriltag_ros.git
+
+WORKDIR /opt/camera_ws
+RUN . /opt/ros/humble/setup.sh && \
     apt-get update && \
     rosdep update && \
-    rosdep install -y --from-paths src --ignore-src --rosdistro humble && \
-    colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release && \
-    echo "source /opt/apriltag_ros_ws/install/setup.bash" >> /root/.bashrc
+    rosdep install -y --from-paths src --ignore-src --rosdistro humble --skip-keys=libcamera && \
+    colcon build --event-handlers=console_direct+ --cmake-args -DCMAKE_BUILD_TYPE=Release && \
+    echo "source /opt/camera_ws/install/setup.bash" >> /root/.bashrc
 
 # Create workspace
 WORKDIR /ros2_ws
@@ -59,12 +62,10 @@ RUN echo "source /opt/ros/humble/setup.bash" >> /root/.bashrc
 RUN echo '#!/bin/bash\n\
 set -e\n\
 source /opt/ros/humble/setup.bash\n\
-source /opt/apriltag_ros_ws/install/setup.bash\n\
+source /opt/camera_ws/install/setup.bash\n\
 cd /ros2_ws\n\
-# Skip libcamera key because we installed it manually\n\
-# rosdep install -y --from-paths src/camera_ros --ignore-src --rosdistro humble --skip-keys=libcamera\n\
 if [ "$DEV" = "true" ]; then\n\
-  colcon build --packages-select camera_ros\n\
+  colcon build --packages-select camera_ros --cmake-clean-cache\n\
 fi\n\
 source install/setup.bash\n\
 ros2 launch camera_ros camera_with_apriltag.launch.py' > /start_dev.sh && \

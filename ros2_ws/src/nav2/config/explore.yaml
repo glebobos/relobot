@@ -105,7 +105,7 @@ controller_server:
       stateful: True
       plugin: "nav2_controller::SimpleGoalChecker"
       xy_goal_tolerance: 0.25
-      yaw_goal_tolerance: 0.8
+      yaw_goal_tolerance: 0.3
       
     FollowPath:
       plugin: "nav2_mppi_controller::MPPIController"
@@ -290,6 +290,8 @@ bt_navigator:
     plugin_lib_names:
       - nav2_compute_path_to_pose_action_bt_node
       - nav2_compute_path_through_poses_action_bt_node
+      - opennav_dock_action_bt_node
+      - opennav_undock_action_bt_node
       - nav2_smooth_path_action_bt_node
       - nav2_follow_path_action_bt_node
       - nav2_spin_action_bt_node
@@ -390,7 +392,7 @@ docking_server:
     apriltag_dock:
       plugin: 'opennav_docking::SimpleChargingDock'
       docking_threshold: 0.05
-      staging_x_offset: -1.0  # 100cm staging distance before dock
+      staging_x_offset: -0.75  # 100cm staging distance before dock
       staging_yaw_offset: 0.0
       use_external_detection_pose: true  # Use AprilTag detection
       use_battery_status: false  # No battery feedback = non-charging mode
