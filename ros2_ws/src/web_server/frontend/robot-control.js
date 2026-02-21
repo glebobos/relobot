@@ -1,13 +1,10 @@
 const cameraStream = document.getElementById('cameraStream');
+const cameraBaseUrl = `http://${window.location.hostname}:8080/stream?topic=/camera/image_raw&type=mjpeg`;
 
 (function initCameraFeed() {
     if (!cameraStream) return;
 
-    // Use web_video_server for efficient HTTP MJPEG streaming
-    // Using uncompressed topic - web_video_server will encode it as MJPEG
-    const videoServerUrl = `http://${window.location.hostname}:8080/stream?topic=/camera/image_raw&type=mjpeg`;
-
-    cameraStream.src = videoServerUrl;
+    cameraStream.src = cameraBaseUrl;
 
     cameraStream.onload = function () {
         console.log('[WebVideoServer] Camera stream connected');
@@ -15,14 +12,21 @@ const cameraStream = document.getElementById('cameraStream');
 
     cameraStream.onerror = function () {
         console.warn('[WebVideoServer] Camera stream error, retrying...');
-        // Retry connection after 2 seconds
         setTimeout(() => {
-            cameraStream.src = videoServerUrl + '&t=' + Date.now(); // Add timestamp to force reload
+            cameraStream.src = cameraBaseUrl + '&t=' + Date.now();
         }, 2000);
     };
 
     console.log('[WebVideoServer] Connecting to camera stream...');
 })();
+
+/* ===== Reconnect camera stream on visibility change =================== */
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && cameraStream) {
+        console.log('[WebVideoServer] Page visible, reconnecting camera stream...');
+        cameraStream.src = cameraBaseUrl + '&t=' + Date.now();
+    }
+});
 
 // Invisible touch control on video
 const videoContainer = document.querySelector('.video-container');

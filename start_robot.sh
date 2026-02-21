@@ -56,14 +56,14 @@ if [ "$COMMAND" == "up" ]; then
 
     
     if [ -z "$SERVICE" ]; then
-        docker compose up
+        docker compose up --remove-orphans
     else
-        docker compose up $SERVICE
+        docker compose up --remove-orphans $SERVICE
     fi
     
 elif [ "$COMMAND" == "down" ]; then
     echo "Stopping all services..."
-    docker compose down
+    docker compose down --remove-orphans
     
 else
     echo "Error: Invalid command '$COMMAND'"
