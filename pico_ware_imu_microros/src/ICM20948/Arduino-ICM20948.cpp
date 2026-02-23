@@ -3,9 +3,11 @@
 *************************************************************************/
 
 #include "Arduino-ICM20948.h"
-#include <Wire.h>
-#include <SPI.h>
-#include <Arduino.h>
+#include "hardware/i2c.h"
+#include "pico/stdlib.h"
+#include <string.h>
+#include <stdio.h>
+#include <math.h>
 
 // InvenSense drivers and utils
 #include "Icm20948.h"
@@ -16,7 +18,6 @@
   Variables
 *************************************************************************/
 
-int chipSelectPin;
 int com_speed;
 
 uint8_t I2C_Address = 0x68;
@@ -57,105 +58,23 @@ bool steps_data_ready = false;
 /*************************************************************************
   HAL Functions for Arduino
 *************************************************************************/
-int spi_master_read_register(uint8_t reg, uint8_t* rbuffer, uint32_t rlen)
-{
-    //return spi_master_transfer_rx(NULL, reg, rbuffer, rlen);
-
-    SPI.beginTransaction(SPISettings(com_speed, MSBFIRST, SPI_MODE0));
-    SPI.transfer(0x00);
-    SPI.endTransaction();
-
-    digitalWrite(chipSelectPin, LOW);
-    SPI.beginTransaction(SPISettings(com_speed, MSBFIRST, SPI_MODE0));
-    SPI.transfer(((reg & 0x7F) | 0x80));
-    for (uint32_t indi = 0; indi < rlen; indi++)
-    {
-        *(rbuffer + indi) = SPI.transfer(0x00);
-    }
-    SPI.endTransaction();
-    digitalWrite(chipSelectPin, HIGH);
-
-    return 0;
-}
-
-int spi_master_write_register(uint8_t reg, const uint8_t* wbuffer, uint32_t wlen)
-{
-    //return spi_master_transfer_tx(NULL, reg, wbuffer, wlen);
-
-    SPI.beginTransaction(SPISettings(com_speed, MSBFIRST, SPI_MODE0));
-    SPI.transfer(0x00);
-    SPI.endTransaction();
-
-    digitalWrite(chipSelectPin, LOW);
-    SPI.beginTransaction(SPISettings(com_speed, MSBFIRST, SPI_MODE0));
-    SPI.transfer((reg & 0x7F) | 0x00);
-    for (uint32_t indi = 0; indi < wlen; indi++)
-    {
-        SPI.transfer(*(wbuffer + indi));
-    }
-    SPI.endTransaction();
-    digitalWrite(chipSelectPin, HIGH);
-
-    return 0;
-}
+/* SPI not used — Pico SDK build uses I2C only */
 
 int i2c_master_write_register(uint8_t address, uint8_t reg, uint32_t len, const uint8_t *data)
 {
-  if (address != 0x68)
-  {
-
-    Serial.print("Odd address:");
-    Serial.println(address);
-  }
-  //Serial.print("write address ");
-  //Serial.println(address);
-  //Serial.print("register ");
-  //Serial.println(reg);
-  //Serial.print("length = ");
-  //Serial.println(len);
-  Wire.beginTransmission(address);
-  Wire.write(reg);
-  Wire.write(data, len);
-  Wire.endTransmission();
-  return 0;
+    uint8_t buf[len + 1];
+    buf[0] = reg;
+    memcpy(&buf[1], data, len);
+    int result = i2c_write_blocking(i2c1, address, buf, len + 1, false);
+    return (result == PICO_ERROR_GENERIC) ? -1 : 0;
 }
 
 int i2c_master_read_register(uint8_t address, uint8_t reg, uint32_t len, uint8_t *buff)
 {
-  if (address != 0x68)
-  {
-
-    Serial.print("Odd read address:");
-    Serial.println(address);
-  }
-  //Serial.print("read address ");
-  //Serial.println(address);
-  //Serial.print("register ");
-  //Serial.println(reg);
-  //Serial.print("length = ");
-  //Serial.println(len);
-
-  Wire.beginTransmission(address);
-  Wire.write(reg);
-  Wire.endTransmission(false); // Send repeated start
-
-  uint32_t offset = 0;
-  uint32_t num_received = Wire.requestFrom(address, len);
-  //Serial.print("received = ");
-  //Serial.println(num_received);
-  //Serial.println(buff[0]);
-  if (num_received == len)
-  {
-    for (uint8_t i = 0; i < len; i++)
-    {
-      buff[i] = Wire.read();
-    }
-    return 0;
-  }
-  else
-  {
-    return -1;
-  }
+    int result = i2c_write_blocking(i2c1, address, &reg, 1, true); // repeated start
+    if (result == PICO_ERROR_GENERIC) return -1;
+    result = i2c_read_blocking(i2c1, address, buff, len, false);
+    return (result == PICO_ERROR_GENERIC) ? -1 : 0;
 }
 
 
@@ -198,8 +117,7 @@ static const uint8_t dmp3_image[] = {
 void check_rc(int rc, const char * msg_context)
 {
   if (rc < 0) {
-    Serial.println("ICM20948 ERROR!");
-    while (1);
+    printf("ICM20948 ERROR: %s\n", msg_context);
   }
 }
 
@@ -212,65 +130,40 @@ int load_dmp3(void)
 
 void inv_icm20948_sleep_us(int us)
 {
-  delayMicroseconds(us);
+  sleep_us(us);
 }
 
 void inv_icm20948_sleep(int ms)
 {
-  delay(ms);
+  sleep_ms(ms);
 }
 
 uint64_t inv_icm20948_get_time_us(void)
 {
-  return micros();
+  return time_us_64();
 }
 
 
-void initiliaze_SPI(void)
-{
-    pinMode(chipSelectPin, OUTPUT);
-    digitalWrite(chipSelectPin, HIGH);
-    SPI.begin();
-
-    SPI.beginTransaction(SPISettings(com_speed, MSBFIRST, SPI_MODE0));
-    SPI.transfer(0x00);
-    SPI.endTransaction();
-}
+/* SPI not used in Pico SDK build */
 void initiliaze_I2C(void)
 {
-    Wire.begin();
-    Wire.setClock(com_speed);
+    /* I2C already initialised in main() before ArduinoICM20948::init() is called */
 }
 
-bool is_interface_SPI = false;
+/* Always I2C in Pico SDK build */
 void set_comm_interface(ArduinoICM20948Settings settings)
 {
-    chipSelectPin = settings.cs_pin;
-    is_interface_SPI = settings.is_SPI;
-    if (is_interface_SPI)
-    {
-        com_speed = settings.spi_speed;
-        initiliaze_SPI();
-    }
-    else
-    {
-        com_speed = settings.i2c_speed;
-        //initiliaze_I2C();
-    }
-
+    com_speed = settings.i2c_speed;
+    /* I2C already initialised in main() */
 }
 inv_bool_t interface_is_SPI(void)
 {
-  return is_interface_SPI;
+  return false;
 }
 
 //---------------------------------------------------------------------
 int idd_io_hal_read_reg(void *context, uint8_t reg, uint8_t *rbuffer, uint32_t rlen)
 {
-    if (interface_is_SPI())
-    {
-        return spi_master_read_register(reg, rbuffer, rlen);
-    }
     return i2c_master_read_register(I2C_Address, reg, rlen, rbuffer);
 }
 
@@ -278,10 +171,6 @@ int idd_io_hal_read_reg(void *context, uint8_t reg, uint8_t *rbuffer, uint32_t r
 
 int idd_io_hal_write_reg(void *context, uint8_t reg, const uint8_t *wbuffer, uint32_t wlen)
 {
-    if (interface_is_SPI())
-    {
-        return spi_master_write_register(reg, wbuffer, wlen);
-    }
     return i2c_master_write_register(I2C_Address, reg, wlen, wbuffer);
 }
 
@@ -323,8 +212,7 @@ int icm20948_sensor_setup(void)
   }
 
   if (i == sizeof(EXPECTED_WHOAMI) / sizeof(EXPECTED_WHOAMI[0])) {
-    Serial.print("Bad WHOAMI value = 0x");
-    Serial.println(whoami, HEX);
+    printf("Bad WHOAMI value = 0x%02X\n", whoami);
     return rc;
   }
 
@@ -334,7 +222,7 @@ int icm20948_sensor_setup(void)
   // set default power mode
   rc = inv_icm20948_initialize(&icm_device, dmp3_image, sizeof(dmp3_image));
   if (rc != 0) {
-    Serial.println("Icm20948 Initialization failed.");
+    printf("Icm20948 Initialization failed.\n");
     return rc;
   }
 
@@ -344,7 +232,7 @@ int icm20948_sensor_setup(void)
   inv_icm20948_register_aux_compass( &icm_device, INV_ICM20948_COMPASS_ID_AK09916, AK0991x_DEFAULT_I2C_ADDR);
   rc = inv_icm20948_initialize_auxiliary(&icm_device);
   if (rc == -1) {
-    Serial.println("Compass not detected...");
+    printf("Compass not detected...\n");
   }
 
   icm20948_apply_mounting_matrix();
@@ -364,7 +252,7 @@ static uint8_t icm20948_get_grv_accuracy(void)
 
   accel_accuracy = (uint8_t)inv_icm20948_get_accel_accuracy();
   gyro_accuracy = (uint8_t)inv_icm20948_get_gyro_accuracy();
-  return (min(accel_accuracy, gyro_accuracy));
+  return (accel_accuracy < gyro_accuracy ? accel_accuracy : gyro_accuracy);
 }
 
 static uint8_t convert_to_generic_ids[INV_ICM20948_SENSOR_MAX] = {
@@ -587,7 +475,7 @@ ArduinoICM20948::ArduinoICM20948()
 void ArduinoICM20948::init(ArduinoICM20948Settings settings)
 {
   set_comm_interface(settings);
-  Serial.println("Initializing ICM-20948...");
+  printf("Initializing ICM-20948...\n");
 
   // Initialize icm20948 serif structure
   struct inv_icm20948_serif icm20948_serif;
