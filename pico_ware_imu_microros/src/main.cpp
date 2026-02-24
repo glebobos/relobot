@@ -34,6 +34,12 @@ static rclc_executor_t executor;
 
 static char frame_id_buf[] = "imu_link";
 
+#define EXECUTE_EVERY_N_MS(MS, X) do {                        \
+    static volatile int64_t init = -1;                        \
+    if (init == -1) { init = uxr_millis(); }                  \
+    if (uxr_millis() - init > MS) { X; init = uxr_millis();} \
+} while (0)
+
 enum states {
     WAITING_AGENT,
     AGENT_AVAILABLE,
@@ -104,6 +110,7 @@ static bool create_entities(void)
     rc = rclc_timer_init_default(&timer, &support, RCL_MS_TO_NS(33), timer_callback);
     if (rc != RCL_RET_OK) return false;
 
+    executor = rclc_executor_get_zero_initialized_executor();
     rc = rclc_executor_init(&executor, &support.context, 1, &allocator);
     if (rc != RCL_RET_OK) return false;
 
@@ -173,11 +180,11 @@ int main(void)
     ArduinoICM20948Settings icmSettings = {};
     icmSettings.i2c_speed                    = 400000;
     icmSettings.is_SPI                       = false;
-    icmSettings.enable_gyroscope             = true;
+    icmSettings.enable_gyroscope             = false;
     icmSettings.enable_accelerometer         = false;
     icmSettings.enable_magnetometer          = false;
     icmSettings.enable_gravity               = false;
-    icmSettings.enable_linearAcceleration    = true;
+    icmSettings.enable_linearAcceleration    = false;
     icmSettings.enable_quaternion6           = true;
     icmSettings.enable_quaternion9           = false;
     icmSettings.enable_har                   = false;
@@ -198,16 +205,18 @@ int main(void)
 
         switch (state) {
             case WAITING_AGENT:
-                state = (RCL_RET_OK == rmw_uros_ping_agent(100, 1))
-                            ? AGENT_AVAILABLE : WAITING_AGENT;
+                EXECUTE_EVERY_N_MS(500,
+                    state = (RCL_RET_OK == rmw_uros_ping_agent(100, 1))
+                        ? AGENT_AVAILABLE : WAITING_AGENT;);
                 break;
             case AGENT_AVAILABLE:
                 state = create_entities() ? AGENT_CONNECTED : WAITING_AGENT;
                 if (state == WAITING_AGENT) destroy_entities();
                 break;
             case AGENT_CONNECTED:
-                state = (RCL_RET_OK == rmw_uros_ping_agent(100, 1))
-                            ? AGENT_CONNECTED : AGENT_DISCONNECTED;
+                EXECUTE_EVERY_N_MS(1000,
+                    state = (RCL_RET_OK == rmw_uros_ping_agent(100, 1))
+                        ? AGENT_CONNECTED : AGENT_DISCONNECTED;);
                 if (state == AGENT_CONNECTED) {
                     rclc_executor_spin_some(&executor, RCL_MS_TO_NS(100));
                 }
