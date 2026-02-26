@@ -100,7 +100,7 @@ static bool create_entities(void)
     rc = rclc_node_init_default(&node, "imu_node", "", &support);
     if (rc != RCL_RET_OK) return false;
 
-    rc = rclc_publisher_init_default(
+    rc = rclc_publisher_init_best_effort(
         &publisher, &node,
         ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, Imu),
         "imu");
