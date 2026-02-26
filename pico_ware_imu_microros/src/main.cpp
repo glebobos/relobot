@@ -15,9 +15,10 @@
 #include "ICM20948/Arduino-ICM20948.h"
 
 // RP2040 i2c1: GPIO22 = SDA, GPIO23 = SCL
-#define I2C_SDA_PIN  22
-#define I2C_SCL_PIN  23
-#define ICM_ADDR     0x69
+// For ICM20948, default I2C address is 0x68 when AD0 is low, 0x69 when AD0 is high. Here we assume AD0 is high.
+#define I2C_SDA_PIN  6
+#define I2C_SCL_PIN  7
+#define ICM_ADDR     0x68   
 
 // Global defined in Arduino-ICM20948.cpp — set before icm20948.init()
 extern uint8_t I2C_Address;
