@@ -5,7 +5,7 @@ x-ros-env: &ros-env
 services:
   ros2_imu:
     image: microros/micro-ros-agent:humble
-    command: serial --dev /dev/ttyIMU0 -b 115200 -v 0
+    command: serial --dev /dev/ttyIMU0 -b 115200
     devices:
       - /dev/ttyACM0:/dev/ttyIMU0
     environment:
