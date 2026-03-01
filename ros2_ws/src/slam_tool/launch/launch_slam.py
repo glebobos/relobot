@@ -3,6 +3,7 @@
 import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
+import launch
 from launch_ros.actions import Node
 
 def generate_launch_description():
@@ -43,7 +44,8 @@ def generate_launch_description():
         executable='async_slam_toolbox_node',
         name='slam_toolbox',
         output='screen',
-        parameters=[slam_config_file, slam_params]
+        parameters=[slam_config_file, slam_params],
+        on_exit=launch.actions.EmitEvent(event=launch.events.Shutdown())
     )
 
     ekf_node = Node(
