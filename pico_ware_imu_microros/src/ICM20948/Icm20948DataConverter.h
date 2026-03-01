@@ -1,7 +1,7 @@
 /*
 * ________________________________________________________________________________________________________
-* Copyright © 2014-2015 InvenSense Inc. Portions Copyright © 2014-2015 Movea. All rights reserved.
-* This software, related documentation and any modifications thereto (collectively “Software”) is subject
+* Copyright ï¿½ 2014-2015 InvenSense Inc. Portions Copyright ï¿½ 2014-2015 Movea. All rights reserved.
+* This software, related documentation and any modifications thereto (collectively ï¿½Softwareï¿½) is subject
 * to InvenSense and its licensors' intellectual property rights under U.S. and international copyright and
 * other intellectual property rights laws.
 * InvenSense and its licensors retain all intellectual property and proprietary rights in and to the Software
@@ -31,8 +31,12 @@ struct inv_icm20948;
 #define INV_TWO_POWER_NEG_30 9.313225746154785e-010f
 
 #define ABS(x) (((x)>=0)?(x):-(x)) /*!< Computes the absolute value of its argument \a x. \ingroup invn_macro */
+#ifndef MAX
 #define MAX(x,y) (((x)>(y))?(x):(y)) /*!< Computes the maximum of \a x and \a y. \ingroup invn_macro*/
+#endif
+#ifndef MIN
 #define MIN(x,y) (((x)<(y))?(x):(y)) /*!< Computes the minimum of \a x and \a y. \ingroup invn_macro */
+#endif
 
 //! \def INVN_FLT_TO_FXP
 //! Convert the \a value from float to QN value. \ingroup invn_macro 
