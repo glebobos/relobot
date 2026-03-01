@@ -84,9 +84,9 @@ static void timer_callback(rcl_timer_t *timer, int64_t last_call_time)
         imu_msg.orientation.z = qz;
     }
 
-    uint64_t now_us = time_us_64();
-    imu_msg.header.stamp.sec     = (int32_t)(now_us / 1000000ULL);
-    imu_msg.header.stamp.nanosec = (uint32_t)((now_us % 1000000ULL) * 1000ULL);
+    int64_t now_ns = rmw_uros_epoch_nanos();
+    imu_msg.header.stamp.sec     = (int32_t)(now_ns / 1000000000LL);
+    imu_msg.header.stamp.nanosec = (uint32_t)(now_ns % 1000000000LL);
 
     rcl_publish(&publisher, &imu_msg, NULL);
 }
@@ -212,7 +212,11 @@ int main(void)
                 break;
             case AGENT_AVAILABLE:
                 state = create_entities() ? AGENT_CONNECTED : WAITING_AGENT;
-                if (state == WAITING_AGENT) destroy_entities();
+                if (state == WAITING_AGENT) {
+                    destroy_entities();
+                } else {
+                    rmw_uros_sync_session(1000);
+                }
                 break;
             case AGENT_CONNECTED:
                 EXECUTE_EVERY_N_MS(1000,
