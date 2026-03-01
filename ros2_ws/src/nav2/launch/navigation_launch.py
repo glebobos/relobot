@@ -30,6 +30,26 @@ def generate_launch_description():
     # Get the launch directory
     nav2_dir = get_package_share_directory('nav2')
 
+    # --- SLAM Toolbox configuration ---
+    slam_config_file = os.path.join(nav2_dir, 'config', 'slam_toolbox_config.yaml')
+    map_serialized_path = '/ros2_ws/map_serialized'
+    map_exists = (
+        os.path.isfile(map_serialized_path + '.posegraph') or
+        os.path.isfile(map_serialized_path + '.data')
+    )
+    slam_params = {
+        'mode': 'localization' if map_exists else 'mapping',
+        'map_file_name': map_serialized_path if map_exists else '',
+    }
+    slam_toolbox_node = Node(
+        package='slam_toolbox',
+        executable='async_slam_toolbox_node',
+        name='slam_toolbox',
+        output='screen',
+        parameters=[slam_config_file, slam_params],
+    )
+    # -----------------------------------
+
     namespace = LaunchConfiguration('namespace')
     use_sim_time = LaunchConfiguration('use_sim_time')
     autostart = LaunchConfiguration('autostart')
@@ -297,5 +317,6 @@ def generate_launch_description():
     ld.add_action(container)
     ld.add_action(load_nodes)
     ld.add_action(load_composable_nodes)
+    ld.add_action(slam_toolbox_node)
 
     return ld
