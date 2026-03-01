@@ -5,20 +5,14 @@ x-ros-env: &ros-env
 services:
   ros2_imu:
     image: microros/micro-ros-agent:humble
-    command: serial --dev /dev/ttyACM0 -b 115200 -v 0
+    command: serial --dev /dev/ttyIMU0 -b 115200 -v 0
     devices:
-      - /dev/ttyACM0:/dev/ttyACM0
-    volumes:
-      - ./fastdds_profile.xml:/fastdds_profile.xml
+      - /dev/ttyACM0:/dev/ttyIMU0
     environment:
       <<: *ros-env
-      FASTDDS_DEFAULT_PROFILES_FILE: /fastdds_profile.xml
-      ROS_DISCOVERY_SERVER: ${HOST_IP}:11811
-      ROS_SUPER_CLIENT: "True"
     network_mode: host
     ipc: host
     restart: unless-stopped
-    cpu_shares: 256
 
   ros2_frontend:
     image: nginx:alpine
