@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.substitutions import Command, FindExecutable, PathJoinSubstitution
 
@@ -19,6 +21,9 @@ from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 
 def generate_launch_description():
+    # IMU serial device from environment variable
+    imu_tty = os.environ.get('IMU_TTY', '/dev/ttyACM0')
+
     # Get URDF via xacro
     robot_description_content = Command(
         [
@@ -38,6 +43,22 @@ def generate_launch_description():
             "config",
             "diffbot_controllers.yaml",
         ]
+    )
+
+    # EKF configuration for robot_localization
+    ekf_config_file = os.path.join(
+        get_package_share_directory('diff_drive_hardware'),
+        'config',
+        'ekf.yaml'
+    )
+
+    # Micro-ROS agent for IMU
+    micro_ros_agent = Node(
+        package='micro_ros_agent',
+        executable='micro_ros_agent',
+        name='imu_micro_ros_agent',
+        arguments=['serial', '--dev', imu_tty, '-b', '115200'],
+        output='screen',
     )
 
     control_node = Node(
@@ -69,11 +90,21 @@ def generate_launch_description():
         arguments=["diff_drive_controller", "--controller-manager", "/controller_manager", "--controller-manager-timeout", "30"],
     )
 
+    ekf_node = Node(
+        package='robot_localization',
+        executable='ekf_node',
+        name='ekf_filter_node',
+        output='screen',
+        parameters=[ekf_config_file]
+    )
+
     nodes = [
+        micro_ros_agent,
         control_node,
         robot_state_pub_node,
         joint_state_broadcaster_spawner,
         robot_controller_spawner,
+        ekf_node,
     ]
 
     return LaunchDescription(nodes)

@@ -51,7 +51,8 @@ hardware_interface::CallbackReturn DiffDriveHardware::on_init(
 
 bool DiffDriveHardware::reconnect_serial()
 {
-  std::string port = "/dev/ttyACM2";
+  const char* env_port = std::getenv("DIFF_DRIVE_TTY");
+  std::string port = env_port ? env_port : "/dev/ttyACM2";
 
   try {
     if (serial_port_.IsOpen()) {

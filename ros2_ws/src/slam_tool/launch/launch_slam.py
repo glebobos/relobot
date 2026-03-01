@@ -14,15 +14,6 @@ def generate_launch_description():
         'slam_toolbox_config.yaml'
     )
 
-    # EKF configuration for robot_localization (update the package and path as needed)
-    ekf_config_file = os.path.join(
-        get_package_share_directory('slam_tool'),
-        'config',
-        'ekf.yaml'
-    )
-
-
-
     # Check for existing serialized map
     map_serialized_path = '/ros2_ws/map_serialized'
     map_exists = os.path.isfile(map_serialized_path + '.posegraph') or os.path.isfile(map_serialized_path + '.data')
@@ -48,15 +39,6 @@ def generate_launch_description():
         on_exit=launch.actions.EmitEvent(event=launch.events.Shutdown())
     )
 
-    ekf_node = Node(
-        package='robot_localization',
-        executable='ekf_node',
-        name='ekf_filter_node',
-        output='screen',
-        parameters=[ekf_config_file]
-    )
-
     return LaunchDescription([
         slam_toolbox_node,
-        ekf_node
     ])

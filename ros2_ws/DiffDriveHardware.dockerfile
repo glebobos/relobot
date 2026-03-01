@@ -1,3 +1,5 @@
+FROM microros/micro-ros-agent:humble AS micro_ros_stage
+
 FROM ros:humble
 
 # Install additional dependencies
@@ -13,8 +15,12 @@ RUN apt-get update && apt-get install -y \
     ros-humble-xacro \
     ros-humble-joint-state-publisher \
     ros-humble-robot-state-publisher \
+    ros-humble-robot-localization \
     libserial-dev \
     && rm -rf /var/lib/apt/lists/*
+
+# Copy micro-ros-agent from official image
+COPY --from=micro_ros_stage /uros_ws /uros_ws
 
 # Create workspace
 WORKDIR /ros2_ws
@@ -26,6 +32,7 @@ RUN echo "source /opt/ros/humble/setup.bash" >> /root/.bashrc
 RUN echo '#!/bin/bash\n\
 set -e\n\
 source /opt/ros/humble/setup.bash\n\
+source /uros_ws/install/local_setup.bash\n\
 cd /ros2_ws\n\
 if [ "$DEV" = "true" ]; then\n\
   colcon build --packages-select diff_drive_hardware\n\
