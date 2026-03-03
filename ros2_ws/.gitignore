@@ -1,9 +1,0 @@
-install
-build
-log
-core
-./src/serial
-map_serialized.*
-node_modules
-__pycache__/
-*.py[cod]

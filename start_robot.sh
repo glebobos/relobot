@@ -39,20 +39,12 @@ if [ -z "$COMMAND" ]; then
     exit 1
 fi
 
-cd /home/admin/Documents/relobot/ros2_ws
+cd /home/admin/projects/relobot/ros2_ws
 
-until ping -c 1 8.8.8.8 &> /dev/null
-do
-    echo "No internet connection. Retrying in 5 seconds..."
-    sleep 5
-done
-
-export HOST_IP=$(hostname -I | awk '{print $1}')
 export DEV=$DEV
-echo "Starting services with HOST_IP=$HOST_IP and DEV=$DEV"
+echo "Starting services with DEV=$DEV"
 
 if [ "$COMMAND" == "up" ]; then
-    # Wait for internet connection before starting
 
     
     if [ -z "$SERVICE" ]; then

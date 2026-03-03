@@ -69,7 +69,7 @@ def generate_launch_description():
     # Bridge node: looks up AprilTag TF and publishes PoseStamped for docking server
     dock_pose_publisher = Node(
         package='camera_ros',
-        executable='dock_pose_publisher.py',
+        executable='dock_pose_publisher',
         name='dock_pose_publisher',
         parameters=[{
             'dock_tag_frame': 'tag25h9:0',
