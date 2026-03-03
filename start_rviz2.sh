@@ -9,10 +9,18 @@ echo "Starting RViz2 Docker container..."
 
 # Allow local Docker containers to access X11 display
 echo "Configuring X11 access for Docker..."
-# Use existing DISPLAY if set (for SSH X11 forwarding), otherwise default to :0
-if [ -z "$DISPLAY" ]; then
-    export DISPLAY=":0"
+
+# This Pi runs Wayfire + WayVNC (Wayland) with XWayland on :0.
+# Always use the local XWayland display regardless of SSH DISPLAY env.
+export DISPLAY=":0"
+export XAUTHORITY="/home/admin/.Xauthority"
+
+# Add a MIT cookie for :0 if not already present (XWayland may not write one)
+if ! xauth list :0 2>/dev/null | grep -q "^\S*:0 "; then
+    echo "Adding MIT-MAGIC-COOKIE for :0..."
+    xauth add :0 . "$(mcookie)"
 fi
+
 xhost +local:docker
 # Get the host IP address for ROS discovery
 HOST_IP=$(hostname -I | awk '{print $1}')

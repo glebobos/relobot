@@ -124,5 +124,6 @@ services:
       - .:/ros2_ws/
     environment:
       <<: *ros-env
+      PYTHONDONTWRITEBYTECODE: 1
     network_mode: host
     restart: unless-stopped
