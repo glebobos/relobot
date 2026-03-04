@@ -147,44 +147,7 @@ class RobotWebServer:
                 logger.exception("set_motors failed")
                 return jsonify(success=False, error=str(exc))
 
-        # ------------- map saving -------------------------------------------
-        @self.app.route("/api/save_map", methods=["POST"])
-        def api_save_map():
-            try:
-                self.node.save_map("map_serialized")
-                return jsonify(success=True)
-            except Exception as exc:
-                logger.exception("save_map failed")
-                return jsonify(success=False, error=str(exc))
 
-        # ------------- docking ----------------------------------------------
-        @self.app.route("/api/dock", methods=["POST"])
-        def api_dock():
-            try:
-                data = request.get_json(force=True, silent=True) or {}
-                dock_id = data.get("dock_id", "home_dock")
-                navigate = data.get("navigate_to_staging", True)
-                
-                success = self.node.dock_robot(dock_id, navigate)
-                if success:
-                    return jsonify(success=True, message=f"Docking to {dock_id} initiated")
-                else:
-                    return jsonify(success=False, message="Dock action server unavailable"), 503
-            except Exception as exc:
-                logger.exception("dock failed")
-                return jsonify(success=False, error=str(exc)), 500
-
-        @self.app.route("/api/undock", methods=["POST"])
-        def api_undock():
-            try:
-                success = self.node.undock_robot()
-                if success:
-                    return jsonify(success=True, message="Undocking initiated")
-                else:
-                    return jsonify(success=False, message="Undock action server unavailable"), 503
-            except Exception as exc:
-                logger.exception("undock failed")
-                return jsonify(success=False, error=str(exc)), 500
 
     # --------------------------------------------------------------------- #
     #                          helpers & lifecycle                          #

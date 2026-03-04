@@ -238,41 +238,97 @@ const saveMapBtn = document.getElementById('save-map-btn');
 if (saveMapBtn) {
     saveMapBtn.addEventListener('click', () => {
         if (confirm('Save current map? This will overwrite the previous save.')) {
-            fetch('/api/save_map', { method: 'POST' })
-                .then(r => r.json())
-                .then(data => {
-                    if (data.success) alert('Map saved successfully!');
-                    else alert('Error: ' + data.error);
-                })
-                .catch(err => alert('Network error: ' + err));
+            if (!window.rosAction) {
+                alert('rosAction not ready');
+                return;
+            }
+            const { ros, Service } = window.rosAction;
+            const saveMapClient = new Service({
+                ros,
+                name: '/slam_toolbox/serialize_map',
+                serviceType: 'slam_toolbox/srv/SerializePoseGraph'
+            });
+
+            saveMapClient.callService(
+                { filename: 'map_serialized' },
+                (result) => {
+                    console.log('[SaveMap] result:', result);
+                    alert('Map saved successfully!');
+                },
+                (error) => {
+                    console.error('[SaveMap] error:', error);
+                    alert('Error saving map: ' + error);
+                }
+            );
         }
     });
 }
 
-/* ===== Dock/Undock Controls ========================================== */
+/* ===== Dock/Undock Controls (via roslib v2.1.0 Action) =============== */
+const BT_DIR = '/ros2_ws/install/nav2/share/nav2/behavior_trees';
+
 const dockBtn = document.getElementById('dock-btn');
 const undockBtn = document.getElementById('undock-btn');
+
+/**
+ * roslib v2.1.0 uses the rosbridge send_action_goal protocol and correctly
+ * routes action_feedback / action_result messages back by goal ID.
+ * v1.4.1 (kept for ros3d) does NOT route these ops, hence the separate
+ * window.rosAction connection created in index.html.
+ */
+function sendDockGoal() {
+    if (!window.rosAction) { console.error('[Dock] rosAction not ready'); return; }
+    const { ros, Action } = window.rosAction;
+    const action = new Action({
+        ros,
+        name: '/dock_robot',
+        actionType: 'opennav_docking_msgs/action/DockRobot',
+    });
+    const id = action.sendGoal(
+        { use_dock_id: true, dock_id: 'home_dock', navigate_to_staging_pose: true, max_staging_time: 60.0 },
+        (result) => console.log('[Dock] result:', result),
+        (feedback) => console.log('[Dock] feedback:', feedback),
+        (error) => console.error('[Dock] failed:', error),
+    );
+    console.log('[Dock] goal sent, id:', id);
+}
+
+function sendUndockGoal() {
+    if (!window.rosAction) { console.error('[Undock] rosAction not ready'); return; }
+    const { ros, Action } = window.rosAction;
+    const action = new Action({
+        ros,
+        name: '/navigate_to_pose',
+        actionType: 'nav2_msgs/action/NavigateToPose',
+    });
+    const id = action.sendGoal(
+        {
+            behavior_tree: `${BT_DIR}/undock_and_turn.xml`,
+            pose: {
+                header: { frame_id: 'map' },
+                pose: {
+                    position: { x: 0, y: 0, z: 0 },
+                    orientation: { x: 0, y: 0, z: 0, w: 1 },
+                },
+            },
+        },
+        (result) => console.log('[Undock] result:', result),
+        (feedback) => console.log('[Undock] feedback:', feedback),
+        (error) => console.error('[Undock] failed:', error),
+    );
+    console.log('[Undock] goal sent, id:', id);
+}
 
 if (dockBtn) {
     dockBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        fetch('/api/dock', { method: 'POST' })
-            .then(r => r.json())
-            .then(data => {
-                if (!data.success) alert('Error: ' + (data.message || data.error));
-            })
-            .catch(err => alert('Network error: ' + err));
+        sendDockGoal();
     });
 }
 
 if (undockBtn) {
     undockBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        fetch('/api/undock', { method: 'POST' })
-            .then(r => r.json())
-            .then(data => {
-                if (!data.success) alert('Error: ' + (data.message || data.error));
-            })
-            .catch(err => alert('Network error: ' + err));
+        sendUndockGoal();
     });
 }

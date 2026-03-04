@@ -26,19 +26,11 @@ from typing import Optional
 # image handling removed: depth/confidence frames are not used in the web server
 from geometry_msgs.msg import Twist
 from rclpy.node import Node
-from rclpy.action import ActionClient
 from sensor_msgs.msg import Image
 from std_msgs.msg import Float32
 from std_srvs.srv import SetBool
-from slam_toolbox.srv import SerializePoseGraph
-from opennav_docking_msgs.action import DockRobot
-from nav2_msgs.action import NavigateToPose
 
 logger = logging.getLogger(__name__)
-
-# Base path for installed behavior tree XML files
-BT_DIR = "/ros2_ws/install/nav2/share/nav2/behavior_trees"
-
 
 class RobotROSNode(Node):
 
@@ -52,15 +44,6 @@ class RobotROSNode(Node):
 
         # --- service client -------------------------------------------------------
         self._pid_client = self.create_client(SetBool, "knives/enable_pid")
-        self._map_saver_client = self.create_client(SerializePoseGraph, "/slam_toolbox/serialize_map")
-
-        # --- action clients -------------------------------------------------------
-        # DockRobot must be called directly (not via BT) because the docking server
-        # internally calls navigate_to_pose for staging, which conflicts with
-        # bt_navigator if docking is wrapped in a BT.
-        self._dock_action_client = ActionClient(self, DockRobot, 'dock_robot')
-        # Undock goes through bt_navigator with a custom BT (no staging navigation needed)
-        self._navigate_action_client = ActionClient(self, NavigateToPose, 'navigate_to_pose')
 
     # image subscriptions removed (depth/confidence frames not used)
 
@@ -113,61 +96,7 @@ class RobotROSNode(Node):
         req = SetBool.Request(data=enable)
         self._pid_client.call_async(req)   # we ignore response here
 
-    def save_map(self, filename: str) -> None:
-        if not self._map_saver_client.service_is_ready():
-            self.get_logger().warning("Map Saver service unavailable")
-            return
-        
-        req = SerializePoseGraph.Request()
-        req.filename = filename 
-        self._map_saver_client.call_async(req)
 
-    def dock_robot(self, dock_id: str = 'home_dock', navigate_to_staging: bool = True) -> bool:
-        """Send dock robot action request directly to the docking server.
-        
-        This must NOT go through a behavior tree because the docking server
-        internally uses navigate_to_pose for staging navigation, which would
-        conflict with bt_navigator if docking were wrapped in a BT.
-        """
-        self.get_logger().info(f"Attempting to dock at: {dock_id}")
-        if not self._dock_action_client.wait_for_server(timeout_sec=5.0):
-            self.get_logger().error("Dock action server unavailable after 5s timeout")
-            return False
-        
-        goal_msg = DockRobot.Goal()
-        goal_msg.use_dock_id = True
-        goal_msg.dock_id = dock_id
-        goal_msg.navigate_to_staging_pose = navigate_to_staging
-        goal_msg.max_staging_time = 60.0
-        
-        self.get_logger().info(f"Sending dock request to: {dock_id}")
-        future = self._dock_action_client.send_goal_async(goal_msg)
-        self.get_logger().info("Dock goal sent successfully")
-        return True
-
-    def undock_robot(self) -> bool:
-        """Send undock robot request via behavior tree.
-        
-        The BT undocks the robot, then navigates to a pose 0.5m behind
-        the staging position facing away from the dock — this makes the
-        robot turn around after undocking.
-        """
-        self.get_logger().info("Attempting to undock")
-        if not self._navigate_action_client.wait_for_server(timeout_sec=5.0):
-            self.get_logger().error("NavigateToPose action server unavailable after 5s timeout")
-            return False
-
-        goal_msg = NavigateToPose.Goal()
-        goal_msg.behavior_tree = f"{BT_DIR}/undock_and_turn.xml"
-
-        self.get_logger().info("Sending undock behavior tree request")
-        future = self._navigate_action_client.send_goal_async(goal_msg)
-        self.get_logger().info("Undock goal sent successfully")
-        return True
-
-    # ------------------------------------------------------------------------- #
-    #                              telemetry                                    #
-    # ------------------------------------------------------------------------- #
     def latest_voltage(self) -> Optional[float]:
         with self._vin_lock:
             return self._vin

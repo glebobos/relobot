@@ -27,6 +27,29 @@
             <button id="save-map-btn" class="map-btn">Save Map</button>
         </div>
     </div>
+    <!-- roslib v2.1.0 (ESM) – loaded as a module so action_feedback/result
+         messages are routed correctly. Exposes window.rosAction for dock/undock. -->
+    <script type="importmap">
+    {
+      "imports": {
+        "roslib": "https://cdn.jsdelivr.net/npm/roslib@2.1.0/dist/RosLib.min.js",
+        "eventemitter3": "https://cdn.jsdelivr.net/npm/eventemitter3@5/+esm",
+        "uuid": "https://cdn.jsdelivr.net/npm/uuid@11/+esm",
+        "bson": "https://cdn.jsdelivr.net/npm/bson@6/+esm",
+        "cbor2": "https://cdn.jsdelivr.net/npm/cbor2@1/+esm",
+        "fast-png": "https://cdn.jsdelivr.net/npm/fast-png@6/+esm"
+      }
+    }
+    </script>
+    <script type="module">
+        import { Ros, Action, Service } from 'roslib';
+        const ros = new Ros({ url: `ws://${window.location.hostname}:9090` });
+        ros.on('connection', () => console.log('[roslib v2] Connected'));
+        ros.on('error', (e) => console.error('[roslib v2] Error:', e));
+        // Expose for map-viewer.js and robot-control.js
+        window.rosAction = { ros, Action, Service };
+    </script>
+    <!-- Keep roslib v1.4.1 for ros3d (needs legacy ROSLIB global) -->
     <script src="https://cdn.jsdelivr.net/npm/roslib@1.4.1/build/roslib.js"></script>
     <script src="/robot-control.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.89.0/build/three.min.js"></script>
