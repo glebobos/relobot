@@ -1,38 +1,26 @@
+/* ===== Camera stream ================================================== */
 const cameraStream = document.getElementById('cameraStream');
-// Use a unique client ID for this specific browser tab session
 const streamClientId = 'web-ui-' + Math.random().toString(36).substring(2, 9);
 const cameraBaseUrl = `http://${window.location.hostname}:8080/stream?topic=/camera/image_raw&type=mjpeg&client_id=${streamClientId}`;
 
 function connectCamera() {
     if (!cameraStream) return;
     console.log('[WebVideoServer] Connecting to camera stream...');
-    // Add a unique timestamp so the browser doesn't cache the stream
     cameraStream.src = cameraBaseUrl + '&t=' + Date.now();
-
-    cameraStream.onload = function () {
-        console.log('[WebVideoServer] Camera stream connected');
-    };
-
-    cameraStream.onerror = function () {
-        console.warn('[WebVideoServer] Camera stream error');
-    };
+    cameraStream.onload = () => console.log('[WebVideoServer] Camera stream connected');
+    cameraStream.onerror = () => console.warn('[WebVideoServer] Camera stream error');
 }
 
 function stopCamera() {
     if (!cameraStream) return;
     console.log('[WebVideoServer] Stopping camera stream...');
-    // Clear the src so the browser drops the socket
     cameraStream.removeAttribute('src');
-
-    // Explicitly tell the server to close this client's streams just in case
     fetch(`http://${window.location.hostname}:8080/shutdown?topic=/camera/image_raw&client_id=${streamClientId}`)
         .catch(err => console.debug('Stream shutdown error (expected if server offline)', err));
 }
 
-// Initial connection
 connectCamera();
 
-/* ===== Manage camera stream lifecycle ================================= */
 document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') {
         console.log('[WebVideoServer] Page visible, reconnecting camera stream...');
@@ -42,36 +30,117 @@ document.addEventListener('visibilitychange', () => {
         stopCamera();
     }
 });
-
-// Also try to shutdown cleanly on unload
 window.addEventListener('beforeunload', stopCamera);
 
-// Invisible touch control on video
+
+/* ===== Controller config (mirrors controller_config.json defaults) ==== */
+const CFG = {
+    turnAxis: 0,
+    driveAxis: 3,
+    knifeButton: 7,
+    pidToggleButton: 9,
+    cruiseButton: 4,
+    scaleLinear: 0.3,
+    scaleAngular: 1.0,
+    invertTurn: false,
+    invertDrive: true,
+    invertKnife: false,
+    knifeMinRpm: 500,
+    knifeMaxRpm: 3000,
+};
+
+
+/* ===== Rosbridge publishers / service client ========================== */
+// window.rosAction is set up in index.html (roslib v2 ESM module).
+// We wait for it before constructing Topic/Service objects.
+
+let cmdVelTopic = null;
+let knifeRpmTopic = null;
+let pidService = null;
+
+function initRosControl() {
+    if (!window.rosAction) {
+        setTimeout(initRosControl, 50);
+        return;
+    }
+    const { ros, Topic, Service } = window.rosAction;
+
+    cmdVelTopic = new Topic({
+        ros,
+        name: '/cmd_vel',
+        messageType: 'geometry_msgs/Twist',
+    });
+
+    knifeRpmTopic = new Topic({
+        ros,
+        name: '/knives/set_rpm',
+        messageType: 'std_msgs/Float32',
+    });
+
+    pidService = new Service({
+        ros,
+        name: '/knives/enable_pid',
+        serviceType: 'std_srvs/SetBool',
+    });
+
+    console.log('[RosControl] Topics and service client ready');
+}
+initRosControl();
+
+/** Publish a Twist message – linear.x and angular.z only. */
+function publishTwist(linear, angular) {
+    if (!cmdVelTopic) return;
+    cmdVelTopic.publish({
+        linear: { x: linear, y: 0, z: 0 },
+        angular: { x: 0, y: 0, z: angular },
+    });
+}
+
+/** Publish desired knife RPM. */
+function publishRpm(rpm) {
+    if (!knifeRpmTopic) return;
+    knifeRpmTopic.publish({ data: rpm });
+}
+
+/** Call the PID enable/disable service. */
+function callPidService(enable) {
+    if (!pidService) return;
+    // roslib requires Request wrapper depending on version
+    pidService.callService({ data: enable },
+        (res) => console.log('[PID] toggle ok, result:', res),
+        (err) => console.error('[PID] toggle failed:', err)
+    );
+}
+
+
+/* ===== Motor helpers ================================================== */
+function computeTwist(turn, drive) {
+    const linear = (CFG.invertDrive ? -drive : drive) * CFG.scaleLinear;
+    const angular = (CFG.invertTurn ? -turn : turn) * CFG.scaleAngular;
+    return { linear, angular };
+}
+
+
+/* ===== Touch / drag joystick on the camera view ====================== */
 const videoContainer = document.querySelector('.video-container');
 let isActive = false;
 let startX = 0;
 let startY = 0;
-const CONTROL_RADIUS = 80; // pixels to reach full speed
+const CONTROL_RADIUS = 80; // pixels → full speed
 
 function handleControl(x, y) {
     const dx = x - startX;
     const dy = y - startY;
-
-    // Normalize based on control radius, clamp to -1 to 1
-    let normalizedX = Math.max(-1, Math.min(1, dx / CONTROL_RADIUS));
-    let normalizedY = Math.max(-1, Math.min(1, -dy / CONTROL_RADIUS));
-
-    throttleUpdateMotors(normalizedX, normalizedY);
+    const normX = Math.max(-1, Math.min(1, dx / CONTROL_RADIUS));
+    const normY = Math.max(-1, Math.min(1, -dy / CONTROL_RADIUS));
+    throttleUpdateMotors(normX, normY);
 }
 
 function updateMotors(x, y) {
-    fetch('/set_motors', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ x, y }),
-    });
+    // x = sideways turn, y = forward/back
+    const { linear, angular } = computeTwist(x, y);
+    publishTwist(linear, angular);
 }
-
 
 function throttle(func, limit) {
     let lastFunc, lastRan;
@@ -94,9 +163,7 @@ function throttle(func, limit) {
 const throttleUpdateMotors = throttle(updateMotors, 100);
 
 function handleStart(e) {
-    // Only start if touch/click is on video container
     if (!videoContainer.contains(e.target) && e.target !== videoContainer) return;
-
     isActive = true;
     const touch = e.touches ? e.touches[0] : e;
     startX = touch.clientX;
@@ -117,18 +184,15 @@ function handleEnd() {
     throttleUpdateMotors(0, 0);
 }
 
-// Event listeners on video container
 videoContainer.addEventListener('mousedown', handleStart);
 videoContainer.addEventListener('touchstart', handleStart, { passive: false });
-
 document.addEventListener('mousemove', handleMove);
 document.addEventListener('touchmove', handleMove, { passive: false });
-
 document.addEventListener('mouseup', handleEnd);
 document.addEventListener('touchend', handleEnd);
 
 
-// Gamepad API
+/* ===== Gamepad API ==================================================== */
 const IDLE_ZONE_CONFIG = { 0: 0.07, 3: 0.07 };
 const DISABLED_AXES = new Set([1, 2]);
 
@@ -140,12 +204,74 @@ function applyDeadZone(axisIndex, value) {
     return ((Math.abs(value) - threshold) / (1 - threshold)) * sign;
 }
 
+function isAllZero(axes, buttons) {
+    return axes.every(v => Math.abs(v) < 1e-5) && buttons.every(v => Math.abs(v) < 1e-5);
+}
+
+// ---- knife / cruise control state ----
+let knifeCurrentRpm = 0.0;
+let cruiseActive = false;
+let cruiseRpm = 0.0;
+let cruiseBtnWasPressed = false;
+
+// Publish knife RPM at a fixed interval (mirrors the Python 200 ms loop)
+setInterval(() => publishRpm(knifeCurrentRpm), 200);
+
+function processKnife(knifeVal, cruiseBtnVal) {
+    const rawRpm = knifeVal <= 0.05
+        ? 0.0
+        : CFG.knifeMinRpm + knifeVal * (CFG.knifeMaxRpm - CFG.knifeMinRpm);
+    const currentRpm = (CFG.invertKnife && rawRpm !== 0) ? -rawRpm : rawRpm;
+    const knifeIsActive = knifeVal > 0.05;
+    const cruiseBtnIsPressed = cruiseBtnVal > 0.5;
+    const justPressed = cruiseBtnIsPressed && !cruiseBtnWasPressed;
+    cruiseBtnWasPressed = cruiseBtnIsPressed;
+
+    if (justPressed) {
+        if (!cruiseActive) {
+            cruiseRpm = currentRpm;
+            cruiseActive = true;
+            console.log(`[Knife] Cruise ON @ ${cruiseRpm.toFixed(0)} RPM`);
+        } else {
+            cruiseActive = false;
+            console.log('[Knife] Cruise OFF');
+        }
+    }
+
+    // Pressing the knife button while cruise is active (without cruise button) resets cruise
+    if (cruiseActive && knifeIsActive && !cruiseBtnIsPressed) {
+        cruiseActive = false;
+        console.log('[Knife] Cruise reset – knife button pressed');
+    }
+
+    knifeCurrentRpm = cruiseActive ? cruiseRpm : currentRpm;
+}
+
+// ---- PID toggle state ----
+let pidEnabled = true;
+let pidLastToggle = 0;
+const PID_COOLDOWN_MS = 500;
+let pidBtnWasPressed = false;
+
+function processPidToggle(btnVal) {
+    const isPressed = btnVal > 0.5;
+    const justPressed = isPressed && !pidBtnWasPressed;
+    pidBtnWasPressed = isPressed;
+
+    if (!justPressed) return;
+
+    const now = Date.now();
+    if (now - pidLastToggle < PID_COOLDOWN_MS) return;
+    pidLastToggle = now;
+
+    pidEnabled = !pidEnabled;
+    callPidService(pidEnabled);
+    console.log(`[PID] toggled → ${pidEnabled ? 'enabled' : 'disabled'}`);
+}
+
+// ---- main gamepad poll ----
 let lastGamepadSent = 0;
 let lastSentNonZero = false;
-
-function isZeroOrAllFalse(axes, buttons) {
-    return axes.every(val => Math.abs(val) < 1e-5) && buttons.every(val => Math.abs(val) < 1e-5);
-}
 
 function pollGamepad() {
     const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
@@ -156,14 +282,18 @@ function pollGamepad() {
     const buttons = gp.buttons.map(b => b.value);
     const now = Date.now();
 
+    // Knife and PID toggle run on every frame for accurate edge detection
+    processKnife(buttons[CFG.knifeButton] ?? 0, buttons[CFG.cruiseButton] ?? 0);
+    processPidToggle(buttons[CFG.pidToggleButton] ?? 0);
+
+    // Motion is rate-limited to 10 Hz to avoid flooding rosbridge
     if (now - lastGamepadSent > 100) {
-        const isZeroNow = isZeroOrAllFalse(processedAxes, buttons);
+        const isZeroNow = isAllZero(processedAxes, buttons);
         if (!isZeroNow || (isZeroNow && lastSentNonZero)) {
-            fetch('/gamepad', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ axes: processedAxes, buttons: buttons }),
-            });
+            const turn = processedAxes[CFG.turnAxis] ?? 0;
+            const drive = processedAxes[CFG.driveAxis] ?? 0;
+            const { linear, angular } = computeTwist(turn, drive);
+            publishTwist(linear, angular);
             lastSentNonZero = !isZeroNow;
         }
         lastGamepadSent = now;
@@ -174,11 +304,13 @@ function startGamepadPolling() {
     setInterval(pollGamepad, 20);
 }
 
-window.addEventListener("gamepadconnected", function (e) {
-    console.log("Gamepad connected:", e.gamepad);
+window.addEventListener('gamepadconnected', (e) => {
+    console.log('[Gamepad] Connected:', e.gamepad.id);
     startGamepadPolling();
 });
-/* ===== Video overlay helpers ========================================== */
+
+
+/* ===== Telemetry overlay ============================================== */
 const vinSpan = document.getElementById('vin-display');
 const rpmSpan = document.getElementById('rpm-display');
 
@@ -186,22 +318,16 @@ const VOLTAGE_THRESHOLD = 24;
 
 function updateVoltage(volts) {
     vinSpan.textContent = volts.toFixed(1) + ' V';
-    if (volts < VOLTAGE_THRESHOLD) {
-        vinSpan.classList.add('warning');
-    } else {
-        vinSpan.classList.remove('warning');
-    }
+    vinSpan.classList.toggle('warning', volts < VOLTAGE_THRESHOLD);
 }
 
-function updateRPM(rpm) {
+function updateRpm(rpm) {
     rpmSpan.textContent = Math.round(rpm) + ' RPM';
 }
 
-
-/* ===== Live voltage & RPM overlay ======================================= */
 function initTelemetry() {
     if (!window.rosAction) {
-        setTimeout(initTelemetry, 50); // wait for ESM module to load
+        setTimeout(initTelemetry, 50);
         return;
     }
     const { ros, Topic } = window.rosAction;
@@ -211,10 +337,10 @@ function initTelemetry() {
             ros,
             name: '/knives/vin',
             messageType: 'std_msgs/Float32',
-            throttle_rate: 1000
+            throttle_rate: 1000,
         });
-        vinTopic.subscribe(message => {
-            const v = parseFloat(message.data);
+        vinTopic.subscribe(msg => {
+            const v = parseFloat(msg.data);
             if (isFinite(v)) updateVoltage(v);
         });
     }
@@ -224,59 +350,43 @@ function initTelemetry() {
             ros,
             name: '/knives/current_rpm',
             messageType: 'std_msgs/Float32',
-            throttle_rate: 1000
+            throttle_rate: 1000,
         });
-        rpmTopic.subscribe(message => {
-            const r = parseFloat(message.data);
-            if (isFinite(r)) updateRPM(r);
+        rpmTopic.subscribe(msg => {
+            const r = parseFloat(msg.data);
+            if (isFinite(r)) updateRpm(r);
         });
     }
 }
 initTelemetry();
 
-/* ===== Map Config ==================================================== */
+
+/* ===== Map / Save Map ================================================= */
 const saveMapBtn = document.getElementById('save-map-btn');
 if (saveMapBtn) {
     saveMapBtn.addEventListener('click', () => {
-        if (confirm('Save current map? This will overwrite the previous save.')) {
-            if (!window.rosAction) {
-                alert('rosAction not ready');
-                return;
-            }
-            const { ros, Service } = window.rosAction;
-            const saveMapClient = new Service({
-                ros,
-                name: '/slam_toolbox/serialize_map',
-                serviceType: 'slam_toolbox/srv/SerializePoseGraph'
-            });
-
-            saveMapClient.callService(
-                { filename: 'map_serialized' },
-                (result) => {
-                    console.log('[SaveMap] result:', result);
-                    alert('Map saved successfully!');
-                },
-                (error) => {
-                    console.error('[SaveMap] error:', error);
-                    alert('Error saving map: ' + error);
-                }
-            );
-        }
+        if (!confirm('Save current map? This will overwrite the previous save.')) return;
+        if (!window.rosAction) { alert('rosAction not ready'); return; }
+        const { ros, Service } = window.rosAction;
+        const saveMapClient = new Service({
+            ros,
+            name: '/slam_toolbox/serialize_map',
+            serviceType: 'slam_toolbox/srv/SerializePoseGraph',
+        });
+        saveMapClient.callService(
+            { filename: 'map_serialized' },
+            (result) => { console.log('[SaveMap] result:', result); alert('Map saved!'); },
+            (error) => { console.error('[SaveMap] error:', error); alert('Error saving map: ' + error); },
+        );
     });
 }
 
-/* ===== Dock/Undock Controls (via roslib v2.1.0 Action) =============== */
-const BT_DIR = '/ros2_ws/install/nav2/share/nav2/behavior_trees';
 
+/* ===== Dock / Undock ================================================== */
+const BT_DIR = '/ros2_ws/install/nav2/share/nav2/behavior_trees';
 const dockBtn = document.getElementById('dock-btn');
 const undockBtn = document.getElementById('undock-btn');
 
-/**
- * roslib v2.1.0 uses the rosbridge send_action_goal protocol and correctly
- * routes action_feedback / action_result messages back by goal ID.
- * v1.4.1 (kept for ros3d) does NOT route these ops, hence the separate
- * window.rosAction connection created in index.html.
- */
 function sendDockGoal() {
     if (!window.rosAction) { console.error('[Dock] rosAction not ready'); return; }
     const { ros, Action } = window.rosAction;
@@ -320,16 +430,5 @@ function sendUndockGoal() {
     console.log('[Undock] goal sent, id:', id);
 }
 
-if (dockBtn) {
-    dockBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        sendDockGoal();
-    });
-}
-
-if (undockBtn) {
-    undockBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        sendUndockGoal();
-    });
-}
+if (dockBtn) dockBtn.addEventListener('click', (e) => { e.stopPropagation(); sendDockGoal(); });
+if (undockBtn) undockBtn.addEventListener('click', (e) => { e.stopPropagation(); sendUndockGoal(); });
