@@ -64,46 +64,6 @@ class RobotWebServer:
     # --------------------------------------------------------------------- #
     def _register_routes(self) -> None:
 
-        # ------------- voltage ----------------------------------------------
-        @self.app.route("/api/voltage")
-        def api_voltage():
-            vin = self.node.latest_voltage()
-            if vin is None:
-                return jsonify(success=False, message="No data yet"), 503
-            return jsonify(success=True, vin=vin)
-
-        @self.app.route("/stream/voltage")
-        def sse_voltage():
-            def gen():
-                last = None
-                while True:
-                    vin = self.node.latest_voltage()
-                    if vin is not None and vin != last:
-                        yield f"data: {vin}\n\n"
-                        last = vin
-                    time.sleep(0.2)
-            return Response(gen(), mimetype="text/event-stream")
-        
-        # ------------- rpm ----------------------------------------------------
-        @self.app.route("/api/rpm")
-        def api_rpm():
-            rpm = self.node.latest_rpm()
-            if rpm is None:
-                return jsonify(success=False, message="No data yet"), 503
-            return jsonify(success=True, rpm=rpm)
-
-        @self.app.route("/stream/rpm")
-        def sse_rpm():
-            def gen():
-                last = None
-                while True:
-                    rpm = self.node.latest_rpm()
-                    if rpm is not None and rpm != last:
-                        yield f"data: {rpm}\n\n"
-                        last = rpm
-                    time.sleep(0.2)
-            return Response(gen(), mimetype="text/event-stream")
-
         # ------------- gamepad ----------------------------------------------
         @self.app.route("/gamepad", methods=["POST"])
         def gamepad():

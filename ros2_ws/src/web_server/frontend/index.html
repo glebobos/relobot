@@ -42,12 +42,12 @@
     }
     </script>
     <script type="module">
-        import { Ros, Action, Service } from 'roslib';
+        import { Ros, Action, Service, Topic } from 'roslib';
         const ros = new Ros({ url: `ws://${window.location.hostname}:9090` });
         ros.on('connection', () => console.log('[roslib v2] Connected'));
         ros.on('error', (e) => console.error('[roslib v2] Error:', e));
         // Expose for map-viewer.js and robot-control.js
-        window.rosAction = { ros, Action, Service };
+        window.rosAction = { ros, Action, Service, Topic };
     </script>
     <!-- Keep roslib v1.4.1 for ros3d (needs legacy ROSLIB global) -->
     <script src="https://cdn.jsdelivr.net/npm/roslib@1.4.1/build/roslib.js"></script>

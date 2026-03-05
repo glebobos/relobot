@@ -1,32 +1,50 @@
 const cameraStream = document.getElementById('cameraStream');
-const cameraBaseUrl = `http://${window.location.hostname}:8080/stream?topic=/camera/image_raw&type=mjpeg`;
+// Use a unique client ID for this specific browser tab session
+const streamClientId = 'web-ui-' + Math.random().toString(36).substring(2, 9);
+const cameraBaseUrl = `http://${window.location.hostname}:8080/stream?topic=/camera/image_raw&type=mjpeg&client_id=${streamClientId}`;
 
-(function initCameraFeed() {
+function connectCamera() {
     if (!cameraStream) return;
-
-    cameraStream.src = cameraBaseUrl;
+    console.log('[WebVideoServer] Connecting to camera stream...');
+    // Add a unique timestamp so the browser doesn't cache the stream
+    cameraStream.src = cameraBaseUrl + '&t=' + Date.now();
 
     cameraStream.onload = function () {
         console.log('[WebVideoServer] Camera stream connected');
     };
 
     cameraStream.onerror = function () {
-        console.warn('[WebVideoServer] Camera stream error, retrying...');
-        setTimeout(() => {
-            cameraStream.src = cameraBaseUrl + '&t=' + Date.now();
-        }, 2000);
+        console.warn('[WebVideoServer] Camera stream error');
     };
+}
 
-    console.log('[WebVideoServer] Connecting to camera stream...');
-})();
+function stopCamera() {
+    if (!cameraStream) return;
+    console.log('[WebVideoServer] Stopping camera stream...');
+    // Clear the src so the browser drops the socket
+    cameraStream.removeAttribute('src');
 
-/* ===== Reconnect camera stream on visibility change =================== */
+    // Explicitly tell the server to close this client's streams just in case
+    fetch(`http://${window.location.hostname}:8080/shutdown?topic=/camera/image_raw&client_id=${streamClientId}`)
+        .catch(err => console.debug('Stream shutdown error (expected if server offline)', err));
+}
+
+// Initial connection
+connectCamera();
+
+/* ===== Manage camera stream lifecycle ================================= */
 document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible' && cameraStream) {
+    if (document.visibilityState === 'visible') {
         console.log('[WebVideoServer] Page visible, reconnecting camera stream...');
-        cameraStream.src = cameraBaseUrl + '&t=' + Date.now();
+        connectCamera();
+    } else {
+        console.log('[WebVideoServer] Page hidden, disconnecting camera stream...');
+        stopCamera();
     }
 });
+
+// Also try to shutdown cleanly on unload
+window.addEventListener('beforeunload', stopCamera);
 
 // Invisible touch control on video
 const videoContainer = document.querySelector('.video-container');
@@ -109,19 +127,6 @@ document.addEventListener('touchmove', handleMove, { passive: false });
 document.addEventListener('mouseup', handleEnd);
 document.addEventListener('touchend', handleEnd);
 
-// Camera connection status
-let cameraConnected = false;
-cameraStream.onload = function () {
-    if (!cameraConnected) {
-        cameraConnected = true;
-        console.log('Camera stream connected');
-    }
-};
-
-cameraStream.onerror = function () {
-    cameraConnected = false;
-    console.warn('Camera stream interrupted, reconnecting...');
-};
 
 // Gamepad API
 const IDLE_ZONE_CONFIG = { 0: 0.07, 3: 0.07 };
@@ -193,45 +198,41 @@ function updateRPM(rpm) {
 }
 
 
-/* ===== Live voltage overlay =========================================== */
-(() => {
-    if (!vinSpan) return;
+/* ===== Live voltage & RPM overlay ======================================= */
+function initTelemetry() {
+    if (!window.rosAction) {
+        setTimeout(initTelemetry, 50); // wait for ESM module to load
+        return;
+    }
+    const { ros, Topic } = window.rosAction;
 
-    // first snapshot
-    fetch('/api/voltage')
-        .then(r => r.ok ? r.json() : null)
-        .then(j => j?.success && updateVoltage(j.vin))
-        .catch(() => { });
+    if (vinSpan) {
+        const vinTopic = new Topic({
+            ros,
+            name: '/knives/vin',
+            messageType: 'std_msgs/Float32',
+            throttle_rate: 1000
+        });
+        vinTopic.subscribe(message => {
+            const v = parseFloat(message.data);
+            if (isFinite(v)) updateVoltage(v);
+        });
+    }
 
-    // live updates via SSE
-    const es = new EventSource('/stream/voltage');
-    es.onmessage = e => {
-        const v = parseFloat(e.data);
-        if (isFinite(v)) updateVoltage(v);
-    };
-    es.onerror = () =>
-        console.error('Voltage SSE error – browser will auto-retry');
-})();
-
-/* ===== Live RPM overlay =============================================== */
-(() => {
-    if (!rpmSpan) return;
-
-    // first snapshot
-    fetch('/api/rpm')
-        .then(r => r.ok ? r.json() : null)
-        .then(j => j?.success && updateRPM(j.rpm))
-        .catch(() => { });
-
-    // live updates via SSE
-    const es = new EventSource('/stream/rpm');
-    es.onmessage = e => {
-        const r = parseFloat(e.data);
-        if (isFinite(r)) updateRPM(r);
-    };
-    es.onerror = () =>
-        console.error('RPM SSE error – browser will auto-retry');
-})();
+    if (rpmSpan) {
+        const rpmTopic = new Topic({
+            ros,
+            name: '/knives/current_rpm',
+            messageType: 'std_msgs/Float32',
+            throttle_rate: 1000
+        });
+        rpmTopic.subscribe(message => {
+            const r = parseFloat(message.data);
+            if (isFinite(r)) updateRPM(r);
+        });
+    }
+}
+initTelemetry();
 
 /* ===== Map Config ==================================================== */
 const saveMapBtn = document.getElementById('save-map-btn');

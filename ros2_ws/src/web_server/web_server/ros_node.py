@@ -47,35 +47,9 @@ class RobotROSNode(Node):
 
     # image subscriptions removed (depth/confidence frames not used)
 
-        # --- voltage --------------------------------------------------------------
-        self._vin: Optional[float] = None
-        self._vin_lock = threading.Lock()
-        self.create_subscription(Float32, "knives/vin",
-                                 self._vin_cb, 10)
-        # --- RPM ------------------------------------------------------------------
-        self._rpm: Optional[float] = None
-        self._rpm_lock = threading.Lock()
-        self.create_subscription(Float32, "knives/current_rpm",
-                                 self._rpm_cb, 10)
-
         # --- maintenance ----------------------------------------------------------
         self.create_timer(10.0, lambda: gc.collect())
         self.get_logger().info("ROS node ready")
-
-    # ------------------------------------------------------------------------- #
-    #                               callbacks                                    #
-    # ------------------------------------------------------------------------- #
-    # depth/confidence callbacks removed
-
-    def _vin_cb(self, msg: Float32) -> None:
-        with self._vin_lock:
-            self._vin = float(msg.data)
-    # -------- rpm --------
-    def _rpm_cb(self, msg: Float32) -> None:
-        with self._rpm_lock:
-            self._rpm = float(msg.data)
-
-    # image helpers removed
 
     # ------------------------------------------------------------------------- #
     #                        publishing wrappers                                #
@@ -96,10 +70,3 @@ class RobotROSNode(Node):
         req = SetBool.Request(data=enable)
         self._pid_client.call_async(req)   # we ignore response here
 
-
-    def latest_voltage(self) -> Optional[float]:
-        with self._vin_lock:
-            return self._vin
-    def latest_rpm(self) -> Optional[float]:
-        with self._rpm_lock:
-            return self._rpm

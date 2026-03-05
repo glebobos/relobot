@@ -21,8 +21,8 @@ Parameters (all have sensible defaults):
   baud_rate          : serial baud                      (115200)
   current_rpm_topic  : topic to publish RPM             (knives/current_rpm)
   voltage_topic      : topic to publish Vin             (knives/vin)
-  set_rpm_topic      : topic to subscribe RPM commands  (knives/set_rpm)
-  update_rate        : seconds between polls            (0.1)
+   set_rpm_topic      : topic to subscribe RPM commands  (knives/set_rpm)
+  update_rate        : seconds between polls            (0.5)
 
 Services (same as before):
   knives/enable_pid        (std_srvs/SetBool)
@@ -50,7 +50,7 @@ class KnifeControllerWithVoltage(Node):
         self.declare_parameter('current_rpm_topic',  'knives/current_rpm')
         self.declare_parameter('voltage_topic',      'knives/vin')
         self.declare_parameter('set_rpm_topic',      'knives/set_rpm')
-        self.declare_parameter('update_rate',        0.1)
+        self.declare_parameter('update_rate',        0.5)
 
         port_name    = self.get_parameter('serial_port').value
         baud_rate    = self.get_parameter('baud_rate').value
