@@ -21,7 +21,7 @@ Parameters (all have sensible defaults):
   baud_rate          : serial baud                      (115200)
   current_rpm_topic  : topic to publish RPM             (knives/current_rpm)
   voltage_topic      : topic to publish Vin             (knives/vin)
-   set_rpm_topic     : topic to subscribe RPM commands  (knives/set_rpm)
+  set_rpm_topic     : topic to subscribe RPM commands  (knives/set_rpm)
   update_rate        : seconds between polls            (0.5)
 
 Services (same as before):
