@@ -420,8 +420,8 @@ docking_server:
       k_delta: 2.0
       beta: 0.4
       lambda: 2.0
-      v_linear_min: 0.13
-      v_linear_max: 0.20  # Slow approach speed
+      v_linear_min: 0.20
+      v_linear_max: 0.30  # Slow approach speed
       v_angular_max: 0.3
       slowdown_radius: 0.30
       use_collision_detection: true

@@ -10,6 +10,8 @@ window.onload = function () {
     var ros = new ROSLIB.Ros({
       url: "ws://" + window.location.hostname + ":9090",
     });
+    // Expose for robot-control.js action clients
+    window.rosConn = ros;
 
     ros.on("connection", function () {
       console.log("Connected to websocket server.");
