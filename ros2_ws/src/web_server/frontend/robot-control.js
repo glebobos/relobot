@@ -131,8 +131,8 @@ const CONTROL_RADIUS = 80; // pixels → full speed
 function handleControl(x, y) {
     const dx = x - startX;
     const dy = y - startY;
-    const normX = Math.max(-1, Math.min(1, dx / CONTROL_RADIUS));
-    const normY = Math.max(-1, Math.min(1, -dy / CONTROL_RADIUS));
+    const normX = Math.max(-1, Math.min(1, -dx / CONTROL_RADIUS));
+    const normY = Math.max(-1, Math.min(1, dy / CONTROL_RADIUS));
     throttleUpdateMotors(normX, normY);
 }
 
