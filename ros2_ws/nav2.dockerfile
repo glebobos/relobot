@@ -33,7 +33,7 @@ set -e\n\
 source /opt/ros/humble/setup.bash\n\
 cd /ros2_ws\n\
 if [ "$DEV" = "true" ]; then\n\
-  colcon build --packages-up-to nav2 --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release\n\
+  colcon build --packages-up-to nav2 explore_lite --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release\n\
 fi\n\
 source install/setup.bash\n\
 ros2 launch nav2 navigation_launch.py' > /start_dev.sh && \

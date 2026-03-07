@@ -93,6 +93,22 @@ body {
     transform: translateY(1px);
 }
 
+.explore-btn-idle {
+    background-color: #28a745;
+}
+
+.explore-btn-idle:hover {
+    background-color: #1e7e34;
+}
+
+.explore-btn-active {
+    background-color: #dc3545;
+}
+
+.explore-btn-active:hover {
+    background-color: #bd2130;
+}
+
 #map {
     width: 100%;
     height: 500px;

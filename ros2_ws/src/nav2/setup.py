@@ -14,7 +14,7 @@ setup(
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
         ('share/' + package_name + '/launch', ['launch/navigation_launch.py']),
-        ('share/' + package_name + '/config', ['config/explore.yaml', 'config/slam_toolbox_config.yaml']),
+        ('share/' + package_name + '/config', ['config/explore.yaml', 'config/slam_toolbox_config.yaml', 'config/explore_lite_params.yaml']),
         ('share/' + package_name + '/behavior_trees', glob('behavior_trees/*.xml')),
     ],
     install_requires=['setuptools'],

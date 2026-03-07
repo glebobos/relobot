@@ -57,6 +57,7 @@ const CFG = {
 let cmdVelTopic = null;
 let knifeRpmTopic = null;
 let pidService = null;
+let exploreTopic = null;
 
 function initRosControl() {
     if (!window.rosAction) {
@@ -83,9 +84,46 @@ function initRosControl() {
         serviceType: 'std_srvs/SetBool',
     });
 
+    exploreTopic = new Topic({
+        ros,
+        name: '/explore/resume',
+        messageType: 'std_msgs/Bool',
+    });
+
+    const exploreStatusTopic = new Topic({
+        ros,
+        name: '/explore/status',
+        messageType: 'explore_lite_msgs/ExploreStatus',
+    });
+    exploreStatusTopic.subscribe((msg) => {
+        const exploring = msg.status === 'exploration_started' || msg.status === 'exploration_in_progress';
+        updateExploreButton(exploring);
+    });
+
     console.log('[RosControl] Topics and service client ready');
 }
 initRosControl();
+
+const exploreBtn = document.getElementById('explore-btn');
+let exploringActive = false;
+
+function updateExploreButton(exploring) {
+    exploringActive = exploring;
+    if (exploring) {
+        exploreBtn.textContent = 'Stop Exploration';
+        exploreBtn.className = 'map-btn explore-btn-active';
+    } else {
+        exploreBtn.textContent = 'Start Exploration';
+        exploreBtn.className = 'map-btn explore-btn-idle';
+    }
+}
+
+exploreBtn.addEventListener('click', () => {
+    if (!exploreTopic) return;
+    const next = !exploringActive;
+    exploreTopic.publish({ data: next });
+    updateExploreButton(next);
+});
 
 /** Publish a Twist message – linear.x and angular.z only. */
 function publishTwist(linear, angular) {

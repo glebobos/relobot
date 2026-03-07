@@ -129,6 +129,16 @@ def generate_launch_description():
         'log_level', default_value='info',
         description='log level')
 
+    explore_lite_params = os.path.join(nav2_dir, 'config', 'explore_lite_params.yaml')
+    explore_node = Node(
+        package='explore_lite',
+        executable='explore',
+        name='explore_node',
+        output='screen',
+        parameters=[explore_lite_params],
+        remappings=[('/tf', 'tf'), ('/tf_static', 'tf_static')],
+    )
+
     # Component container for composition mode
     container = Node(
         condition=IfCondition(use_composition),
@@ -318,5 +328,6 @@ def generate_launch_description():
     ld.add_action(load_nodes)
     ld.add_action(load_composable_nodes)
     ld.add_action(slam_toolbox_node)
+    ld.add_action(explore_node)
 
     return ld
