@@ -83,12 +83,14 @@ def generate_launch_description():
         'use_sim_time': use_sim_time,
         'autostart': autostart}
 
-    configured_params = ParameterFile(
-        RewrittenYaml(
+    rewritten_yaml = RewrittenYaml(
             source_file=params_file,
             root_key=namespace,
             param_rewrites=param_substitutions,
-            convert_types=True),
+            convert_types=True)
+
+    configured_params = ParameterFile(
+        rewritten_yaml,
         allow_substs=True)
 
     stdout_linebuf_envvar = SetEnvironmentVariable(
@@ -114,7 +116,7 @@ def generate_launch_description():
         description='Automatically startup the nav2 stack')
 
     declare_use_composition_cmd = DeclareLaunchArgument(
-        'use_composition', default_value='False',
+        'use_composition', default_value='True',
         description='Use composed bringup if True')
 
     declare_container_name_cmd = DeclareLaunchArgument(
@@ -129,6 +131,16 @@ def generate_launch_description():
         'log_level', default_value='info',
         description='log level')
 
+    explore_lite_params = os.path.join(nav2_dir, 'config', 'explore_lite_params.yaml')
+    explore_node = Node(
+        package='explore_lite',
+        executable='explore',
+        name='explore_node',
+        output='screen',
+        parameters=[explore_lite_params],
+        remappings=[('/tf', 'tf'), ('/tf_static', 'tf_static')],
+    )
+
     # Component container for composition mode
     container = Node(
         condition=IfCondition(use_composition),
@@ -136,6 +148,7 @@ def generate_launch_description():
         package='rclcpp_components',
         executable='component_container_isolated',
         output='screen',
+        arguments=['--ros-args', '--log-level', log_level, '--params-file', rewritten_yaml],
     )
 
     load_nodes = GroupAction(
@@ -318,5 +331,6 @@ def generate_launch_description():
     ld.add_action(load_nodes)
     ld.add_action(load_composable_nodes)
     ld.add_action(slam_toolbox_node)
+    ld.add_action(explore_node)
 
     return ld

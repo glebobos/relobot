@@ -16,6 +16,7 @@ ros2_ws/src/serial
 ros2_ws/map_serialized.*
 ros2_ws/node_modules
 ros2_ws/**/*.py[cod]
+ros2_ws/core
 
 # ──────────────────────────────────────────────
 # pico_ware_imu_microros

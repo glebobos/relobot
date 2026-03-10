@@ -62,17 +62,6 @@ All ROS2 tools must be run **inside** the containers via `docker compose exec`. 
 docker compose -f ros2_ws/docker-compose.yml exec <service_name> bash -c "source /opt/ros/humble/setup.bash && <command>"
 ```
 
-### Common service names
-| Service | Container | Purpose |
-| :--- | :--- | :--- |
-| `ros2_nav2` | Nav2 stack | Navigation, BT navigator, docking server |
-| `ros2_diff_robot` | Diff drive | Hardware controller, robot description |
-| `ros2_slam` | SLAM | Mapping |
-| `ros2_web_server` | Web server | Flask API, ROS node bridge |
-| `ros2_camera_rp` | Camera | Camera node, AprilTag detection |
-| `ros2_lidar` | LiDAR | Laser scan |
-| `ros2_imu` | IMU | Inertial measurement |
-
 ### Common checks
 ```bash
 # List active topics

@@ -62,6 +62,19 @@ def generate_launch_description():
                 ],
                 extra_arguments=[{'use_intra_process_comms': True}],
             ),
+            # Web Video Server for HTTP streaming (port 8080)
+            ComposableNode(
+                package='web_video_server',
+                plugin='web_video_server::WebVideoServer',
+                name='web_video_server',
+                parameters=[{
+                    'port': 8080,
+                    'server_threads': 1,
+                    'ros_threads': 2,
+                    'default_stream_type': 'mjpeg',
+                }],
+                extra_arguments=[{'use_intra_process_comms': True}],
+            ),
         ],
         output='screen',
     )
