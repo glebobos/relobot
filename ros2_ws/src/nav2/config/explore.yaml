@@ -3,7 +3,6 @@ global_costmap:
   global_costmap:
     ros__parameters:
       footprint: "[[-0.10, -0.245], [-0.10, 0.175], [0.46, 0.175], [0.46, -0.245]]"
-      robot_radius: 0.0 #Added during compositable nodes investigation check
       use_sim_time: false
       robot_base_frame: base_link
       global_frame: map
@@ -51,7 +50,6 @@ local_costmap:
   local_costmap:
     ros__parameters:
       footprint: "[[-0.10, -0.245], [-0.10, 0.175], [0.46, 0.175], [0.46, -0.245]]"
-      robot_radius: 0.0 #Added during compositable nodes investigation, check
       use_sim_time: false
       robot_base_frame: base_link
       global_frame: odom
@@ -157,7 +155,7 @@ controller_server:
         critical_weight: 20.0
         consider_footprint: true
         collision_cost: 100000.0
-        collision_margin_distance: 0.0  #Added during compositable nodes investigation
+        collision_margin_distance: 0.5  #Added during compositable nodes investigation
         near_goal_distance: 0.5
         inflation_radius: 0.25 # (only in Humble) — match local costmap inflation
         cost_scaling_factor: 3.0 # (only in Humble) — slower decay = wider repulsion zone
@@ -167,7 +165,6 @@ controller_server:
         cost_weight: 6.0             # Increased from 3.81 to penalize paths near high-cost (obstacle-adjacent) cells more
         critical_cost: 300.0
         consider_footprint: true
-        collision_margin_distance: 0.0  #Added during compositable nodes investigation check
         collision_cost: 1000000.0
         near_goal_distance: 1.0
         trajectory_point_step: 1  # Check footprint at every point to catch corners sweeping through obstacles during turns
