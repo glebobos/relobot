@@ -83,12 +83,14 @@ def generate_launch_description():
         'use_sim_time': use_sim_time,
         'autostart': autostart}
 
-    configured_params = ParameterFile(
-        RewrittenYaml(
+    rewritten_yaml = RewrittenYaml(
             source_file=params_file,
             root_key=namespace,
             param_rewrites=param_substitutions,
-            convert_types=True),
+            convert_types=True)
+
+    configured_params = ParameterFile(
+        rewritten_yaml,
         allow_substs=True)
 
     stdout_linebuf_envvar = SetEnvironmentVariable(
@@ -114,7 +116,7 @@ def generate_launch_description():
         description='Automatically startup the nav2 stack')
 
     declare_use_composition_cmd = DeclareLaunchArgument(
-        'use_composition', default_value='False',
+        'use_composition', default_value='True',
         description='Use composed bringup if True')
 
     declare_container_name_cmd = DeclareLaunchArgument(
@@ -146,6 +148,7 @@ def generate_launch_description():
         package='rclcpp_components',
         executable='component_container_isolated',
         output='screen',
+        arguments=['--ros-args', '--log-level', log_level, '--params-file', rewritten_yaml],
     )
 
     load_nodes = GroupAction(

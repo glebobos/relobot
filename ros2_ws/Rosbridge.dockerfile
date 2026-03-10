@@ -5,7 +5,6 @@ FROM ros:humble-ros-base
 # nav2 NavigateToPose and opennav DockRobot/UndockRobot goals/results.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-humble-rosbridge-server \
-    ros-humble-web-video-server \
     ros-humble-nav2-msgs \
     ros-humble-opennav-docking-msgs \
     ros-humble-slam-toolbox && \
