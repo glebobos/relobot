@@ -140,6 +140,7 @@ hardware_interface::CallbackReturn DiffDriveHardware::on_activate(
   stall_logged_ = false;
   stall_cycles_[0] = stall_cycles_[1] = 0;
   stall_boost_[0]  = stall_boost_[1]  = 0.0;
+  encoder_age_[0]  = encoder_age_[1]  = 0;
   first_read_ = true;
 
   try {
@@ -261,6 +262,9 @@ hardware_interface::return_type DiffDriveHardware::read(
           }
           prev_positions_[0] = hw_positions_[0];
           prev_positions_[1] = hw_positions_[1];
+          // Position changed → both wheels got a fresh packet this cycle
+          encoder_age_[0] = 0;
+          encoder_age_[1] = 0;
           if (first_read_) {
             // First valid encoder packet: reset PIDs so integrators start
             // from zero with real velocity data, not the zero-velocity spike.
@@ -276,11 +280,11 @@ hardware_interface::return_type DiffDriveHardware::read(
       }
     } else {
       // No new serial data this cycle — Pico only sends when encoder counts change.
-      // Decay rather than hard-zero so a single missing packet doesn't immediately
-      // re-trigger stall detection after the wheel just broke free.
-      constexpr double VEL_DECAY = 0.6;  // per cycle without data
-      hw_velocities_[0] *= VEL_DECAY;
-      hw_velocities_[1] *= VEL_DECAY;
+      // Increment age counters; velocity estimate is left unchanged (last known good).
+      // Stall detection uses encoder_age_, not velocity magnitude, so it is immune
+      // to the low packet rate at slow speed (one tick per ~9 cycles at 0.35 rad/s).
+      encoder_age_[0]++;
+      encoder_age_[1]++;
     }
   } catch (const std::exception& e) {
     RCLCPP_ERROR(rclcpp::get_logger("DiffDriveHardware"), 
@@ -370,19 +374,22 @@ hardware_interface::return_type DiffDriveHardware::write(
     // ──────────────────────────────────────────────────────────────────────
 
     // ── Stall-ramp accumulator ─────────────────────────────────────────────
-    // Only active for low-speed commands (< STALL_DETECT_MAX_CMD): large cmds
-    // with vel=0 are normal slew/startup lag, not real stalls.
-    // Boost persists until the wheel actually moves (vel >= 0.05) — it does NOT
-    // reset when the command oscillates near zero, which nav2 does constantly.
-    constexpr int    STALL_CYCLES_THRESH   = 15;   // ~0.5 s at 30 Hz before first ramp
+    // Uses encoder_age_ (cycles since last packet) instead of velocity magnitude.
+    // At 0.35 rad/s with 60 CPR the Pico sends one packet every ~9 cycles, so
+    // velocity would decay below any reasonable threshold between packets. Age
+    // is immune to this: if a packet arrived within MOVING_AGE_MAX cycles the
+    // wheel is considered moving regardless of estimated velocity.
+    // Stall detection only runs for low-speed commands — large commands with
+    // vel=0 are normal slew/startup lag, not real stalls.
+    constexpr int    MOVING_AGE_MAX        = 20;   // cycles (~0.67 s) — wheel moving if packet arrived within this
+    constexpr int    STALL_CYCLES_THRESH   = 15;   // ~0.5 s at 30 Hz before first boost
     constexpr double STALL_RAMP_STEP       = 0.20; // rad/s per threshold crossing
     constexpr double STALL_BOOST_MAX       = 3.5;  // rad/s max extra push
     constexpr double STALL_DETECT_MAX_CMD  = 1.0;  // rad/s — ignore stall above this
     for (int w = 0; w < 2; ++w) {
       double & cmd   = (w == 0) ? left_cmd  : right_cmd;
-      double   vel   = hw_velocities_[w];
       double   hcmd  = hw_commands_[w];
-      const bool wheel_moving = std::abs(vel) >= 0.05;
+      const bool wheel_moving  = (encoder_age_[w] < MOVING_AGE_MAX);
       const bool low_speed_cmd = std::abs(hcmd) > CMD_DEAD_ZONE &&
                                  std::abs(hcmd) < STALL_DETECT_MAX_CMD;
       if (!wheel_moving && low_speed_cmd) {
@@ -390,7 +397,7 @@ hardware_interface::return_type DiffDriveHardware::write(
         if (stall_cycles_[w] >= STALL_CYCLES_THRESH) {
           stall_boost_[w] = std::min(stall_boost_[w] + STALL_RAMP_STEP, STALL_BOOST_MAX);
           stall_cycles_[w] = 0;
-          RCLCPP_INFO(
+          RCLCPP_DEBUG(
             rclcpp::get_logger("DiffDriveHardware"),
             "Stall boost wheel %d: boost=%.2f sent_before=%.3f", w, stall_boost_[w], cmd);
         }
@@ -400,9 +407,9 @@ hardware_interface::return_type DiffDriveHardware::write(
         // slew limiter doesn't stay locked to the high boosted value,
         // which would cause residual PWM after the obstacle is cleared.
         if (stall_boost_[w] > 0.0) {
-          RCLCPP_INFO(
+          RCLCPP_DEBUG(
             rclcpp::get_logger("DiffDriveHardware"),
-            "Stall cleared wheel %d: vel=%.3f boost was %.2f", w, vel, stall_boost_[w]);
+            "Stall cleared wheel %d: age=%d boost was %.2f", w, encoder_age_[w], stall_boost_[w]);
           prev_cmd_sent_[w] = std::copysign(std::abs(hw_commands_[w]), cmd);
         }
         stall_cycles_[w] = 0;
@@ -439,7 +446,7 @@ hardware_interface::return_type DiffDriveHardware::write(
     const bool left_stalled  = std::abs(hw_commands_[0]) > CMD_DEAD_ZONE && std::abs(hw_velocities_[0]) < 0.01;
     const bool right_stalled = std::abs(hw_commands_[1]) > CMD_DEAD_ZONE && std::abs(hw_velocities_[1]) < 0.01;
     if ((left_stalled || right_stalled) && !stall_logged_) {
-      RCLCPP_INFO(
+      RCLCPP_DEBUG(
         rclcpp::get_logger("DiffDriveHardware"),
         "STALL: cmd=[%.3f, %.3f] vel=[%.3f, %.3f] sent=[%.3f, %.3f] err=[%.3f, %.3f]",
         hw_commands_[0], hw_commands_[1],

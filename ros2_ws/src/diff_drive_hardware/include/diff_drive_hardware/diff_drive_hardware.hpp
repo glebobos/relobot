@@ -92,8 +92,13 @@ private:
 
   // Stall-ramp accumulator: independent of PID, ramps up command when a wheel
   // is commanded but not moving (obstacle recovery)
-  int stall_cycles_[2]  = {0, 0};   // consecutive cycles with vel==0 under command
-  double stall_boost_[2] = {0.0, 0.0};  // extra rad/s added to overcome stall
+  int stall_cycles_[2]   = {0, 0};    // consecutive cycles with vel==0 under command
+  double stall_boost_[2] = {0.0, 0.0}; // extra rad/s added to overcome stall
+
+  // Packet-age counters: cycles since last encoder update per wheel.
+  // Used instead of velocity magnitude for stall detection — immune to the
+  // low packet rate at slow speed (60 cpr, so one tick per ~9 cycles at 0.35 rad/s).
+  int encoder_age_[2] = {0, 0};
 };
 
 }  // namespace diff_drive_hardware
