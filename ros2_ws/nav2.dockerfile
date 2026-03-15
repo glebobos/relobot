@@ -18,6 +18,22 @@ RUN apt-get update && apt-get install -y \
     ros-humble-opennav-docking-bt \
     && rm -rf /var/lib/apt/lists/*
 
+# Install coverage build prerequisites in a separate layer so Docker can reuse
+# the heavier ROS package layer when only coverage integration changes.
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    ca-certificates \
+    cmake \
+    git \
+    libeigen3-dev \
+    libgdal-dev \
+    libgeos-dev \
+    python3-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN git clone --branch v1.2.1 --depth 1 https://github.com/Fields2Cover/Fields2Cover.git /opt/fields2cover_src && \
+    git clone --branch 0.0.1 --depth 1 https://github.com/open-navigation/opennav_coverage.git /opt/opennav_coverage_src
+
 # Create workspace
 WORKDIR /ros2_ws
 
@@ -32,8 +48,8 @@ RUN echo '#!/bin/bash\n\
 set -e\n\
 source /opt/ros/humble/setup.bash\n\
 cd /ros2_ws\n\
-if [ "$DEV" = "true" ]; then\n\
-  colcon build --packages-up-to nav2 explore_lite --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release\n\
+if [ "$DEV" = "true" ] || [ ! -f /ros2_ws/install/opennav_coverage_msgs/share/opennav_coverage_msgs/package.xml ]; then\n\
+  colcon build --base-paths /opt/fields2cover_src /opt/opennav_coverage_src /ros2_ws/src --packages-up-to nav2 explore_lite opennav_coverage opennav_coverage_msgs fields2cover --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF -DBUILD_DOC=OFF -DBUILD_TUTORIALS=OFF\n\
 fi\n\
 source install/setup.bash\n\
 ros2 launch nav2 navigation_launch.py' > /start_dev.sh && \

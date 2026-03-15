@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Robot Control</title>
+    <link rel="icon" href="data:,">
     <link rel="stylesheet" href="styles.css">
 </head>
 
@@ -27,6 +28,13 @@
             <button id="save-map-btn" class="map-btn">Save Map</button>
             <button id="explore-btn" class="map-btn explore-btn-idle">Start Exploration</button>
         </div>
+        <div class="map-controls coverage-controls">
+            <button id="coverage-preview-btn" class="map-btn coverage-btn-preview">Preview Coverage</button>
+            <button id="coverage-execute-btn" class="map-btn coverage-btn-execute">Execute Coverage</button>
+            <button id="coverage-stop-btn" class="map-btn coverage-btn-stop">Stop Coverage</button>
+            <button id="coverage-clear-btn" class="map-btn coverage-btn-clear">Clear Polygon</button>
+        </div>
+        <div id="coverage-status" class="coverage-status">Coverage idle. Click the map to add polygon points. Right-click to remove the last point.</div>
     </div>
     <!-- roslib v2.1.0 (ESM) – loaded as a module so action_feedback/result
          messages are routed correctly. Exposes window.rosAction for dock/undock. -->
@@ -52,11 +60,11 @@
     </script>
     <!-- Keep roslib v1.4.1 for ros3d (needs legacy ROSLIB global) -->
     <script src="https://cdn.jsdelivr.net/npm/roslib@1.4.1/build/roslib.js"></script>
-    <script src="/robot-control.js?v=2"></script>
+    <script src="/robot-control.js?v=3"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.89.0/build/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/eventemitter2@6.4.9/lib/eventemitter2.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/ros3d@1.1.0/build/ros3d.min.js"></script>
-    <script src="/map-viewer.js"></script>
+    <script src="/map-viewer.js?v=3"></script>
 </body>
 
 </html>
