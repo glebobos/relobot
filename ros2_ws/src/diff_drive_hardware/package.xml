@@ -21,6 +21,7 @@
   <depend>asio_cmake_module</depend>
   <depend>io_context</depend>
   <depend>rclcpp_lifecycle</depend>
+  <depend>control_toolbox</depend>
   <depend>launch</depend>
   <depend>launch_ros</depend>
   <depend>xacro</depend>

@@ -19,6 +19,7 @@
 #include <vector>
 #include <libserial/SerialPort.h>
 
+#include "control_toolbox/pid.hpp"
 #include "hardware_interface/handle.hpp"
 #include "hardware_interface/hardware_info.hpp"
 #include "hardware_interface/system_interface.hpp"
@@ -74,6 +75,25 @@ private:
   std::vector<double> hw_positions_;
   std::vector<double> hw_velocities_;
   std::vector<double> hw_commands_;
+
+  // PID controllers (one per wheel)
+  control_toolbox::Pid pid_left_;
+  control_toolbox::Pid pid_right_;
+
+  // Previous positions for velocity estimation
+  std::vector<double> prev_positions_;
+  bool first_read_{true};
+
+  // Last commands actually sent to the Pico (for slew-rate / anti-slip)
+  double prev_cmd_sent_[2] = {0.0, 0.0};
+
+  // Stall detection logging (log once per stall event)
+  bool stall_logged_{false};
+
+  // Stall-ramp accumulator: independent of PID, ramps up command when a wheel
+  // is commanded but not moving (obstacle recovery)
+  int stall_cycles_[2]  = {0, 0};   // consecutive cycles with vel==0 under command
+  double stall_boost_[2] = {0.0, 0.0};  // extra rad/s added to overcome stall
 };
 
 }  // namespace diff_drive_hardware

@@ -391,7 +391,7 @@ docking_server:
     apriltag_dock:
       plugin: 'opennav_docking::SimpleChargingDock'
       docking_threshold: 0.05
-      staging_x_offset: -0.75  # 100cm staging distance before dock
+      staging_x_offset: -0.80  # 80cm staging distance before dock
       staging_yaw_offset: 0.0
       use_external_detection_pose: true  # Use AprilTag detection
       use_battery_status: false  # No battery feedback = non-charging mode
@@ -419,7 +419,7 @@ docking_server:
       k_delta: 2.0
       beta: 0.4
       lambda: 2.0
-      v_linear_min: 0.20
+      v_linear_min: 0.10
       v_linear_max: 0.30  # Slow approach speed
       v_angular_max: 0.2
       slowdown_radius: 0.30
