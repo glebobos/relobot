@@ -144,12 +144,12 @@ body {
     background-color: #8a2c37;
 }
 
-.coverage-btn-clear {
-    background-color: #5b6572;
+.coverage-btn-refresh {
+    background-color: #1a6fcc;
 }
 
-.coverage-btn-clear:hover {
-    background-color: #454d57;
+.coverage-btn-refresh:hover {
+    background-color: #145aa3;
 }
 
 #map {

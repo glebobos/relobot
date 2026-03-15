@@ -29,12 +29,12 @@
             <button id="explore-btn" class="map-btn explore-btn-idle">Start Exploration</button>
         </div>
         <div class="map-controls coverage-controls">
+            <button id="coverage-refresh-map-btn" class="map-btn coverage-btn-refresh">Refresh Map</button>
             <button id="coverage-preview-btn" class="map-btn coverage-btn-preview">Preview Coverage</button>
             <button id="coverage-execute-btn" class="map-btn coverage-btn-execute">Execute Coverage</button>
             <button id="coverage-stop-btn" class="map-btn coverage-btn-stop">Stop Coverage</button>
-            <button id="coverage-clear-btn" class="map-btn coverage-btn-clear">Clear Polygon</button>
         </div>
-        <div id="coverage-status" class="coverage-status">Coverage idle. Click the map to add polygon points. Right-click to remove the last point.</div>
+        <div id="coverage-status" class="coverage-status">Coverage idle. Map boundary is auto-detected from SLAM. Click "Refresh Map" to re-extract, then "Preview Coverage" to plan.</div>
     </div>
     <!-- roslib v2.1.0 (ESM) – loaded as a module so action_feedback/result
          messages are routed correctly. Exposes window.rosAction for dock/undock. -->

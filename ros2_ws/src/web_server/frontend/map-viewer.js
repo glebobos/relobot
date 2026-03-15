@@ -38,16 +38,10 @@ window.onload = function () {
       antialias: true,
     });
 
-    var coverageLayer = new THREE.Group();
     var previewLayer = new THREE.Group();
-    viewer.scene.add(coverageLayer);
+    var mapPolygonLayer = new THREE.Group();
     viewer.scene.add(previewLayer);
-
-    var polygonPoints = [];
-    var clickStart = null;
-    var raycaster = new THREE.Raycaster();
-    var pointer = new THREE.Vector2();
-    var groundPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+    viewer.scene.add(mapPolygonLayer);
 
     function clearGroup(group) {
       while (group.children.length > 0) {
@@ -56,40 +50,6 @@ window.onload = function () {
         if (child.geometry) child.geometry.dispose();
         if (child.material) child.material.dispose();
       }
-    }
-
-    function renderPolygon() {
-      clearGroup(coverageLayer);
-      if (polygonPoints.length === 0) {
-        return;
-      }
-
-      var material = new THREE.LineBasicMaterial({ color: 0x0b8457 });
-      var points = polygonPoints.map(function (point) {
-        return new THREE.Vector3(point.x, point.y, 0.06);
-      });
-      if (points.length >= 3) {
-        points.push(points[0].clone());
-      }
-      if (points.length >= 2) {
-        var lineGeometry = new THREE.BufferGeometry().setFromPoints(points);
-        coverageLayer.add(new THREE.Line(lineGeometry, material));
-      }
-
-      polygonPoints.forEach(function (point, index) {
-        var sphere = new THREE.Mesh(
-          new THREE.SphereGeometry(index === 0 ? 0.09 : 0.07, 16, 16),
-          new THREE.MeshBasicMaterial({ color: index === 0 ? 0x146c43 : 0x20a36c })
-        );
-        sphere.position.set(point.x, point.y, 0.08);
-        coverageLayer.add(sphere);
-      });
-    }
-
-    function notifyPolygonChanged() {
-      window.dispatchEvent(new CustomEvent('coverage-polygon-changed', {
-        detail: { pointCount: polygonPoints.length }
-      }));
     }
 
     function renderPreviewPath(pathMsg) {
@@ -110,22 +70,19 @@ window.onload = function () {
       previewLayer.add(new THREE.Line(pathGeometry, pathMaterial));
     }
 
-    function buildPolygonMessage() {
-      return {
-        header: { frame_id: 'map' },
-        polygon: {
-          points: polygonPoints.map(function (point) {
-            return { x: point.x, y: point.y, z: 0.0 };
-          })
-        }
-      };
+    function renderMapPolygon(msg) {
+      clearGroup(mapPolygonLayer);
+      if (!msg || !msg.polygon || !msg.polygon.points || msg.polygon.points.length < 3) {
+        return;
+      }
+      var pts = msg.polygon.points.map(function (p) {
+        return new THREE.Vector3(p.x, p.y, 0.05);
+      });
+      pts.push(pts[0].clone());
+      var geo = new THREE.BufferGeometry().setFromPoints(pts);
+      var mat = new THREE.LineBasicMaterial({ color: 0x1a6fcc });
+      mapPolygonLayer.add(new THREE.Line(geo, mat));
     }
-
-    var coveragePolygonTopic = new ROSLIB.Topic({
-      ros: ros,
-      name: '/coverage/polygon',
-      messageType: 'geometry_msgs/PolygonStamped'
-    });
 
     var previewPathTopic = new ROSLIB.Topic({
       ros: ros,
@@ -134,105 +91,16 @@ window.onload = function () {
     });
     previewPathTopic.subscribe(renderPreviewPath);
 
-    function publishPolygon() {
-      coveragePolygonTopic.publish(buildPolygonMessage());
-    }
-
-    function clearPolygon() {
-      polygonPoints = [];
-      renderPolygon();
-      publishPolygon();
-      renderPreviewPath(null);
-      notifyPolygonChanged();
-    }
-
-    function popPolygonPoint() {
-      if (polygonPoints.length === 0) {
-        return;
-      }
-      polygonPoints.pop();
-      renderPolygon();
-      publishPolygon();
-      notifyPolygonChanged();
-    }
-
-    function hasPolygon() {
-      return polygonPoints.length >= 3;
-    }
+    var polygonActiveTopic = new ROSLIB.Topic({
+      ros: ros,
+      name: '/coverage/polygon_active',
+      messageType: 'geometry_msgs/PolygonStamped'
+    });
+    polygonActiveTopic.subscribe(renderMapPolygon);
 
     window.coverageUi = {
-      clearPolygon: clearPolygon,
-      hasPolygon: hasPolygon,
-      publishPolygon: publishPolygon,
+      clearMapPolygon: function () { clearGroup(mapPolygonLayer); },
     };
-
-    function getEventClientPoint(event) {
-      if (event.changedTouches && event.changedTouches.length > 0) {
-        return {
-          x: event.changedTouches[0].clientX,
-          y: event.changedTouches[0].clientY,
-        };
-      }
-      if (event.touches && event.touches.length > 0) {
-        return {
-          x: event.touches[0].clientX,
-          y: event.touches[0].clientY,
-        };
-      }
-      return {
-        x: event.clientX,
-        y: event.clientY,
-      };
-    }
-
-    function eventToMapPoint(event) {
-      var clientPoint = getEventClientPoint(event);
-      var rect = viewer.renderer.domElement.getBoundingClientRect();
-      pointer.x = ((clientPoint.x - rect.left) / rect.width) * 2 - 1;
-      pointer.y = -((clientPoint.y - rect.top) / rect.height) * 2 + 1;
-      raycaster.setFromCamera(pointer, viewer.camera);
-      var intersection = new THREE.Vector3();
-      if (!raycaster.ray.intersectPlane(groundPlane, intersection)) {
-        return null;
-      }
-      return { x: intersection.x, y: intersection.y };
-    }
-
-    function handleMapClick(event) {
-      if (!clickStart) {
-        return;
-      }
-      var clientPoint = getEventClientPoint(event);
-      var moved = Math.hypot(clientPoint.x - clickStart.x, clientPoint.y - clickStart.y);
-      clickStart = null;
-      if (moved > 5) {
-        return;
-      }
-      var point = eventToMapPoint(event);
-      if (!point) {
-        return;
-      }
-      polygonPoints.push(point);
-      renderPolygon();
-      publishPolygon();
-      notifyPolygonChanged();
-    }
-
-    viewer.renderer.domElement.addEventListener('mousedown', function (event) {
-      clickStart = { x: event.clientX, y: event.clientY };
-    });
-    viewer.renderer.domElement.addEventListener('mouseup', handleMapClick);
-    viewer.renderer.domElement.addEventListener('touchstart', function (event) {
-      var clientPoint = getEventClientPoint(event);
-      clickStart = { x: clientPoint.x, y: clientPoint.y };
-    }, { passive: true });
-    viewer.renderer.domElement.addEventListener('touchend', function (event) {
-      handleMapClick(event);
-    }, { passive: true });
-    viewer.renderer.domElement.addEventListener('contextmenu', function (event) {
-      event.preventDefault();
-      popPolygonPoint();
-    });
 
     // Setup the map client using ROS3D.
     var gridClient = new ROS3D.OccupancyGridClient({

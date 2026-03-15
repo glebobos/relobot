@@ -131,30 +131,9 @@ let exploringActive = false;
 const coveragePreviewBtn = document.getElementById('coverage-preview-btn');
 const coverageExecuteBtn = document.getElementById('coverage-execute-btn');
 const coverageStopBtn = document.getElementById('coverage-stop-btn');
-const coverageClearBtn = document.getElementById('coverage-clear-btn');
+const coverageRefreshMapBtn = document.getElementById('coverage-refresh-map-btn');
 const coverageStatus = document.getElementById('coverage-status');
 let lastCoverageState = { state: 'idle', message: 'Coverage idle.' };
-
-window.addEventListener('coverage-polygon-changed', (event) => {
-    const pointCount = event.detail && Number.isFinite(event.detail.pointCount)
-        ? event.detail.pointCount
-        : 0;
-
-    if (pointCount >= 3) {
-        updateCoverageControls({
-            state: 'polygon_ready',
-            message: 'Coverage polygon updated. Preview to compute a path.',
-            point_count: pointCount,
-        });
-        return;
-    }
-
-    updateCoverageControls({
-        state: 'idle',
-        message: 'Coverage idle. Click the map to add polygon points. Right-click to remove the last point.',
-        point_count: pointCount,
-    });
-});
 
 function updateExploreButton(exploring) {
     exploringActive = exploring;
@@ -188,33 +167,16 @@ function updateCoverageControls(status) {
     }
 
     const busy = ['planning', 'executing', 'cancel_requested'].includes(status.state);
-    const polygonReady = window.coverageUi && window.coverageUi.hasPolygon
-        ? window.coverageUi.hasPolygon()
-        : status.point_count >= 3 || ['polygon_ready', 'preview_ready', 'completed'].includes(status.state);
     const previewReady = ['preview_ready', 'completed', 'executing'].includes(status.state);
 
     if (coveragePreviewBtn) coveragePreviewBtn.disabled = busy;
     if (coverageExecuteBtn) coverageExecuteBtn.disabled = busy || !previewReady;
     if (coverageStopBtn) coverageStopBtn.disabled = !busy;
-    if (coverageClearBtn) coverageClearBtn.disabled = false;
+    if (coverageRefreshMapBtn) coverageRefreshMapBtn.disabled = busy;
 }
 
 if (coveragePreviewBtn) {
     coveragePreviewBtn.addEventListener('click', () => {
-        const hasPolygon = window.coverageUi && window.coverageUi.hasPolygon
-            ? window.coverageUi.hasPolygon()
-            : false;
-        if (!hasPolygon) {
-            updateCoverageControls({
-                state: 'polygon_invalid',
-                message: 'Draw at least 3 polygon points on the map before previewing.',
-                point_count: 0,
-            });
-            return;
-        }
-        if (window.coverageUi && window.coverageUi.publishPolygon) {
-            window.coverageUi.publishPolygon();
-        }
         updateCoverageControls({
             state: 'planning',
             message: 'Computing coverage path.',
@@ -243,13 +205,10 @@ if (coverageStopBtn) {
     });
 }
 
-if (coverageClearBtn) {
-    coverageClearBtn.addEventListener('click', () => {
-        if (window.coverageUi && window.coverageUi.clearPolygon) {
-            window.coverageUi.clearPolygon();
-        }
-        sendCoverageCommand('clear');
-        updateCoverageControls({ state: 'idle', message: 'Coverage polygon cleared.' });
+if (coverageRefreshMapBtn) {
+    coverageRefreshMapBtn.addEventListener('click', () => {
+        updateCoverageControls({ state: 'planning', message: 'Re-extracting map boundary...' });
+        sendCoverageCommand('refresh_map');
     });
 }
 
