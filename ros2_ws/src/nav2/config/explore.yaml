@@ -2,7 +2,7 @@
 global_costmap:
   global_costmap:
     ros__parameters:
-      footprint: "[[-0.10, -0.245], [-0.10, 0.175], [0.46, 0.175], [0.46, -0.245]]"
+      footprint: "[[-0.10, -0.245], [-0.10, 0.175], [0.51, 0.175], [0.51, -0.245]]"
       use_sim_time: false
       robot_base_frame: base_link
       global_frame: map
@@ -49,7 +49,7 @@ global_costmap:
 local_costmap:
   local_costmap:
     ros__parameters:
-      footprint: "[[-0.10, -0.245], [-0.10, 0.175], [0.46, 0.175], [0.46, -0.245]]"
+      footprint: "[[-0.10, -0.245], [-0.10, 0.175], [0.51, 0.175], [0.51, -0.245]]"
       use_sim_time: false
       robot_base_frame: base_link
       global_frame: odom
@@ -268,8 +268,8 @@ behavior_server:
     robot_base_frame: base_link
     transform_tolerance: 0.2
     simulate_ahead_time: 2.0
-    max_rotational_vel: 0.8  # Match our robot limits
-    min_rotational_vel: 0.2
+    max_rotational_vel: 1.0  # Match diff_drive_controller and MPPI wz_max
+    min_rotational_vel: 0.22  # Above hardware angular floor: 0.35 rad/s × (0.095/0.16) ≈ 0.208 rad/s
     rotational_acc_lim: 4.5  # Match diff drive limits
 
 # BT Navigator parameters
@@ -356,13 +356,19 @@ velocity_smoother:
     smoothing_frequency: 15.0        # Reduced from 20.0 to 15.0 Hz for better performance
     scale_velocities: false
     feedback: "OPEN_LOOP"
-    max_velocity: [0.3, 0.0, 0.8]  # Match diff drive limits
-    min_velocity: [-0.3, 0.0, -0.8]
+    max_velocity: [0.3, 0.0, 1.0]  # Vx, Vy, Vw — match MPPI wz_max and diff_drive_controller
+    min_velocity: [-0.3, 0.0, -1.0]
     max_accel: [1.2, 0.0, 4.5]  # Match diff drive acceleration limits
     max_decel: [-1.2, 0.0, -4.5]
     odom_topic: "/odometry/filtered"  # Use filtered odometry /odometry/filtered if something
     odom_duration: 0.1
-    deadband_velocity: [0.0, 0.0, 0.0]  # Set deadband to filter out very small velocities
+    # Hardware minimums: linear floor = 0.35 rad/s × 0.095 m = 0.033 m/s,
+    # angular floor (pure rotation) = 0.35 / (0.32/2/0.095) = 0.208 rad/s.
+    # Commands below these get boosted by the hardware deadband — zero them here
+    # instead so nav2 gets a clean stop rather than an unexpected speed jump.
+    # Angular kept at 0.0: slow course corrections during path-following need
+    # fine angular control and the stall-boost handles the motor floor.
+    deadband_velocity: [0.034, 0.0, 0.0]
     velocity_timeout: 1.0
     enable_stamped_cmd_vel: false  # ? Missing - Set True for Jazzy, False for Humble/Iron
 
@@ -391,7 +397,7 @@ docking_server:
     apriltag_dock:
       plugin: 'opennav_docking::SimpleChargingDock'
       docking_threshold: 0.05
-      staging_x_offset: -0.75  # 100cm staging distance before dock
+      staging_x_offset: -0.80  # 80cm staging distance before dock
       staging_yaw_offset: 0.0
       use_external_detection_pose: true  # Use AprilTag detection
       use_battery_status: false  # No battery feedback = non-charging mode
@@ -419,7 +425,7 @@ docking_server:
       k_delta: 2.0
       beta: 0.4
       lambda: 2.0
-      v_linear_min: 0.20
+      v_linear_min: 0.04  # Hardware minimum: 0.35 rad/s × 0.095 m wheel_radius ≈ 0.033 m/s; 0.04 adds small margin
       v_linear_max: 0.30  # Slow approach speed
       v_angular_max: 0.2
       slowdown_radius: 0.30

@@ -33,6 +33,7 @@ find_package(asio_cmake_module REQUIRED)
 find_package(io_context REQUIRED)
 find_package(serial_driver REQUIRED)
 find_package(rclcpp_lifecycle REQUIRED)
+find_package(control_toolbox REQUIRED)
 
 # Add serial library
 find_library(SERIAL_LIBRARY serial)
@@ -66,6 +67,7 @@ ament_target_dependencies(
   asio_cmake_module
   io_context
   serial_driver
+  control_toolbox
 )
 
 pluginlib_export_plugin_description_file(hardware_interface diff_drive_hardware.xml)
@@ -104,6 +106,7 @@ ament_export_dependencies(
   asio_cmake_module
   io_context
   serial_driver
+  control_toolbox
 )
 
 ament_package()

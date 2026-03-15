@@ -8,6 +8,17 @@
       <plugin>diff_drive_hardware/DiffDriveHardware</plugin>
       <param name="wheel_radius">0.095</param>
       <param name="wheel_separation">0.32</param>
+      <!-- Velocity PID gains — tune per-wheel if motors differ -->
+      <param name="left_pid_p">0.15</param>
+      <param name="left_pid_i">0.04</param>
+      <param name="left_pid_d">0.0</param>
+      <param name="left_i_max">0.8</param>
+      <param name="left_i_min">-0.8</param>
+      <param name="right_pid_p">0.15</param>
+      <param name="right_pid_i">0.04</param>
+      <param name="right_pid_d">0.0</param>
+      <param name="right_i_max">0.8</param>
+      <param name="right_i_min">-0.8</param>
     </hardware>
     <joint name="left_wheel_joint">
       <command_interface name="velocity"/>
