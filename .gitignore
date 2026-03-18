@@ -24,3 +24,4 @@ ros2_ws/core
 
 pico_ware_imu_microros/**/build
 pico_ware_imu_microros/*.uf2
+*.uf2
