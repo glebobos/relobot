@@ -438,18 +438,38 @@ window.addEventListener('gamepadconnected', (e) => {
 
 
 /* ===== Telemetry overlay ============================================== */
-const vinSpan = document.getElementById('vin-display');
-const rpmSpan = document.getElementById('rpm-display');
+const vinSpan     = document.getElementById('vin-display');
+const chargerSpan = document.getElementById('charger-voltage-display');
+const rpmSpan     = document.getElementById('rpm-display');
 
 const VOLTAGE_THRESHOLD = 24;
+let currentChargerVolts = 0.0;
+let isRobotOnDock = false;
 
 function updateVoltage(volts) {
-    vinSpan.textContent = volts.toFixed(1) + ' V';
+    vinSpan.textContent = '🔋 ' + volts.toFixed(1);
     vinSpan.classList.toggle('warning', volts < VOLTAGE_THRESHOLD);
 }
 
+function renderChargerVoltage() {
+    if (!chargerSpan) return;
+    chargerSpan.textContent = '⚡ ' + currentChargerVolts.toFixed(1);
+    chargerSpan.classList.toggle('charging', isRobotOnDock);
+}
+
+function updateChargerVoltage(volts) {
+    currentChargerVolts = volts;
+    renderChargerVoltage();
+}
+
 function updateRpm(rpm) {
-    rpmSpan.textContent = Math.round(rpm) + ' RPM';
+    rpmSpan.textContent = '🕛 ' + Math.round(rpm);
+}
+
+function updateOnDock(isOnDock) {
+    if (dockBtn) dockBtn.disabled = isOnDock;
+    isRobotOnDock = isOnDock;
+    renderChargerVoltage();
 }
 
 function initTelemetry() {
@@ -462,7 +482,7 @@ function initTelemetry() {
     if (vinSpan) {
         const vinTopic = new Topic({
             ros,
-            name: '/knives/vin',
+            name: '/battery_voltage',
             messageType: 'std_msgs/Float32',
             throttle_rate: 1000,
         });
@@ -471,6 +491,28 @@ function initTelemetry() {
             if (isFinite(v)) updateVoltage(v);
         });
     }
+
+    if (chargerSpan) {
+        const chargerTopic = new Topic({
+            ros,
+            name: '/charger_voltage',
+            messageType: 'std_msgs/Float32',
+            throttle_rate: 1000,
+        });
+        chargerTopic.subscribe(msg => {
+            const v = parseFloat(msg.data);
+            if (isFinite(v)) updateChargerVoltage(v);
+        });
+    }
+
+    // on_dock — disable dock button and show badge while charging
+    const onDockTopic = new Topic({
+        ros,
+        name: '/on_dock',
+        messageType: 'std_msgs/Bool',
+        throttle_rate: 1000,
+    });
+    onDockTopic.subscribe(msg => updateOnDock(msg.data));
 
     if (rpmSpan) {
         const rpmTopic = new Topic({

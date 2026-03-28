@@ -14,8 +14,9 @@
         <div class="video-container" id="videoContainer">
             <img id="cameraStream" src="" alt="Camera Stream">
             <div class="video-overlay">
-                <span id="vin-display" class="overlay-value">--.-- V</span>
-                <span id="rpm-display" class="overlay-value">--- RPM</span>
+                <span id="vin-display" class="overlay-value">🔋 --.--</span>
+                <span id="charger-voltage-display" class="overlay-value">⚡ --.--</span>
+                <span id="rpm-display" class="overlay-value">🕛 ---</span>
             </div>
         </div>
     </div>
@@ -34,7 +35,8 @@
             <button id="coverage-execute-btn" class="map-btn coverage-btn-execute">Execute Coverage</button>
             <button id="coverage-stop-btn" class="map-btn coverage-btn-stop">Stop Coverage</button>
         </div>
-        <div id="coverage-status" class="coverage-status">Coverage idle. Map boundary is auto-detected from SLAM. Click "Refresh Map" to re-extract, then "Preview Coverage" to plan.</div>
+        <div id="coverage-status" class="coverage-status">Coverage idle. Map boundary is auto-detected from SLAM. Click
+            "Refresh Map" to re-extract, then "Preview Coverage" to plan.</div>
     </div>
     <!-- roslib v2.1.0 (ESM) – loaded as a module so action_feedback/result
          messages are routed correctly. Exposes window.rosAction for dock/undock. -->

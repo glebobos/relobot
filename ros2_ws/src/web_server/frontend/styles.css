@@ -288,3 +288,13 @@ body {
 #rpm-display {
     opacity: 0.85;
 }
+
+#charger-voltage-display {
+    opacity: 0.5;
+    font-size: 0.95rem;
+}
+
+#charger-voltage-display.charging {
+    opacity: 0.9;
+    color: #ffc800;
+}
