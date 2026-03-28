@@ -14,17 +14,16 @@
 # limitations under the License.
 
 """
-ROS 2 node that publishes BOTH knife-motor RPM and Vin (battery/input voltage).
+ROS 2 node that publishes knife-motor RPM and handles PID control.
 
 Parameters (all have sensible defaults):
   serial_port        : serial device of controller      (/dev/ttyACM4)
   baud_rate          : serial baud                      (115200)
   current_rpm_topic  : topic to publish RPM             (knives/current_rpm)
-  voltage_topic      : topic to publish Vin             (knives/vin)
-  set_rpm_topic     : topic to subscribe RPM commands  (knives/set_rpm)
+  set_rpm_topic      : topic to subscribe RPM commands  (knives/set_rpm)
   update_rate        : seconds between polls            (0.5)
 
-Services (same as before):
+Services:
   knives/enable_pid        (std_srvs/SetBool)
   knives/get_pid_status    (std_srvs/Trigger)
 """
@@ -48,14 +47,12 @@ class KnifeControllerWithVoltage(Node):
         self.declare_parameter('serial_port',        '/dev/ttyACM4')
         self.declare_parameter('baud_rate',          115200)
         self.declare_parameter('current_rpm_topic',  'knives/current_rpm')
-        self.declare_parameter('voltage_topic',      'knives/vin')
         self.declare_parameter('set_rpm_topic',      'knives/set_rpm')
         self.declare_parameter('update_rate',        0.5)
 
         port_name    = self.get_parameter('serial_port').value
         baud_rate    = self.get_parameter('baud_rate').value
         rpm_topic    = self.get_parameter('current_rpm_topic').value
-        vin_topic    = self.get_parameter('voltage_topic').value
         cmd_topic    = self.get_parameter('set_rpm_topic').value
         self.period  = float(self.get_parameter('update_rate').value)
 
@@ -66,7 +63,6 @@ class KnifeControllerWithVoltage(Node):
 
         # ─── pubs / subs ─────────────────────────────────────────────────────
         self.rpm_pub  = self.create_publisher(Float32, rpm_topic, 10)
-        self.vin_pub  = self.create_publisher(Float32, vin_topic, 10)
 
         self.rpm_sub  = self.create_subscription(
             Float32, cmd_topic, self.set_rpm_cb, 10)
@@ -92,15 +88,11 @@ class KnifeControllerWithVoltage(Node):
         self.ctrl.set_rpm(rpm)
 
     def poll_cb(self):
-        rpm, vin = self.ctrl.read_telemetry()
+        rpm = self.ctrl.read_rpm()
 
         if rpm is not None:
             self.rpm_pub.publish(Float32(data=rpm))
             self.get_logger().debug(f"RPM={rpm:.1f}")
-
-        if vin is not None:
-            self.vin_pub.publish(Float32(data=vin))
-            self.get_logger().debug(f"Vin={vin:.1f}")
 
     # ───────────────────────────── services ────────────────────────────────
     def enable_pid_cb(self, req, res):
