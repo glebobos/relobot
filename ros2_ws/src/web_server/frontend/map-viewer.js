@@ -38,6 +38,70 @@ window.onload = function () {
       antialias: true,
     });
 
+    var previewLayer = new THREE.Group();
+    var mapPolygonLayer = new THREE.Group();
+    viewer.scene.add(previewLayer);
+    viewer.scene.add(mapPolygonLayer);
+
+    function clearGroup(group) {
+      while (group.children.length > 0) {
+        var child = group.children.pop();
+        group.remove(child);
+        if (child.geometry) child.geometry.dispose();
+        if (child.material) child.material.dispose();
+      }
+    }
+
+    function renderPreviewPath(pathMsg) {
+      clearGroup(previewLayer);
+      if (!pathMsg || !pathMsg.poses || pathMsg.poses.length === 0) {
+        return;
+      }
+
+      var pathPoints = pathMsg.poses.map(function (poseStamped) {
+        return new THREE.Vector3(
+          poseStamped.pose.position.x,
+          poseStamped.pose.position.y,
+          0.1
+        );
+      });
+      var pathGeometry = new THREE.BufferGeometry().setFromPoints(pathPoints);
+      var pathMaterial = new THREE.LineBasicMaterial({ color: 0xd17a00 });
+      previewLayer.add(new THREE.Line(pathGeometry, pathMaterial));
+    }
+
+    function renderMapPolygon(msg) {
+      clearGroup(mapPolygonLayer);
+      if (!msg || !msg.polygon || !msg.polygon.points || msg.polygon.points.length < 3) {
+        return;
+      }
+      var pts = msg.polygon.points.map(function (p) {
+        return new THREE.Vector3(p.x, p.y, 0.05);
+      });
+      pts.push(pts[0].clone());
+      var geo = new THREE.BufferGeometry().setFromPoints(pts);
+      var mat = new THREE.LineBasicMaterial({ color: 0x1a6fcc });
+      mapPolygonLayer.add(new THREE.Line(geo, mat));
+    }
+
+    var previewPathTopic = new ROSLIB.Topic({
+      ros: ros,
+      name: '/coverage/preview_path',
+      messageType: 'nav_msgs/Path'
+    });
+    previewPathTopic.subscribe(renderPreviewPath);
+
+    var polygonActiveTopic = new ROSLIB.Topic({
+      ros: ros,
+      name: '/coverage/polygon_active',
+      messageType: 'geometry_msgs/PolygonStamped'
+    });
+    polygonActiveTopic.subscribe(renderMapPolygon);
+
+    window.coverageUi = {
+      clearMapPolygon: function () { clearGroup(mapPolygonLayer); },
+    };
+
     // Setup the map client using ROS3D.
     var gridClient = new ROS3D.OccupancyGridClient({
       ros: ros,

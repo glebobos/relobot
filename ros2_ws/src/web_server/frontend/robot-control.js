@@ -58,6 +58,7 @@ let cmdVelTopic = null;
 let knifeRpmTopic = null;
 let pidService = null;
 let exploreTopic = null;
+let coverageCommandTopic = null;
 
 function initRosControl() {
     if (!window.rosAction) {
@@ -90,6 +91,12 @@ function initRosControl() {
         messageType: 'std_msgs/Bool',
     });
 
+    coverageCommandTopic = new Topic({
+        ros,
+        name: '/coverage/command',
+        messageType: 'std_msgs/String',
+    });
+
     const exploreStatusTopic = new Topic({
         ros,
         name: '/explore/status',
@@ -100,12 +107,33 @@ function initRosControl() {
         updateExploreButton(exploring);
     });
 
+    const coverageStatusTopic = new Topic({
+        ros,
+        name: '/coverage/status',
+        messageType: 'std_msgs/String',
+    });
+    coverageStatusTopic.subscribe((msg) => {
+        let payload;
+        try {
+            payload = JSON.parse(msg.data);
+        } catch (_error) {
+            payload = { state: 'error', message: msg.data || 'Invalid coverage status payload.' };
+        }
+        updateCoverageControls(payload);
+    });
+
     console.log('[RosControl] Topics and service client ready');
 }
 initRosControl();
 
 const exploreBtn = document.getElementById('explore-btn');
 let exploringActive = false;
+const coveragePreviewBtn = document.getElementById('coverage-preview-btn');
+const coverageExecuteBtn = document.getElementById('coverage-execute-btn');
+const coverageStopBtn = document.getElementById('coverage-stop-btn');
+const coverageRefreshMapBtn = document.getElementById('coverage-refresh-map-btn');
+const coverageStatus = document.getElementById('coverage-status');
+let lastCoverageState = { state: 'idle', message: 'Coverage idle.' };
 
 function updateExploreButton(exploring) {
     exploringActive = exploring;
@@ -124,6 +152,67 @@ exploreBtn.addEventListener('click', () => {
     exploreTopic.publish({ data: next });
     updateExploreButton(next);
 });
+
+function sendCoverageCommand(command) {
+    if (!coverageCommandTopic) return;
+    coverageCommandTopic.publish({ data: command });
+}
+
+function updateCoverageControls(status) {
+    lastCoverageState = status;
+
+    if (coverageStatus) {
+        coverageStatus.textContent = status.message || 'Coverage status updated.';
+        coverageStatus.dataset.state = status.state || 'idle';
+    }
+
+    const busy = ['planning', 'executing', 'cancel_requested'].includes(status.state);
+    const previewReady = ['preview_ready', 'completed', 'executing'].includes(status.state);
+
+    if (coveragePreviewBtn) coveragePreviewBtn.disabled = busy;
+    if (coverageExecuteBtn) coverageExecuteBtn.disabled = busy || !previewReady;
+    if (coverageStopBtn) coverageStopBtn.disabled = !busy;
+    if (coverageRefreshMapBtn) coverageRefreshMapBtn.disabled = busy;
+}
+
+if (coveragePreviewBtn) {
+    coveragePreviewBtn.addEventListener('click', () => {
+        updateCoverageControls({
+            state: 'planning',
+            message: 'Computing coverage path.',
+        });
+        sendCoverageCommand('preview');
+    });
+}
+
+if (coverageExecuteBtn) {
+    coverageExecuteBtn.addEventListener('click', () => {
+        updateCoverageControls({
+            state: 'executing',
+            message: 'Executing cached coverage path.',
+        });
+        sendCoverageCommand('execute');
+    });
+}
+
+if (coverageStopBtn) {
+    coverageStopBtn.addEventListener('click', () => {
+        updateCoverageControls({
+            state: 'cancel_requested',
+            message: 'Canceling active coverage task.',
+        });
+        sendCoverageCommand('cancel');
+    });
+}
+
+if (coverageRefreshMapBtn) {
+    coverageRefreshMapBtn.addEventListener('click', () => {
+        updateCoverageControls({ state: 'planning', message: 'Re-extracting map boundary...' });
+        sendCoverageCommand('refresh_map');
+    });
+}
+
+updateCoverageControls(lastCoverageState);
 
 /** Publish a Twist message – linear.x and angular.z only. */
 function publishTwist(linear, angular) {

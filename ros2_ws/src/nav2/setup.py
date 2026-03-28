@@ -26,6 +26,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
+            'coverage_manager = frontier_explorer.coverage_manager:main',
+            'coverage_preview_test = frontier_explorer.coverage_preview_test:main',
         ],
     },
 )

@@ -193,6 +193,43 @@ After setting up these aliases, you can use:
 - `relobot-logs` - View live logs from all services
 - `relobot-find` - Find and identify connected devices
 
+## Coverage Planning Workflow
+
+The robot now includes an initial complete-coverage workflow built around Nav2 coverage planning.
+
+### Web UI flow
+
+1. Start the stack with `./start_robot.sh up`.
+2. Open the web UI.
+3. Click directly on the map to place polygon vertices for the coverage area.
+4. Right-click the map to remove the last point if needed.
+5. Click `Preview Coverage` to call the coverage planner.
+6. Inspect the generated path in the web UI and in RViz.
+7. Click `Execute Coverage` to send the cached path to Nav2 `follow_path`.
+8. Click `Stop Coverage` to cancel planning or path execution.
+9. Click `Clear Polygon` to remove the active area and preview.
+
+### Headless test command
+
+To verify the backend without using the browser, run:
+
+```bash
+docker exec ros2_ws-ros2_nav2-1 bash -lc 'source /opt/ros/humble/setup.bash && source /ros2_ws/install/setup.bash && ros2 run nav2 coverage_preview_test'
+```
+
+This publishes a simple rectangular test polygon and requests a coverage preview through the new coverage manager.
+
+### RViz verification topics
+
+For coverage inspection in RViz, add displays for these topics:
+
+- `/coverage/polygon_active`
+- `/coverage/preview_path`
+- `/coverage_server/coverage_plan`
+- `/coverage_server/field_boundary`
+- `/coverage_server/planning_field`
+- `/coverage_server/swaths`
+
 ## Robot Control
 
 ### Basic Movement Commands
