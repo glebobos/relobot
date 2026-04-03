@@ -24,7 +24,7 @@ slam_toolbox:
     throttle_scans: 1
     transform_publish_period: 0.05 #if 0 never publishes odometry
     map_update_interval: 1.0
-    resolution: 0.04
+    resolution: 0.025  # 2.5 cm cells — STL27L resolves ~3 mm at 1 m (0.167°), well within sensor capability
     min_laser_range: 0.05 #for rastering images
     max_laser_range: 20.0
     minimum_time_interval: 0.5
@@ -50,13 +50,13 @@ slam_toolbox:
     loop_match_minimum_response_fine: 0.45
     # Correlation Parameters - Correlation Parameters
     correlation_search_space_dimension: 1.0
-    correlation_search_space_resolution: 0.01
-    correlation_search_space_smear_deviation: 0.1 
+    correlation_search_space_resolution: 0.0125  # Half map resolution (0.025/2) for sub-cell accuracy
+    correlation_search_space_smear_deviation: 0.025  # Valid: in [0.5×0.0125, 10×0.0125] = [0.00625, 0.125]
 
     # Correlation Parameters - Loop Closure Parameters
     loop_search_space_dimension: 6.0
-    loop_search_space_resolution: 0.05
-    loop_search_space_smear_deviation: 0.03
+    loop_search_space_resolution: 0.025  # Match map resolution
+    loop_search_space_smear_deviation: 0.05   # Valid: in [0.5×0.025, 10×0.025] = [0.0125, 0.25]
 
     # Scan Matcher Parameters
     distance_variance_penalty: 0.5     

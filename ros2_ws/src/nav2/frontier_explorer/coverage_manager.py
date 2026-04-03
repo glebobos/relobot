@@ -15,6 +15,7 @@ from opennav_coverage_msgs.msg import Coordinate, Coordinates
 import rclpy
 from rclpy.action import ActionClient
 from rclpy.node import Node
+from rclpy.qos import QoSDurabilityPolicy, QoSProfile
 from std_msgs.msg import String
 
 
@@ -60,8 +61,15 @@ class CoverageManager(Node):
         self._preview_path_pub = self.create_publisher(
             Path, self.get_parameter('preview_path_topic').value, 10
         )
+        # Use TRANSIENT_LOCAL (latched) so new subscribers (e.g. a freshly-loaded
+        # browser page) immediately receive the last published polygon without
+        # needing to wait for the next map update or a manual Refresh Map click.
+        _latched_qos = QoSProfile(
+            depth=1,
+            durability=QoSDurabilityPolicy.TRANSIENT_LOCAL,
+        )
         self._polygon_echo_pub = self.create_publisher(
-            PolygonStamped, self.get_parameter('polygon_echo_topic').value, 10
+            PolygonStamped, self.get_parameter('polygon_echo_topic').value, _latched_qos
         )
 
         self.create_subscription(
@@ -393,8 +401,41 @@ class CoverageManager(Node):
         if not contours:
             return
         largest = max(contours, key=cv2.contourArea)
+        original_area = cv2.contourArea(largest)
+        # Reject trivially small contours (less than 1 m² of free space)
+        min_area_px = 1.0 / (msg.info.resolution ** 2)
+        if original_area < min_area_px:
+            return
         epsilon_px = self.get_parameter('map_contour_epsilon').value / msg.info.resolution
         approx = cv2.approxPolyDP(largest, epsilon_px, closed=True)
+        # Guard against degenerate simplification: if approxPolyDP reduced the
+        # polygon to a simple bounding rectangle (≤4 points) whose area is much
+        # larger than the original contour, the epsilon was too aggressive and the
+        # result is a crude bounding box rather than the real map boundary.
+        # Retry with progressively smaller epsilons before giving up.
+        if len(approx) <= 4:
+            approx_area = cv2.contourArea(approx)
+            if approx_area > original_area * 1.3 or len(approx) < 3:
+                for scale in (0.5, 0.25, 0.1):
+                    smaller_eps = epsilon_px * scale
+                    retry = cv2.approxPolyDP(largest, smaller_eps, closed=True)
+                    if len(retry) >= 5:
+                        retry_area = cv2.contourArea(retry)
+                        if retry_area <= original_area * 1.15:
+                            approx = retry
+                            self.get_logger().info(
+                                f'approxPolyDP retry with eps={smaller_eps:.1f}px '  # noqa: E501
+                                f'gave {len(approx)} points'
+                            )
+                            break
+                else:
+                    # All retries still degenerate — skip this map update to
+                    # avoid publishing a bogus bounding-rectangle polygon.
+                    self.get_logger().warn(
+                        'Map contour simplification produced a degenerate polygon; '
+                        'skipping polygon update. Try refreshing the map again.'
+                    )
+                    return
         if len(approx) < 3:
             return
         origin_x = msg.info.origin.position.x

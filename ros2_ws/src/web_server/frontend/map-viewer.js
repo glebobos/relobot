@@ -75,10 +75,40 @@ window.onload = function () {
       if (!msg || !msg.polygon || !msg.polygon.points || msg.polygon.points.length < 3) {
         return;
       }
-      var pts = msg.polygon.points.map(function (p) {
+      var rawPts = msg.polygon.points.map(function (p) {
         return new THREE.Vector3(p.x, p.y, 0.05);
       });
-      pts.push(pts[0].clone());
+
+      // Sanity-check: filter out extreme outlier vertices that indicate a
+      // degenerate bounding-rectangle polygon from approxPolyDP. Compute the
+      // median of x and y across all points, then reject any point whose
+      // distance from the median centre exceeds 3× the IQR-based spread.
+      var xs = rawPts.map(function (v) { return v.x; }).slice().sort(function (a, b) { return a - b; });
+      var ys = rawPts.map(function (v) { return v.y; }).slice().sort(function (a, b) { return a - b; });
+      var n = xs.length;
+      var medX = xs[Math.floor(n / 2)];
+      var medY = ys[Math.floor(n / 2)];
+      var spreadX = xs[Math.floor(n * 0.75)] - xs[Math.floor(n * 0.25)] || 1;
+      var spreadY = ys[Math.floor(n * 0.75)] - ys[Math.floor(n * 0.25)] || 1;
+      var maxSpread = Math.max(spreadX, spreadY);
+      var pts = rawPts.filter(function (v) {
+        var dx = Math.abs(v.x - medX);
+        var dy = Math.abs(v.y - medY);
+        return dx < maxSpread * 5 && dy < maxSpread * 5;
+      });
+
+      if (pts.length < 3) {
+        console.warn('renderMapPolygon: all points filtered as outliers, skipping draw.');
+        return;
+      }
+
+      // The backend already appends the closing point (first === last).
+      // Only add a synthetic close if the last point differs from the first.
+      var first = pts[0], last = pts[pts.length - 1];
+      if (Math.abs(first.x - last.x) > 1e-4 || Math.abs(first.y - last.y) > 1e-4) {
+        pts.push(first.clone());
+      }
+
       var geo = new THREE.BufferGeometry().setFromPoints(pts);
       var mat = new THREE.LineBasicMaterial({ color: 0x1a6fcc });
       mapPolygonLayer.add(new THREE.Line(geo, mat));
