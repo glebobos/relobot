@@ -42,7 +42,7 @@ const CFG = {
     cruiseButton: 4,
     scaleLinear: 0.3,
     scaleAngular: 1.0,
-    invertTurn: false,
+    invertTurn: true,
     invertDrive: true,
     invertKnife: false,
     knifeMinRpm: 500,

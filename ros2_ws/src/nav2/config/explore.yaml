@@ -8,7 +8,7 @@ global_costmap:
       global_frame: map
       update_frequency: 1.0
       publish_frequency: 1.0
-      resolution: 0.04  # Match SLAM resolution
+      resolution: 0.025  # Match SLAM resolution (2.5 cm cells)
       track_unknown_space: true
       unknown_cost_value: 255
       width: 50
@@ -55,7 +55,7 @@ local_costmap:
       global_frame: odom
       update_frequency: 10.0
       publish_frequency: 5.0
-      resolution: 0.04
+      resolution: 0.025  # Match SLAM resolution (2.5 cm cells)
       width: 5
       height: 5
       rolling_window: true
