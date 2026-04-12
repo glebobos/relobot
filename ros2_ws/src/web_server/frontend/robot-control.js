@@ -291,6 +291,9 @@ const throttleUpdateMotors = throttle(updateMotors, 100);
 
 function handleStart(e) {
     if (!videoContainer.contains(e.target) && e.target !== videoContainer) return;
+    // Don't activate touch-joystick when interacting with the knife overlay
+    const knifeOverlay = document.getElementById('knifeControlOverlay');
+    if (knifeOverlay && knifeOverlay.contains(e.target)) return;
     isActive = true;
     const touch = e.touches ? e.touches[0] : e;
     startX = touch.clientX;
@@ -344,6 +347,31 @@ let cruiseBtnWasPressed = false;
 // Publish knife RPM at a fixed interval (mirrors the Python 200 ms loop)
 setInterval(() => publishRpm(knifeCurrentRpm), 200);
 
+/* ===== Knife UI slider + PID checkbox ================================= */
+const knifeSlider     = document.getElementById('knifeSlider');
+const knifeSliderVal  = document.getElementById('knifeSliderValue');
+const pidCheckbox     = document.getElementById('pidCheckbox');
+
+if (knifeSlider) {
+    knifeSlider.addEventListener('input', () => {
+        const rpm = parseInt(knifeSlider.value, 10);
+        knifeCurrentRpm = rpm;
+        cruiseActive = false;            // override cruise when slider moves
+        if (knifeSliderVal) knifeSliderVal.textContent = rpm;
+    });
+    // prevent touch-joystick from activating while dragging the slider
+    knifeSlider.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: false });
+    knifeSlider.addEventListener('mousedown',  (e) => e.stopPropagation());
+}
+
+if (pidCheckbox) {
+    pidCheckbox.addEventListener('change', () => {
+        pidEnabled = pidCheckbox.checked;
+        callPidService(pidEnabled);
+        console.log(`[PID] checkbox → ${pidEnabled ? 'enabled' : 'disabled'}`);
+    });
+}
+
 function processKnife(knifeVal, cruiseBtnVal) {
     const rawRpm = knifeVal <= 0.05
         ? 0.0
@@ -372,6 +400,10 @@ function processKnife(knifeVal, cruiseBtnVal) {
     }
 
     knifeCurrentRpm = cruiseActive ? cruiseRpm : currentRpm;
+
+    // Keep the UI slider in sync with gamepad-driven RPM
+    if (knifeSlider) knifeSlider.value = Math.abs(knifeCurrentRpm);
+    if (knifeSliderVal) knifeSliderVal.textContent = Math.round(Math.abs(knifeCurrentRpm));
 }
 
 // ---- PID toggle state ----
@@ -393,6 +425,7 @@ function processPidToggle(btnVal) {
 
     pidEnabled = !pidEnabled;
     callPidService(pidEnabled);
+    if (pidCheckbox) pidCheckbox.checked = pidEnabled;
     console.log(`[PID] toggled → ${pidEnabled ? 'enabled' : 'disabled'}`);
 }
 
@@ -526,6 +559,21 @@ function initTelemetry() {
             if (isFinite(r)) updateRpm(r);
         });
     }
+
+    // Subscribe to PID status to keep the checkbox in sync
+    const pidStatusTopic = new Topic({
+        ros,
+        name: '/knives/pid_status',
+        messageType: 'std_msgs/String',
+        throttle_rate: 2000,
+    });
+    pidStatusTopic.subscribe(msg => {
+        if (!msg.data) return;
+        const data = msg.data.toLowerCase();
+        const enabled = data.includes('enabled') || data.includes('on');
+        pidEnabled = enabled;
+        if (pidCheckbox) pidCheckbox.checked = enabled;
+    });
 }
 initTelemetry();
 

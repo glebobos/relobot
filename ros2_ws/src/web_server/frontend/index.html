@@ -18,6 +18,20 @@
                 <span id="charger-voltage-display" class="overlay-value">⚡ --.--</span>
                 <span id="rpm-display" class="overlay-value">🕛 ---</span>
             </div>
+            <div class="knife-control-overlay" id="knifeControlOverlay">
+                <div class="knife-slider-row">
+                    <span class="knife-label">🔪</span>
+                    <input type="range" id="knifeSlider" min="0" max="3000" value="0" step="50" class="knife-slider">
+                    <span id="knifeSliderValue" class="knife-value">0</span>
+                </div>
+                <div class="knife-pid-row">
+                    <label class="knife-pid-label" for="pidCheckbox">
+                        <input type="checkbox" id="pidCheckbox" checked>
+                        <span class="pid-checkmark"></span>
+                        PID
+                    </label>
+                </div>
+            </div>
         </div>
     </div>
 
