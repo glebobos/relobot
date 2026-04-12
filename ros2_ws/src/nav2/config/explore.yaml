@@ -476,3 +476,4 @@ coverage_manager:
     swath_endpoint_margin: 0.25
     action_wait_timeout_sec: 5.0
     allow_execute_without_fresh_preview: true
+    map_contour_epsilon: 0.05
