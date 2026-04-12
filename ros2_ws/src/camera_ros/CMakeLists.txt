@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.18)
 project(camera_ros)
 
 find_package(ament_cmake REQUIRED)
+find_package(ament_cmake_python REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(tf2_ros REQUIRED)
@@ -29,6 +30,13 @@ install(DIRECTORY
   launch
   config
   DESTINATION share/${PROJECT_NAME}/
+)
+
+# Python scripts (apriltag_manager)
+install(PROGRAMS
+  scripts/apriltag_manager.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME apriltag_manager
 )
 
 ament_package()

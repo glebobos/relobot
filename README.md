@@ -117,13 +117,12 @@ The ReloBot platform consists of the following major components:
 
 ReloBot uses multiple Docker containers to organize its functionality:
 
-1. **Discovery Server** (`ds`) - Manages ROS2 node discovery
-2. **Differential Drive** (`ros2_diff_robot`) - Controls robot movement
-3. **IMU Sensor** (`ros2_imu`) - Processes orientation data
-4. **ToF Camera** (`ros2_tof_camera`) - Processes depth information
-5. **Web Server** (`ros2_web_server`) - Provides web interface
-6. **SLAM** (`ros2_slam`) - Handles mapping and localization
-7. **Joystick Controller** (`ros2_joystick`) - Manages joystick input and haptic feedback
+1. **Differential Drive** (`ros2_diff_robot`) - Controls robot movement
+2. **IMU Sensor** (`ros2_imu`) - Processes orientation data
+3. **ToF Camera** (`ros2_tof_camera`) - Processes depth information
+4. **Web Server** (`ros2_web_server`) - Provides web interface
+5. **SLAM** (`ros2_slam`) - Handles mapping and localization
+6. **Joystick Controller** (`ros2_joystick`) - Manages joystick input and haptic feedback
 
 The container configurations are defined in the respective Dockerfiles and orchestrated through `docker-compose.yml`.
 
@@ -134,15 +133,6 @@ For visualization in Windows WSL or Linux:
 docker run -it --rm -v /tmp/.X11-unix:/tmp/.X11-unix -v /mnt/wslg:/mnt/wslg -e DISPLAY \
   -e WAYLAND_DISPLAY -e XDG_RUNTIME_DIR -e PULSE_SERVER \
   osrf/ros:jazzy-desktop rviz2
-```
-
-For RViz2 with DDS discovery:
-```bash
-docker run -it --rm -v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY \
-  -e XDG_RUNTIME_DIR -e ROS_DISCOVERY_SERVER=192.168.18.120:11811 \
-  -e ROS_SUPER_CLIENT=True -e RMW_IMPLEMENTATION=rmw_fastrtps_cpp \
-  -e PULSE_SERVER -e FASTDDS_BUILTIN_TRANSPORTS=UDPv4 \
-  --network host osrf/ros:jazzy-desktop rviz2
 ```
 
 ### Creating Convenient Aliases
@@ -347,7 +337,6 @@ usbipd attach --wsl --busid 2-2
 
 2. **Docker Communication Issues**
    - Ensure HOST_IP is correctly set
-   - Check the ROS_DISCOVERY_SERVER settings
 
 3. **Motor Control Issues**
    - Verify the motor connections

@@ -69,6 +69,7 @@ services:
       - /dev/:/dev/
     environment:
       <<: *ros-env
+      ALWAYS_ON_APRILTAG: false
     network_mode: host
     ipc: host 
     privileged: true
