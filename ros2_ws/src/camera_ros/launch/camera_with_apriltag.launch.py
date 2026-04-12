@@ -11,6 +11,10 @@ def generate_launch_description():
     Generate a launch description for the camera node with AprilTag detection
     and dock pose publisher bridge.
 
+    AprilTag is NOT loaded at startup — the apriltag_manager node will
+    dynamically load it into camera_container only when a dock goal is active,
+    saving ~30 % CPU when idle.
+
     Returns
     -------
         LaunchDescription: the launch description
@@ -46,22 +50,7 @@ def generate_launch_description():
                 }],
                 extra_arguments=[{'use_intra_process_comms': True}],
             ),
-            # AprilTag Node
-            ComposableNode(
-                package='apriltag_ros',
-                plugin='AprilTagNode',
-                name='apriltag',
-                parameters=[os.path.join(
-                    get_package_share_directory('camera_ros'),
-                    'config',
-                    'apriltag.yaml'
-                )],
-                remappings=[
-                    ("image_rect", "/camera/image_raw"),
-                    ("camera_info", "/camera/camera_info"),
-                ],
-                extra_arguments=[{'use_intra_process_comms': True}],
-            ),
+            # AprilTag is loaded on-demand by apriltag_manager
             # Web Video Server for HTTP streaming (port 8080)
             ComposableNode(
                 package='web_video_server',
@@ -79,21 +68,22 @@ def generate_launch_description():
         output='screen',
     )
 
-    # Bridge node: looks up AprilTag TF and publishes PoseStamped for docking server
-    dock_pose_publisher = Node(
+    always_on_env = os.environ.get('ALWAYS_ON_APRILTAG', 'false').lower() == 'true'
+
+    # AprilTag manager: dynamically loads/unloads AprilTag + dock_pose_publisher
+    # when the /dock_robot action becomes active/inactive.
+    apriltag_manager = Node(
         package='camera_ros',
-        executable='dock_pose_publisher',
-        name='dock_pose_publisher',
-        parameters=[{
-            'dock_tag_frame': 'tag25h9:0',
-            'base_frame': 'odom',
-        }],
+        executable='apriltag_manager',
+        name='apriltag_manager',
         output='screen',
+        parameters=[{'always_on': always_on_env}],
     )
 
     return LaunchDescription([
         camera_launch_arg,
         container,
-        dock_pose_publisher,
+        apriltag_manager,
     ])
+
 
