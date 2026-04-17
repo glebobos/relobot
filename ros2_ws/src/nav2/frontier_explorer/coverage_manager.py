@@ -97,6 +97,15 @@ class CoverageManager(Node):
         self._last_preview_valid = False
         self._last_map_msg = None
 
+        # Republish the last-good polygon and preview path at 1 Hz so that
+        # browser clients that connect/reconnect while planning or executing
+        # immediately receive the boundary even when the state gate in _on_map
+        # prevents a fresh extraction.  The TRANSIENT_LOCAL polygon publisher
+        # normally handles this for a single reconnect, but rosbridge may
+        # subscribe with VOLATILE QoS and miss the latched sample; the timer
+        # acts as a fallback keepalive.
+        self.create_timer(1.0, self._republish_state)
+
         self._publish_status('idle', 'Coverage manager ready.')
 
     def _on_command(self, msg: String) -> None:
@@ -365,9 +374,22 @@ class CoverageManager(Node):
         self._cached_path = Path()
         self._last_preview_valid = False
         self._preview_path_pub.publish(Path())
-        self._polygon_echo_pub.publish(PolygonStamped())
+        # Do NOT publish an empty PolygonStamped here: doing so would latch an
+        # empty message on TRANSIENT_LOCAL, meaning any browser that reconnects
+        # after a clear would receive an empty polygon instead of waiting for the
+        # next valid extraction.  The preview path is volatile so clearing it is
+        # safe; the polygon stays as the last good value until a new one is ready.
         self._state = 'idle'
         self._publish_status('idle', 'Coverage state cleared.')
+
+    def _republish_state(self) -> None:
+        """1 Hz keepalive: re-publish the last-good polygon and cached path so
+        browsers that connect/reconnect during planning or execution receive the
+        current boundary without waiting for the next map update."""
+        if self._polygon_msg.polygon.points:
+            self._polygon_echo_pub.publish(self._polygon_msg)
+        if self._cached_path.poses:
+            self._preview_path_pub.publish(self._cached_path)
 
     def _on_map(self, msg: OccupancyGrid) -> None:
         h = msg.info.height
@@ -408,26 +430,51 @@ class CoverageManager(Node):
             return
         epsilon_px = self.get_parameter('map_contour_epsilon').value / msg.info.resolution
         approx = cv2.approxPolyDP(largest, epsilon_px, closed=True)
-        # Guard against degenerate simplification: if approxPolyDP reduced the
-        # polygon to a simple bounding rectangle (≤4 points) whose area is much
-        # larger than the original contour, the epsilon was too aggressive and the
-        # result is a crude bounding box rather than the real map boundary.
-        # Retry with progressively smaller epsilons before giving up.
+        # Guard against degenerate simplification: if approxPolyDP collapsed the
+        # contour to 4 points (a bounding rectangle), the result is useless for
+        # coverage.  We apply two independent tests:
+        #   1. Area ratio: approx_area >> original_area means the box is larger
+        #      than the actual free region (the classic "max rectangle" symptom).
+        #   2. Bounding-rect identity: if the 4-point polygon *is* the axis-
+        #      aligned bounding box (its area equals the bounding rect area within
+        #      5 %), it is degenerate regardless of area ratio — this catches the
+        #      case where the free region itself is already roughly rectangular so
+        #      original_area ≈ approx_area and the 1.3 × test passes incorrectly.
+        # We also catch rotated bounding boxes via cv2.minAreaRect.
+        # Retry with progressively smaller epsilons; require >= 5 points so we
+        # never accept a plain 4-corner rectangle from a retry either.
+        def _is_bounding_rect(poly_pts, contour) -> bool:
+            """Return True if poly_pts is effectively the axis-aligned or rotated
+            bounding rectangle of contour."""
+            if len(poly_pts) != 4:
+                return False
+            p_area = cv2.contourArea(poly_pts)
+            # Axis-aligned bounding rect
+            _x, _y, bw, bh = cv2.boundingRect(contour)
+            bbox_area = float(bw * bh)
+            if bbox_area > 0 and abs(p_area - bbox_area) / bbox_area < 0.05:
+                return True
+            # Minimum-area rotated rect
+            (_, (rw, rh), _) = cv2.minAreaRect(contour)
+            min_rect_area = float(rw * rh)
+            if min_rect_area > 0 and abs(p_area - min_rect_area) / min_rect_area < 0.05:
+                return True
+            return False
+
         if len(approx) <= 4:
             approx_area = cv2.contourArea(approx)
-            if approx_area > original_area * 1.3 or len(approx) < 3:
+            if approx_area > original_area * 1.05 or len(approx) < 3 or _is_bounding_rect(approx, largest):
                 for scale in (0.5, 0.25, 0.1):
                     smaller_eps = epsilon_px * scale
                     retry = cv2.approxPolyDP(largest, smaller_eps, closed=True)
-                    if len(retry) >= 5:
-                        retry_area = cv2.contourArea(retry)
-                        if retry_area <= original_area * 1.15:
-                            approx = retry
-                            self.get_logger().info(
-                                f'approxPolyDP retry with eps={smaller_eps:.1f}px '  # noqa: E501
-                                f'gave {len(approx)} points'
-                            )
-                            break
+                    retry_area = cv2.contourArea(retry)
+                    if len(retry) >= 5 and retry_area <= original_area * 1.05 and not _is_bounding_rect(retry, largest):
+                        approx = retry
+                        self.get_logger().info(
+                            f'approxPolyDP retry with eps={smaller_eps:.1f}px '  # noqa: E501
+                            f'gave {len(approx)} points'
+                        )
+                        break
                 else:
                     # All retries still degenerate — skip this map update to
                     # avoid publishing a bogus bounding-rectangle polygon.
