@@ -122,6 +122,22 @@ function initRosControl() {
         updateCoverageControls(payload);
     });
 
+    // Subscribe to the dock action status — works across all browser tabs/windows
+    // because state comes from ROS, not JS memory.
+    // Status codes: 1 = ACCEPTED, 2 = EXECUTING, 3 = CANCELING
+    const dockStatusTopic = new Topic({
+        ros,
+        name: '/dock_robot/_action/status',
+        messageType: 'action_msgs/GoalStatusArray',
+        throttle_rate: 500,
+    });
+    dockStatusTopic.subscribe((msg) => {
+        const active = (msg.status_list || []).some(
+            (s) => s.status === 1 || s.status === 2 || s.status === 3,
+        );
+        setDockingState(active);
+    });
+
     console.log('[RosControl] Topics and service client ready');
 }
 initRosControl();
@@ -500,7 +516,8 @@ function updateRpm(rpm) {
 }
 
 function updateOnDock(isOnDock) {
-    if (dockBtn) dockBtn.disabled = isOnDock;
+    // Only disable the dock button when already on the dock AND not currently docking
+    if (dockBtn && !dockingActive) dockBtn.disabled = isOnDock;
     isRobotOnDock = isOnDock;
     renderChargerVoltage();
 }
@@ -604,6 +621,22 @@ const BT_DIR = '/ros2_ws/install/nav2/share/nav2/behavior_trees';
 const dockBtn = document.getElementById('dock-btn');
 const undockBtn = document.getElementById('undock-btn');
 
+let dockingActive = false;   // true while a DockRobot goal is in-flight
+
+function setDockingState(active) {
+    dockingActive = active;
+    if (!dockBtn) return;
+    if (active) {
+        dockBtn.textContent = 'Stop Docking';
+        dockBtn.classList.add('dock-btn-active');
+        dockBtn.disabled = false;   // always clickable to cancel
+    } else {
+        dockBtn.textContent = 'Dock';
+        dockBtn.classList.remove('dock-btn-active');
+        dockBtn.disabled = isRobotOnDock;
+    }
+}
+
 function sendDockGoal() {
     if (!window.rosAction) { console.error('[Dock] rosAction not ready'); return; }
     const { ros, Action } = window.rosAction;
@@ -612,6 +645,7 @@ function sendDockGoal() {
         name: '/dock_robot',
         actionType: 'opennav_docking_msgs/action/DockRobot',
     });
+    // UI will update via the /dock_robot/_action/status subscription
     const id = action.sendGoal(
         { use_dock_id: true, dock_id: 'home_dock', navigate_to_staging_pose: true, max_staging_time: 60.0 },
         (result) => console.log('[Dock] result:', result),
@@ -619,6 +653,30 @@ function sendDockGoal() {
         (error) => console.error('[Dock] failed:', error),
     );
     console.log('[Dock] goal sent, id:', id);
+}
+
+function cancelDockGoal() {
+    if (!dockingActive) {
+        console.warn('[Dock] No active docking goal to cancel');
+        return;
+    }
+    if (!window.rosAction) { console.error('[Dock] rosAction not ready'); return; }
+    const { ros, Action } = window.rosAction;
+    // cancelAllGoals() calls /dock_robot/_action/cancel_goal with empty args
+    // which ROS2 interprets as "cancel all goals" — no UUID needed,
+    // so this works from any browser tab.
+    const action = new Action({
+        ros,
+        name: '/dock_robot',
+        actionType: 'opennav_docking_msgs/action/DockRobot',
+    });
+    console.log('[Dock] Cancelling all dock goals via cancel service');
+    try {
+        action.cancelAllGoals();
+    } catch (err) {
+        console.warn('[Dock] cancelAllGoals error:', err);
+    }
+    // UI resets automatically when status topic shows no active goals
 }
 
 function sendUndockGoal() {
@@ -647,5 +705,14 @@ function sendUndockGoal() {
     console.log('[Undock] goal sent, id:', id);
 }
 
-if (dockBtn) dockBtn.addEventListener('click', (e) => { e.stopPropagation(); sendDockGoal(); });
+if (dockBtn) {
+    dockBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (dockingActive) {
+            cancelDockGoal();
+        } else {
+            sendDockGoal();
+        }
+    });
+}
 if (undockBtn) undockBtn.addEventListener('click', (e) => { e.stopPropagation(); sendUndockGoal(); });

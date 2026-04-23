@@ -120,6 +120,20 @@ body {
     background-color: #bd2130;
 }
 
+.dock-btn-active {
+    background-color: #dc3545;
+    animation: pulse-danger 1.4s ease-in-out infinite;
+}
+
+.dock-btn-active:hover {
+    background-color: #bd2130;
+}
+
+@keyframes pulse-danger {
+    0%, 100% { box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+    50%       { box-shadow: 0 0 10px 3px rgba(220, 53, 69, 0.55); }
+}
+
 .coverage-btn-preview {
     background-color: #2a7f62;
 }
