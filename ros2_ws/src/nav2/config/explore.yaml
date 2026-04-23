@@ -8,6 +8,11 @@ global_costmap:
       global_frame: map
       update_frequency: 1.0
       publish_frequency: 1.0
+      # Tolerate up to 0.5 s of map->odom TF lag before rejecting costmap
+      # updates. SLAM publishes at 50 Hz but loop-closure / scan matching
+      # can briefly stall publication; a larger tolerance prevents
+      # "extrapolation into the future" errors from aborting active goals.
+      transform_tolerance: 0.5
       resolution: 0.025  # Match SLAM resolution (2.5 cm cells)
       track_unknown_space: true
       unknown_cost_value: 255
@@ -55,6 +60,7 @@ local_costmap:
       global_frame: odom
       update_frequency: 10.0
       publish_frequency: 5.0
+      transform_tolerance: 0.3
       resolution: 0.025  # Match SLAM resolution (2.5 cm cells)
       width: 5
       height: 5
@@ -197,6 +203,8 @@ planner_server:
     use_sim_time: false
     planner_plugins: ["GridBased"]
     expected_planner_frequency: 15.0
+    # Match global_costmap tolerance so SLAM TF lag doesn't abort planning.
+    transform_tolerance: 0.5
     GridBased:
       plugin: "nav2_smac_planner/SmacPlannerHybrid"
       downsample_costmap: false # whether or not to downsample the map
@@ -281,6 +289,7 @@ bt_navigator:
     odom_topic: /odometry/filtered  # Use filtered odometry from EKF
     bt_loop_duration: 50           # Reduced from 10ms to 50ms (20Hz instead of 100Hz)
     default_server_timeout: 20
+    transform_tolerance: 0.5       # Tolerate SLAM map->odom TF lag (see global_costmap)
     enable_groot_monitoring: false
     groot_zmq_publisher_port: 1666
     groot_zmq_server_port: 1667
@@ -477,3 +486,8 @@ coverage_manager:
     action_wait_timeout_sec: 5.0
     allow_execute_without_fresh_preview: true
     map_contour_epsilon: 0.05
+    # Erode free-space by ~0.4 m (16 px @ 0.025 m/px) so the coverage polygon
+    # sits well outside the 0.25 m global-costmap inflation layer plus the
+    # 0.51 m robot footprint length. Prevents planner_server from rejecting
+    # swath endpoints as "lethal" / "no valid path" during NavigateThroughPoses.
+    map_erode_radius: 16

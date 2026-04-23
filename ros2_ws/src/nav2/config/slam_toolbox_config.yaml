@@ -22,7 +22,12 @@ slam_toolbox:
 
     debug_logging: false
     throttle_scans: 1
-    transform_publish_period: 0.05 #if 0 never publishes odometry
+    # 50 Hz map->odom TF (was 0.05 = 20 Hz). The nav2 controller runs at 15 Hz and
+    # costmap plugins request TFs at scan/odom timestamps that can be up to
+    # ~50 ms newer than the last SLAM publish, causing sporadic
+    # "Lookup would require extrapolation into the future" errors during
+    # coverage execution. A 20 ms period keeps the TF buffer <1 loop behind.
+    transform_publish_period: 0.02 #if 0 never publishes odometry
     map_update_interval: 1.0
     resolution: 0.025  # 2.5 cm cells — STL27L resolves ~3 mm at 1 m (0.167°), well within sensor capability
     min_laser_range: 0.05 #for rastering images
