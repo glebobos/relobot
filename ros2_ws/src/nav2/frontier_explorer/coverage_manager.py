@@ -41,6 +41,8 @@ class CoverageManager(Node):
         self.declare_parameter('map_morph_close_radius', 3)
         self.declare_parameter('map_erode_radius', 5)
         self.declare_parameter('swath_endpoint_margin', 0.25)
+        self.declare_parameter('obstacle_min_area_m2', 0.0004)  # 4 cm²
+        self.declare_parameter('obstacle_dilate_m', 0.20)  # safety margin in metres
 
         self._default_frame_id = self.get_parameter('default_frame_id').value
         self._headland_width = float(self.get_parameter('headland_width').value)
@@ -71,6 +73,10 @@ class CoverageManager(Node):
         self._polygon_echo_pub = self.create_publisher(
             PolygonStamped, self.get_parameter('polygon_echo_topic').value, _latched_qos
         )
+        # Obstacle polygons published as JSON [[{x,y},...], ...] for the web viewer.
+        self._obstacles_pub = self.create_publisher(
+            String, '/coverage/obstacles_active', _latched_qos
+        )
 
         self.create_subscription(
             String,
@@ -89,6 +95,7 @@ class CoverageManager(Node):
         self._nav_client = ActionClient(self, NavigateThroughPoses, nav_through_poses_action_name)
 
         self._polygon_msg = PolygonStamped()
+        self._obstacle_polygons: list[list[tuple[float, float]]] = []
         self._cached_waypoints: list = []
         self._cached_path = Path()
         self._compute_goal_handle = None
@@ -96,6 +103,7 @@ class CoverageManager(Node):
         self._state = 'idle'
         self._last_preview_valid = False
         self._last_map_msg = None
+        self._last_logged_obstacle_count: int = -1
 
         # Republish the last-good polygon and preview path at 1 Hz so that
         # browser clients that connect/reconnect while planning or executing
@@ -152,6 +160,7 @@ class CoverageManager(Node):
         goal.generate_path = False
         goal.frame_id = self._polygon_msg.header.frame_id or self._default_frame_id
 
+        # polygons[0] = outer field boundary
         polygon = Coordinates()
         for point in self._polygon_msg.polygon.points:
             coordinate = Coordinate()
@@ -159,6 +168,16 @@ class CoverageManager(Node):
             coordinate.axis2 = float(point.y)
             polygon.coordinates.append(coordinate)
         goal.polygons.append(polygon)
+
+        # polygons[1..N] = inner obstacle cutouts (voids the robot must avoid)
+        for obs_pts in self._obstacle_polygons:
+            obs_coords = Coordinates()
+            for (ox, oy) in obs_pts:
+                c = Coordinate()
+                c.axis1 = float(ox)
+                c.axis2 = float(oy)
+                obs_coords.coordinates.append(c)
+            goal.polygons.append(obs_coords)
 
         goal.headland_mode.mode = 'CONSTANT'
         goal.headland_mode.width = float(self._headland_width)
@@ -172,6 +191,7 @@ class CoverageManager(Node):
             'Computing coverage path.',
             frame_id=goal.frame_id,
             point_count=len(self._polygon_msg.polygon.points) - 1,
+            obstacle_count=len(self._obstacle_polygons),
         )
 
         send_future = self._compute_client.send_goal_async(goal)
@@ -370,6 +390,7 @@ class CoverageManager(Node):
     def _clear_cached_state(self) -> None:
         self._cancel_active_goals()
         self._polygon_msg = PolygonStamped()
+        self._obstacle_polygons = []
         self._cached_waypoints = []
         self._cached_path = Path()
         self._last_preview_valid = False
@@ -412,17 +433,31 @@ class CoverageManager(Node):
             )
             free_mask = cv2.morphologyEx(free_mask, cv2.MORPH_CLOSE, kernel)
         # Erode free space inward so the polygon boundary is kept away from walls.
-        # At 0.04 m/cell, 5 px ≈ 0.20 m offset before headland is applied.
+        # At 0.025 m/cell, 16 px ≈ 0.40 m offset before headland is applied.
+        # IMPORTANT: snapshot the mask BEFORE erosion — we use this later for
+        # obstacle detection. Erosion merges obstacle blobs that are close to
+        # walls into the wall region, making them invisible inside the boundary.
+        pre_erode_mask = free_mask.copy()
         erode_r = int(self.get_parameter('map_erode_radius').value)
         if erode_r > 0:
             kernel = cv2.getStructuringElement(
                 cv2.MORPH_ELLIPSE, (2 * erode_r + 1, 2 * erode_r + 1)
             )
             free_mask = cv2.erode(free_mask, kernel)
-        contours, _ = cv2.findContours(free_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        # Use RETR_CCOMP to retrieve both outer boundary AND inner holes (obstacles).
+        # hierarchy shape: [1, N, 4] — [next, prev, first_child, parent]
+        contours, hierarchy = cv2.findContours(
+            free_mask, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE
+        )
         if not contours:
             return
-        largest = max(contours, key=cv2.contourArea)
+        # Outer contours have parent == -1 in hierarchy[0][i][3]
+        outer_contours = [
+            c for i, c in enumerate(contours) if hierarchy[0][i][3] == -1
+        ]
+        if not outer_contours:
+            return
+        largest = max(outer_contours, key=cv2.contourArea)
         original_area = cv2.contourArea(largest)
         # Reject trivially small contours (less than 1 m² of free space)
         min_area_px = 1.0 / (msg.info.resolution ** 2)
@@ -503,6 +538,62 @@ class CoverageManager(Node):
         if normalized is None:
             return
         self._polygon_msg = normalized
+
+        # --- Extract inner obstacle contours (holes inside the free-space mask) ---
+        # Obstacles in the SLAM map are non-free blobs fully enclosed in free space.
+        # They appear as child contours of the outer boundary in RETR_CCOMP output.
+        obstacle_min_px = self.get_parameter('obstacle_min_area_m2').value / (res ** 2)
+        obs_dilate_r = max(1, round(self.get_parameter('obstacle_dilate_m').value / res))
+        epsilon_px = self.get_parameter('map_contour_epsilon').value / res
+        # Build obstacle mask from the PRE-EROSION free mask so that obstacle
+        # blobs near walls are not absorbed by the erosion operation.
+        # Invert: occupied/unknown cells become white (obstacle candidates).
+        obs_mask = cv2.bitwise_not(pre_erode_mask)
+        # Restrict to pixels inside the (eroded) outer field boundary only.
+        outer_fill = np.zeros_like(obs_mask)
+        cv2.drawContours(outer_fill, [largest], -1, 255, thickness=cv2.FILLED)
+        obs_mask = cv2.bitwise_and(obs_mask, outer_fill)
+        # Dilate each obstacle blob so the cutout has a safety margin matching
+        # the robot footprint + inflation layer before passing to F2C.
+        if obs_dilate_r > 0:
+            dk = cv2.getStructuringElement(
+                cv2.MORPH_ELLIPSE, (2 * obs_dilate_r + 1, 2 * obs_dilate_r + 1)
+            )
+            obs_mask = cv2.dilate(obs_mask, dk)
+        obs_contours, _ = cv2.findContours(
+            obs_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+        )
+        obstacle_polygons: list[list[tuple[float, float]]] = []
+        for obs_c in obs_contours:
+            if cv2.contourArea(obs_c) < obstacle_min_px:
+                continue
+            obs_approx = cv2.approxPolyDP(obs_c, epsilon_px, closed=True)
+            if len(obs_approx) < 3:
+                continue
+            pts: list[tuple[float, float]] = []
+            for pt in obs_approx:
+                col = float(pt[0][0])
+                row = float(pt[0][1])
+                pts.append((origin_x + col * res, origin_y + row * res))
+            # Ensure closed (first == last), as required by ComputeCoveragePath
+            if pts[0] != pts[-1]:
+                pts.append(pts[0])
+            obstacle_polygons.append(pts)
+        self._obstacle_polygons = obstacle_polygons
+        n = len(obstacle_polygons)
+        if n != self._last_logged_obstacle_count:
+            self.get_logger().info(
+                f'Obstacle cutouts updated: {n} found in map.'
+            )
+            self._last_logged_obstacle_count = n
+        # Publish obstacle polygons as JSON for the web map viewer.
+        # Format: [[{"x": float, "y": float}, ...], ...]  — one list per obstacle.
+        obs_json = json.dumps([
+            [{'x': x, 'y': y} for (x, y) in poly]
+            for poly in obstacle_polygons
+        ])
+        self._obstacles_pub.publish(String(data=obs_json))
+
         self._polygon_echo_pub.publish(self._polygon_msg)
         self._last_preview_valid = False
         self._publish_status(
@@ -510,6 +601,7 @@ class CoverageManager(Node):
             'Map boundary extracted automatically.',
             point_count=len(self._polygon_msg.polygon.points) - 1,
             frame_id=self._polygon_msg.header.frame_id,
+            obstacle_count=len(self._obstacle_polygons),
         )
 
     def _normalize_polygon(self, msg: PolygonStamped) -> PolygonStamped | None:

@@ -491,3 +491,11 @@ coverage_manager:
     # 0.51 m robot footprint length. Prevents planner_server from rejecting
     # swath endpoints as "lethal" / "no valid path" during NavigateThroughPoses.
     map_erode_radius: 16
+    # Obstacle detection: blobs of occupied/unknown cells inside the field boundary
+    # are extracted as inner-ring cutouts and passed to Fields2Cover so swaths
+    # are not generated over trees, furniture, ponds, etc.
+    # obstacle_min_area_m2: ignore obstacles with footprint smaller than this (m²).
+    # obstacle_dilate_m: inflate each obstacle blob by this distance (metres)
+    #   before converting to map coords. Acts as a safety margin around obstacles.
+    obstacle_min_area_m2: 0.0004  # 4 cm² — pick up even small obstacles
+    obstacle_dilate_m: 0.05       # 20 cm safety margin around each obstacle

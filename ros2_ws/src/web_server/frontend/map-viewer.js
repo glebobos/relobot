@@ -40,8 +40,10 @@ window.onload = function () {
 
     var previewLayer = new THREE.Group();
     var mapPolygonLayer = new THREE.Group();
+    var obstacleLayer = new THREE.Group();
     viewer.scene.add(previewLayer);
     viewer.scene.add(mapPolygonLayer);
+    viewer.scene.add(obstacleLayer);
 
     function clearGroup(group) {
       while (group.children.length > 0) {
@@ -107,6 +109,29 @@ window.onload = function () {
       mapPolygonLayer.add(new THREE.Line(geo, mat));
     }
 
+    function renderObstacles(msg) {
+      clearGroup(obstacleLayer);
+      if (!msg || !msg.data) return;
+      var polygons;
+      try { polygons = JSON.parse(msg.data); } catch (e) { return; }
+      if (!Array.isArray(polygons)) return;
+      polygons.forEach(function (poly) {
+        if (!Array.isArray(poly) || poly.length < 3) return;
+        var pts = poly
+          .filter(function (p) { return Number.isFinite(p.x) && Number.isFinite(p.y); })
+          .map(function (p) { return new THREE.Vector3(p.x, p.y, 0.06); });
+        if (pts.length < 3) return;
+        // close the loop
+        if (Math.abs(pts[0].x - pts[pts.length-1].x) > 1e-4 ||
+            Math.abs(pts[0].y - pts[pts.length-1].y) > 1e-4) {
+          pts.push(pts[0].clone());
+        }
+        var geo = new THREE.BufferGeometry().setFromPoints(pts);
+        var mat = new THREE.LineBasicMaterial({ color: 0xff6600 });
+        obstacleLayer.add(new THREE.Line(geo, mat));
+      });
+    }
+
     var previewPathTopic = new ROSLIB.Topic({
       ros: ros,
       name: '/coverage/preview_path',
@@ -123,8 +148,20 @@ window.onload = function () {
     });
     polygonActiveTopic.subscribe(renderMapPolygon);
 
+    var obstaclesTopic = new ROSLIB.Topic({
+      ros: ros,
+      name: '/coverage/obstacles_active',
+      messageType: 'std_msgs/String',
+      durability: 'transient_local',
+      reliability: 'reliable'
+    });
+    obstaclesTopic.subscribe(renderObstacles);
+
     window.coverageUi = {
-      clearMapPolygon: function () { clearGroup(mapPolygonLayer); },
+      clearMapPolygon: function () {
+        clearGroup(mapPolygonLayer);
+        clearGroup(obstacleLayer);
+      },
     };
 
     // Setup the map client using ROS3D.
