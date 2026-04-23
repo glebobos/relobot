@@ -40,8 +40,10 @@ window.onload = function () {
 
     var previewLayer = new THREE.Group();
     var mapPolygonLayer = new THREE.Group();
+    var obstacleLayer = new THREE.Group();
     viewer.scene.add(previewLayer);
     viewer.scene.add(mapPolygonLayer);
+    viewer.scene.add(obstacleLayer);
 
     function clearGroup(group) {
       while (group.children.length > 0) {
@@ -58,13 +60,22 @@ window.onload = function () {
         return;
       }
 
-      var pathPoints = pathMsg.poses.map(function (poseStamped) {
-        return new THREE.Vector3(
-          poseStamped.pose.position.x,
-          poseStamped.pose.position.y,
-          0.1
-        );
-      });
+      var pathPoints = pathMsg.poses
+        .filter(function (poseStamped) {
+          var x = poseStamped.pose.position.x;
+          var y = poseStamped.pose.position.y;
+          return Number.isFinite(x) && Number.isFinite(y);
+        })
+        .map(function (poseStamped) {
+          return new THREE.Vector3(
+            poseStamped.pose.position.x,
+            poseStamped.pose.position.y,
+            0.1
+          );
+        });
+      if (pathPoints.length < 2) {
+        return;
+      }
       var pathGeometry = new THREE.BufferGeometry().setFromPoints(pathPoints);
       var pathMaterial = new THREE.LineBasicMaterial({ color: 0xd17a00 });
       previewLayer.add(new THREE.Line(pathGeometry, pathMaterial));
@@ -75,30 +86,14 @@ window.onload = function () {
       if (!msg || !msg.polygon || !msg.polygon.points || msg.polygon.points.length < 3) {
         return;
       }
-      var rawPts = msg.polygon.points.map(function (p) {
-        return new THREE.Vector3(p.x, p.y, 0.05);
-      });
-
-      // Sanity-check: filter out extreme outlier vertices that indicate a
-      // degenerate bounding-rectangle polygon from approxPolyDP. Compute the
-      // median of x and y across all points, then reject any point whose
-      // distance from the median centre exceeds 3× the IQR-based spread.
-      var xs = rawPts.map(function (v) { return v.x; }).slice().sort(function (a, b) { return a - b; });
-      var ys = rawPts.map(function (v) { return v.y; }).slice().sort(function (a, b) { return a - b; });
-      var n = xs.length;
-      var medX = xs[Math.floor(n / 2)];
-      var medY = ys[Math.floor(n / 2)];
-      var spreadX = xs[Math.floor(n * 0.75)] - xs[Math.floor(n * 0.25)] || 1;
-      var spreadY = ys[Math.floor(n * 0.75)] - ys[Math.floor(n * 0.25)] || 1;
-      var maxSpread = Math.max(spreadX, spreadY);
-      var pts = rawPts.filter(function (v) {
-        var dx = Math.abs(v.x - medX);
-        var dy = Math.abs(v.y - medY);
-        return dx < maxSpread * 5 && dy < maxSpread * 5;
-      });
+      // Reject points with non-finite coordinates (NaN/Infinity from rosbridge
+      // JSON edge cases) to prevent BufferGeometry from producing a max-size bbox.
+      var pts = msg.polygon.points
+        .filter(function (p) { return Number.isFinite(p.x) && Number.isFinite(p.y); })
+        .map(function (p) { return new THREE.Vector3(p.x, p.y, 0.05); });
 
       if (pts.length < 3) {
-        console.warn('renderMapPolygon: all points filtered as outliers, skipping draw.');
+        console.warn('renderMapPolygon: no finite points, skipping draw.');
         return;
       }
 
@@ -114,6 +109,29 @@ window.onload = function () {
       mapPolygonLayer.add(new THREE.Line(geo, mat));
     }
 
+    function renderObstacles(msg) {
+      clearGroup(obstacleLayer);
+      if (!msg || !msg.data) return;
+      var polygons;
+      try { polygons = JSON.parse(msg.data); } catch (e) { return; }
+      if (!Array.isArray(polygons)) return;
+      polygons.forEach(function (poly) {
+        if (!Array.isArray(poly) || poly.length < 3) return;
+        var pts = poly
+          .filter(function (p) { return Number.isFinite(p.x) && Number.isFinite(p.y); })
+          .map(function (p) { return new THREE.Vector3(p.x, p.y, 0.06); });
+        if (pts.length < 3) return;
+        // close the loop
+        if (Math.abs(pts[0].x - pts[pts.length-1].x) > 1e-4 ||
+            Math.abs(pts[0].y - pts[pts.length-1].y) > 1e-4) {
+          pts.push(pts[0].clone());
+        }
+        var geo = new THREE.BufferGeometry().setFromPoints(pts);
+        var mat = new THREE.LineBasicMaterial({ color: 0xff6600 });
+        obstacleLayer.add(new THREE.Line(geo, mat));
+      });
+    }
+
     var previewPathTopic = new ROSLIB.Topic({
       ros: ros,
       name: '/coverage/preview_path',
@@ -124,12 +142,26 @@ window.onload = function () {
     var polygonActiveTopic = new ROSLIB.Topic({
       ros: ros,
       name: '/coverage/polygon_active',
-      messageType: 'geometry_msgs/PolygonStamped'
+      messageType: 'geometry_msgs/PolygonStamped',
+      durability: 'transient_local',
+      reliability: 'reliable'
     });
     polygonActiveTopic.subscribe(renderMapPolygon);
 
+    var obstaclesTopic = new ROSLIB.Topic({
+      ros: ros,
+      name: '/coverage/obstacles_active',
+      messageType: 'std_msgs/String',
+      durability: 'transient_local',
+      reliability: 'reliable'
+    });
+    obstaclesTopic.subscribe(renderObstacles);
+
     window.coverageUi = {
-      clearMapPolygon: function () { clearGroup(mapPolygonLayer); },
+      clearMapPolygon: function () {
+        clearGroup(mapPolygonLayer);
+        clearGroup(obstacleLayer);
+      },
     };
 
     // Setup the map client using ROS3D.
