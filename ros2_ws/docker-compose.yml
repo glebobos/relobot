@@ -11,20 +11,20 @@ services:
     network_mode: host
     restart: unless-stopped
 
-  # ros2_lidar:
-  #   build:
-  #     context: .
-  #     dockerfile: lidar.dockerfile
-  #   volumes:
-  #     - .:/ros2_ws/
-  #   devices:
-  #     - /dev/ttyUSB0:/dev/ttyUSB0
-  #   environment:
-  #     <<: *ros-env
-  #   network_mode: host
-  #   ipc: host 
-  #   privileged: true
-  #   restart: unless-stopped
+  ros2_lidar:
+    build:
+      context: .
+      dockerfile: lidar.dockerfile
+    volumes:
+      - .:/ros2_ws/
+    devices:
+      - /dev/ttyUSB0:/dev/ttyUSB0
+    environment:
+      <<: *ros-env
+    network_mode: host
+    ipc: host 
+    privileged: true
+    restart: unless-stopped
 
   ros2_diff_robot:
     build:
@@ -62,25 +62,23 @@ services:
     restart: unless-stopped
 
 
-  # ros2_nav2:
-  #   build:
-  #     context: .
-  #     dockerfile: nav2.dockerfile
-  #   ipc: host
-  #   volumes:
-  #     - .:/ros2_ws/
-  #   devices:
-  #     - /dev/:/dev/
-  #   environment:
-  #     <<: *ros-env
-  #   network_mode: host
-  #   privileged: true
-  #   depends_on:
-  #     - ros2_lidar
-  #     - ros2_diff_robot
-  #   restart: unless-stopped
-
-
+  ros2_nav2:
+    build:
+      context: .
+      dockerfile: nav2.dockerfile
+    ipc: host
+    volumes:
+      - .:/ros2_ws/
+    devices:
+      - /dev/:/dev/
+    environment:
+      <<: *ros-env
+    network_mode: host
+    privileged: true
+    depends_on:
+      - ros2_lidar
+      - ros2_diff_robot
+    restart: unless-stopped
 
   ros2_rosbridge:
     build:
