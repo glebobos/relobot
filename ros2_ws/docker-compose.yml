@@ -39,21 +39,7 @@ services:
       DIFF_DRIVE_TTY: ${DIFF_DRIVE_TTY:-/dev/ttyACM1}
       IMU_TTY: ${IMU_TTY:-/dev/ttyACM5}
       INA226_TTY: /dev/ttyACM2
-    network_mode: host
-    ipc: host 
-    privileged: true
-    restart: unless-stopped
-
-  ros2_knife_controller:
-    build:
-      context: .
-      dockerfile: KnifeMotorController.dockerfile
-    volumes:
-      - .:/ros2_ws/
-    devices:
-      - /dev/ttyACM4:/dev/ttyACM4
-    environment:
-      <<: *ros-env
+      KNIVES_TTY: ${KNIVES_TTY:-/dev/ttyACM4}
     network_mode: host
     ipc: host 
     privileged: true

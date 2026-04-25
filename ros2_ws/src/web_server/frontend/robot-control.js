@@ -38,7 +38,6 @@ const CFG = {
     turnAxis: 0,
     driveAxis: 3,
     knifeButton: 7,
-    pidToggleButton: 9,
     cruiseButton: 4,
     scaleLinear: 0.3,
     scaleAngular: 1.0,
@@ -56,7 +55,6 @@ const CFG = {
 
 let cmdVelTopic = null;
 let knifeRpmTopic = null;
-let pidService = null;
 let exploreTopic = null;
 let coverageCommandTopic = null;
 
@@ -65,7 +63,7 @@ function initRosControl() {
         setTimeout(initRosControl, 50);
         return;
     }
-    const { ros, Topic, Service } = window.rosAction;
+    const { ros, Topic } = window.rosAction;
 
     cmdVelTopic = new Topic({
         ros,
@@ -77,12 +75,6 @@ function initRosControl() {
         ros,
         name: '/knives/set_rpm',
         messageType: 'std_msgs/Float32',
-    });
-
-    pidService = new Service({
-        ros,
-        name: '/knives/enable_pid',
-        serviceType: 'std_srvs/SetBool',
     });
 
     exploreTopic = new Topic({
@@ -245,17 +237,6 @@ function publishRpm(rpm) {
     knifeRpmTopic.publish({ data: rpm });
 }
 
-/** Call the PID enable/disable service. */
-function callPidService(enable) {
-    if (!pidService) return;
-    // roslib requires Request wrapper depending on version
-    pidService.callService({ data: enable },
-        (res) => console.log('[PID] toggle ok, result:', res),
-        (err) => console.error('[PID] toggle failed:', err)
-    );
-}
-
-
 /* ===== Motor helpers ================================================== */
 function computeTwist(turn, drive) {
     const linear = (CFG.invertDrive ? -drive : drive) * CFG.scaleLinear;
@@ -363,10 +344,9 @@ let cruiseBtnWasPressed = false;
 // Publish knife RPM at a fixed interval (mirrors the Python 200 ms loop)
 setInterval(() => publishRpm(knifeCurrentRpm), 200);
 
-/* ===== Knife UI slider + PID checkbox ================================= */
+/* ===== Knife UI slider ================================================ */
 const knifeSlider     = document.getElementById('knifeSlider');
 const knifeSliderVal  = document.getElementById('knifeSliderValue');
-const pidCheckbox     = document.getElementById('pidCheckbox');
 
 if (knifeSlider) {
     knifeSlider.addEventListener('input', () => {
@@ -378,14 +358,6 @@ if (knifeSlider) {
     // prevent touch-joystick from activating while dragging the slider
     knifeSlider.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: false });
     knifeSlider.addEventListener('mousedown',  (e) => e.stopPropagation());
-}
-
-if (pidCheckbox) {
-    pidCheckbox.addEventListener('change', () => {
-        pidEnabled = pidCheckbox.checked;
-        callPidService(pidEnabled);
-        console.log(`[PID] checkbox → ${pidEnabled ? 'enabled' : 'disabled'}`);
-    });
 }
 
 function processKnife(knifeVal, cruiseBtnVal) {
@@ -422,29 +394,6 @@ function processKnife(knifeVal, cruiseBtnVal) {
     if (knifeSliderVal) knifeSliderVal.textContent = Math.round(Math.abs(knifeCurrentRpm));
 }
 
-// ---- PID toggle state ----
-let pidEnabled = true;
-let pidLastToggle = 0;
-const PID_COOLDOWN_MS = 500;
-let pidBtnWasPressed = false;
-
-function processPidToggle(btnVal) {
-    const isPressed = btnVal > 0.5;
-    const justPressed = isPressed && !pidBtnWasPressed;
-    pidBtnWasPressed = isPressed;
-
-    if (!justPressed) return;
-
-    const now = Date.now();
-    if (now - pidLastToggle < PID_COOLDOWN_MS) return;
-    pidLastToggle = now;
-
-    pidEnabled = !pidEnabled;
-    callPidService(pidEnabled);
-    if (pidCheckbox) pidCheckbox.checked = pidEnabled;
-    console.log(`[PID] toggled → ${pidEnabled ? 'enabled' : 'disabled'}`);
-}
-
 // ---- main gamepad poll ----
 let lastGamepadSent = 0;
 let lastSentNonZero = false;
@@ -458,9 +407,8 @@ function pollGamepad() {
     const buttons = gp.buttons.map(b => b.value);
     const now = Date.now();
 
-    // Knife and PID toggle run on every frame for accurate edge detection
+    // Knife runs on every frame for accurate edge detection
     processKnife(buttons[CFG.knifeButton] ?? 0, buttons[CFG.cruiseButton] ?? 0);
-    processPidToggle(buttons[CFG.pidToggleButton] ?? 0);
 
     // Motion is rate-limited to 10 Hz to avoid flooding rosbridge
     if (now - lastGamepadSent > 100) {
@@ -577,20 +525,6 @@ function initTelemetry() {
         });
     }
 
-    // Subscribe to PID status to keep the checkbox in sync
-    const pidStatusTopic = new Topic({
-        ros,
-        name: '/knives/pid_status',
-        messageType: 'std_msgs/String',
-        throttle_rate: 2000,
-    });
-    pidStatusTopic.subscribe(msg => {
-        if (!msg.data) return;
-        const data = msg.data.toLowerCase();
-        const enabled = data.includes('enabled') || data.includes('on');
-        pidEnabled = enabled;
-        if (pidCheckbox) pidCheckbox.checked = enabled;
-    });
 }
 initTelemetry();
 
