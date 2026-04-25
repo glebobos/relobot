@@ -13,12 +13,15 @@
 #include "pid_controller.h"
 #include "pico_uart_transports.h"
 
-#define PWM_FREQUENCY_HZ            10000
 #define PWM_WRAP                    12499
 #define COMMAND_TIMEOUT_MS          5000
 #define WATCHDOG_TIMEOUT_MS         2000
 #define CONTROL_PERIOD_MS           20
+#define RPM_SAMPLE_PERIOD_MS        600
 #define TELEMETRY_PERIOD_MS         100
+
+#define BRAKE_RPM                   300.0f
+#define BRAKE_THRESHOLD_RPM         100.0f
 
 #define COUNTS_PER_REVOLUTION       1.0f
 
@@ -33,11 +36,11 @@
 #define RAMP_RATE_RPM_PER_SEC       2500.0f
 #define MAX_ABS_RPM                 3500.0f
 
-#define PIN_FWD_PWM                 0
-#define PIN_FWD_EN                  1
-#define PIN_REV_PWM                 3
-#define PIN_REV_EN                  4
-#define PIN_ENCODER                 5
+#define PIN_FWD_PWM                 26
+#define PIN_FWD_EN                  27
+#define PIN_REV_PWM                 29
+#define PIN_REV_EN                  6
+#define PIN_ENCODER                 7
 #define LED_PIN                     PICO_DEFAULT_LED_PIN
 
 #define AGENT_POLL_MS               500
@@ -88,6 +91,8 @@ static uint64_t last_control_ms = 0;
 static uint64_t last_rpm_sample_ms = 0;
 static uint32_t last_encoder_ticks = 0;
 
+static bool is_braking = false;
+
 static enum states state;
 
 static inline uint64_t now_ms(void)
@@ -136,6 +141,7 @@ static void emergency_stop(void)
 {
     target_rpm = 0.0f;
     control_rpm = 0.0f;
+    is_braking = false;
     pid_controller_reset(&rpm_pid);
     set_motor_pwm(0.0f, true);
 }
@@ -182,12 +188,8 @@ static void update_control(void)
         target_rpm = 0.0f;
     }
 
-    float dt_s = (float)(now - last_control_ms) / 1000.0f;
-    if (dt_s < (CONTROL_PERIOD_MS / 1000.0f)) {
-        return;
-    }
-
-    if ((now - last_rpm_sample_ms) >= CONTROL_PERIOD_MS) {
+    // --- RPM measurement on a long window (600 ms) to accumulate ticks ---
+    if ((now - last_rpm_sample_ms) >= RPM_SAMPLE_PERIOD_MS) {
         uint32_t ticks = encoder_ticks;
         uint32_t delta_ticks = ticks - last_encoder_ticks;
         float sample_dt_s = (float)(now - last_rpm_sample_ms) / 1000.0f;
@@ -199,6 +201,34 @@ static void update_control(void)
         }
         last_encoder_ticks = ticks;
         last_rpm_sample_ms = now;
+    }
+
+    // --- control loop runs at CONTROL_PERIOD_MS ---
+    float dt_s = (float)(now - last_control_ms) / 1000.0f;
+    if (dt_s < (CONTROL_PERIOD_MS / 1000.0f)) {
+        return;
+    }
+
+    // --- active braking: when target=0 and motor is still spinning ---
+    if (target_rpm == 0.0f && !is_braking && fabsf(measured_rpm) > BRAKE_THRESHOLD_RPM) {
+        is_braking = true;
+    }
+
+    if (is_braking) {
+        if (fabsf(measured_rpm) <= BRAKE_THRESHOLD_RPM) {
+            // braking complete — hard stop
+            is_braking = false;
+            control_rpm = 0.0f;
+            pid_controller_reset(&rpm_pid);
+            set_motor_pwm(0.0f, true);
+            last_control_ms = now;
+            return;
+        }
+        // apply reverse pulse to decelerate
+        float brake_pwm = rpm_to_base_pwm(BRAKE_RPM);
+        set_motor_pwm(brake_pwm, false);  // reverse direction
+        last_control_ms = now;
+        return;
     }
 
     float max_step = RAMP_RATE_RPM_PER_SEC * dt_s;
@@ -237,7 +267,7 @@ static bool create_entities(void)
     if (rclc_node_init_default(&ctx.node, "knives_node", "", &ctx.support) != RCL_RET_OK)
         goto fail_support;
 
-    if (rclc_subscription_init_best_effort(
+    if (rclc_subscription_init_default(
             &ctx.sub_set_rpm,
             &ctx.node,
             ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Float32),
@@ -302,11 +332,11 @@ static void destroy_entities(void)
     rmw_context_t *rmw_context = rcl_context_get_rmw_context(&ctx.support.context);
     (void)rmw_uros_set_context_entity_destroy_session_timeout(rmw_context, 0);
 
-    rcl_ret_t sub_ret = rcl_subscription_fini(&ctx.sub_set_rpm, &ctx.node);
-    rcl_ret_t pub_ret = rcl_publisher_fini(&ctx.pub_current_rpm, &ctx.node);
+    rcl_ret_t sub_ret   = rcl_subscription_fini(&ctx.sub_set_rpm, &ctx.node);
+    rcl_ret_t pub_ret   = rcl_publisher_fini(&ctx.pub_current_rpm, &ctx.node);
     rcl_ret_t timer_ret = rcl_timer_fini(&ctx.telemetry_timer);
     rclc_executor_fini(&ctx.executor);
-    rcl_ret_t node_ret = rcl_node_fini(&ctx.node);
+    rcl_ret_t node_ret  = rcl_node_fini(&ctx.node);
     rclc_support_fini(&ctx.support);
 
     (void)sub_ret;
