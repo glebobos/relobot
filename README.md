@@ -6,73 +6,65 @@
 
 ## Overview
 
-ReloBot is a comprehensive robotics platform built on ROS2 (Robot Operating System 2) that integrates multiple hardware components including differential drive motors, cutting blades (knives), IMU sensors, ToF cameras for navigation and object detection, and joystick control for manual operation. The system is designed with a microcontroller architecture using Raspberry Pi Pico boards for hardware control, with a central ROS2 system coordinating the operation.
+ReloBot is a robotics platform built on ROS2 Humble that integrates differential-drive wheels, cutting blades (knives), IMU, power monitoring, and a camera for navigation. All microcontrollers run C micro-ROS firmware over USB CDC, communicating directly with the ROS2 graph. High-level navigation uses Nav2 with a LiDAR-based EKF stack.
 
 ## System Architecture
 
-The ReloBot platform consists of the following major components:
+| Component | Hardware | Firmware | ROS2 interface |
+| :--- | :--- | :--- | :--- |
+| **Wheels** | XIAO RP2040 | `pico_ware_wheels_microros` | `/robot_joint_commands` + `/robot_joint_states` (JointState) |
+| **Knives** | XIAO RP2040 | `pico_ware_knives_microros` | `knives/set_rpm` + `knives/current_rpm` (Float32) |
+| **IMU** | RPi Pico RP2040 | `pico_ware_imu_microros` | `/imu/data` (Imu) |
+| **Power** | RPi Pico 2 RP2350 | `pico_ware_ina226_microros` | `/battery_state` |
+| **LiDAR** | USB | `ldlidar` | `/scan` |
+| **Camera** | USB | `camera_ros` | image/depth topics |
 
-1. **Differential Drive System** - Controls robot movement with two independently driven wheels
-2. **Cutting Mechanism** - Motor-controlled blades/knives with RPM control and PID stabilization
-3. **Sensor Suite**:
-   - IMU (Inertial Measurement Unit) - ICM20948 for orientation data
-   - ToF (Time of Flight) Camera - For distance measurement and object detection
-4. **Control Interfaces**:
-   - Web-based Control Interface - For remote operation and monitoring
-   - Joystick Controller - For direct manual control with haptic feedback
-5. **SLAM** (Simultaneous Localization and Mapping) - For environment mapping and navigation
+The differential drive uses `topic_based_ros2_control/TopicBasedSystem` as the hardware plugin — no custom C++ serial driver. The controller manager talks to the wheels Pico purely through ROS2 topics.
 
-## Hardware Components
+## Hardware
 
-- Raspberry Pi 5 (main controller)
-- Raspberry Pi Pico microcontrollers (for wheels and knife control)
-- ICM20948 IMU sensor
-- ToF Camera (B0410)
-- DC Motors with encoders
-- Bluetooth/USB Joystick controller
-- Various serial interfaces and USB connections
+- **Raspberry Pi 5** — main compute, runs all Docker containers
+- **XIAO RP2040** ×2 — wheels and knives, USB CDC micro-ROS
+- **RPi Pico RP2040** — IMU (ICM20948), USB CDC micro-ROS
+- **RPi Pico 2 RP2350** — INA226 power monitor, USB CDC micro-ROS
+- DC motors with single-channel 60 CPR encoders
+- LiDAR (USB)
+- USB camera
 
 ## Software Stack
 
-- **ROS2 Humble** - Core robotics framework
-- **FastDDS** - For distributed communications
-- **Python** - For high-level control and microcontroller programming
-- **Docker** - For containerization of ROS2 nodes
-- **Pygame** - For joystick control interface and haptic feedback
-- **Systemd** - For autostart services on Raspberry Pi
-- **Web Server** - For remote control interface
+- **ROS2 Humble** — core framework (all nodes run in Docker)
+- **micro-ROS** — C firmware on all Pico boards (USB CDC transport)
+- **ros2_control** + `topic_based_ros2_control` — hardware abstraction for wheels
+- **diff_drive_controller** — velocity → wheel command conversion
+- **robot_localization** (EKF) — fuses wheel odometry + IMU
+- **Nav2** — autonomous navigation
+- **Docker / Docker Compose** — container orchestration
 
 ## Project Structure
 
 ```
-├── finddevice.py              # Utility to find connected serial devices
-├── start_app_helper.sh        # Startup script for the application (autostart)
-├── B0410_Tof_Firmware/        # ToF camera firmware
-├── helpers/                   # Utility scripts and tools
-│   ├── joystic_test/          # Joystick testing utilities
-│   │   └── joystic.py         # Joystick controller interface with haptic feedback
-│   └── rviz2/                 # RViz2 visualization tools
-├── pico_ware_imu/             # IMU sensor code and libraries
-├── pico_ware_knives/          # Blade/knife control system
-│   ├── boot.py
-│   ├── code.py                # Main control logic
-│   └── calibration/           # Calibration tools
-├── pico_ware_wheels/          # Wheel control system
-│   ├── boot.py
-│   ├── code.py                # Main control logic
-│   └── calibration/           # Calibration tools
-├── pico_ware_knives_microros/ # RP2040 micro-ROS firmware for knife spindle
-└── ros2_ws/                   # ROS2 workspace
-    ├── docker-compose.yml     # Docker configuration for all services
-    ├── *.dockerfile           # Individual service Dockerfiles
-    └── src/                   # ROS2 packages
-        ├── arducam_rclpy_tof_pointcloud/   # ToF camera ROS2 package
-        ├── diff_drive_hardware/            # Differential drive controller
-        ├── icm_20948/                      # IMU sensor package
-      ├── mower_knife_controller/         # Legacy serial knife bridge (retired)
-        ├── serial/                         # Serial communication library
-        ├── slam_tool/                      # SLAM implementation
-        └── web_server/                     # Web-based control interface
+├── start_robot.sh              # Start/stop the full stack
+├── FLASHING.md                 # How to flash all Pico boards
+├── helpers/
+│   ├── joystic_test/           # Joystick testing utilities
+│   └── rviz2/                  # RViz2 Docker helper
+├── pico_ware_wheels_microros/  # RP2040 micro-ROS firmware — wheels
+├── pico_ware_knives_microros/  # RP2040 micro-ROS firmware — knife spindle
+├── pico_ware_imu_microros/     # RP2040 micro-ROS firmware — IMU
+├── pico_ware_ina226_microros/  # RP2350 micro-ROS firmware — power monitor
+├── pico_ware_wheels/           # Legacy CircuitPython wheel code (reference only)
+└── ros2_ws/                    # ROS2 workspace
+    ├── docker-compose.yml      # All services
+    ├── *.dockerfile            # Per-service Dockerfiles
+    └── src/
+        ├── diff_drive_hardware/    # URDF, controllers config, launch (no C++ plugin)
+        ├── camera_ros/             # Camera driver
+        ├── ldlidar/                # LiDAR driver
+        ├── explore_lite/           # Autonomous exploration
+        ├── nav2/                   # Nav2 configuration
+        ├── opennav_coverage/       # Coverage path planning
+        └── web_server/             # Web-based control UI
 ```
 
 ## Getting Started
@@ -80,124 +72,64 @@ The ReloBot platform consists of the following major components:
 ### Prerequisites
 
 - Raspberry Pi 5 with Raspberry Pi OS
-- Docker and Docker Compose
-- ROS2 Humble (if running outside of Docker)
-- Python 3.x
-- USB access to hardware components
-- Bluetooth or USB joystick controller
+- Docker and Docker Compose installed
+- All Pico boards flashed with their respective micro-ROS firmware (see [FLASHING.md](FLASHING.md))
+- USB devices plugged in (see device mapping in [FLASHING.md](FLASHING.md))
 
-### Hardware Setup
-
-1. Connect the Raspberry Pi Pico boards running the wheel and knife control firmware
-2. Connect the IMU sensor to a USB port
-3. Connect the ToF camera to a USB port
-4. Connect the joystick controller via Bluetooth or USB
-
-### Software Setup
-
-1. Clone this repository:
-   ```bash
-   git clone https://github.com/glebobos/relobot.git
-   cd relobot
-   ```
-
-2. Automatic device detection:
-   ```bash
-   python3 finddevice.py
-   ```
-   This will identify and map the connected devices.
-
-3. Start the ROS2 nodes:
-   ```bash
-   cd ros2_ws
-   export HOST_IP=$(hostname -I | awk '{print $1}')
-   docker compose up
-   ```
-
-## Docker Containers
-
-ReloBot uses multiple Docker containers to organize its functionality:
-
-1. **Differential Drive** (`ros2_diff_robot`) - Controls robot movement
-2. **IMU Sensor** (`ros2_imu`) - Processes orientation data
-3. **ToF Camera** (`ros2_tof_camera`) - Processes depth information
-4. **Web Server** (`ros2_web_server`) - Provides web interface
-5. **SLAM** (`ros2_slam`) - Handles mapping and localization
-6. **Joystick Controller** (`ros2_joystick`) - Manages joystick input and haptic feedback
-
-The container configurations are defined in the respective Dockerfiles and orchestrated through `docker-compose.yml`.
-
-## Running RViz2 for Visualization
-
-For visualization in Windows WSL or Linux:
-```bash
-docker run -it --rm -v /tmp/.X11-unix:/tmp/.X11-unix -v /mnt/wslg:/mnt/wslg -e DISPLAY \
-  -e WAYLAND_DISPLAY -e XDG_RUNTIME_DIR -e PULSE_SERVER \
-  osrf/ros:jazzy-desktop rviz2
-```
-
-### Creating Convenient Aliases
-
-To make running RViz2 and other ReloBot commands easier, you can create convenient aliases:
-
-#### RViz2 Alias
-
-1. Make the RViz2 script executable (if not already done):
-   ```bash
-   chmod +x /home/admin/Documents/relobot/start_rviz2.sh
-   ```
-
-2. Add the alias to your shell configuration:
-   ```bash
-   echo 'alias rviz="/home/admin/Documents/relobot/start_rviz2.sh"' >> ~/.bashrc
-   ```
-
-3. Reload your shell configuration:
-   ```bash
-   source ~/.bashrc
-   ```
-
-4. Now you can start RViz2 from any terminal with:
-   ```bash
-   rviz
-   ```
-
-#### Additional Useful Aliases
-
-You can also create aliases for other common tasks:
+### Start the stack
 
 ```bash
-# Add more aliases to ~/.bashrc
-echo 'alias relobot-start="cd /home/admin/Documents/relobot/ros2_ws && docker compose up"' >> ~/.bashrc
-echo 'alias relobot-stop="cd /home/admin/Documents/relobot/ros2_ws && docker compose down"' >> ~/.bashrc
-echo 'alias relobot-logs="cd /home/admin/Documents/relobot/ros2_ws && docker compose logs -f"' >> ~/.bashrc
-echo 'alias relobot-find="python3 /home/admin/Documents/relobot/finddevice.py"' >> ~/.bashrc
-
-# Reload shell configuration
-source ~/.bashrc
+./start_robot.sh up
 ```
 
-After setting up these aliases, you can use:
-- `rviz` - Start RViz2 visualization
-- `relobot-start` - Start all ReloBot services
-- `relobot-stop` - Stop all ReloBot services  
-- `relobot-logs` - View live logs from all services
-- `relobot-find` - Find and identify connected devices
+Development mode (rebuilds ROS2 packages on startup):
+```bash
+./start_robot.sh up --dev
+```
+
+Stop everything:
+```bash
+./start_robot.sh down
+```
+
+Start a single service:
+```bash
+./start_robot.sh up ros2_diff_robot
+```
+
+### Docker Services
+
+| Service | Description |
+| :--- | :--- |
+| `ros2_frontend` | nginx — serves the web UI |
+| `ros2_lidar` | LiDAR driver (`ldlidar`) |
+| `ros2_diff_robot` | ros2_control + diff_drive_controller + EKF + micro-ROS agent (wheels, knives, IMU, INA226) |
+| `ros2_camera_rp` | Camera driver + AprilTag detection |
+| `ros2_nav2` | Nav2 navigation stack |
+
+### Running RViz2
+
+```bash
+./rviz2.sh
+```
+
+Or directly:
+```bash
+docker run -it --rm -v /tmp/.X11-unix:/tmp/.X11-unix -v /mnt/wslg:/mnt/wslg \
+  -e DISPLAY -e WAYLAND_DISPLAY -e XDG_RUNTIME_DIR -e PULSE_SERVER \
+  --network host osrf/ros:jazzy-desktop rviz2
+```
 
 ## Coverage Planning Workflow
 
-The robot now includes an initial complete-coverage workflow built around Nav2 coverage planning.
-
-### Web UI flow
-
 1. Start the stack with `./start_robot.sh up`.
 2. Open the web UI.
-3. Click directly on the map to place polygon vertices for the coverage area.
-4. Right-click the map to remove the last point if needed.
-5. Click `Preview Coverage` to call the coverage planner.
-6. Inspect the generated path in the web UI and in RViz.
-7. Click `Execute Coverage` to send the cached path to Nav2 `follow_path`.
-8. Click `Stop Coverage` to cancel planning or path execution.
+3. Click the map to place polygon vertices for the coverage area.
+4. Right-click to remove the last point.
+5. Click **Preview Coverage** to call the coverage planner.
+6. Inspect the generated path in the web UI and RViz.
+7. Click **Execute Coverage** to send the path to Nav2 `follow_path`.
+8. Click **Stop Coverage** to cancel at any time.
 9. Click `Clear Polygon` to remove the active area and preview.
 
 ### Headless test command
