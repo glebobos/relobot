@@ -53,7 +53,6 @@ The differential drive uses `topic_based_ros2_control/TopicBasedSystem` as the h
 ├── pico_ware_knives_microros/  # RP2040 micro-ROS firmware — knife spindle
 ├── pico_ware_imu_microros/     # RP2040 micro-ROS firmware — IMU
 ├── pico_ware_ina226_microros/  # RP2350 micro-ROS firmware — power monitor
-├── pico_ware_wheels/           # Legacy CircuitPython wheel code (reference only)
 └── ros2_ws/                    # ROS2 workspace
     ├── docker-compose.yml      # All services
     ├── *.dockerfile            # Per-service Dockerfiles
@@ -130,173 +129,30 @@ docker run -it --rm -v /tmp/.X11-unix:/tmp/.X11-unix -v /mnt/wslg:/mnt/wslg \
 6. Inspect the generated path in the web UI and RViz.
 7. Click **Execute Coverage** to send the path to Nav2 `follow_path`.
 8. Click **Stop Coverage** to cancel at any time.
-9. Click `Clear Polygon` to remove the active area and preview.
 
-### Headless test command
-
-To verify the backend without using the browser, run:
+## Monitoring
 
 ```bash
-docker exec ros2_ws-ros2_nav2-1 bash -lc 'source /opt/ros/humble/setup.bash && source /ros2_ws/install/setup.bash && ros2 run nav2 coverage_preview_test'
-```
+# Joint states from wheels Pico
+ros2 topic echo /robot_joint_states
 
-This publishes a simple rectangular test polygon and requests a coverage preview through the new coverage manager.
+# Odometry
+ros2 topic echo /odom
 
-### RViz verification topics
-
-For coverage inspection in RViz, add displays for these topics:
-
-- `/coverage/polygon_active`
-- `/coverage/preview_path`
-- `/coverage_server/coverage_plan`
-- `/coverage_server/field_boundary`
-- `/coverage_server/planning_field`
-- `/coverage_server/swaths`
-
-## Robot Control
-
-### Basic Movement Commands
-
-Control the robot via ROS2 topics:
-
-```bash
-# Move forward (0.2 m/s)
-ros2 topic pub /cmd_vel geometry_msgs/msg/Twist \
-  "{linear: {x: 0.2}, angular: {z: 0.0}}" --once
-
-# Turn left (0.5 rad/s)
-ros2 topic pub /cmd_vel geometry_msgs/msg/Twist \
-  "{linear: {x: 0.0}, angular: {z: 0.5}}" --once
-
-# Turn right (-0.5 rad/s)
-ros2 topic pub /cmd_vel geometry_msgs/msg/Twist \
-  "{linear: {x: 0.0}, angular: {z: -0.5}}" --once
-
-# Stop
-ros2 topic pub /cmd_vel geometry_msgs/msg/Twist \
-  "{linear: {x: 0.0}, angular: {z: 0.0}}" --once
-```
-
-### Joystick Controller
-
-The ReloBot supports control via a joystick/gamepad controller, providing intuitive manual control with haptic feedback.
-
-#### Setting Up the Controller
-
-1. Connect your controller via USB or pair it via Bluetooth:
-   ```bash
-   # For Bluetooth controllers
-   bluetoothctl
-   # Then in the bluetoothctl prompt:
-   scan on
-   # Wait for your controller to appear, note its MAC address
-   pair XX:XX:XX:XX:XX:XX
-   connect XX:XX:XX:XX:XX:XX
-   # Exit with:
-   exit
-   ```
-
-2. Test the controller:
-   ```bash
-   python3 helpers/joystic_test/joystic.py
-   ```
-
-#### Controller Features
-
-- Analog stick control for precise movement
-- Haptic feedback for obstacles and system events
-- Button mapping for special functions:
-  - Start/Stop cutting blades
-  - Reset navigation
-  - Emergency stop
-
-#### Controller Configuration
-
-### Monitoring Robot State
-
-```bash
-# View joint state information
-ros2 topic echo /joint_states
-```
-
-## Microcontroller Firmware
-
-### Wheel Controller
-
-The wheel controller (`pico_ware_wheels/code.py`) manages the differential drive system. The firmware:
-- Controls motor speed and direction
-- Reads encoder feedback for position tracking
-- Provides serial interface to ROS2
-
-### Knife Controller
-
-The knife controller (`pico_ware_knives/code.py`) manages the cutting mechanism. The firmware:
-- Controls knife motor RPM with PID stabilization
-- Reads encoder feedback for speed control
-- Provides serial interface to ROS2
-
-## Development
-
-### Building ROS2 Packages
-
-```bash
-# Build a specific package
-colcon build --packages-select diff_drive_hardware
-
-# Source the setup script
-source install/setup.bash
-
-# Launch a package
-ros2 launch diff_drive_hardware diffbot.launch.py
-```
-
-### USB Connection in WSL (Windows)
-
-For Windows users using WSL, USB devices need to be forwarded:
-
-```bash
-usbipd list
-usbipd bind --busid 2-2
-usbipd attach --wsl --busid 2-2
+# LiDAR
+ros2 topic echo /scan
 ```
 
 ## Troubleshooting
 
-### Common Issues
-
-1. **Serial Connection Problems**
-   - Check the device connections with `ls /dev/tty*`
-   - Run `python3 finddevice.py` to detect connected devices
-
-2. **Docker Communication Issues**
-   - Ensure HOST_IP is correctly set
-
-3. **Motor Control Issues**
-   - Verify the motor connections
-   - Check encoder feedback
-   - Run calibration scripts in the calibration directories
-
-4. **Joystick Controller Issues**
-   - Check controller battery/connection status
-   - Run `python3 helpers/joystic_test/joystic.py` to test controller functionality
-   - For Bluetooth controllers, reinitiate pairing if connection is lost
-
-5. **Autostart Problems**
-   - Check service status with `sudo systemctl status relobot.service`
-   - Verify logs with `sudo journalctl -u relobot.service`
-   - Ensure network connection is available before Docker containers start
+- **Wheels Pico not connecting** — check `ls /dev/ttyACM*`, verify `WHEELS_TTY` env var matches
+- **Motors not moving** — confirm micro-ROS agent is up: `ros2 node list` should show `wheels_node`
+- **Robot turns instead of going straight** — feedforward calibration values are in `pico_ware_wheels_microros/src/main.cpp` (`FF_K_*`, `FF_C_*`)
+- **Pico needs reflashing** — see [FLASHING.md](FLASHING.md)
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Acknowledgements
-
-- ROS2 Community
-- FastDDS Team
-- Contributors to the project
-
-## Contact
+Apache License 2.0 — see [LICENSE](LICENSE).
 
 For questions or support, please open an issue on the GitHub repository.
 
