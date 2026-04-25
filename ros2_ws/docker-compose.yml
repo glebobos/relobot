@@ -36,7 +36,7 @@ services:
       - /dev/:/dev/
     environment:
       <<: *ros-env
-      DIFF_DRIVE_TTY: ${DIFF_DRIVE_TTY:-/dev/ttyACM1}
+      WHEELS_TTY: ${WHEELS_TTY:-/dev/ttyACM0}
       IMU_TTY: ${IMU_TTY:-/dev/ttyACM4}
       INA226_TTY: /dev/ttyACM2
       KNIVES_TTY: ${KNIVES_TTY:-/dev/ttyACM3}
