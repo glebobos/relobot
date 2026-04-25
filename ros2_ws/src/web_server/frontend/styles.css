@@ -393,60 +393,6 @@ body {
     box-shadow: 0 0 10px rgba(255, 106, 0, 0.9);
 }
 
-/* --- PID checkbox --- */
-.knife-pid-row {
-    flex-shrink: 0;
-}
-
-.knife-pid-label {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    color: #fff;
-    font-family: 'Courier New', monospace;
-    font-size: 0.9rem;
-    font-weight: 700;
-    cursor: pointer;
-    user-select: none;
-    -webkit-user-select: none;
-}
-
-.knife-pid-label input[type="checkbox"] {
-    display: none;
-}
-
-.pid-checkmark {
-    width: 20px;
-    height: 20px;
-    border-radius: 4px;
-    border: 2px solid rgba(255, 255, 255, 0.5);
-    background: rgba(255, 255, 255, 0.1);
-    position: relative;
-    transition: background 0.2s, border-color 0.2s;
-}
-
-.knife-pid-label input[type="checkbox"]:checked + .pid-checkmark {
-    background: #28a745;
-    border-color: #28a745;
-}
-
-.pid-checkmark::after {
-    content: '';
-    position: absolute;
-    display: none;
-    left: 5px;
-    top: 1px;
-    width: 6px;
-    height: 11px;
-    border: solid #fff;
-    border-width: 0 2px 2px 0;
-    transform: rotate(45deg);
-}
-
-.knife-pid-label input[type="checkbox"]:checked + .pid-checkmark::after {
-    display: block;
-}
-
 /* Responsive tweaks for the knife overlay */
 @media (max-width: 480px) {
     .knife-control-overlay {

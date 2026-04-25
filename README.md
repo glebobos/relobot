@@ -61,6 +61,7 @@ The ReloBot platform consists of the following major components:
 │   ├── boot.py
 │   ├── code.py                # Main control logic
 │   └── calibration/           # Calibration tools
+├── pico_ware_knives_microros/ # RP2040 micro-ROS firmware for knife spindle
 └── ros2_ws/                   # ROS2 workspace
     ├── docker-compose.yml     # Docker configuration for all services
     ├── *.dockerfile           # Individual service Dockerfiles
@@ -68,7 +69,7 @@ The ReloBot platform consists of the following major components:
         ├── arducam_rclpy_tof_pointcloud/   # ToF camera ROS2 package
         ├── diff_drive_hardware/            # Differential drive controller
         ├── icm_20948/                      # IMU sensor package
-        ├── mower_knife_controller/         # Knife motor controller
+      ├── mower_knife_controller/         # Legacy serial knife bridge (retired)
         ├── serial/                         # Serial communication library
         ├── slam_tool/                      # SLAM implementation
         └── web_server/                     # Web-based control interface
