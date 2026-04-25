@@ -1,12 +1,5 @@
 #include "pid_controller.h"
 
-static float clampf(float value, float min_value, float max_value)
-{
-    if (value < min_value) return min_value;
-    if (value > max_value) return max_value;
-    return value;
-}
-
 void pid_controller_init(
     pid_controller_t *pid,
     float kp,
@@ -17,9 +10,13 @@ void pid_controller_init(
     float integral_min,
     float integral_max)
 {
-    if (pid == 0) {
+    if (pid == NULL) {
         return;
     }
+
+    /* #P3 — silently swap inverted limits so clamp always works correctly */
+    if (out_min > out_max)           { float t = out_min; out_min = out_max; out_max = t; }
+    if (integral_min > integral_max) { float t = integral_min; integral_min = integral_max; integral_max = t; }
 
     pid->kp = kp;
     pid->ki = ki;
@@ -34,35 +31,41 @@ void pid_controller_init(
 
 void pid_controller_reset(pid_controller_t *pid)
 {
-    if (pid == 0) {
+    if (pid == NULL) {
         return;
     }
 
     pid->integral = 0.0f;
-    pid->prev_error = 0.0f;
+    pid->prev_measurement = 0.0f;
     pid->initialized = 0;
 }
 
 float pid_controller_update(pid_controller_t *pid, float setpoint, float measurement, float dt_s)
 {
-    if (pid == 0 || dt_s <= 0.0f) {
+    if (pid == NULL || dt_s <= 0.0f) {
+        return 0.0f;
+    }
+
+    /* #P2 — refuse to corrupt integral state with NaN/Inf inputs */
+    if (!isfinite(setpoint) || !isfinite(measurement)) {
         return 0.0f;
     }
 
     float error = setpoint - measurement;
-    pid->integral = clampf(
+    pid->integral = pid_clampf(
         pid->integral + (error * dt_s),
         pid->integral_min,
         pid->integral_max);
 
+    /* #P1 — derivative-on-measurement eliminates setpoint-step kick */
     float derivative = 0.0f;
     if (pid->initialized) {
-        derivative = (error - pid->prev_error) / dt_s;
+        derivative = -(measurement - pid->prev_measurement) / dt_s;
     }
 
-    pid->prev_error = error;
+    pid->prev_measurement = measurement;
     pid->initialized = 1;
 
     float output = (pid->kp * error) + (pid->ki * pid->integral) + (pid->kd * derivative);
-    return clampf(output, pid->out_min, pid->out_max);
+    return pid_clampf(output, pid->out_min, pid->out_max);
 }

@@ -49,12 +49,15 @@
 #define AGENT_PING_ATTEMPTS         1
 #define TIME_SYNC_TIMEOUT_MS        1000
 
+#define DIRECTION_DEADTIME_MS       2
+#define DIRECTION_CHANGE_RPM        50.0f
+
 #define EXECUTE_EVERY_N_MS(MS, X) do {                          \
-    static int64_t init = -1;                                   \
-    if (init == -1) { init = (int64_t)uxr_millis(); }           \
-    if ((int64_t)uxr_millis() - init > (MS)) {                  \
+    static uint64_t init = 0;                                   \
+    if (init == 0) { init = now_ms(); }                         \
+    if (now_ms() - init > (MS)) {                               \
         X;                                                      \
-        init = (int64_t)uxr_millis();                           \
+        init = now_ms();                                        \
     }                                                           \
 } while (0)
 
@@ -92,6 +95,10 @@ static uint64_t last_rpm_sample_ms = 0;
 static uint32_t last_encoder_ticks = 0;
 
 static bool is_braking = false;
+static bool brake_forward = true;    /* direction to apply brake pulse (#1) */
+static bool last_dir_forward = true; /* last direction applied to H-bridge (#2/#7) */
+static bool new_measurement_available = false; /* gates PID integrator (#5/#P6) */
+static float last_pwm_adjust = 0.0f;           /* reused on ticks with stale data (#5) */
 
 static enum states state;
 
@@ -122,7 +129,18 @@ static void set_motor_pwm(float pwm, bool forward)
         gpio_put(PIN_REV_EN, 0);
         pwm_set_gpio_level(PIN_FWD_PWM, 0);
         pwm_set_gpio_level(PIN_REV_PWM, 0);
+        last_dir_forward = forward;
         return;
+    }
+
+    /* #2/#7 — enforce dead-time on direction change to prevent BTS7960 cross-conduction */
+    if (forward != last_dir_forward) {
+        gpio_put(PIN_FWD_EN, 0);
+        gpio_put(PIN_REV_EN, 0);
+        pwm_set_gpio_level(PIN_FWD_PWM, 0);
+        pwm_set_gpio_level(PIN_REV_PWM, 0);
+        sleep_ms(DIRECTION_DEADTIME_MS);
+        last_dir_forward = forward;
     }
 
     gpio_put(PIN_FWD_EN, 1);
@@ -201,6 +219,7 @@ static void update_control(void)
         }
         last_encoder_ticks = ticks;
         last_rpm_sample_ms = now;
+        new_measurement_available = true;  /* #5/#P6 — signal fresh data to PID */
     }
 
     // --- control loop runs at CONTROL_PERIOD_MS ---
@@ -209,13 +228,19 @@ static void update_control(void)
         return;
     }
 
-    // --- active braking: when target=0 and motor is still spinning ---
-    if (target_rpm == 0.0f && !is_braking && fabsf(measured_rpm) > BRAKE_THRESHOLD_RPM) {
+    // --- active braking: when target≈0 and motor is still spinning ---
+    if (fabsf(target_rpm) < 1.0f && !is_braking && fabsf(measured_rpm) > BRAKE_THRESHOLD_RPM) {
         is_braking = true;
+        /* #1 — brake direction is opposite of current motion direction */
+        brake_forward = (control_rpm < 0.0f);
     }
 
     if (is_braking) {
-        if (fabsf(measured_rpm) <= BRAKE_THRESHOLD_RPM) {
+        /* #3 — abort braking immediately if a new non-zero command arrives */
+        if (fabsf(target_rpm) >= 1.0f) {
+            is_braking = false;
+            /* fall through to normal control path below */
+        } else if (fabsf(measured_rpm) <= BRAKE_THRESHOLD_RPM) {
             // braking complete — hard stop
             is_braking = false;
             control_rpm = 0.0f;
@@ -223,12 +248,13 @@ static void update_control(void)
             set_motor_pwm(0.0f, true);
             last_control_ms = now;
             return;
+        } else {
+            // apply opposing pulse to decelerate
+            float brake_pwm = rpm_to_base_pwm(BRAKE_RPM);
+            set_motor_pwm(brake_pwm, brake_forward);  /* #1 — correct brake direction */
+            last_control_ms = now;
+            return;
         }
-        // apply reverse pulse to decelerate
-        float brake_pwm = rpm_to_base_pwm(BRAKE_RPM);
-        set_motor_pwm(brake_pwm, false);  // reverse direction
-        last_control_ms = now;
-        return;
     }
 
     float max_step = RAMP_RATE_RPM_PER_SEC * dt_s;
@@ -243,11 +269,25 @@ static void update_control(void)
         return;
     }
 
-    float pwm_adjust = pid_controller_update(&rpm_pid, control_rpm, measured_rpm, dt_s);
+    /* #5/#P6 — only update PID integrator when fresh measurement data is available */
+    if (new_measurement_available) {
+        last_pwm_adjust = pid_controller_update(&rpm_pid, control_rpm, measured_rpm, dt_s);
+        new_measurement_available = false;
+    }
+    float pwm_adjust = last_pwm_adjust;
 
     float base_pwm = rpm_to_base_pwm(control_rpm);
     float out_pwm = clampf(base_pwm + pwm_adjust, 0.0f, 1.0f);
-    set_motor_pwm(out_pwm, control_rpm >= 0.0f);
+
+    /* #4 — coast until measured speed is low enough to safely switch direction */
+    bool new_dir = (control_rpm >= 0.0f);
+    if (new_dir != last_dir_forward && fabsf(measured_rpm) > DIRECTION_CHANGE_RPM) {
+        set_motor_pwm(0.0f, last_dir_forward);
+        last_control_ms = now;
+        return;
+    }
+
+    set_motor_pwm(out_pwm, new_dir);
 
     last_control_ms = now;
 }
@@ -401,8 +441,6 @@ int main(void)
         PI_INTEGRAL_LIMIT);
     emergency_stop();
 
-    watchdog_enable(WATCHDOG_TIMEOUT_MS, true);
-
     state = WAITING_AGENT;
 
     while (true) {
@@ -421,6 +459,8 @@ int main(void)
             case AGENT_AVAILABLE:
                 if (create_entities()) {
                     rmw_uros_sync_session(TIME_SYNC_TIMEOUT_MS);
+                    /* #10 — enable watchdog only after connection; avoids firing during slow init */
+                    watchdog_enable(WATCHDOG_TIMEOUT_MS, true);
                     state = AGENT_CONNECTED;
                     last_command_ms = now_ms();
                 } else {
