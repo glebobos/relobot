@@ -21,10 +21,11 @@ from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 
 def generate_launch_description():
-    # IMU serial device from environment variable
-    imu_tty = os.environ.get('IMU_TTY', '/dev/ttyACM5')
+    # Serial devices from environment variables
+    imu_tty    = os.environ.get('IMU_TTY',    '/dev/ttyACM5')
     ina226_tty = os.environ.get('INA226_TTY', '/dev/ttyACM2')
     knives_tty = os.environ.get('KNIVES_TTY', '/dev/ttyACM4')
+    wheels_tty = os.environ.get('WHEELS_TTY', '/dev/ttyACM1')
 
     # Get URDF via xacro
     robot_description_content = Command(
@@ -54,8 +55,8 @@ def generate_launch_description():
         'ekf.yaml'
     )
 
-    # Micro-ROS agent — multiserial for IMU, INA226 and knives RP2040 nodes.
-    serial_devs = [dev for dev in [imu_tty, ina226_tty, knives_tty] if dev]
+    # Micro-ROS agent — multiserial for IMU, INA226, knives and wheels RP2040 nodes.
+    serial_devs = [dev for dev in [imu_tty, ina226_tty, knives_tty, wheels_tty] if dev]
     micro_ros_agent = Node(
         package='micro_ros_agent',
         executable='micro_ros_agent',

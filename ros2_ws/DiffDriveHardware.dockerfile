@@ -9,14 +9,11 @@ RUN apt-get update && apt-get install -y \
     ros-humble-ros2-controllers \
     ros-humble-controller-manager \
     ros-humble-realtime-tools \
-    ros-humble-serial-driver \
-    ros-humble-asio-cmake-module \
-    ros-humble-io-context \
+    ros-humble-topic-based-ros2-control \
     ros-humble-xacro \
     ros-humble-joint-state-publisher \
     ros-humble-robot-state-publisher \
     ros-humble-robot-localization \
-    libserial-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy micro-ros-agent from official image
