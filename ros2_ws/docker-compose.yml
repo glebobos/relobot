@@ -36,10 +36,10 @@ services:
       - /dev/:/dev/
     environment:
       <<: *ros-env
-      WHEELS_TTY: ${WHEELS_TTY:-/dev/ttyACM0}
-      IMU_TTY: ${IMU_TTY:-/dev/ttyACM4}
-      INA226_TTY: /dev/ttyACM2
-      KNIVES_TTY: ${KNIVES_TTY:-/dev/ttyACM3}
+      TTY_0: /dev/ttyACM0
+      TTY_1: /dev/ttyACM1
+      TTY_2: /dev/ttyACM2
+      TTY_3: /dev/ttyACM3
     network_mode: host
     ipc: host 
     privileged: true
