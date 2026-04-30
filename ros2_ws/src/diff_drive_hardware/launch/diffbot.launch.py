@@ -55,8 +55,11 @@ def generate_launch_description():
         'ekf.yaml'
     )
 
-    # Micro-ROS agent — multiserial for IMU, INA226, knives and wheels RP2040 nodes.
-    serial_devs = [dev for dev in [imu_tty, ina226_tty, knives_tty, wheels_tty] if dev]
+    # Micro-ROS agent — multiserial
+    serial_devs = [
+        v for k, v in os.environ.items()
+        if k.startswith('TTY_') and v
+    ]
     micro_ros_agent = Node(
         package='micro_ros_agent',
         executable='micro_ros_agent',
