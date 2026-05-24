@@ -453,7 +453,7 @@ coverage_server:
     use_sim_time: false
     coordinates_in_cartesian_frame: true
     robot_width: 0.42
-    operation_width: 0.42
+    operation_width: 0.24  # 300 mm blade diameter with ~20% overlap (swath spacing 24 cm)
     min_turning_radius: 0.12
     linear_curv_change: 2.0
     default_allow_overlap: false

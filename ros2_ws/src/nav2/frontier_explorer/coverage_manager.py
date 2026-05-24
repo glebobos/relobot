@@ -104,6 +104,9 @@ class CoverageManager(Node):
         self._last_preview_valid = False
         self._last_map_msg = None
         self._last_logged_obstacle_count: int = -1
+        # When True, a user-drawn zone is active; _on_map will not overwrite
+        # _polygon_msg until the user explicitly clears the zone.
+        self._custom_polygon_active: bool = False
 
         # Republish the last-good polygon and preview path at 1 Hz so that
         # browser clients that connect/reconnect while planning or executing
@@ -141,6 +144,14 @@ class CoverageManager(Node):
                 self._publish_status('error', 'No map received yet.')
             return
 
+        if command.startswith('set_zone:'):
+            self._on_set_zone(command[len('set_zone:'):])
+            return
+
+        if command == 'clear_zone':
+            self._on_clear_zone()
+            return
+
         self._publish_status('error', f'Unknown coverage command: {command}')
 
     def _start_preview(self) -> None:
@@ -155,7 +166,10 @@ class CoverageManager(Node):
             return
 
         goal = ComputeCoveragePath.Goal()
-        goal.generate_headland = True
+        # For a user-drawn custom zone: disable headland so swaths fill the
+        # rectangle exactly, without any inset margin.
+        # For the auto-detected SLAM map: keep headland to avoid driving into walls.
+        goal.generate_headland = not self._custom_polygon_active
         goal.generate_route = True
         goal.generate_path = False
         goal.frame_id = self._polygon_msg.header.frame_id or self._default_frame_id
@@ -179,8 +193,9 @@ class CoverageManager(Node):
                 obs_coords.coordinates.append(c)
             goal.polygons.append(obs_coords)
 
-        goal.headland_mode.mode = 'CONSTANT'
-        goal.headland_mode.width = float(self._headland_width)
+        if goal.generate_headland:
+            goal.headland_mode.mode = 'CONSTANT'
+            goal.headland_mode.width = float(self._headland_width)
         goal.path_mode.mode = self._path_type
         goal.path_mode.continuity_mode = self._path_continuity_type
         goal.path_mode.turn_point_distance = float(self._turn_point_distance)
@@ -412,12 +427,79 @@ class CoverageManager(Node):
         if self._cached_path.poses:
             self._preview_path_pub.publish(self._cached_path)
 
+    def _on_set_zone(self, json_str: str) -> None:
+        """Accept a JSON list of {x, y} points from the web UI and use them as
+        the active coverage polygon instead of the auto-detected SLAM boundary."""
+        try:
+            raw = json.loads(json_str)
+            if not isinstance(raw, list) or len(raw) < 3:
+                raise ValueError('Need at least 3 points')
+            # Validate each point is a dict with finite numeric x/y
+            for p in raw:
+                if not isinstance(p, dict):
+                    raise ValueError('Each point must be an object')
+                x = float(p['x'])
+                y = float(p['y'])
+                if not (math.isfinite(x) and math.isfinite(y)):
+                    raise ValueError(f'Non-finite coordinate: x={x} y={y}')
+        except (KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
+            self._publish_status('error', f'Invalid zone polygon: {exc}')
+            return
+
+        poly = PolygonStamped()
+        poly.header.stamp = self.get_clock().now().to_msg()
+        poly.header.frame_id = self._default_frame_id
+        for p in raw:
+            poly.polygon.points.append(
+                Point32(x=float(p['x']), y=float(p['y']), z=0.0)
+            )
+        # Ensure polygon is closed (first == last)
+        first = poly.polygon.points[0]
+        poly.polygon.points.append(Point32(x=first.x, y=first.y, z=0.0))
+
+        self._polygon_msg = poly
+        self._obstacle_polygons = []  # no SLAM obstacles for custom zone
+        self._custom_polygon_active = True
+        self._last_preview_valid = False
+        self._polygon_echo_pub.publish(self._polygon_msg)
+        self._obstacles_pub.publish(String(data='[]'))
+        self._publish_status(
+            'polygon_ready',
+            'Custom zone set. Click Preview Coverage to plan.',
+            point_count=len(raw),
+            zone_mode='custom',
+        )
+        self.get_logger().info(
+            f'Custom coverage zone set with {len(raw)} points.'
+        )
+
+    def _on_clear_zone(self) -> None:
+        """Revert from a custom zone back to SLAM auto-detection."""
+        self._custom_polygon_active = False
+        self._last_preview_valid = False
+        self._polygon_msg = PolygonStamped()
+        self._obstacle_polygons = []
+        # Re-run map extraction immediately if a map is available
+        if self._last_map_msg is not None:
+            self._state = 'idle'
+            self._on_map(self._last_map_msg)
+
+        # If map extraction was not successful (or didn't run), publish the empty boundary to clear it from the UI.
+        if not self._polygon_msg.polygon.points:
+            self._polygon_echo_pub.publish(self._polygon_msg)
+            self._obstacles_pub.publish(String(data='[]'))
+            self._publish_status('idle', 'Zone cleared. Waiting for SLAM map.')
+        self.get_logger().info('Custom coverage zone cleared; reverted to SLAM boundary.')
+
     def _on_map(self, msg: OccupancyGrid) -> None:
         h = msg.info.height
         w = msg.info.width
         if h == 0 or w == 0:
             return
         self._last_map_msg = msg
+        # Skip SLAM extraction when a custom zone is active.
+        if self._custom_polygon_active:
+            return
         # Only re-extract polygon when idle — don't overwrite state during
         # planning, preview_ready, executing, or completed.
         if self._state not in ('idle', 'polygon_ready'):
