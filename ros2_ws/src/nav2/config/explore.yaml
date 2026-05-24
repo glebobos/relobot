@@ -94,7 +94,7 @@ controller_server:
     controller_frequency: 15.0
     min_x_velocity_threshold: 0.05   # Increased from 0.001 to prevent very slow movement
     min_y_velocity_threshold: 0.5    # Set to 0.0 for differential drive robot
-    min_theta_velocity_threshold: 0.45 # Increased to keep rotation above motor minimum
+    min_theta_velocity_threshold: 0.001 # Restored to 0.001 to allow fine angular feedback and avoid limit-cycle oscillations during straight path tracking.
     failure_tolerance: 0.3
     odom_topic: /odometry/filtered  # Use filtered odometry from EKF
     progress_checker_plugin: "progress_checker"
