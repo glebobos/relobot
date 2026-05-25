@@ -29,7 +29,10 @@
     </div>
 
     <div class="map-section">
-        <div id="map"></div>
+        <div class="map-wrapper">
+            <div id="map"></div>
+            <canvas id="zone-draw-canvas" style="position:absolute;top:0;left:0;pointer-events:none;"></canvas>
+        </div>
         <div class="map-controls">
             <button id="dock-btn" class="map-btn map-btn-small">Dock</button>
             <button id="undock-btn" class="map-btn map-btn-small">Undock</button>
@@ -41,6 +44,8 @@
             <button id="coverage-preview-btn" class="map-btn coverage-btn-preview">Preview Coverage</button>
             <button id="coverage-execute-btn" class="map-btn coverage-btn-execute">Execute Coverage</button>
             <button id="coverage-stop-btn" class="map-btn coverage-btn-stop">Stop Coverage</button>
+            <button id="coverage-draw-zone-btn" class="map-btn coverage-btn-zone">Draw Zone</button>
+            <button id="coverage-clear-zone-btn" class="map-btn coverage-btn-zone-clear">Clear Zone</button>
         </div>
         <div id="coverage-status" class="coverage-status">Coverage idle. Map boundary is auto-detected from SLAM. Click
             "Refresh Map" to re-extract, then "Preview Coverage" to plan.</div>

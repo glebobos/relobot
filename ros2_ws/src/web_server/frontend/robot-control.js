@@ -131,6 +131,21 @@ function initRosControl() {
     });
 
     console.log('[RosControl] Topics and service client ready');
+
+    // Give map-viewer.js a way to publish coverage commands without holding
+    // its own Topic reference. Assigned here because initRosControl() runs
+    // before the map-viewer timeout resolves.
+    function injectPublishCommand() {
+        if (window.coverageUi) {
+            window.coverageUi._publishCommand = function (cmd) {
+                if (!coverageCommandTopic) return;
+                coverageCommandTopic.publish({ data: cmd });
+            };
+        } else {
+            setTimeout(injectPublishCommand, 100);
+        }
+    }
+    injectPublishCommand();
 }
 initRosControl();
 
@@ -140,6 +155,8 @@ const coveragePreviewBtn = document.getElementById('coverage-preview-btn');
 const coverageExecuteBtn = document.getElementById('coverage-execute-btn');
 const coverageStopBtn = document.getElementById('coverage-stop-btn');
 const coverageRefreshMapBtn = document.getElementById('coverage-refresh-map-btn');
+const coverageDrawZoneBtn = document.getElementById('coverage-draw-zone-btn');
+const coverageClearZoneBtn = document.getElementById('coverage-clear-zone-btn');
 const coverageStatus = document.getElementById('coverage-status');
 let lastCoverageState = { state: 'idle', message: 'Coverage idle.' };
 
@@ -219,6 +236,28 @@ if (coverageRefreshMapBtn) {
         sendCoverageCommand('refresh_map');
     });
 }
+
+if (coverageDrawZoneBtn) {
+    coverageDrawZoneBtn.addEventListener('click', () => {
+        if (!window.coverageUi) return;
+        const drawModeActive = window.coverageUi.startZoneDraw();
+        coverageDrawZoneBtn.textContent = drawModeActive ? 'Cancel Draw' : 'Draw Zone';
+        coverageDrawZoneBtn.classList.toggle('coverage-btn-zone-active', drawModeActive);
+    });
+}
+
+if (coverageClearZoneBtn) {
+    coverageClearZoneBtn.addEventListener('click', () => {
+        if (!window.coverageUi) return;
+        window.coverageUi.clearZone();
+        if (coverageDrawZoneBtn) {
+            coverageDrawZoneBtn.textContent = 'Draw Zone';
+            coverageDrawZoneBtn.classList.remove('coverage-btn-zone-active');
+        }
+        updateCoverageControls({ state: 'idle', message: 'Zone cleared. SLAM boundary active.' });
+    });
+}
+
 
 updateCoverageControls(lastCoverageState);
 

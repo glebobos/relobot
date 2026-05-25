@@ -166,11 +166,47 @@ body {
     background-color: #145aa3;
 }
 
+.coverage-btn-zone {
+    background-color: #1a8a5a;
+}
+
+.coverage-btn-zone:hover {
+    background-color: #136844;
+}
+
+.coverage-btn-zone-active {
+    background-color: #e67e22;
+    animation: pulse-draw 1.2s ease-in-out infinite;
+}
+
+.coverage-btn-zone-active:hover {
+    background-color: #c0621a;
+}
+
+@keyframes pulse-draw {
+    0%, 100% { box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+    50%       { box-shadow: 0 0 10px 3px rgba(0, 230, 118, 0.5); }
+}
+
+.coverage-btn-zone-clear {
+    background-color: #5a5a5a;
+}
+
+.coverage-btn-zone-clear:hover {
+    background-color: #3d3d3d;
+}
+
 #map {
     width: 100%;
     height: 500px;
     background-color: #f0f0f0;
     border: 1px solid #ccc;
+}
+
+/* Wrapper provides position:relative so the overlay canvas can be absolute */
+.map-wrapper {
+    position: relative;
+    width: 100%;
 }
 
 .coverage-status {
