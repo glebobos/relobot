@@ -8,8 +8,6 @@ from action_msgs.msg import GoalStatus
 from geometry_msgs.msg import Point32, Pose, PoseStamped, PolygonStamped
 from nav2_msgs.action import FollowPath
 from nav_msgs.msg import OccupancyGrid, Path
-import cv2
-import numpy as np
 from opennav_coverage_msgs.action import ComputeCoveragePath
 from opennav_coverage_msgs.msg import Coordinate, Coordinates
 import rclpy
@@ -19,6 +17,9 @@ from rclpy.action import ActionClient
 from rclpy.node import Node
 from rclpy.qos import QoSDurabilityPolicy, QoSProfile
 from std_msgs.msg import String
+
+from frontier_explorer.geometry_utils import flip_quaternion, swath_to_waypoints
+from frontier_explorer.map_processor import MapProcessor
 
 
 class CoverageManager(Node):
@@ -45,6 +46,7 @@ class CoverageManager(Node):
         self.declare_parameter('swath_endpoint_margin', 0.25)
         self.declare_parameter('obstacle_min_area_m2', 0.0004)  # 4 cm²
         self.declare_parameter('obstacle_dilate_m', 0.20)  # safety margin in metres
+        self.declare_parameter('map_update_min_interval_sec', 5.0)
 
         self._default_frame_id = self.get_parameter('default_frame_id').value
         self._headland_width = float(self.get_parameter('headland_width').value)
@@ -55,6 +57,7 @@ class CoverageManager(Node):
         self._allow_execute_without_fresh_preview = bool(
             self.get_parameter('allow_execute_without_fresh_preview').value
         )
+        self._map_update_min_interval_sec = float(self.get_parameter('map_update_min_interval_sec').value)
 
         compute_action_name = self.get_parameter('compute_coverage_action_name').value
         nav_through_poses_action_name = self.get_parameter('navigate_through_poses_action_name').value
@@ -98,17 +101,26 @@ class CoverageManager(Node):
 
         self._polygon_msg = PolygonStamped()
         self._obstacle_polygons: list[list[tuple[float, float]]] = []
-        self._cached_waypoints: list = []
+        self._cached_waypoints = []
         self._cached_path = Path()
         self._compute_goal_handle = None
         self._nav_goal_handle = None
         self._state = 'idle'
         self._last_preview_valid = False
+        # Counts how many more 1 Hz ticks should republish the cached path.
+        # Set to 10 whenever the path is updated; decrements to 0 to stop.
+        self._path_republish_count: int = 0
         self._last_map_msg = None
         self._last_logged_obstacle_count: int = -1
         # When True, a user-drawn zone is active; _on_map will not overwrite
         # _polygon_msg until the user explicitly clears the zone.
         self._custom_polygon_active: bool = False
+
+        self._last_processed_map_hash = None
+        self._last_processed_map_info = None
+        self._last_map_processing_time = None
+
+        self._map_processor = MapProcessor(self.get_logger())
 
         # Republish the last-good polygon and preview path at 1 Hz so that
         # browser clients that connect/reconnect while planning or executing
@@ -142,7 +154,7 @@ class CoverageManager(Node):
             if self._last_map_msg is not None:
                 prev_state = self._state
                 self._state = 'idle'
-                self._on_map(self._last_map_msg)
+                self._on_map(self._last_map_msg, force=True)
                 if self._state == 'idle':
                     self._state = prev_state
             else:
@@ -272,12 +284,17 @@ class CoverageManager(Node):
                     )
                     result.nav_path.poses.reverse()
                     for wp in result.nav_path.poses:
-                        wp.pose.orientation = self._flip_quaternion(wp.pose.orientation)
+                        wp.pose.orientation = flip_quaternion(wp.pose.orientation)
             self._cached_waypoints = result.nav_path.poses
             self._cached_path = result.nav_path
+            self._path_republish_count = 10
         else:
-            self._cached_waypoints = self._swath_to_waypoints(
-                result.coverage_path.swaths, frame_id
+            endpoint_margin = float(self.get_parameter('swath_endpoint_margin').value)
+            self._cached_waypoints = swath_to_waypoints(
+                result.coverage_path.swaths,
+                frame_id,
+                self.get_clock().now().to_msg(),
+                endpoint_margin
             )
             # Build a preview path from straight swath lines (no turn arcs)
             preview = Path()
@@ -289,6 +306,7 @@ class CoverageManager(Node):
                 ps.pose = wp.pose
                 preview.poses.append(ps)
             self._cached_path = preview
+            self._path_republish_count = 10
 
         self._preview_path_pub.publish(self._cached_path)
         self._last_preview_valid = True
@@ -299,37 +317,6 @@ class CoverageManager(Node):
             swath_count=len(result.coverage_path.swaths),
             waypoint_count=len(self._cached_waypoints),
         )
-
-    def _swath_to_waypoints(self, swaths, frame_id: str) -> list:
-        waypoints = []
-        endpoint_margin = float(self.get_parameter('swath_endpoint_margin').value)
-        for swath in swaths:
-            sx, sy = float(swath.start.x), float(swath.start.y)
-            ex, ey = float(swath.end.x), float(swath.end.y)
-            dx = ex - sx
-            dy = ey - sy
-            length = math.hypot(dx, dy)
-            if length > (2.0 * endpoint_margin) and endpoint_margin > 0.0:
-                offset_x = (dx / length) * endpoint_margin
-                offset_y = (dy / length) * endpoint_margin
-                sx += offset_x
-                sy += offset_y
-                ex -= offset_x
-                ey -= offset_y
-            angle = math.atan2(ey - sy, ex - sx)
-            qz = math.sin(angle / 2.0)
-            qw = math.cos(angle / 2.0)
-            for px, py in [(sx, sy), (ex, ey)]:
-                ps = PoseStamped()
-                ps.header.frame_id = frame_id
-                ps.header.stamp = self.get_clock().now().to_msg()
-                ps.pose.position.x = px
-                ps.pose.position.y = py
-                ps.pose.position.z = 0.0
-                ps.pose.orientation.z = qz
-                ps.pose.orientation.w = qw
-                waypoints.append(ps)
-        return waypoints
 
     def _start_execution(self) -> None:
         if self._compute_goal_handle or self._nav_goal_handle:
@@ -448,11 +435,14 @@ class CoverageManager(Node):
     def _republish_state(self) -> None:
         """1 Hz keepalive: re-publish the last-good polygon and cached path so
         browsers that connect/reconnect during planning or execution receive the
-        current boundary without waiting for the next map update."""
+        current boundary without waiting for the next map update.
+        The path is republished for up to 10 s after it changes (counter-based)
+        to avoid continuously serialising large Path messages."""
         if self._polygon_msg.polygon.points:
             self._polygon_echo_pub.publish(self._polygon_msg)
-        if self._cached_path.poses:
+        if self._cached_path.poses and self._path_republish_count > 0:
             self._preview_path_pub.publish(self._cached_path)
+            self._path_republish_count -= 1
 
     def _on_set_zone(self, json_str: str) -> None:
         """Accept a JSON list of {x, y} points from the web UI and use them as
@@ -506,10 +496,14 @@ class CoverageManager(Node):
         self._last_preview_valid = False
         self._polygon_msg = PolygonStamped()
         self._obstacle_polygons = []
+        self._cached_waypoints = []
+        self._cached_path = Path()
+        self._preview_path_pub.publish(Path())
+
         # Re-run map extraction immediately if a map is available
         if self._last_map_msg is not None:
             self._state = 'idle'
-            self._on_map(self._last_map_msg)
+            self._on_map(self._last_map_msg, force=True)
 
         # If map extraction was not successful (or didn't run), publish the empty boundary to clear it from the UI.
         if not self._polygon_msg.polygon.points:
@@ -518,7 +512,7 @@ class CoverageManager(Node):
             self._publish_status('idle', 'Zone cleared. Waiting for SLAM map.')
         self.get_logger().info('Custom coverage zone cleared; reverted to SLAM boundary.')
 
-    def _on_map(self, msg: OccupancyGrid) -> None:
+    def _on_map(self, msg: OccupancyGrid, force: bool = False) -> None:
         h = msg.info.height
         w = msg.info.width
         if h == 0 or w == 0:
@@ -531,172 +525,75 @@ class CoverageManager(Node):
         # planning, preview_ready, executing, or completed.
         if self._state not in ('idle', 'polygon_ready'):
             return
-        grid = np.array(msg.data, dtype=np.int8).reshape((h, w))
-        free_mask = np.uint8(np.where(grid == 0, 255, 0))
-        # Morphological closing fills small gaps between free cells (SLAM noise)
-        # and smooths the boundary so approxPolyDP produces a clean polygon.
-        close_r = int(self.get_parameter('map_morph_close_radius').value)
-        if close_r > 0:
-            kernel = cv2.getStructuringElement(
-                cv2.MORPH_ELLIPSE, (2 * close_r + 1, 2 * close_r + 1)
-            )
-            free_mask = cv2.morphologyEx(free_mask, cv2.MORPH_CLOSE, kernel)
-        # Erode free space inward so the polygon boundary is kept away from walls.
-        # At 0.025 m/cell, 16 px ≈ 0.40 m offset before headland is applied.
-        # IMPORTANT: snapshot the mask BEFORE erosion — we use this later for
-        # obstacle detection. Erosion merges obstacle blobs that are close to
-        # walls into the wall region, making them invisible inside the boundary.
-        pre_erode_mask = free_mask.copy()
-        res = msg.info.resolution
-        erode_m = float(self.get_parameter('map_erode_m').value)
-        erode_r = max(0, round(erode_m / res))
-        if erode_r > 0:
-            kernel = cv2.getStructuringElement(
-                cv2.MORPH_ELLIPSE, (2 * erode_r + 1, 2 * erode_r + 1)
-            )
-            free_mask = cv2.erode(free_mask, kernel)
-        # Use RETR_CCOMP to retrieve both outer boundary AND inner holes (obstacles).
-        # hierarchy shape: [1, N, 4] — [next, prev, first_child, parent]
-        contours, hierarchy = cv2.findContours(
-            free_mask, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE
-        )
-        if not contours:
-            return
-        # Outer contours have parent == -1 in hierarchy[0][i][3]
-        outer_contours = [
-            c for i, c in enumerate(contours) if hierarchy[0][i][3] == -1
-        ]
-        if not outer_contours:
-            return
-        largest = max(outer_contours, key=cv2.contourArea)
-        original_area = cv2.contourArea(largest)
-        # Reject trivially small contours (less than 1 m² of free space)
-        min_area_px = 1.0 / (msg.info.resolution ** 2)
-        if original_area < min_area_px:
-            return
-        epsilon_px = self.get_parameter('map_contour_epsilon').value / msg.info.resolution
-        approx = cv2.approxPolyDP(largest, epsilon_px, closed=True)
-        # Guard against degenerate simplification: if approxPolyDP collapsed the
-        # contour to 4 points (a bounding rectangle), the result is useless for
-        # coverage.  We apply two independent tests:
-        #   1. Area ratio: approx_area >> original_area means the box is larger
-        #      than the actual free region (the classic "max rectangle" symptom).
-        #   2. Bounding-rect identity: if the 4-point polygon *is* the axis-
-        #      aligned bounding box (its area equals the bounding rect area within
-        #      5 %), it is degenerate regardless of area ratio — this catches the
-        #      case where the free region itself is already roughly rectangular so
-        #      original_area ≈ approx_area and the 1.3 × test passes incorrectly.
-        # We also catch rotated bounding boxes via cv2.minAreaRect.
-        # Retry with progressively smaller epsilons; require >= 5 points so we
-        # never accept a plain 4-corner rectangle from a retry either.
-        def _is_bounding_rect(poly_pts, contour) -> bool:
-            """Return True if poly_pts is effectively the axis-aligned or rotated
-            bounding rectangle of contour."""
-            if len(poly_pts) != 4:
-                return False
-            p_area = cv2.contourArea(poly_pts)
-            # Axis-aligned bounding rect
-            _x, _y, bw, bh = cv2.boundingRect(contour)
-            bbox_area = float(bw * bh)
-            if bbox_area > 0 and abs(p_area - bbox_area) / bbox_area < 0.05:
-                return True
-            # Minimum-area rotated rect
-            (_, (rw, rh), _) = cv2.minAreaRect(contour)
-            min_rect_area = float(rw * rh)
-            if min_rect_area > 0 and abs(p_area - min_rect_area) / min_rect_area < 0.05:
-                return True
-            return False
 
-        if len(approx) <= 4:
-            approx_area = cv2.contourArea(approx)
-            if approx_area > original_area * 1.05 or len(approx) < 3 or _is_bounding_rect(approx, largest):
-                for scale in (0.5, 0.25, 0.1):
-                    smaller_eps = epsilon_px * scale
-                    retry = cv2.approxPolyDP(largest, smaller_eps, closed=True)
-                    retry_area = cv2.contourArea(retry)
-                    if len(retry) >= 5 and retry_area <= original_area * 1.05 and not _is_bounding_rect(retry, largest):
-                        approx = retry
-                        self.get_logger().info(
-                            f'approxPolyDP retry with eps={smaller_eps:.1f}px '  # noqa: E501
-                            f'gave {len(approx)} points'
-                        )
-                        break
-                else:
-                    # All retries still degenerate — skip this map update to
-                    # avoid publishing a bogus bounding-rectangle polygon.
-                    self.get_logger().warn(
-                        'Map contour simplification produced a degenerate polygon; '
-                        'skipping polygon update. Try refreshing the map again.'
-                    )
-                    return
-        if len(approx) < 3:
-            return
-        origin_x = msg.info.origin.position.x
-        origin_y = msg.info.origin.position.y
-        res = msg.info.resolution
-        poly = PolygonStamped()
-        poly.header.stamp = msg.header.stamp
-        poly.header.frame_id = msg.header.frame_id if msg.header.frame_id else 'map'
-        for pt in approx:
-            col = float(pt[0][0])
-            row = float(pt[0][1])
-            poly.polygon.points.append(Point32(
-                x=origin_x + col * res,
-                y=origin_y + row * res,
-                z=0.0,
-            ))
-        normalized = self._normalize_polygon(poly)
+        # Metadata tuple — cheap to build, used for early-exit guards
+        map_info_tuple = (
+            msg.info.width,
+            msg.info.height,
+            msg.info.resolution,
+            msg.info.origin.position.x,
+            msg.info.origin.position.y
+        )
+
+        map_data_hash = None
+        if not force:
+            # 1. Rate-limit first — cheapest guard, rejects most callbacks
+            current_time = self.get_clock().now()
+            if self._last_map_processing_time is not None:
+                elapsed = (current_time - self._last_map_processing_time).nanoseconds / 1e9
+                if elapsed < self._map_update_min_interval_sec:
+                    return  # Rate limit active
+
+            # 2. Only pay for hashing when metadata matches (skips hash on map resize)
+            if self._last_processed_map_info == map_info_tuple:
+                try:
+                    map_data_hash = hash(bytes(msg.data))
+                except Exception:
+                    map_data_hash = None
+                if self._last_processed_map_hash == map_data_hash:
+                    return  # Map data and metadata are unchanged
+
+        # Hash not yet computed (force=True or metadata changed) — compute now
+        if map_data_hash is None:
+            try:
+                map_data_hash = hash(bytes(msg.data))
+            except Exception:
+                map_data_hash = None
+
+        # Proceed to extract
+        self._last_processed_map_info = map_info_tuple
+        self._last_processed_map_hash = map_data_hash
+        self._last_map_processing_time = self.get_clock().now()
+
+        map_morph_close_radius = int(self.get_parameter('map_morph_close_radius').value)
+        map_erode_m = float(self.get_parameter('map_erode_m').value)
+        map_contour_epsilon = float(self.get_parameter('map_contour_epsilon').value)
+        obstacle_min_area_m2 = float(self.get_parameter('obstacle_min_area_m2').value)
+        obstacle_dilate_m = float(self.get_parameter('obstacle_dilate_m').value)
+
+        normalized, obstacle_polygons = self._map_processor.extract_boundary_and_obstacles(
+            msg,
+            map_morph_close_radius,
+            map_erode_m,
+            map_contour_epsilon,
+            obstacle_min_area_m2,
+            obstacle_dilate_m,
+            self._default_frame_id
+        )
+
         if normalized is None:
             return
-        self._polygon_msg = normalized
 
-        # --- Extract inner obstacle contours (holes inside the free-space mask) ---
-        # Obstacles in the SLAM map are non-free blobs fully enclosed in free space.
-        # They appear as child contours of the outer boundary in RETR_CCOMP output.
-        obstacle_min_px = self.get_parameter('obstacle_min_area_m2').value / (res ** 2)
-        obs_dilate_r = max(1, round(self.get_parameter('obstacle_dilate_m').value / res))
-        epsilon_px = self.get_parameter('map_contour_epsilon').value / res
-        # Build obstacle mask from the PRE-EROSION free mask so that obstacle
-        # blobs near walls are not absorbed by the erosion operation.
-        # Invert: occupied/unknown cells become white (obstacle candidates).
-        obs_mask = cv2.bitwise_not(pre_erode_mask)
-        # Restrict to pixels inside the (eroded) outer field boundary only.
-        outer_fill = np.zeros_like(obs_mask)
-        cv2.drawContours(outer_fill, [largest], -1, 255, thickness=cv2.FILLED)
-        obs_mask = cv2.bitwise_and(obs_mask, outer_fill)
-        # Dilate each obstacle blob so the cutout has a safety margin matching
-        # the robot footprint + inflation layer before passing to F2C.
-        if obs_dilate_r > 0:
-            dk = cv2.getStructuringElement(
-                cv2.MORPH_ELLIPSE, (2 * obs_dilate_r + 1, 2 * obs_dilate_r + 1)
-            )
-            obs_mask = cv2.dilate(obs_mask, dk)
-        obs_contours, _ = cv2.findContours(
-            obs_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
-        )
-        obstacle_polygons: list[list[tuple[float, float]]] = []
-        for obs_c in obs_contours:
-            if cv2.contourArea(obs_c) < obstacle_min_px:
-                continue
-            obs_approx = cv2.approxPolyDP(obs_c, epsilon_px, closed=True)
-            if len(obs_approx) < 3:
-                continue
-            pts: list[tuple[float, float]] = []
-            for pt in obs_approx:
-                col = float(pt[0][0])
-                row = float(pt[0][1])
-                pts.append((origin_x + col * res, origin_y + row * res))
-            # Ensure closed (first == last), as required by ComputeCoveragePath
-            if pts[0] != pts[-1]:
-                pts.append(pts[0])
-            obstacle_polygons.append(pts)
+        self._polygon_msg = normalized
         self._obstacle_polygons = obstacle_polygons
+
         n = len(obstacle_polygons)
         if n != self._last_logged_obstacle_count:
             self.get_logger().info(
                 f'Obstacle cutouts updated: {n} found in map.'
             )
             self._last_logged_obstacle_count = n
+
         # Publish obstacle polygons as JSON for the web map viewer.
         # Format: [[{"x": float, "y": float}, ...], ...]  — one list per obstacle.
         obs_json = json.dumps([
@@ -713,35 +610,6 @@ class CoverageManager(Node):
             point_count=len(self._polygon_msg.polygon.points) - 1,
             frame_id=self._polygon_msg.header.frame_id,
             obstacle_count=len(self._obstacle_polygons),
-        )
-
-    def _normalize_polygon(self, msg: PolygonStamped) -> PolygonStamped | None:
-        points = []
-        for point in msg.polygon.points:
-            candidate = (float(point.x), float(point.y))
-            if not points or not self._points_equal(points[-1], candidate):
-                points.append(candidate)
-
-        if len(points) >= 2 and self._points_equal(points[0], points[-1]):
-            points.pop()
-
-        if len(points) < 3:
-            return None
-
-        normalized = PolygonStamped()
-        normalized.header = msg.header
-        normalized.header.frame_id = msg.header.frame_id or self._default_frame_id
-
-        for x_coord, y_coord in points:
-            normalized.polygon.points.append(Point32(x=float(x_coord), y=float(y_coord), z=0.0))
-
-        first = normalized.polygon.points[0]
-        normalized.polygon.points.append(Point32(x=float(first.x), y=float(first.y), z=0.0))
-        return normalized
-
-    def _points_equal(self, first: tuple[float, float], second: tuple[float, float]) -> bool:
-        return math.isclose(first[0], second[0], abs_tol=1e-4) and math.isclose(
-            first[1], second[1], abs_tol=1e-4
         )
 
     def _get_robot_pose(self) -> Pose | None:
@@ -763,20 +631,6 @@ class CoverageManager(Node):
                 f'Could not look up transform from {target_frame} to base_link: {e}'
             )
             return None
-
-    def _flip_quaternion(self, q):
-        siny_cosp = 2.0 * (q.w * q.z + q.x * q.y)
-        cosy_cosp = 1.0 - 2.0 * (q.y * q.y + q.z * q.z)
-        yaw = math.atan2(siny_cosp, cosy_cosp)
-        new_yaw = yaw + math.pi
-        
-        from geometry_msgs.msg import Quaternion
-        q_new = Quaternion()
-        q_new.x = 0.0
-        q_new.y = 0.0
-        q_new.z = math.sin(new_yaw / 2.0)
-        q_new.w = math.cos(new_yaw / 2.0)
-        return q_new
 
     def _publish_status(self, state: str, message: str, **extra: Any) -> None:
         self._state = state
