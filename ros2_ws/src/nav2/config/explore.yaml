@@ -109,14 +109,14 @@ controller_server:
     goal_checker:
       stateful: True
       plugin: "nav2_controller::SimpleGoalChecker"
-      xy_goal_tolerance: 0.25
-      yaw_goal_tolerance: 0.3
+      xy_goal_tolerance: 0.1
+      yaw_goal_tolerance: 0.105
       
     FollowPath:
       plugin: "nav2_mppi_controller::MPPIController"
-      time_steps: 56
+      time_steps: 40       # Reduced from 56: 4.0 s horizon at model_dt=0.1; recommended 40-50 for RPi5
       model_dt: 0.1
-      batch_size: 2000
+      batch_size: 1000     # Reduced from 2000: halves trajectory sampling cost; recommended 500-1000 for RPi5
       vx_std: 0.2
       wz_std: 0.4
       vx_max: 0.3
@@ -152,7 +152,7 @@ controller_server:
       PreferForwardCritic:
         enabled: true
         cost_power: 1
-        cost_weight: 2.5  # Balanced: discourages long reverse stretches, allows tight turns
+        cost_weight: 5.0  # Balanced: discourages long reverse stretches, allows tight turns
         threshold_to_consider: 0.5
       ObstaclesCritic:
         enabled: true
@@ -486,11 +486,8 @@ coverage_manager:
     action_wait_timeout_sec: 5.0
     allow_execute_without_fresh_preview: true
     map_contour_epsilon: 0.05
-    # Erode free-space by ~0.4 m (16 px @ 0.025 m/px) so the coverage polygon
-    # sits well outside the 0.25 m global-costmap inflation layer plus the
-    # 0.51 m robot footprint length. Prevents planner_server from rejecting
-    # swath endpoints as "lethal" / "no valid path" during NavigateThroughPoses.
-    map_erode_radius: 16
+    # Erode free-space by 0.05 m (5 cm) so the coverage polygon sits close to the walls.
+    map_erode_m: 0.05
     # Obstacle detection: blobs of occupied/unknown cells inside the field boundary
     # are extracted as inner-ring cutouts and passed to Fields2Cover so swaths
     # are not generated over trees, furniture, ponds, etc.
