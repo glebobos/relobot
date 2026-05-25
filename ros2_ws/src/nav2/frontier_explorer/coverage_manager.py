@@ -6,13 +6,15 @@ from typing import Any
 
 from action_msgs.msg import GoalStatus
 from geometry_msgs.msg import Point32, Pose, PoseStamped, PolygonStamped
-from nav2_msgs.action import NavigateThroughPoses
+from nav2_msgs.action import FollowPath
 from nav_msgs.msg import OccupancyGrid, Path
 import cv2
 import numpy as np
 from opennav_coverage_msgs.action import ComputeCoveragePath
 from opennav_coverage_msgs.msg import Coordinate, Coordinates
 import rclpy
+from tf2_ros.buffer import Buffer
+from tf2_ros.transform_listener import TransformListener
 from rclpy.action import ActionClient
 from rclpy.node import Node
 from rclpy.qos import QoSDurabilityPolicy, QoSProfile
@@ -29,7 +31,7 @@ class CoverageManager(Node):
         self.declare_parameter('preview_path_topic', '/coverage/preview_path')
         self.declare_parameter('default_frame_id', 'map')
         self.declare_parameter('compute_coverage_action_name', 'compute_coverage_path')
-        self.declare_parameter('navigate_through_poses_action_name', 'navigate_through_poses')
+        self.declare_parameter('navigate_through_poses_action_name', 'follow_path')
         self.declare_parameter('headland_width', 0.5)
         self.declare_parameter('path_continuity_type', 'CONTINUOUS')
         self.declare_parameter('path_type', 'REEDS_SHEPP')
@@ -92,7 +94,7 @@ class CoverageManager(Node):
         )
 
         self._compute_client = ActionClient(self, ComputeCoveragePath, compute_action_name)
-        self._nav_client = ActionClient(self, NavigateThroughPoses, nav_through_poses_action_name)
+        self._nav_client = ActionClient(self, FollowPath, nav_through_poses_action_name)
 
         self._polygon_msg = PolygonStamped()
         self._obstacle_polygons: list[list[tuple[float, float]]] = []
@@ -115,6 +117,9 @@ class CoverageManager(Node):
         # normally handles this for a single reconnect, but rosbridge may
         # subscribe with VOLATILE QoS and miss the latched sample; the timer
         # acts as a fallback keepalive.
+        self._tf_buffer = Buffer()
+        self._tf_listener = TransformListener(self._tf_buffer, self)
+
         self.create_timer(1.0, self._republish_state)
 
         self._publish_status('idle', 'Coverage manager ready.')
@@ -171,7 +176,7 @@ class CoverageManager(Node):
         # For the auto-detected SLAM map: keep headland to avoid driving into walls.
         goal.generate_headland = not self._custom_polygon_active
         goal.generate_route = True
-        goal.generate_path = False
+        goal.generate_path = True
         goal.frame_id = self._polygon_msg.header.frame_id or self._default_frame_id
 
         # polygons[0] = outer field boundary
@@ -253,21 +258,39 @@ class CoverageManager(Node):
             return
 
         frame_id = self._polygon_msg.header.frame_id or self._default_frame_id
-        self._cached_waypoints = self._swath_to_waypoints(
-            result.coverage_path.swaths, frame_id
-        )
+        if result.nav_path.poses:
+            robot_pose = self._get_robot_pose()
+            if robot_pose is not None:
+                start_p = result.nav_path.poses[0].pose.position
+                end_p = result.nav_path.poses[-1].pose.position
+                rob_p = robot_pose.position
+                dist_start = math.hypot(start_p.x - rob_p.x, start_p.y - rob_p.y)
+                dist_end = math.hypot(end_p.x - rob_p.x, end_p.y - rob_p.y)
+                if dist_end < dist_start:
+                    self.get_logger().info(
+                        'Robot is closer to the end of the computed coverage path. Reversing path direction.'
+                    )
+                    result.nav_path.poses.reverse()
+                    for wp in result.nav_path.poses:
+                        wp.pose.orientation = self._flip_quaternion(wp.pose.orientation)
+            self._cached_waypoints = result.nav_path.poses
+            self._cached_path = result.nav_path
+        else:
+            self._cached_waypoints = self._swath_to_waypoints(
+                result.coverage_path.swaths, frame_id
+            )
+            # Build a preview path from straight swath lines (no turn arcs)
+            preview = Path()
+            preview.header.frame_id = frame_id
+            preview.header.stamp = self.get_clock().now().to_msg()
+            for wp in self._cached_waypoints:
+                ps = PoseStamped()
+                ps.header = wp.header
+                ps.pose = wp.pose
+                preview.poses.append(ps)
+            self._cached_path = preview
 
-        # Build a preview path from straight swath lines (no turn arcs)
-        preview = Path()
-        preview.header.frame_id = frame_id
-        preview.header.stamp = self.get_clock().now().to_msg()
-        for wp in self._cached_waypoints:
-            ps = PoseStamped()
-            ps.header = wp.header
-            ps.pose = wp.pose
-            preview.poses.append(ps)
-        self._cached_path = preview
-        self._preview_path_pub.publish(preview)
+        self._preview_path_pub.publish(self._cached_path)
         self._last_preview_valid = True
         self._state = 'preview_ready'
         self._publish_status(
@@ -312,27 +335,31 @@ class CoverageManager(Node):
         if self._compute_goal_handle or self._nav_goal_handle:
             self._publish_status('busy', 'Coverage manager is already handling a request.')
             return
-        if not self._cached_waypoints:
+        if not self._cached_path.poses:
             self._publish_status('no_preview', 'Preview a coverage path before execution.')
             return
         if not self._last_preview_valid and not self._allow_execute_without_fresh_preview:
             self._publish_status('stale_preview', 'Preview the current polygon again before execution.')
             return
         if not self._nav_client.wait_for_server(timeout_sec=self._action_wait_timeout_sec):
-            self._publish_status('server_unavailable', 'NavigateThroughPoses action is not available.')
+            self._publish_status('server_unavailable', 'FollowPath action is not available.')
             return
 
         stamp = self.get_clock().now().to_msg()
-        goal = NavigateThroughPoses.Goal()
-        for wp in self._cached_waypoints:
+        self._cached_path.header.stamp = stamp
+        for wp in self._cached_path.poses:
             wp.header.stamp = stamp
-            goal.poses.append(wp)
+
+        goal = FollowPath.Goal()
+        goal.path = self._cached_path
+        goal.controller_id = 'FollowPath'
+        goal.goal_checker_id = 'goal_checker'
 
         self._state = 'executing'
         self._publish_status(
             'executing',
             'Executing coverage path.',
-            waypoint_count=len(goal.poses),
+            waypoint_count=len(goal.path.poses),
         )
 
         send_future = self._nav_client.send_goal_async(
@@ -381,7 +408,7 @@ class CoverageManager(Node):
         self._publish_status(
             'executing',
             'Coverage execution in progress.',
-            distance_remaining=round(float(feedback.distance_remaining), 2),
+            distance_remaining=round(float(feedback.distance_to_goal), 2),
         )
 
     def _cancel_active_goals(self) -> None:
@@ -714,6 +741,40 @@ class CoverageManager(Node):
         return math.isclose(first[0], second[0], abs_tol=1e-4) and math.isclose(
             first[1], second[1], abs_tol=1e-4
         )
+
+    def _get_robot_pose(self) -> Pose | None:
+        target_frame = self._polygon_msg.header.frame_id or self._default_frame_id
+        try:
+            t = self._tf_buffer.lookup_transform(
+                target_frame,
+                'base_link',
+                rclpy.time.Time()
+            )
+            pose = Pose()
+            pose.position.x = t.transform.translation.x
+            pose.position.y = t.transform.translation.y
+            pose.position.z = t.transform.translation.z
+            pose.orientation = t.transform.rotation
+            return pose
+        except Exception as e:
+            self.get_logger().warn(
+                f'Could not look up transform from {target_frame} to base_link: {e}'
+            )
+            return None
+
+    def _flip_quaternion(self, q):
+        siny_cosp = 2.0 * (q.w * q.z + q.x * q.y)
+        cosy_cosp = 1.0 - 2.0 * (q.y * q.y + q.z * q.z)
+        yaw = math.atan2(siny_cosp, cosy_cosp)
+        new_yaw = yaw + math.pi
+        
+        from geometry_msgs.msg import Quaternion
+        q_new = Quaternion()
+        q_new.x = 0.0
+        q_new.y = 0.0
+        q_new.z = math.sin(new_yaw / 2.0)
+        q_new.w = math.cos(new_yaw / 2.0)
+        return q_new
 
     def _publish_status(self, state: str, message: str, **extra: Any) -> None:
         self._state = state

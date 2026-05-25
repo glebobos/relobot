@@ -152,7 +152,7 @@ controller_server:
       PreferForwardCritic:
         enabled: true
         cost_power: 1
-        cost_weight: 5.0
+        cost_weight: 2.5  # Balanced: discourages long reverse stretches, allows tight turns
         threshold_to_consider: 0.5
       ObstaclesCritic:
         enabled: true
@@ -177,7 +177,7 @@ controller_server:
       PathAlignCritic:
         enabled: true
         cost_power: 1
-        cost_weight: 10.0
+        cost_weight: 18.0  # Increased from 10.0 to overpower obstacle repulsion critics
         max_path_occupancy_ratio: 0.05
         trajectory_point_step: 3
         threshold_to_consider: 0.5
@@ -186,17 +186,17 @@ controller_server:
       PathFollowCritic:
         enabled: true
         cost_power: 1
-        cost_weight: 5.0
+        cost_weight: 8.0  # Increased from 5.0 to pull robot closer to path
         offset_from_furthest: 5
         threshold_to_consider: 1.4
       PathAngleCritic:
         enabled: true
         cost_power: 1
-        cost_weight: 2.0
+        cost_weight: 4.0
         offset_from_furthest: 4
         threshold_to_consider: 0.5
         max_angle_to_furthest: 1.0
-        mode: 0 # check
+        mode: 0  # Forward preference — correct for differential-drive forward robot
 
 planner_server:
   ros__parameters:
@@ -218,7 +218,7 @@ planner_server:
       angle_quantization_bins: 72 # Number of angle bins for search
       analytic_expansion_ratio: 3.5 # The ratio to attempt analytic expansions during search for final approach.
       analytic_expansion_max_length: 1.5 # For Hybrid/Lattice nodes: The maximum length of the analytic expansion to be considered valid to prevent unsafe shortcutting
-      minimum_turning_radius: 0.10 # minimum turning radius in m of path / vehicle
+      minimum_turning_radius: 0.15 # minimum turning radius in m of path / vehicle
       reverse_penalty: 2.0 # Penalty to apply if motion is reversing, must be => 1
       change_penalty: 0.5 # Penalty to apply if motion is changing directions (L to R), must be >= 0
       non_straight_penalty: 1.2 # Penalty to apply if motion is non-straight, must be => 1
@@ -454,7 +454,7 @@ coverage_server:
     coordinates_in_cartesian_frame: true
     robot_width: 0.42
     operation_width: 0.24  # 300 mm blade diameter with ~20% overlap (swath spacing 24 cm)
-    min_turning_radius: 0.12
+    min_turning_radius: 0.15
     linear_curv_change: 2.0
     default_allow_overlap: false
     default_headland_type: "CONSTANT"
@@ -464,7 +464,7 @@ coverage_server:
     default_step_angle: 0.017453
     default_route_type: "BOUSTROPHEDON"
     default_spiral_n: 4
-    default_path_continuity_type: "CONTINUOUS"
+    default_path_continuity_type: "DISCONTINUOUS"
     default_path_type: "REEDS_SHEPP"
     default_turn_point_distance: 0.1
 
@@ -477,9 +477,9 @@ coverage_manager:
     preview_path_topic: "/coverage/preview_path"
     default_frame_id: "map"
     compute_coverage_action_name: "compute_coverage_path"
-    navigate_through_poses_action_name: "navigate_through_poses"
+    navigate_through_poses_action_name: "follow_path"
     headland_width: 0.5
-    path_continuity_type: "CONTINUOUS"
+    path_continuity_type: "DISCONTINUOUS"
     path_type: "REEDS_SHEPP"
     turn_point_distance: 0.1
     swath_endpoint_margin: 0.25
