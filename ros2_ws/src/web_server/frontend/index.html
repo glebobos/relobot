@@ -38,6 +38,7 @@
             <button id="undock-btn" class="map-btn map-btn-small">Undock</button>
             <button id="save-map-btn" class="map-btn">Save Map</button>
             <button id="explore-btn" class="map-btn explore-btn-idle">Start Exploration</button>
+            <button id="goto-point-btn" class="map-btn goto-point-btn-idle">📍 Go to Point</button>
         </div>
         <div class="map-controls coverage-controls">
             <button id="coverage-refresh-map-btn" class="map-btn coverage-btn-refresh">Refresh Map</button>
@@ -64,21 +65,12 @@
       }
     }
     </script>
-    <script type="module">
-        import { Ros, Action, Service, Topic } from 'roslib';
-        const ros = new Ros({ url: `ws://${window.location.hostname}:9090` });
-        ros.on('connection', () => console.log('[roslib v2] Connected'));
-        ros.on('error', (e) => console.error('[roslib v2] Error:', e));
-        // Expose for map-viewer.js and robot-control.js
-        window.rosAction = { ros, Action, Service, Topic };
-    </script>
     <!-- Keep roslib v1.4.1 for ros3d (needs legacy ROSLIB global) -->
     <script src="https://cdn.jsdelivr.net/npm/roslib@1.4.1/build/roslib.js"></script>
-    <script src="/robot-control.js?v=3"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.89.0/build/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/eventemitter2@6.4.9/lib/eventemitter2.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/ros3d@1.1.0/build/ros3d.min.js"></script>
-    <script src="/map-viewer.js?v=3"></script>
+    <script type="module" src="/js/app.js"></script>
 </body>
 
 </html>
