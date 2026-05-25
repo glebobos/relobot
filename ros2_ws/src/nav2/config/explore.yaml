@@ -486,11 +486,8 @@ coverage_manager:
     action_wait_timeout_sec: 5.0
     allow_execute_without_fresh_preview: true
     map_contour_epsilon: 0.05
-    # Erode free-space by ~0.4 m (16 px @ 0.025 m/px) so the coverage polygon
-    # sits well outside the 0.25 m global-costmap inflation layer plus the
-    # 0.51 m robot footprint length. Prevents planner_server from rejecting
-    # swath endpoints as "lethal" / "no valid path" during NavigateThroughPoses.
-    map_erode_radius: 16
+    # Erode free-space by 0.05 m (5 cm) so the coverage polygon sits close to the walls.
+    map_erode_m: 0.05
     # Obstacle detection: blobs of occupied/unknown cells inside the field boundary
     # are extracted as inner-ring cutouts and passed to Fields2Cover so swaths
     # are not generated over trees, furniture, ponds, etc.

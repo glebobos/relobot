@@ -41,7 +41,7 @@ class CoverageManager(Node):
         self.declare_parameter('map_topic', '/map')
         self.declare_parameter('map_contour_epsilon', 0.5)
         self.declare_parameter('map_morph_close_radius', 3)
-        self.declare_parameter('map_erode_radius', 5)
+        self.declare_parameter('map_erode_m', 0.15)
         self.declare_parameter('swath_endpoint_margin', 0.25)
         self.declare_parameter('obstacle_min_area_m2', 0.0004)  # 4 cm²
         self.declare_parameter('obstacle_dilate_m', 0.20)  # safety margin in metres
@@ -547,7 +547,9 @@ class CoverageManager(Node):
         # obstacle detection. Erosion merges obstacle blobs that are close to
         # walls into the wall region, making them invisible inside the boundary.
         pre_erode_mask = free_mask.copy()
-        erode_r = int(self.get_parameter('map_erode_radius').value)
+        res = msg.info.resolution
+        erode_m = float(self.get_parameter('map_erode_m').value)
+        erode_r = max(0, round(erode_m / res))
         if erode_r > 0:
             kernel = cv2.getStructuringElement(
                 cv2.MORPH_ELLIPSE, (2 * erode_r + 1, 2 * erode_r + 1)
