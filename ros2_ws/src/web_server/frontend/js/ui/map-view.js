@@ -322,6 +322,7 @@ export class MapView {
         }
         this.mapContainer.style.cursor = enabled ? 'crosshair' : '';
         if (enabled) {
+            this.resizeOverlay();
             this.snapCameraTopDown();
         } else {
             if (!this.navPointMode) this.restoreCamera();
@@ -398,6 +399,7 @@ export class MapView {
         }
         this.mapContainer.style.cursor = enabled ? 'crosshair' : '';
         if (enabled) {
+            this.resizeOverlay();
             this.clearGroup(this.navTargetLayer);
             this.navAnchor = null;
             this.snapCameraTopDown();
