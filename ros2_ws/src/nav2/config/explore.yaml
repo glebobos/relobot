@@ -485,9 +485,10 @@ coverage_manager:
     swath_endpoint_margin: 0.25
     action_wait_timeout_sec: 5.0
     allow_execute_without_fresh_preview: true
-    map_contour_epsilon: 0.05
-    # Erode free-space by 0.05 m (5 cm) so the coverage polygon sits close to the walls.
-    map_erode_m: 0.05
+    map_contour_epsilon: 0.5
+    # Erode free-space by 0.125 m (5 px @ 0.025 m/px) inward before headland is applied.
+    # Total wall clearance = erode (0.125 m) + headland_width (0.5 m) = 0.625 m.
+    map_erode_m: 0.125
     # Obstacle detection: blobs of occupied/unknown cells inside the field boundary
     # are extracted as inner-ring cutouts and passed to Fields2Cover so swaths
     # are not generated over trees, furniture, ponds, etc.
@@ -495,4 +496,4 @@ coverage_manager:
     # obstacle_dilate_m: inflate each obstacle blob by this distance (metres)
     #   before converting to map coords. Acts as a safety margin around obstacles.
     obstacle_min_area_m2: 0.0004  # 4 cm² — pick up even small obstacles
-    obstacle_dilate_m: 0.05       # 20 cm safety margin around each obstacle
+    obstacle_dilate_m: 0.20       # 20 cm safety margin around each obstacle

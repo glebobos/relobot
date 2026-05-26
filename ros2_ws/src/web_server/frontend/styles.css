@@ -302,7 +302,12 @@ body {
     display: flex;
     flex-direction: column;
     gap: 8px;
-    z-index: 25;
+    /* Must be above #zone-draw-canvas (z-index: 99) so sidebar buttons
+       always receive pointer events even when the canvas has pointer-events: auto
+       (nav-point mode or zone-draw mode). Without this, the canvas steals mousedown
+       and commits a nav point / zone at the button's screen coordinates. */
+    z-index: 110;
+    pointer-events: auto;
 }
 
 .sidebar-btn {
