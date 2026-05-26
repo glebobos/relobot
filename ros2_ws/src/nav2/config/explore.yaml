@@ -485,7 +485,7 @@ coverage_manager:
     swath_endpoint_margin: 0.25
     action_wait_timeout_sec: 5.0
     allow_execute_without_fresh_preview: true
-    map_contour_epsilon: 0.5
+    map_contour_epsilon: 0.05
     # Erode free-space by 0.125 m (5 px @ 0.025 m/px) inward before headland is applied.
     # Total wall clearance = erode (0.125 m) + headland_width (0.5 m) = 0.625 m.
     map_erode_m: 0.125

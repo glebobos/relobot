@@ -28,6 +28,7 @@ export class ControlPanel {
         this.exploringActive = false;
         this.lastCoverageState = { state: 'idle', message: 'Coverage idle.' };
         this.dockingActive = false;
+        this._toastTimer = null;
 
         // Topics & Action Clients
         this.exploreTopic = null;
@@ -296,11 +297,14 @@ export class ControlPanel {
         this.lastCoverageState = status;
 
         if (this.coverageStatus) {
+            // Always show the toast when a new message arrives
+            this.coverageStatus.classList.remove('toast-hidden');
             this.coverageStatus.textContent = status.message || 'Coverage status updated.';
             this.coverageStatus.dataset.state = status.state || 'idle';
         }
 
         const busy = ['planning', 'executing', 'cancel_requested'].includes(status.state);
+        const isError = ['failed', 'error', 'rejected', 'server_unavailable'].includes(status.state);
         const previewReady = ['preview_ready', 'completed', 'executing'].includes(status.state);
 
         if (this.coveragePreviewBtn) this.coveragePreviewBtn.disabled = busy;
@@ -310,6 +314,15 @@ export class ControlPanel {
         }
         if (this.coverageStopBtn) this.coverageStopBtn.disabled = !busy;
         if (this.coverageRefreshMapBtn) this.coverageRefreshMapBtn.disabled = busy;
+
+        // Auto-dismiss toast for informational states; keep visible for
+        // active operations (busy) and errors so the user doesn't miss them.
+        clearTimeout(this._toastTimer);
+        if (!busy && !isError && this.coverageStatus) {
+            this._toastTimer = setTimeout(() => {
+                this.coverageStatus.classList.add('toast-hidden');
+            }, 3500);
+        }
     }
 
     updateZoneDrawBtnState(active) {
