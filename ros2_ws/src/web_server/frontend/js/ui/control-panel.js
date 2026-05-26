@@ -84,9 +84,18 @@ export class ControlPanel {
 
         // Knife Slider UI Integration
         if (this.knifeSlider) {
+            const syncVisuals = (val) => {
+                const progress = document.getElementById('vSliderProgress');
+                const thumb = document.getElementById('vSliderThumb');
+                const pct = (val / 3000) * 100;
+                if (progress) progress.style.height = `${pct}%`;
+                if (thumb) thumb.style.bottom = `${pct}%`;
+            };
+
             this.knifeSlider.addEventListener('input', () => {
                 const rpm = parseInt(this.knifeSlider.value, 10);
                 gamepadService.setKnifeRpm(rpm, true);
+                syncVisuals(rpm);
                 if (this.knifeSliderVal) this.knifeSliderVal.textContent = rpm;
             });
             this.knifeSlider.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: false });
@@ -96,7 +105,14 @@ export class ControlPanel {
         // Listen to gamepadService knife RPM updates (keeps UI slider in sync)
         gamepadService.onKnifeUpdateCallback = (rpm) => {
             const absRpm = Math.abs(rpm);
-            if (this.knifeSlider) this.knifeSlider.value = absRpm;
+            if (this.knifeSlider) {
+                this.knifeSlider.value = absRpm;
+                const progress = document.getElementById('vSliderProgress');
+                const thumb = document.getElementById('vSliderThumb');
+                const pct = (absRpm / 3000) * 100;
+                if (progress) progress.style.height = `${pct}%`;
+                if (thumb) thumb.style.bottom = `${pct}%`;
+            }
             if (this.knifeSliderVal) this.knifeSliderVal.textContent = Math.round(absRpm);
         };
 
@@ -129,22 +145,59 @@ export class ControlPanel {
         // Coverage Execute
         if (this.coverageExecuteBtn) {
             this.coverageExecuteBtn.addEventListener('click', () => {
-                this.updateCoverageControls({
-                    state: 'executing',
-                    message: 'Executing cached coverage path.',
-                });
-                this.sendCoverageCommand('execute');
+                const isExecuting = this.coverageExecuteBtn.classList.contains('active');
+                if (isExecuting) {
+                    // Toggle stop
+                    const stopBtn = document.getElementById('coverage-stop-btn');
+                    if (stopBtn) stopBtn.click();
+                } else {
+                    this.updateCoverageControls({
+                        state: 'executing',
+                        message: 'Executing cached coverage path.',
+                    });
+                    this.sendCoverageCommand('execute');
+                    this.coverageExecuteBtn.classList.add('active');
+                }
             });
         }
 
-        // Coverage Stop
+        // Coverage Stop -> Unified Emergency Stop
         if (this.coverageStopBtn) {
             this.coverageStopBtn.addEventListener('click', () => {
+                console.log('[StopBtn] Unified Emergency Stop engaged.');
+                
                 this.updateCoverageControls({
                     state: 'cancel_requested',
-                    message: 'Canceling active coverage task.',
+                    message: 'EMERGENCY STOP ENGAGED.',
                 });
+                
+                // 1. Cancel active coverage task
                 this.sendCoverageCommand('cancel');
+
+                // 2. Halt drive motors
+                gamepadService.publishTwist(0, 0);
+
+                // 3. Stop knife blades
+                gamepadService.setKnifeRpm(0, true);
+
+                // 4. Invalidate navigation goal
+                if (this.nav2Action) {
+                    try { this.nav2Action.cancelAllGoals(); } catch(e){}
+                }
+
+                // 5. Cancel docking goals
+                this.cancelDockGoal();
+
+                // 6. Invalidate exploration
+                if (this.exploreTopic) {
+                    this.exploreTopic.publish({ data: false });
+                    this.updateExploreButton(false);
+                }
+
+                // Remove active classes
+                if (this.coverageExecuteBtn) this.coverageExecuteBtn.classList.remove('active');
+                if (this.exploreBtn) this.exploreBtn.classList.remove('active');
+                this.setDockingState(false);
             });
         }
 
@@ -186,17 +239,22 @@ export class ControlPanel {
             this.saveMapBtn.addEventListener('click', () => {
                 showConfirm('Save current map? This will overwrite the previous save.', () => {
                     const saveMapClient = rosService.createServiceV2('/slam_toolbox/serialize_map', 'slam_toolbox/srv/SerializePoseGraph');
-                    saveMapClient.callService(
-                        { filename: 'map_serialized' },
-                        (result) => { 
-                            console.log('[SaveMap] result:', result); 
-                            showAlert('Map saved!'); 
-                        },
-                        (error) => { 
-                            console.error('[SaveMap] error:', error); 
-                            showAlert('Error saving map: ' + error); 
-                        },
-                    );
+                    if (saveMapClient) {
+                        saveMapClient.callService(
+                            { filename: 'map_serialized' },
+                            (result) => { 
+                                console.log('[SaveMap] result:', result); 
+                                showAlert('Map saved!'); 
+                            },
+                            (error) => { 
+                                console.error('[SaveMap] error:', error); 
+                                showAlert('Error saving map: ' + error); 
+                            },
+                        );
+                    } else {
+                        console.error('[SaveMap] serialize_map service not ready');
+                        showAlert('Error: serialize_map service unavailable.');
+                    }
                 });
             });
         }
@@ -230,13 +288,7 @@ export class ControlPanel {
     updateExploreButton(exploring) {
         this.exploringActive = exploring;
         if (this.exploreBtn) {
-            if (exploring) {
-                this.exploreBtn.textContent = 'Stop Exploration';
-                this.exploreBtn.className = 'map-btn explore-btn-active';
-            } else {
-                this.exploreBtn.textContent = 'Start Exploration';
-                this.exploreBtn.className = 'map-btn explore-btn-idle';
-            }
+            this.exploreBtn.classList.toggle('active', exploring);
         }
     }
 
@@ -252,23 +304,23 @@ export class ControlPanel {
         const previewReady = ['preview_ready', 'completed', 'executing'].includes(status.state);
 
         if (this.coveragePreviewBtn) this.coveragePreviewBtn.disabled = busy;
-        if (this.coverageExecuteBtn) this.coverageExecuteBtn.disabled = busy || !previewReady;
+        if (this.coverageExecuteBtn) {
+            this.coverageExecuteBtn.disabled = busy && status.state !== 'executing';
+            this.exploreBtn.classList.toggle('active', status.state === 'executing');
+        }
         if (this.coverageStopBtn) this.coverageStopBtn.disabled = !busy;
         if (this.coverageRefreshMapBtn) this.coverageRefreshMapBtn.disabled = busy;
     }
 
     updateZoneDrawBtnState(active) {
         if (this.coverageDrawZoneBtn) {
-            this.coverageDrawZoneBtn.textContent = active ? 'Cancel Draw' : 'Draw Zone';
-            this.coverageDrawZoneBtn.classList.toggle('coverage-btn-zone-active', active);
+            this.coverageDrawZoneBtn.classList.toggle('active', active);
         }
     }
 
     updateNavPointBtnState(active) {
         if (this.gotoPointBtn) {
-            this.gotoPointBtn.textContent = active ? '✖ Cancel' : '📍 Go to Point';
-            this.gotoPointBtn.classList.toggle('goto-point-btn-active', active);
-            this.gotoPointBtn.classList.toggle('goto-point-btn-idle', !active);
+            this.gotoPointBtn.classList.toggle('active', active);
         }
     }
 
@@ -303,13 +355,7 @@ export class ControlPanel {
             this.telemetry.setDockingActive(active);
         }
         if (this.dockBtn) {
-            if (active) {
-                this.dockBtn.textContent = 'Stop Docking';
-                this.dockBtn.classList.add('dock-btn-active');
-            } else {
-                this.dockBtn.textContent = 'Dock';
-                this.dockBtn.classList.remove('dock-btn-active');
-            }
+            this.dockBtn.classList.toggle('active', active);
         }
     }
 

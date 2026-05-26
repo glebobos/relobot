@@ -53,9 +53,20 @@ export class VirtualJoystick {
 
     handleStart(e) {
         if (!this.videoContainer.contains(e.target) && e.target !== this.videoContainer) return;
-        // Don't activate touch-joystick when interacting with the knife overlay
+        
+        // Don't activate touch-joystick when interacting with overlays
         const knifeOverlay = document.getElementById('knifeControlOverlay');
         if (knifeOverlay && knifeOverlay.contains(e.target)) return;
+        
+        const verticalSlider = document.querySelector('.vertical-slider-container');
+        if (verticalSlider && verticalSlider.contains(e.target)) return;
+
+        const stopBtn = document.getElementById('camera-stop-btn');
+        if (stopBtn && stopBtn.contains(e.target)) return;
+
+        const pipMap = document.getElementById('pipMap');
+        if (pipMap && pipMap.contains(e.target)) return;
+
         this.isActive = true;
         const touch = e.touches ? e.touches[0] : e;
         this.startX = touch.clientX;

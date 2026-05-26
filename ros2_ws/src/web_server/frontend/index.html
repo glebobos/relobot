@@ -1,58 +1,255 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Robot Control</title>
+    <title>ReloBot Controller</title>
     <link rel="icon" href="data:,">
+    <!-- FontAwesome CDN for sleek icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link rel="stylesheet" href="styles.css">
 </head>
-
 <body>
-    <div class="camera-section">
-        <div class="video-container" id="videoContainer">
-            <img id="cameraStream" src="" alt="Camera Stream">
-            <div class="video-overlay">
-                <span id="vin-display" class="overlay-value">🔋 --.--</span>
-                <span id="charger-voltage-display" class="overlay-value">⚡ --.--</span>
-                <span id="rpm-display" class="overlay-value">🕛 ---</span>
+    <div class="app-container">
+        <!-- Premium Top Navigation Header -->
+        <header class="app-header">
+            <!-- Blade RPM (Header Left) -->
+            <div class="header-rpm">
+                <i class="fas fa-fan" id="rpm-icon-header"></i>
+                <span id="rpm-display">---</span>
+                <span style="font-size: 11px; opacity: 0.7; margin-left: 2px;">RPM</span>
             </div>
-            <div class="knife-control-overlay" id="knifeControlOverlay">
-                <div class="knife-slider-row">
-                    <span class="knife-label">🔪</span>
-                    <input type="range" id="knifeSlider" min="0" max="3000" value="0" step="50" class="knife-slider">
-                    <span id="knifeSliderValue" class="knife-value">0</span>
+            <nav class="header-nav dots-nav-top" id="headerNav">
+                <div class="dot active" data-index="0"></div>
+                <div class="dot" data-index="1"></div>
+                <div class="dot" data-index="2"></div>
+            </nav>
+            <div class="header-right">
+                <!-- Battery / Charging Status -->
+                <div class="header-battery">
+                    <i class="fas fa-bolt" id="header-charging-icon" style="display: none; margin-right: 4px; color: var(--color-green);"></i>
+                    <span id="charger-voltage-display" style="display: none; margin-right: 6px; color: var(--color-green); font-weight: 700;">--.- V</span>
+                    <span id="status-battery-pct">25.4 V</span>
+                    <i class="fas fa-battery-three-quarters" id="status-battery-icon"></i>
+                </div>
+            </div>
+        </header>
+
+        <!-- Viewport -->
+        <div class="screens-viewport">
+            <div class="screens-wrapper" id="screensWrapper">
+                    
+                    <!-- SCREEN 1: MAP VIEW & PRIMARY CONTROLS -->
+                    <div class="screen" id="screen-map">
+                        <div class="map-view-container" id="videoContainer">
+                            <!-- Main 3D Map -->
+                            <div id="map"></div>
+                            <canvas id="zone-draw-canvas"></canvas>
+
+                            <!-- Mini Floating Camera PIP -->
+                            <div class="pip-overlay camera-pip" id="pipCamera">
+                                <img id="pipCameraStream" src="" alt="Camera stream disconnected">
+                                <div class="pip-label"><i class="fas fa-video"></i> Camera</div>
+                            </div>
+
+                            <!-- Hud Toast for Coverage Status -->
+                            <div id="coverage-status" class="coverage-toast" data-state="idle">
+                                Coverage idle. Map boundary auto-detected.
+                            </div>
+
+                            <!-- Floating Sidebar Controls (Circular Buttons) -->
+                            <div class="map-sidebar">
+                                <!-- Save Map -->
+                                <button id="save-map-btn" class="sidebar-btn" title="Save Map">
+                                    <i class="fas fa-save"></i>
+                                </button>
+                                <!-- Draw Zone -->
+                                <button id="coverage-draw-zone-btn" class="sidebar-btn" title="Draw Zone">
+                                    <i class="fas fa-crop-alt"></i>
+                                </button>
+                                <!-- Clear Zone -->
+                                <button id="coverage-clear-zone-btn" class="sidebar-btn" title="Clear Zone">
+                                    <i class="fas fa-trash-can"></i>
+                                </button>
+                                <!-- Go to Point -->
+                                <button id="goto-point-btn" class="sidebar-btn" title="Go to Point">
+                                    <i class="fas fa-location-dot"></i>
+                                </button>
+                                <!-- Preview Path -->
+                                <button id="coverage-preview-btn" class="sidebar-btn" title="Preview Coverage">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <!-- Start/Execute Coverage -->
+                                <button id="coverage-execute-btn" class="sidebar-btn" title="Execute Coverage">
+                                    <i class="fas fa-seedling"></i>
+                                </button>
+                                <!-- RED STOP BUTTON -->
+                                <button id="coverage-stop-btn" class="sidebar-btn btn-stop-danger" title="Emergency Stop">
+                                    <i class="fas fa-octagon-exclamation"></i>
+                                </button>
+                                <!-- Dock -->
+                                <button id="dock-btn" class="sidebar-btn" title="Dock Robot">
+                                    <i class="fas fa-charging-station"></i>
+                                </button>
+                                <!-- Undock -->
+                                <button id="undock-btn" class="sidebar-btn" title="Undock Robot">
+                                    <i class="fas fa-arrow-up-from-bracket"></i>
+                                </button>
+                                <!-- Explore -->
+                                <button id="explore-btn" class="sidebar-btn" title="Start Exploration">
+                                    <i class="fas fa-rocket"></i>
+                                </button>
+                            </div>
+                        </div>
+
+
+                    </div>
+
+                    <!-- SCREEN 2: CAMERA VIEW & MANUAL CONTROL -->
+                    <div class="screen" id="screen-camera">
+                        <div class="camera-view-container">
+                            <div class="video-wrapper" id="largeCameraWrapper">
+                                <!-- Main Camera stream image -->
+                                <img id="cameraStream" src="" alt="Camera stream loading">
+
+                                <!-- Mini Floating Map PIP -->
+                                <div class="pip-overlay map-pip" id="pipMap">
+                                    <div id="pipMapMini"></div>
+                                    <div class="pip-label"><i class="fas fa-map"></i> Map</div>
+                                </div>
+
+
+
+                                <!-- Vertical Knife Slider overlay -->
+                                <div class="vertical-slider-container">
+                                    <span class="v-slider-icon v-slider-icon-up"><i class="fas fa-chevron-up"></i></span>
+                                    <div class="v-slider-track">
+                                        <input type="range" id="knifeSlider" min="0" max="3000" value="0" step="50">
+                                        <div class="v-slider-progress" id="vSliderProgress"></div>
+                                        <div class="v-slider-thumb-custom" id="vSliderThumb"></div>
+                                    </div>
+                                    <span class="v-slider-icon v-slider-icon-down" id="vSliderFanIcon"><i class="fas fa-fan"></i></span>
+                                </div>
+
+                                <!-- RED STOP BUTTON overlay -->
+                                <button id="camera-stop-btn" class="camera-stop-btn" title="Emergency Stop">
+                                    <i class="fas fa-octagon-exclamation"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Bottom Telemetry Grid (2 values) -->
+                        <div class="telemetry-grid telemetry-grid-two">
+                            <div class="telemetry-card">
+                                <i class="fas fa-tachometer-alt tel-icon"></i>
+                                <span id="speed-display" class="tel-value">0.0</span>
+                                <span class="tel-label">M/S</span>
+                            </div>
+                            <div class="telemetry-card">
+                                <i class="fas fa-network-wired tel-icon"></i>
+                                <span id="latency-display" class="tel-value">--</span>
+                                <span class="tel-label">LATENCY</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SCREEN 3: SETTINGS -->
+                    <div class="screen" id="screen-settings">
+                        <div class="settings-container">
+                            <h2 class="settings-title">Settings</h2>
+                            <div class="settings-list">
+                                <div class="settings-item" data-setting="navigation">
+                                    <div class="settings-item-left">
+                                        <i class="fas fa-crosshairs settings-icon"></i>
+                                        <span>Navigation</span>
+                                    </div>
+                                    <i class="fas fa-chevron-right settings-chevron"></i>
+                                </div>
+                                <div class="settings-item" data-setting="blade">
+                                    <div class="settings-item-left">
+                                        <i class="fas fa-fan settings-icon"></i>
+                                        <span>Blade Control</span>
+                                    </div>
+                                    <i class="fas fa-chevron-right settings-chevron"></i>
+                                </div>
+                                <div class="settings-item" data-setting="battery">
+                                    <div class="settings-item-left">
+                                        <i class="fas fa-battery-full settings-icon"></i>
+                                        <span>Battery</span>
+                                    </div>
+                                    <i class="fas fa-chevron-right settings-chevron"></i>
+                                </div>
+                                <div class="settings-item" data-setting="sensors">
+                                    <div class="settings-item-left">
+                                        <i class="fas fa-wave-square settings-icon"></i>
+                                        <span>Sensors</span>
+                                    </div>
+                                    <i class="fas fa-chevron-right settings-chevron"></i>
+                                </div>
+                                <div class="settings-item" data-setting="rtk">
+                                    <div class="settings-item-left">
+                                        <i class="fas fa-map-marker-alt settings-icon"></i>
+                                        <span>RTK / GPS</span>
+                                    </div>
+                                    <i class="fas fa-chevron-right settings-chevron"></i>
+                                </div>
+                                <div class="settings-item" data-setting="wifi">
+                                    <div class="settings-item-left">
+                                        <i class="fas fa-wifi settings-icon"></i>
+                                        <span>Wi-Fi / Connectivity</span>
+                                    </div>
+                                    <i class="fas fa-chevron-right settings-chevron"></i>
+                                </div>
+                                <div class="settings-item" data-setting="safety">
+                                    <div class="settings-item-left">
+                                        <i class="fas fa-shield-alt settings-icon"></i>
+                                        <span>Safety</span>
+                                    </div>
+                                    <i class="fas fa-chevron-right settings-chevron"></i>
+                                </div>
+                                <div class="settings-item" data-setting="firmware">
+                                    <div class="settings-item-left">
+                                        <i class="fas fa-microchip settings-icon"></i>
+                                        <span>Firmware</span>
+                                    </div>
+                                    <i class="fas fa-chevron-right settings-chevron"></i>
+                                </div>
+                                <div class="settings-item" data-setting="logs">
+                                    <div class="settings-item-left">
+                                        <i class="fas fa-file-alt settings-icon"></i>
+                                        <span>Logs & Diagnostics</span>
+                                    </div>
+                                    <i class="fas fa-chevron-right settings-chevron"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Settings Drawer Container (will hold active settings drawers dynamically) -->
+                        <div id="settingsDrawer" class="settings-drawer">
+                            <div class="drawer-header">
+                                <button class="drawer-back-btn" id="drawerBackBtn"><i class="fas fa-arrow-left"></i></button>
+                                <span class="drawer-title" id="drawerTitle">Setting Name</span>
+                            </div>
+                            <div class="drawer-content" id="drawerContent">
+                                <!-- Dynamic settings items will be injected here safely via DOM operations -->
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="map-section">
-        <div class="map-wrapper">
-            <div id="map"></div>
-            <canvas id="zone-draw-canvas" style="position:absolute;top:0;left:0;pointer-events:none;"></canvas>
-        </div>
-        <div class="map-controls">
-            <button id="dock-btn" class="map-btn map-btn-small">Dock</button>
-            <button id="undock-btn" class="map-btn map-btn-small">Undock</button>
-            <button id="save-map-btn" class="map-btn">Save Map</button>
-            <button id="explore-btn" class="map-btn explore-btn-idle">Start Exploration</button>
-            <button id="goto-point-btn" class="map-btn goto-point-btn-idle">📍 Go to Point</button>
-        </div>
-        <div class="map-controls coverage-controls">
-            <button id="coverage-refresh-map-btn" class="map-btn coverage-btn-refresh">Refresh Map</button>
-            <button id="coverage-preview-btn" class="map-btn coverage-btn-preview">Preview Coverage</button>
-            <button id="coverage-execute-btn" class="map-btn coverage-btn-execute">Execute Coverage</button>
-            <button id="coverage-stop-btn" class="map-btn coverage-btn-stop">Stop Coverage</button>
-            <button id="coverage-draw-zone-btn" class="map-btn coverage-btn-zone">Draw Zone</button>
-            <button id="coverage-clear-zone-btn" class="map-btn coverage-btn-zone-clear">Clear Zone</button>
-        </div>
-        <div id="coverage-status" class="coverage-status">Coverage idle. Map boundary is auto-detected from SLAM. Click
-            "Refresh Map" to re-extract, then "Preview Coverage" to plan.</div>
+    <!-- Hidden elements to preserve backward compatibility for any hidden or unused controls -->
+    <div style="display: none;">
+        <span id="vin-display">--.-</span>
+        <span id="vin-display-cam">--.-</span>
+        <span id="knifeSliderValue">0</span>
+        <span id="rpm-display-cam">---</span>
+        <span id="rpm-icon-cam"></span>
     </div>
-    <!-- roslib v2.1.0 (ESM) – loaded as a module so action_feedback/result
-         messages are routed correctly. Exposes window.rosAction for dock/undock. -->
+
+    <!-- Import Maps for ESModules -->
     <script type="importmap">
     {
       "imports": {
@@ -65,12 +262,10 @@
       }
     }
     </script>
-    <!-- Keep roslib v1.4.1 for ros3d (needs legacy ROSLIB global) -->
     <script src="https://cdn.jsdelivr.net/npm/roslib@1.4.1/build/roslib.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.89.0/build/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/eventemitter2@6.4.9/lib/eventemitter2.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/ros3d@1.1.0/build/ros3d.min.js"></script>
     <script type="module" src="/js/app.js"></script>
 </body>
-
 </html>
