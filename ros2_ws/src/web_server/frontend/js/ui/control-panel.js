@@ -23,6 +23,7 @@ export class ControlPanel {
         this.undockBtn = document.getElementById('undock-btn');
         this.knifeSlider = document.getElementById('knifeSlider');
         this.knifeSliderVal = document.getElementById('knifeSliderValue');
+        this.cameraStopBtn = document.getElementById('camera-stop-btn');
 
         // State variables
         this.exploringActive = false;
@@ -162,43 +163,52 @@ export class ControlPanel {
             });
         }
 
-        // Coverage Stop -> Unified Emergency Stop
+        // Unified Emergency Stop
+        const triggerEmergencyStop = () => {
+            console.log('[StopBtn] Unified Emergency Stop engaged.');
+            
+            this.updateCoverageControls({
+                state: 'cancel_requested',
+                message: 'EMERGENCY STOP ENGAGED.',
+            });
+            
+            // 1. Cancel active coverage task
+            this.sendCoverageCommand('cancel');
+
+            // 2. Halt drive motors
+            gamepadService.publishTwist(0, 0);
+
+            // 3. Stop knife blades
+            gamepadService.setKnifeRpm(0, true);
+
+            // 4. Invalidate navigation goal
+            if (this.nav2Action) {
+                try { this.nav2Action.cancelAllGoals(); } catch(e){}
+            }
+
+            // 5. Cancel docking goals
+            this.cancelDockGoal();
+
+            // 6. Invalidate exploration
+            if (this.exploreTopic) {
+                this.exploreTopic.publish({ data: false });
+                this.updateExploreButton(false);
+            }
+
+            // Remove active classes
+            if (this.coverageExecuteBtn) this.coverageExecuteBtn.classList.remove('active');
+            if (this.exploreBtn) this.exploreBtn.classList.remove('active');
+            this.setDockingState(false);
+        };
+
         if (this.coverageStopBtn) {
-            this.coverageStopBtn.addEventListener('click', () => {
-                console.log('[StopBtn] Unified Emergency Stop engaged.');
-                
-                this.updateCoverageControls({
-                    state: 'cancel_requested',
-                    message: 'EMERGENCY STOP ENGAGED.',
-                });
-                
-                // 1. Cancel active coverage task
-                this.sendCoverageCommand('cancel');
+            this.coverageStopBtn.addEventListener('click', triggerEmergencyStop);
+        }
 
-                // 2. Halt drive motors
-                gamepadService.publishTwist(0, 0);
-
-                // 3. Stop knife blades
-                gamepadService.setKnifeRpm(0, true);
-
-                // 4. Invalidate navigation goal
-                if (this.nav2Action) {
-                    try { this.nav2Action.cancelAllGoals(); } catch(e){}
-                }
-
-                // 5. Cancel docking goals
-                this.cancelDockGoal();
-
-                // 6. Invalidate exploration
-                if (this.exploreTopic) {
-                    this.exploreTopic.publish({ data: false });
-                    this.updateExploreButton(false);
-                }
-
-                // Remove active classes
-                if (this.coverageExecuteBtn) this.coverageExecuteBtn.classList.remove('active');
-                if (this.exploreBtn) this.exploreBtn.classList.remove('active');
-                this.setDockingState(false);
+        if (this.cameraStopBtn) {
+            this.cameraStopBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                triggerEmergencyStop();
             });
         }
 
@@ -310,9 +320,9 @@ export class ControlPanel {
         if (this.coveragePreviewBtn) this.coveragePreviewBtn.disabled = busy;
         if (this.coverageExecuteBtn) {
             this.coverageExecuteBtn.disabled = busy && status.state !== 'executing';
-            this.exploreBtn.classList.toggle('active', status.state === 'executing');
+            this.coverageExecuteBtn.classList.toggle('active', status.state === 'executing');
         }
-        if (this.coverageStopBtn) this.coverageStopBtn.disabled = !busy;
+        if (this.coverageStopBtn) this.coverageStopBtn.disabled = false;
         if (this.coverageRefreshMapBtn) this.coverageRefreshMapBtn.disabled = busy;
 
         // Auto-dismiss toast for informational states; keep visible for
@@ -376,9 +386,15 @@ export class ControlPanel {
         if (!this.dockAction) { console.error('[ControlPanel] dockAction not ready'); return; }
         const id = this.dockAction.sendGoal(
             { use_dock_id: true, dock_id: DOCK_ID, navigate_to_staging_pose: true, max_staging_time: 60.0 },
-            (result) => console.log('[Dock] result:', result),
+            (result) => {
+                console.log('[Dock] result:', result);
+                this.setDockingState(false);
+            },
             (feedback) => console.log('[Dock] feedback:', feedback),
-            (error) => console.error('[Dock] failed:', error),
+            (error) => {
+                console.error('[Dock] failed:', error);
+                this.setDockingState(false);
+            },
         );
         console.log('[Dock] goal sent, id:', id);
     }
@@ -395,6 +411,7 @@ export class ControlPanel {
         } catch (err) {
             console.warn('[Dock] cancelAllGoals error:', err);
         }
+        this.setDockingState(false);
     }
 
     sendUndockGoal() {

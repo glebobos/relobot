@@ -51,34 +51,18 @@ export class SettingsPanel {
                 this.drawerTitle.textContent = 'Navigation';
                 this.renderNavigationPanel();
                 break;
-            case 'blade':
-                this.drawerTitle.textContent = 'Blade Control';
-                this.renderBladePanel();
-                break;
-            case 'battery':
-                this.drawerTitle.textContent = 'Battery Settings';
-                this.renderBatteryPanel();
-                break;
+
+
             case 'sensors':
                 this.drawerTitle.textContent = 'Sensors & IMU';
                 this.renderSensorsPanel();
                 break;
-            case 'rtk':
-                this.drawerTitle.textContent = 'RTK / GPS';
-                this.renderRtkPanel();
-                break;
+
             case 'wifi':
                 this.drawerTitle.textContent = 'Connectivity';
                 this.renderWifiPanel();
                 break;
-            case 'safety':
-                this.drawerTitle.textContent = 'Safety Systems';
-                this.renderSafetyPanel();
-                break;
-            case 'firmware':
-                this.drawerTitle.textContent = 'Firmware';
-                this.renderFirmwarePanel();
-                break;
+
             case 'logs':
                 this.drawerTitle.textContent = 'Logs & Diagnostics';
                 this.renderLogsPanel();
@@ -174,74 +158,9 @@ export class SettingsPanel {
         content.appendChild(createMappedBtn('🗑️ Clear Boundary Zone', 'coverage-clear-zone-btn', 'drawer-btn-danger'));
     }
 
-    renderBladePanel() {
-        const content = this.drawerContent;
 
-        const info = document.createElement('p');
-        info.textContent = 'Customize knife blade rotation limits and automatic spin features:';
-        content.appendChild(info);
 
-        const createRow = (label, valText) => {
-            const row = document.createElement('div');
-            row.className = 'drawer-row';
-            const labelEl = document.createElement('span');
-            labelEl.className = 'drawer-row-label';
-            labelEl.textContent = label;
-            const valEl = document.createElement('span');
-            valEl.className = 'drawer-row-val';
-            valEl.textContent = valText;
-            row.appendChild(labelEl);
-            row.appendChild(valEl);
-            return row;
-        };
 
-        content.appendChild(createRow('Min Operating Speed', '500 RPM'));
-        content.appendChild(createRow('Max Operating Speed', '3000 RPM'));
-        content.appendChild(createRow('Current Target Spin', (this.telemetry.rpmSpan ? this.telemetry.rpmSpan.textContent : '0') + ' RPM'));
-
-        const button = document.createElement('button');
-        button.className = 'drawer-btn drawer-btn-danger';
-        button.textContent = '🛑 Stop Blades Immediately';
-        button.addEventListener('click', () => {
-            const slider = document.getElementById('knifeSlider');
-            if (slider) {
-                slider.value = 0;
-                // Dispatch input event to trigger control-panel slider callback
-                slider.dispatchEvent(new Event('input'));
-            }
-            this.addMockLog('[BladePanel] Emergency blade stop command sent.');
-        });
-        content.appendChild(button);
-    }
-
-    renderBatteryPanel() {
-        const content = this.drawerContent;
-
-        const info = document.createElement('p');
-        info.textContent = 'Monitors charger parameters and lithium-ion cells:';
-        content.appendChild(info);
-
-        const createRow = (label, valText) => {
-            const row = document.createElement('div');
-            row.className = 'drawer-row';
-            const labelEl = document.createElement('span');
-            labelEl.className = 'drawer-row-label';
-            labelEl.textContent = label;
-            const valEl = document.createElement('span');
-            valEl.className = 'drawer-row-val';
-            valEl.textContent = valText;
-            row.appendChild(labelEl);
-            row.appendChild(valEl);
-            return row;
-        };
-
-        const currentVoltage = this.telemetry.currentChargerVolts || 25.4;
-        content.appendChild(createRow('Pack Nominal Voltage', '24.0 V'));
-        content.appendChild(createRow('Measured Voltage', currentVoltage.toFixed(1) + ' V'));
-        content.appendChild(createRow('Voltage Cutoff Limit', '22.0 V'));
-        content.appendChild(createRow('Battery Health', '98% (Good)'));
-        content.appendChild(createRow('Internal Resistance', '0.11 Ohm'));
-    }
 
     renderSensorsPanel() {
         const content = this.drawerContent;
@@ -319,33 +238,7 @@ export class SettingsPanel {
         }
     }
 
-    renderRtkPanel() {
-        const content = this.drawerContent;
 
-        const info = document.createElement('p');
-        info.textContent = 'High-precision RTK GNSS satellite positioning status:';
-        content.appendChild(info);
-
-        const createRow = (label, valText) => {
-            const row = document.createElement('div');
-            row.className = 'drawer-row';
-            const labelEl = document.createElement('span');
-            labelEl.className = 'drawer-row-label';
-            labelEl.textContent = label;
-            const valEl = document.createElement('span');
-            valEl.className = 'drawer-row-val';
-            valEl.textContent = valText;
-            row.appendChild(labelEl);
-            row.appendChild(valEl);
-            return row;
-        };
-
-        content.appendChild(createRow('GNSS Fix Status', 'FIXED RTK'));
-        content.appendChild(createRow('Connected Satellites', '15 (GPS/GLONASS)'));
-        content.appendChild(createRow('Precision (Horizontal)', '0.015 m'));
-        content.appendChild(createRow('Precision (Vertical)', '0.024 m'));
-        content.appendChild(createRow('Correction Base Age', '0.6 seconds'));
-    }
 
     renderWifiPanel() {
         const content = this.drawerContent;
@@ -375,59 +268,7 @@ export class SettingsPanel {
         content.appendChild(createRow('Connection Protocol', 'ESM / Legacy Rosbridge'));
     }
 
-    renderSafetyPanel() {
-        const content = this.drawerContent;
 
-        const info = document.createElement('p');
-        info.textContent = 'Checks emergency triggers and tilt-prevention features:';
-        content.appendChild(info);
-
-        const createRow = (label, valText) => {
-            const row = document.createElement('div');
-            row.className = 'drawer-row';
-            const labelEl = document.createElement('span');
-            labelEl.className = 'drawer-row-label';
-            labelEl.textContent = label;
-            const valEl = document.createElement('span');
-            valEl.className = 'drawer-row-val';
-            valEl.textContent = valText;
-            row.appendChild(labelEl);
-            row.appendChild(valEl);
-            return row;
-        };
-
-        content.appendChild(createRow('Physical Bumper Sw', 'NORMAL (Clear)'));
-        content.appendChild(createRow('Tilt Angle limit', '25.0°'));
-        content.appendChild(createRow('Emergency Estop Sw', 'RELEASED (Armed)'));
-        content.appendChild(createRow('Geofence Boundary', 'OK (Inside Fence)'));
-    }
-
-    renderFirmwarePanel() {
-        const content = this.drawerContent;
-
-        const info = document.createElement('p');
-        info.textContent = 'Version identifiers for controllers and ROS2 Humble nodes:';
-        content.appendChild(info);
-
-        const createRow = (label, valText) => {
-            const row = document.createElement('div');
-            row.className = 'drawer-row';
-            const labelEl = document.createElement('span');
-            labelEl.className = 'drawer-row-label';
-            labelEl.textContent = label;
-            const valEl = document.createElement('span');
-            valEl.className = 'drawer-row-val';
-            valEl.textContent = valText;
-            row.appendChild(labelEl);
-            row.appendChild(valEl);
-            return row;
-        };
-
-        content.appendChild(createRow('Raspberry Pi 5 OS', 'Debian Bookworm (64-bit)'));
-        content.appendChild(createRow('Microcontroller A (Drive)', 'MicroPython Wheel-Pico v1.2'));
-        content.appendChild(createRow('Microcontroller B (Blades)', 'MicroPython Blade-Pico v1.1'));
-        content.appendChild(createRow('ROS2 Base Version', 'Humble Hawksbill'));
-    }
 
     renderLogsPanel() {
         const content = this.drawerContent;
