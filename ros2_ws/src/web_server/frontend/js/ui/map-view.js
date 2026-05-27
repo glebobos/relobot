@@ -1,5 +1,48 @@
 import { rosService } from '../services/ros-service.js';
 
+class DynamicLine {
+    constructor(color, maxPoints = 5000, thickness = 1) {
+        this.maxPoints = maxPoints;
+        this.geometry = new THREE.BufferGeometry();
+        this.positions = new Float32Array(maxPoints * 3);
+        this.positionAttr = new THREE.BufferAttribute(this.positions, 3);
+        this.positionAttr.setDynamic(true);
+        this.geometry.addAttribute('position', this.positionAttr);
+        this.geometry.setDrawRange(0, 0);
+
+        this.material = new THREE.LineBasicMaterial({
+            color: color,
+            linewidth: thickness
+        });
+
+        this.line = new THREE.Line(this.geometry, this.material);
+    }
+
+    updatePoints(points) {
+        const count = Math.min(points.length, this.maxPoints);
+        const array = this.positionAttr.array;
+        for (let i = 0; i < count; i++) {
+            const p = points[i];
+            array[i * 3] = p.x;
+            array[i * 3 + 1] = p.y;
+            array[i * 3 + 2] = p.z !== undefined ? p.z : 0.0;
+        }
+        this.positionAttr.needsUpdate = true;
+        this.geometry.setDrawRange(0, count);
+        this.line.visible = count > 0;
+    }
+
+    clear() {
+        this.geometry.setDrawRange(0, 0);
+        this.line.visible = false;
+    }
+
+    dispose() {
+        this.geometry.dispose();
+        this.material.dispose();
+    }
+}
+
 export class MapView {
     constructor(containerId) {
         this.containerId = containerId;
@@ -22,6 +65,18 @@ export class MapView {
         this.obstacleLayer = new THREE.Group();
         this.zoneLayer = new THREE.Group();
         this.navTargetLayer = new THREE.Group();
+
+        // Dynamic lines for high-frequency updates
+        this.previewLine = new DynamicLine(0xd17a00, 5000, 1);
+        this.previewLayer.add(this.previewLine.line);
+
+        this.mapPolygonLine = new DynamicLine(0x1a6fcc, 5000, 1);
+        this.mapPolygonLayer.add(this.mapPolygonLine.line);
+
+        this.zoneLine = new DynamicLine(0x00e676, 100, 1);
+        this.zoneLayer.add(this.zoneLine.line);
+
+        this.obstacleLines = [];
 
         // Overlay Canvas
         this.overlayCanvas = document.getElementById('zone-draw-canvas');
@@ -50,13 +105,21 @@ export class MapView {
         const containerWidth = this.mapContainer.offsetWidth;
         const containerHeight = this.mapContainer.offsetHeight;
 
-        // Create the main 3D viewer
+        // Create the main 3D viewer (suppressing THREE.WebGLRenderer library log)
+        const originalLog = console.log;
+        console.log = function(...args) {
+            if (args[0] === 'THREE.WebGLRenderer') return;
+            originalLog.apply(console, args);
+        };
+
         this.viewer = new window.ROS3D.Viewer({
             divID: this.containerId,
             width: containerWidth,
             height: containerHeight,
             antialias: true,
         });
+
+        console.log = originalLog;
 
         this.viewer.scene.add(this.previewLayer);
         this.viewer.scene.add(this.mapPolygonLayer);
@@ -88,7 +151,7 @@ export class MapView {
 
     clearGroup(group) {
         while (group.children.length > 0) {
-            const child = group.children.pop();
+            const child = group.children[0];
             group.remove(child);
             if (child.geometry) child.geometry.dispose();
             if (child.material) child.material.dispose();
@@ -96,8 +159,8 @@ export class MapView {
     }
 
     renderPreviewPath(pathMsg) {
-        this.clearGroup(this.previewLayer);
         if (!pathMsg || !pathMsg.poses || pathMsg.poses.length === 0) {
+            this.previewLine.clear();
             return;
         }
 
@@ -114,25 +177,42 @@ export class MapView {
                     0.1
                 );
             });
-        if (pathPoints.length < 2) {
+
+        const MAX_COORD = 100.0;
+        const hasGlitch = pathPoints.some((p) => Math.abs(p.x) > MAX_COORD || Math.abs(p.y) > MAX_COORD);
+        if (hasGlitch) {
+            console.warn('[MapView] renderPreviewPath: rejected path containing coordinates exceeding 100m (potential glitch).');
+            this.previewLine.clear();
             return;
         }
-        const pathGeometry = new THREE.BufferGeometry().setFromPoints(pathPoints);
-        const pathMaterial = new THREE.LineBasicMaterial({ color: 0xd17a00 });
-        this.previewLayer.add(new THREE.Line(pathGeometry, pathMaterial));
+
+        if (pathPoints.length < 2) {
+            this.previewLine.clear();
+            return;
+        }
+        this.previewLine.updatePoints(pathPoints);
     }
 
     renderMapPolygon(msg) {
-        this.clearGroup(this.mapPolygonLayer);
         if (!msg || !msg.polygon || !msg.polygon.points || msg.polygon.points.length < 3) {
+            this.mapPolygonLine.clear();
             return;
         }
+
         const pts = msg.polygon.points
             .filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y))
             .map((p) => new THREE.Vector3(p.x, p.y, 0.05));
 
+        const MAX_COORD = 100.0;
+        const hasGlitch = pts.some((p) => Math.abs(p.x) > MAX_COORD || Math.abs(p.y) > MAX_COORD);
+        if (hasGlitch) {
+            console.warn('[MapView] renderMapPolygon: rejected polygon containing coordinates exceeding 100m (potential glitch).');
+            this.mapPolygonLine.clear();
+            return;
+        }
+
         if (pts.length < 3) {
-            console.warn('renderMapPolygon: no finite points, skipping draw.');
+            this.mapPolygonLine.clear();
             return;
         }
 
@@ -141,43 +221,79 @@ export class MapView {
             pts.push(first.clone());
         }
 
-        const geo = new THREE.BufferGeometry().setFromPoints(pts);
-        const mat = new THREE.LineBasicMaterial({ color: 0x1a6fcc });
-        this.mapPolygonLayer.add(new THREE.Line(geo, mat));
+        this.mapPolygonLine.updatePoints(pts);
     }
 
     renderObstacles(msg) {
-        this.clearGroup(this.obstacleLayer);
-        if (!msg || !msg.data) return;
+        if (!msg || !msg.data) {
+            this.obstacleLines.forEach(l => l.clear());
+            return;
+        }
         let polygons;
-        try { polygons = JSON.parse(msg.data); } catch (e) { return; }
-        if (!Array.isArray(polygons)) return;
-        polygons.forEach((poly) => {
-            if (!Array.isArray(poly) || poly.length < 3) return;
+        try { 
+            polygons = JSON.parse(msg.data); 
+        } catch (e) { 
+            console.error('[MapView] renderObstacles failed to parse msg.data JSON:', e);
+            this.obstacleLines.forEach(l => l.clear());
+            return; 
+        }
+        if (!Array.isArray(polygons)) {
+            this.obstacleLines.forEach(l => l.clear());
+            return;
+        }
+
+        const MAX_COORD = 100.0;
+        let lineIdx = 0;
+
+        polygons.forEach((poly, polyIdx) => {
+            if (!Array.isArray(poly) || poly.length < 3) {
+                return;
+            }
+
             const pts = poly
                 .filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y))
                 .map((p) => new THREE.Vector3(p.x, p.y, 0.06));
-            if (pts.length < 3) return;
+            
+            const hasGlitch = pts.some((p) => Math.abs(p.x) > MAX_COORD || Math.abs(p.y) > MAX_COORD);
+            if (hasGlitch) {
+                console.warn(`[MapView] renderObstacles: poly[${polyIdx}] rejected due to coordinates exceeding 100m (potential glitch).`);
+                return;
+            }
+
+            if (pts.length < 3) {
+                return;
+            }
             if (Math.abs(pts[0].x - pts[pts.length - 1].x) > 1e-4 ||
                 Math.abs(pts[0].y - pts[pts.length - 1].y) > 1e-4) {
                 pts.push(pts[0].clone());
             }
-            const geo = new THREE.BufferGeometry().setFromPoints(pts);
-            const mat = new THREE.LineBasicMaterial({ color: 0xff6600 });
-            this.obstacleLayer.add(new THREE.Line(geo, mat));
+
+            // Get or create dynamic line from pool
+            if (lineIdx >= this.obstacleLines.length) {
+                const newLine = new DynamicLine(0xff6600, 1000, 1);
+                this.obstacleLines.push(newLine);
+                this.obstacleLayer.add(newLine.line);
+            }
+            this.obstacleLines[lineIdx].updatePoints(pts);
+            lineIdx++;
         });
+
+        // Clear remaining pooled lines that were not used in this update
+        for (let i = lineIdx; i < this.obstacleLines.length; i++) {
+            this.obstacleLines[i].clear();
+        }
     }
 
     renderZoneRect(corners) {
-        this.clearGroup(this.zoneLayer);
-        if (!corners || corners.length < 4) return;
+        if (!corners || corners.length < 4) {
+            this.zoneLine.clear();
+            return;
+        }
         const pts = corners.map((c) => {
             return new THREE.Vector3(c.x, c.y, 0.12);
         });
         pts.push(pts[0].clone()); // close loop
-        const geo = new THREE.BufferGeometry().setFromPoints(pts);
-        const mat = new THREE.LineBasicMaterial({ color: 0x00e676 });
-        this.zoneLayer.add(new THREE.Line(geo, mat));
+        this.zoneLine.updatePoints(pts);
     }
 
     resizeOverlay() {
@@ -655,7 +771,7 @@ export class MapView {
     }
 
     clearZone() {
-        this.clearGroup(this.zoneLayer);
+        this.zoneLine.clear();
         this.clearOverlay();
         this.activeZoneCorners = null;
         this.setZoneDrawMode(false);
@@ -665,8 +781,8 @@ export class MapView {
     }
 
     clearMapPolygon() {
-        this.clearGroup(this.mapPolygonLayer);
-        this.clearGroup(this.obstacleLayer);
+        this.mapPolygonLine.clear();
+        this.obstacleLines.forEach(l => l.clear());
     }
 
     startNavPoint() {

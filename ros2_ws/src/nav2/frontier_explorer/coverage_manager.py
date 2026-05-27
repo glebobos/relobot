@@ -135,6 +135,7 @@ class CoverageManager(Node):
         # When True, a user-drawn zone is active; _on_map will not overwrite
         # _polygon_msg until the user explicitly clears the zone.
         self._custom_polygon_active: bool = False
+        self._custom_zone_points: list[tuple[float, float]] | None = None
 
         self._last_processed_map_hash = None
         self._last_processed_map_info = None
@@ -497,7 +498,7 @@ class CoverageManager(Node):
 
     def _on_set_zone(self, json_str: str) -> None:
         """Accept a JSON list of {x, y} points from the web UI and use them as
-        the active coverage polygon instead of the auto-detected SLAM boundary."""
+        the active coverage polygon boundary, intersected with the SLAM map."""
         try:
             raw = json.loads(json_str)
             if not isinstance(raw, list) or len(raw) < 3:
@@ -514,29 +515,36 @@ class CoverageManager(Node):
             self._publish_status('error', f'Invalid zone polygon: {exc}')
             return
 
-        poly = PolygonStamped()
-        poly.header.stamp = self.get_clock().now().to_msg()
-        poly.header.frame_id = self._default_frame_id
-        for p in raw:
-            poly.polygon.points.append(
-                Point32(x=float(p['x']), y=float(p['y']), z=0.0)
-            )
-        # Ensure polygon is closed (first == last)
-        first = poly.polygon.points[0]
-        poly.polygon.points.append(Point32(x=first.x, y=first.y, z=0.0))
-
-        self._polygon_msg = poly
-        self._obstacle_polygons = []  # no SLAM obstacles for custom zone
+        self._custom_zone_points = [(float(p['x']), float(p['y'])) for p in raw]
         self._custom_polygon_active = True
         self._last_preview_valid = False
-        self._polygon_echo_pub.publish(self._polygon_msg)
-        self._obstacles_pub.publish(String(data='[]'))
-        self._publish_status(
-            'polygon_ready',
-            'Custom zone set. Click Preview Coverage to plan.',
-            point_count=len(raw),
-            zone_mode='custom',
-        )
+
+        # Re-run map extraction immediately if a map is available
+        if self._last_map_msg is not None:
+            self._state = 'idle'
+            self._on_map(self._last_map_msg, force=True)
+        else:
+            poly = PolygonStamped()
+            poly.header.stamp = self.get_clock().now().to_msg()
+            poly.header.frame_id = self._default_frame_id
+            for p in raw:
+                poly.polygon.points.append(
+                    Point32(x=float(p['x']), y=float(p['y']), z=0.0)
+                )
+            first = poly.polygon.points[0]
+            poly.polygon.points.append(Point32(x=first.x, y=first.y, z=0.0))
+
+            self._polygon_msg = poly
+            self._obstacle_polygons = []
+            self._polygon_echo_pub.publish(self._polygon_msg)
+            self._obstacles_pub.publish(String(data='[]'))
+            self._publish_status(
+                'polygon_ready',
+                'Custom zone set. Waiting for map to intersect.',
+                point_count=len(raw),
+                zone_mode='custom',
+            )
+
         self.get_logger().info(
             f'Custom coverage zone set with {len(raw)} points.'
         )
@@ -544,6 +552,7 @@ class CoverageManager(Node):
     def _on_clear_zone(self) -> None:
         """Revert from a custom zone back to SLAM auto-detection."""
         self._custom_polygon_active = False
+        self._custom_zone_points = None
         self._last_preview_valid = False
         self._polygon_msg = PolygonStamped()
         self._obstacle_polygons = []
@@ -569,10 +578,7 @@ class CoverageManager(Node):
         if h == 0 or w == 0:
             return
         self._last_map_msg = msg
-        # Skip SLAM extraction when a custom zone is active.
-        if self._custom_polygon_active:
-            return
-        # Only re-extract polygon when idle — don't overwrite state during
+        # Only re-extract polygon when idle or ready — don't overwrite state during
         # planning, preview_ready, executing, or completed.
         if self._state not in ('idle', 'polygon_ready'):
             return
@@ -629,10 +635,17 @@ class CoverageManager(Node):
             map_contour_epsilon,
             obstacle_min_area_m2,
             obstacle_dilate_m,
-            self._default_frame_id
+            self._default_frame_id,
+            custom_zone_points=self._custom_zone_points if self._custom_polygon_active else None
         )
 
         if normalized is None:
+            if self._custom_polygon_active:
+                self._publish_status(
+                    'polygon_invalid',
+                    'No free space inside the custom zone. Adjust the rectangle.',
+                    zone_mode='custom'
+                )
             return
 
         self._polygon_msg = normalized
@@ -655,13 +668,24 @@ class CoverageManager(Node):
 
         self._polygon_echo_pub.publish(self._polygon_msg)
         self._last_preview_valid = False
-        self._publish_status(
-            'polygon_ready',
-            'Map boundary extracted automatically.',
-            point_count=len(self._polygon_msg.polygon.points) - 1,
-            frame_id=self._polygon_msg.header.frame_id,
-            obstacle_count=len(self._obstacle_polygons),
-        )
+        
+        if self._custom_polygon_active:
+            self._publish_status(
+                'polygon_ready',
+                'Custom zone set and map intersected. Click Preview Coverage to plan.',
+                point_count=len(self._polygon_msg.polygon.points) - 1,
+                frame_id=self._polygon_msg.header.frame_id,
+                obstacle_count=len(self._obstacle_polygons),
+                zone_mode='custom'
+            )
+        else:
+            self._publish_status(
+                'polygon_ready',
+                'Map boundary extracted automatically.',
+                point_count=len(self._polygon_msg.polygon.points) - 1,
+                frame_id=self._polygon_msg.header.frame_id,
+                obstacle_count=len(self._obstacle_polygons),
+            )
 
     def _get_robot_pose(self) -> Pose | None:
         target_frame = self._polygon_msg.header.frame_id or self._default_frame_id

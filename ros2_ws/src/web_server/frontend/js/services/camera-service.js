@@ -41,8 +41,6 @@ export class CameraService {
     stopStreamOnly() {
         if (!this.cameraStream) return;
         this.cameraStream.removeAttribute('src');
-        fetch(`http://${window.location.hostname}:8080/shutdown?topic=/camera/image_raw&client_id=${this.clientId}`)
-            .catch(err => console.debug('[CameraService] Stream shutdown error (expected if server offline)', err));
     }
 
     stop() {

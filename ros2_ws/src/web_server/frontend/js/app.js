@@ -122,7 +122,6 @@ window.addEventListener('DOMContentLoaded', () => {
             }
         }, 2000);
 
-        console.log('[App] Modular UI refactoring initialized.');
     }, 1000);
 });
 
