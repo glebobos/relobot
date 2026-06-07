@@ -1,5 +1,8 @@
 # AGENTS.md
 
+> [!IMPORTANT]
+> **Investigation Guideline**: When starting any investigation in this repository, you MUST read `AGENTS.md` first to understand the workspace structure, workflow, and commands.
+
 ## Context
 ReloBot is a ROS2-based robotics platform running on Raspberry Pi 5.
 **Crucial**: The host system is ONLY for orchestration. ALL ROS2 nodes and build processes run inside Docker containers. The host cannot build or run ROS2 nodes directly.
@@ -38,6 +41,11 @@ docker compose up
 4. **Build**:
     - The existing containers are configured to run `colcon build` on startup (via entrypoint scripts like `start_dev.sh` generated in Dockerfiles).
     - To apply changes: Restart the specific container (`docker compose restart <service_name>`).
+
+### Frontend Development
+The web server frontend (`ros2_frontend` service) serves static files located in `ros2_ws/src/web_server/frontend` via Nginx. This directory is directly volume-mounted into the Nginx container:
+- Mounting configuration is defined in `ros2_ws/docker-compose.yml`.
+- **Crucial**: Editing HTML, CSS, or JavaScript files on the host will take effect **immediately** inside the running container. There is **no need to restart the container or the service** to apply frontend changes. Simply refresh your browser page to see updates.
 
 ### Visualization / Debugging
 - **RViz2**: Run `start_rviz2.sh` (or `rviz` alias if configured) from the host. It runs RViz in a Docker container connected to the Discovery Server.

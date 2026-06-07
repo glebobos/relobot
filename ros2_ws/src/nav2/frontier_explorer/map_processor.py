@@ -23,7 +23,8 @@ class MapProcessor:
         map_contour_epsilon: float,
         obstacle_min_area_m2: float,
         obstacle_dilate_m: float,
-        default_frame_id: str = 'map'
+        default_frame_id: str = 'map',
+        custom_zone_points: list[tuple[float, float]] | None = None
     ) -> tuple[PolygonStamped | None, list[list[tuple[float, float]]]]:
         """
         Extract the largest outer boundary polygon and inner obstacle polygons
@@ -39,8 +40,38 @@ class MapProcessor:
         if h == 0 or w == 0:
             return None, []
 
+        origin_x = msg.info.origin.position.x
+        origin_y = msg.info.origin.position.y
+        res = msg.info.resolution
+
+        # Check for invalid map parameters (e.g. SLAM glitches with extremely large values or NaNs)
+        if not (math.isfinite(origin_x) and math.isfinite(origin_y) and math.isfinite(res)):
+            if self._logger:
+                self._logger.warn("Map processor: Non-finite origin coordinates or resolution. Skipping map processing.")
+            return None, []
+
+        if abs(origin_x) > 100.0 or abs(origin_y) > 100.0 or res <= 0.0 or res > 10.0:
+            if self._logger:
+                self._logger.warn(
+                    f"Map processor: Map params exceed reasonable bounds. "
+                    f"origin: ({origin_x:.1f}, {origin_y:.1f}), res: {res:.4f}. Skipping map processing."
+                )
+            return None, []
+
         grid = np.array(msg.data, dtype=np.int8).reshape((h, w))
         free_mask = np.uint8(np.where(grid == 0, 255, 0))
+
+        # Intersect with custom zone if provided
+        if custom_zone_points is not None and len(custom_zone_points) >= 3:
+            custom_zone_mask = np.zeros_like(free_mask)
+            pts_pixel = []
+            for (x, y) in custom_zone_points:
+                col_px = int(round((x - origin_x) / res))
+                row_px = int(round((y - origin_y) / res))
+                pts_pixel.append([col_px, row_px])
+            pts_pixel = np.array(pts_pixel, dtype=np.int32).reshape((-1, 1, 2))
+            cv2.drawContours(custom_zone_mask, [pts_pixel], -1, 255, thickness=cv2.FILLED)
+            free_mask = cv2.bitwise_and(free_mask, custom_zone_mask)
 
         # Morphological closing fills small gaps between free cells (SLAM noise)
         if map_morph_close_radius > 0:
@@ -119,9 +150,15 @@ class MapProcessor:
         for pt in approx:
             col = float(pt[0][0])
             row = float(pt[0][1])
+            x_coord = origin_x + col * res
+            y_coord = origin_y + row * res
+            if abs(x_coord) > 100.0 or abs(y_coord) > 100.0:
+                if self._logger:
+                    self._logger.warn(f"Map processor: Extracted boundary point ({x_coord:.1f}, {y_coord:.1f}) exceeds reasonable bounds. Skipping.")
+                return None, []
             poly.polygon.points.append(Point32(
-                x=origin_x + col * res,
-                y=origin_y + row * res,
+                x=x_coord,
+                y=y_coord,
                 z=0.0,
             ))
 
@@ -156,10 +193,18 @@ class MapProcessor:
             if len(obs_approx) < 3:
                 continue
             pts: list[tuple[float, float]] = []
+            valid_obstacle = True
             for pt in obs_approx:
                 col = float(pt[0][0])
                 row = float(pt[0][1])
-                pts.append((origin_x + col * res, origin_y + row * res))
+                x_coord = origin_x + col * res
+                y_coord = origin_y + row * res
+                if abs(x_coord) > 100.0 or abs(y_coord) > 100.0:
+                    valid_obstacle = False
+                    break
+                pts.append((x_coord, y_coord))
+            if not valid_obstacle:
+                continue
             if pts[0] != pts[-1]:
                 pts.append(pts[0])
             obstacle_polygons.append(pts)

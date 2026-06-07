@@ -111,23 +111,7 @@ window.addEventListener('DOMContentLoaded', () => {
         const controlPanel = new ControlPanel(mapView, telemetry);
         const settingsPanel = new SettingsPanel(telemetry);
 
-        // Coordinate double Stop Button mapping (both Screens)
-        const cameraStopBtn = document.getElementById('camera-stop-btn');
-        if (cameraStopBtn) {
-            cameraStopBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                // Trigger the main stop logic in controlPanel
-                const stopBtn = document.getElementById('coverage-stop-btn');
-                if (stopBtn) {
-                    stopBtn.click();
-                } else {
-                    // Fallback direct calls if controlPanel button is missing
-                    console.log('[StopButton] Triggering safety halt direct');
-                    gamepadService.publishTwist(0, 0);
-                    gamepadService.setKnifeRpm(0, true);
-                }
-            });
-        }
+
 
         // Setup dynamic demo simulation if WebSocket remains disconnected after 3 seconds
         setTimeout(() => {
@@ -138,7 +122,6 @@ window.addEventListener('DOMContentLoaded', () => {
             }
         }, 2000);
 
-        console.log('[App] Modular UI refactoring initialized.');
     }, 1000);
 });
 
