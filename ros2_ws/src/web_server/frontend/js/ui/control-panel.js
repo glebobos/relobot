@@ -86,18 +86,10 @@ export class ControlPanel {
 
         // Knife Slider UI Integration
         if (this.knifeSlider) {
-            const syncVisuals = (val) => {
-                const progress = document.getElementById('vSliderProgress');
-                const thumb = document.getElementById('vSliderThumb');
-                const pct = (val / 3000) * 100;
-                if (progress) progress.style.height = `${pct}%`;
-                if (thumb) thumb.style.bottom = `${pct}%`;
-            };
-
             this.knifeSlider.addEventListener('input', () => {
                 const rpm = parseInt(this.knifeSlider.value, 10);
                 gamepadService.setKnifeRpm(rpm, true);
-                syncVisuals(rpm);
+                this.syncKnifeSliderVisuals(rpm);
                 if (this.knifeSliderVal) this.knifeSliderVal.textContent = rpm;
             });
             this.knifeSlider.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: false });
@@ -109,12 +101,8 @@ export class ControlPanel {
             const absRpm = Math.abs(rpm);
             if (this.knifeSlider) {
                 this.knifeSlider.value = absRpm;
-                const progress = document.getElementById('vSliderProgress');
-                const thumb = document.getElementById('vSliderThumb');
-                const pct = (absRpm / 3000) * 100;
-                if (progress) progress.style.height = `${pct}%`;
-                if (thumb) thumb.style.bottom = `${pct}%`;
             }
+            this.syncKnifeSliderVisuals(absRpm);
             if (this.knifeSliderVal) this.knifeSliderVal.textContent = Math.round(absRpm);
         };
 
@@ -435,5 +423,13 @@ export class ControlPanel {
             (error) => console.error('[Undock] failed:', error),
         );
         console.log('[Undock] goal sent, id:', id);
+    }
+
+    syncKnifeSliderVisuals(rpm) {
+        const progress = document.getElementById('vSliderProgress');
+        const thumb = document.getElementById('vSliderThumb');
+        const pct = (rpm / 3000) * 100;
+        if (progress) progress.style.height = `${pct}%`;
+        if (thumb) thumb.style.bottom = `${pct}%`;
     }
 }
