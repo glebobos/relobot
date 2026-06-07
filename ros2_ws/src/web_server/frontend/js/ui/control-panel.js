@@ -185,6 +185,9 @@ export class ControlPanel {
             if (this.nav2Action) {
                 try { this.nav2Action.cancelAllGoals(); } catch(e){}
             }
+            if (this.mapView && this.mapView.clearNavTarget) {
+                this.mapView.clearNavTarget();
+            }
 
             // 5. Cancel docking goals
             this.cancelDockGoal();

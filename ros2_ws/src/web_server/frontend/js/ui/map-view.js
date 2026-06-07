@@ -123,6 +123,9 @@ export class MapView {
 
         this.navPointMode = false;
         this.navAnchor = null;
+        this.activeNavTarget = null;
+        this.arrivalTimer = null;
+        this.robotPosition = null;
 
         this.init();
     }
@@ -593,16 +596,20 @@ export class MapView {
         const col = 0x9c27ff;
         const mat = new THREE.LineBasicMaterial({ color: col, linewidth: 2 });
 
-        // Crosshair
+        const theta = yawRad !== undefined ? yawRad : 0.0;
+        const cosT = Math.cos(theta);
+        const sinT = Math.sin(theta);
+
+        // Crosshair rotated with arrow
         this.navTargetLayer.add(new THREE.Line(
             new THREE.BufferGeometry().setFromPoints([
-                new THREE.Vector3(worldX - r, worldY, z),
-                new THREE.Vector3(worldX + r, worldY, z),
+                new THREE.Vector3(worldX - r * cosT, worldY - r * sinT, z),
+                new THREE.Vector3(worldX + r * cosT, worldY + r * sinT, z),
             ]), mat));
         this.navTargetLayer.add(new THREE.Line(
             new THREE.BufferGeometry().setFromPoints([
-                new THREE.Vector3(worldX, worldY - r, z),
-                new THREE.Vector3(worldX, worldY + r, z),
+                new THREE.Vector3(worldX + r * sinT, worldY - r * cosT, z),
+                new THREE.Vector3(worldX - r * sinT, worldY + r * cosT, z),
             ]), mat.clone()));
 
         // Circle
@@ -641,6 +648,16 @@ export class MapView {
         }
     }
 
+    clearNavTarget() {
+        this.clearGroup(this.navTargetLayer);
+        this.activeNavTarget = null;
+        if (this.arrivalTimer) {
+            clearTimeout(this.arrivalTimer);
+            this.arrivalTimer = null;
+        }
+        console.log('[MapView] Navigation target pin cleared.');
+    }
+
     setNavPointMode(enabled) {
         if (enabled && this.zoneDrawMode) this.setZoneDrawMode(false);
         this.navPointMode = enabled;
@@ -650,7 +667,7 @@ export class MapView {
         this.mapContainer.style.cursor = enabled ? 'crosshair' : '';
         if (enabled) {
             this.resizeOverlay();
-            this.clearGroup(this.navTargetLayer);
+            this.clearNavTarget();
             this.navAnchor = null;
             this.snapCameraTopDown();
         } else {
@@ -665,6 +682,12 @@ export class MapView {
     }
 
     commitNavPoint(worldX, worldY, yawRad) {
+        if (this.arrivalTimer) {
+            clearTimeout(this.arrivalTimer);
+            this.arrivalTimer = null;
+        }
+        this.activeNavTarget = { x: worldX, y: worldY };
+
         this.renderNavTarget(worldX, worldY, yawRad);
 
         if (this.onNavigateToPoint) {
@@ -871,9 +894,30 @@ export class MapView {
         });
         if (odomSub) {
             odomSub.subscribe((message) => {
-                this.robotMarker.position.x = message.pose.pose.position.x;
-                this.robotMarker.position.y = message.pose.pose.position.y;
+                const robotX = message.pose.pose.position.x;
+                const robotY = message.pose.pose.position.y;
+
+                this.robotMarker.position.x = robotX;
+                this.robotMarker.position.y = robotY;
                 this.robotMarker.position.z = 0.1;
+
+                this.robotPosition = { x: robotX, y: robotY };
+
+                // Handle arrival timer for navigation pin
+                if (this.activeNavTarget) {
+                    const dx = robotX - this.activeNavTarget.x;
+                    const dy = robotY - this.activeNavTarget.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    if (dist < 0.25) { // 25 cm threshold for arrival
+                        if (!this.arrivalTimer) {
+                            console.log('[MapView] Arrived at target point. Clearing pin in 5 seconds.');
+                            this.arrivalTimer = setTimeout(() => {
+                                this.clearNavTarget();
+                            }, 5000);
+                        }
+                    }
+                }
 
                 const q = message.pose.pose.orientation;
                 const quaternion = new THREE.Quaternion(q.x, q.y, q.z, q.w);
