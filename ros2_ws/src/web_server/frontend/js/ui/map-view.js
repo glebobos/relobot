@@ -1,74 +1,7 @@
 import { rosService } from '../services/ros-service.js';
-
-class DynamicLine {
-    constructor(color, maxPoints = 5000, thickness = 1) {
-        this.maxPoints = maxPoints;
-        this.geometry = new THREE.BufferGeometry();
-        this.positions = new Float32Array(maxPoints * 3);
-        this.positionAttr = new THREE.BufferAttribute(this.positions, 3);
-        this.positionAttr.setDynamic(true);
-        this.geometry.addAttribute('position', this.positionAttr);
-        this.geometry.setDrawRange(0, 0);
-
-        this.material = new THREE.LineBasicMaterial({
-            color: color,
-            linewidth: thickness
-        });
-
-        this.line = new THREE.Line(this.geometry, this.material);
-    }
-
-    updatePoints(points) {
-        const count = Math.min(points.length, this.maxPoints);
-        const array = this.positionAttr.array;
-        for (let i = 0; i < count; i++) {
-            const p = points[i];
-            array[i * 3] = p.x;
-            array[i * 3 + 1] = p.y;
-            array[i * 3 + 2] = p.z !== undefined ? p.z : 0.0;
-        }
-        this.positionAttr.needsUpdate = true;
-        this.geometry.setDrawRange(0, count);
-        this.line.visible = count > 0;
-    }
-
-    clear() {
-        this.geometry.setDrawRange(0, 0);
-        this.line.visible = false;
-    }
-
-    dispose() {
-        this.geometry.dispose();
-        this.material.dispose();
-    }
-}
-
-/**
- * Install a custom colour-mapping override for ROS3D.OccupancyGrid.
- * Must be called AFTER ros3d.js is available on window.ROS3D.
- *
- * Colour strategy for a lawn-robot occupancy map:
- *   - Unknown (-1) : fully transparent  → dark/grass background shows through
- *   - Free   (0)   : fully transparent  → grass texture shows through
- *   - Occupied (>0): dark charcoal      → rendered as solid wall
- */
-function installMapColorOverride() {
-    if (!window.ROS3D || !window.ROS3D.OccupancyGrid) return;
-
-    ROS3D.OccupancyGrid.prototype.getColor = function(index, row, col, value) {
-        if (value === 0) {
-            // Free / explored space — fully transparent (grass shows through)
-            return [0, 0, 0, 0];
-        }
-        if (value < 0) {
-            // Unknown / undiscovered — dark semi-transparent fog
-            return [10, 12, 18, 200];
-        }
-        // Occupied (walls, obstacles) — solid dark charcoal
-        const darkness = Math.max(0, 255 - Math.round((value / 100) * 220));
-        return [darkness, darkness + 4, darkness + 6, 255];
-    };
-}
+import { DynamicLine } from './dynamic-line.js';
+import { installMapColorOverride } from './map-color-override.js';
+import { MapInteractionHandler } from './map-interaction.js';
 
 export class MapView {
     constructor(containerId) {
@@ -117,15 +50,15 @@ export class MapView {
         this.savedCameraState = null;
         this.cameraAnimId = null;
         this.zoneDrawMode = false;
-        this.zoneDrawing = false;
-        this.zoneDragStart = null;
         this.activeZoneCorners = null;
 
         this.navPointMode = false;
-        this.navAnchor = null;
         this.activeNavTarget = null;
         this.arrivalTimer = null;
         this.robotPosition = null;
+
+        // Initialize consolidated interaction handler
+        this.interactionHandler = new MapInteractionHandler(this);
 
         this.init();
     }
@@ -580,8 +513,7 @@ export class MapView {
         } else {
             if (!this.navPointMode) this.restoreCamera();
             this.clearOverlay();
-            this.zoneDrawing = false;
-            this.zoneDragStart = null;
+            if (this.interactionHandler) this.interactionHandler.reset();
         }
 
         if (this.onZoneDrawModeChange) {
@@ -668,10 +600,10 @@ export class MapView {
         if (enabled) {
             this.resizeOverlay();
             this.clearNavTarget();
-            this.navAnchor = null;
+            if (this.interactionHandler) this.interactionHandler.reset();
             this.snapCameraTopDown();
         } else {
-            this.navAnchor = null;
+            if (this.interactionHandler) this.interactionHandler.reset();
             this.clearOverlay();
             if (!this.zoneDrawMode) this.restoreCamera();
         }
@@ -695,7 +627,7 @@ export class MapView {
         }
 
         this.navPointMode = false;
-        this.navAnchor = null;
+        if (this.interactionHandler) this.interactionHandler.reset();
         this.clearOverlay();
         if (this.overlayCanvas) this.overlayCanvas.style.pointerEvents = 'none';
         this.mapContainer.style.cursor = '';
@@ -734,137 +666,9 @@ export class MapView {
     }
 
     setupEventListeners() {
-        if (!this.overlayCanvas) return;
-
-        // ---- mouse ----
-        this.overlayCanvas.addEventListener('mousedown', (e) => {
-            if (this.navPointMode) {
-                const world = this.screenToWorld(e.clientX, e.clientY);
-                if (!world) return;
-                this.navAnchor = { screenX: e.clientX, screenY: e.clientY, worldX: world.x, worldY: world.y };
-                this.renderNavTarget(world.x, world.y);
-                e.preventDefault();
-                return;
-            }
-            if (!this.zoneDrawMode) return;
-            this.zoneDrawing = true;
-            this.zoneDragStart = { x: e.clientX, y: e.clientY };
-            e.preventDefault();
-        });
-
-        this.overlayCanvas.addEventListener('mousemove', (e) => {
-            if (this.navPointMode && this.navAnchor) {
-                const endWorld = this.screenToWorld(e.clientX, e.clientY);
-                if (endWorld) {
-                    const yaw = Math.atan2(endWorld.y - this.navAnchor.worldY, endWorld.x - this.navAnchor.worldX);
-                    this.renderNavTarget(this.navAnchor.worldX, this.navAnchor.worldY, yaw);
-                }
-                e.preventDefault();
-                return;
-            }
-            if (!this.zoneDrawMode || !this.zoneDrawing || !this.zoneDragStart) return;
-            const r = this.mapContainer.getBoundingClientRect();
-            this.drawOverlayRect(
-                this.zoneDragStart.x - r.left, this.zoneDragStart.y - r.top,
-                e.clientX - r.left, e.clientY - r.top
-            );
-            e.preventDefault();
-        });
-
-        this.overlayCanvas.addEventListener('mouseup', (e) => {
-            if (this.navPointMode && this.navAnchor) {
-                const endWorld = this.screenToWorld(e.clientX, e.clientY);
-                let yaw = 0;
-                if (endWorld) {
-                    const ddx = endWorld.x - this.navAnchor.worldX;
-                    const ddy = endWorld.y - this.navAnchor.worldY;
-                    const sdx = e.clientX - this.navAnchor.screenX;
-                    const sdy = e.clientY - this.navAnchor.screenY;
-                    if (sdx * sdx + sdy * sdy > 100) yaw = Math.atan2(ddy, ddx);
-                }
-                this.commitNavPoint(this.navAnchor.worldX, this.navAnchor.worldY, yaw);
-                e.preventDefault();
-                return;
-            }
-            if (!this.zoneDrawMode || !this.zoneDrawing || !this.zoneDragStart) return;
-            this.zoneDrawing = false;
-            const dx = Math.abs(e.clientX - this.zoneDragStart.x);
-            const dy = Math.abs(e.clientY - this.zoneDragStart.y);
-            if (dx > 10 && dy > 10) {
-                this.commitZone(this.zoneDragStart.x, this.zoneDragStart.y, e.clientX, e.clientY);
-            } else {
-                this.clearOverlay();
-            }
-            this.zoneDragStart = null;
-            e.preventDefault();
-        });
-
-        // ---- touch ----
-        this.overlayCanvas.addEventListener('touchstart', (e) => {
-            if (this.navPointMode) {
-                const t = e.touches[0];
-                const world = this.screenToWorld(t.clientX, t.clientY);
-                if (!world) return;
-                this.navAnchor = { screenX: t.clientX, screenY: t.clientY, worldX: world.x, worldY: world.y };
-                this.renderNavTarget(world.x, world.y);
-                e.preventDefault();
-                return;
-            }
-            if (!this.zoneDrawMode) return;
-            const t = e.touches[0];
-            this.zoneDrawing = true;
-            this.zoneDragStart = { x: t.clientX, y: t.clientY };
-            e.preventDefault();
-        }, { passive: false });
-
-        this.overlayCanvas.addEventListener('touchmove', (e) => {
-            if (this.navPointMode && this.navAnchor) {
-                const t = e.touches[0];
-                const endWorld = this.screenToWorld(t.clientX, t.clientY);
-                if (endWorld) {
-                    const yaw = Math.atan2(endWorld.y - this.navAnchor.worldY, endWorld.x - this.navAnchor.worldX);
-                    this.renderNavTarget(this.navAnchor.worldX, this.navAnchor.worldY, yaw);
-                }
-                e.preventDefault();
-                return;
-            }
-            if (!this.zoneDrawMode || !this.zoneDrawing || !this.zoneDragStart) return;
-            const t = e.touches[0];
-            const r = this.mapContainer.getBoundingClientRect();
-            this.drawOverlayRect(
-                this.zoneDragStart.x - r.left, this.zoneDragStart.y - r.top,
-                t.clientX - r.left, t.clientY - r.top
-            );
-            e.preventDefault();
-        }, { passive: false });
-
-        this.overlayCanvas.addEventListener('touchend', (e) => {
-            if (this.navPointMode && this.navAnchor) {
-                const t = e.changedTouches[0];
-                const endWorld = this.screenToWorld(t.clientX, t.clientY);
-                let yaw = 0;
-                if (endWorld) {
-                    const sdx = t.clientX - this.navAnchor.screenX;
-                    const sdy = t.clientY - this.navAnchor.screenY;
-                    if (sdx * sdx + sdy * sdy > 100) yaw = Math.atan2(endWorld.y - this.navAnchor.worldY, endWorld.x - this.navAnchor.worldX);
-                }
-                this.commitNavPoint(this.navAnchor.worldX, this.navAnchor.worldY, yaw);
-                e.preventDefault();
-                return;
-            }
-            if (!this.zoneDrawMode || !this.zoneDrawing || !this.zoneDragStart) return;
-            this.zoneDrawing = false;
-            const t = e.changedTouches[0];
-            const dx = Math.abs(t.clientX - this.zoneDragStart.x);
-            const dy = Math.abs(t.clientY - this.zoneDragStart.y);
-            if (dx > 10 && dy > 10) {
-                this.commitZone(this.zoneDragStart.x, this.zoneDragStart.y, t.clientX, t.clientY);
-            } else {
-                this.clearOverlay();
-            }
-            this.zoneDragStart = null;
-            e.preventDefault();
-        }, { passive: false });
+        if (this.interactionHandler) {
+            this.interactionHandler.init();
+        }
     }
 
     setupSubscriptions() {
