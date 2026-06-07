@@ -43,6 +43,33 @@ class DynamicLine {
     }
 }
 
+/**
+ * Install a custom colour-mapping override for ROS3D.OccupancyGrid.
+ * Must be called AFTER ros3d.js is available on window.ROS3D.
+ *
+ * Colour strategy for a lawn-robot occupancy map:
+ *   - Unknown (-1) : fully transparent  → dark/grass background shows through
+ *   - Free   (0)   : fully transparent  → grass texture shows through
+ *   - Occupied (>0): dark charcoal      → rendered as solid wall
+ */
+function installMapColorOverride() {
+    if (!window.ROS3D || !window.ROS3D.OccupancyGrid) return;
+
+    ROS3D.OccupancyGrid.prototype.getColor = function(index, row, col, value) {
+        if (value === 0) {
+            // Free / explored space — fully transparent (grass shows through)
+            return [0, 0, 0, 0];
+        }
+        if (value < 0) {
+            // Unknown / undiscovered — dark semi-transparent fog
+            return [10, 12, 18, 200];
+        }
+        // Occupied (walls, obstacles) — solid dark charcoal
+        const darkness = Math.max(0, 255 - Math.round((value / 100) * 220));
+        return [darkness, darkness + 4, darkness + 6, 255];
+    };
+}
+
 export class MapView {
     constructor(containerId) {
         this.containerId = containerId;
@@ -58,6 +85,10 @@ export class MapView {
         this.viewer = null;
         this.gridClient = null;
         this.robotMarker = null;
+
+        // Grass background
+        this.grassPlane = null;
+        this.grassTexture = null;
 
         // Layer groups
         this.previewLayer = new THREE.Group();
@@ -127,12 +158,22 @@ export class MapView {
         this.viewer.scene.add(this.zoneLayer);
         this.viewer.scene.add(this.navTargetLayer);
 
+        // Install custom colour override before subscribing to map topic
+        installMapColorOverride();
+
+        // Build the grass background plane (shows through transparent map cells)
+        this._buildGrassPlane();
+
         // Setup the map client using ROS3D (using legacy rosV1 connection)
         this.gridClient = new window.ROS3D.OccupancyGridClient({
             ros: rosService.rosV1,
             rootObject: this.viewer.scene,
             continuous: true,
+            opacity: 1.0,
         });
+
+        // After every map update, patch the material for transparency + smooth filtering
+        this.gridClient.on('change', () => this._patchMapMaterial());
 
         // Setup robot marker as an arrow for odometry
         this.robotMarker = new window.ROS3D.Arrow({
@@ -147,6 +188,59 @@ export class MapView {
         this.resizeOverlay();
         this.setupEventListeners();
         this.setupSubscriptions();
+    }
+
+    /**
+     * Build a large tiling grass texture plane slightly below z=0 so it is
+     * visible wherever the occupancy grid is transparent (free / unknown cells).
+     */
+    _buildGrassPlane() {
+        const loader = new THREE.TextureLoader();
+        loader.load('/grass_texture.png', (texture) => {
+            this.grassTexture = texture;
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            // Tile every ~2 metres so individual grass blades are visible
+            texture.repeat.set(25, 25);
+            texture.minFilter = THREE.LinearMipMapLinearFilter;
+            texture.magFilter = THREE.LinearFilter;
+            texture.anisotropy = 4;
+
+            const geom = new THREE.PlaneBufferGeometry(50, 50);
+            const mat = new THREE.MeshBasicMaterial({
+                map: texture,
+                depthWrite: false,
+            });
+            this.grassPlane = new THREE.Mesh(geom, mat);
+            // Place just behind the occupancy grid (which lives at z ≈ 0)
+            this.grassPlane.position.z = -0.02;
+            this.viewer.scene.add(this.grassPlane);
+        });
+    }
+
+    /**
+     * After the OccupancyGridClient rebuilds its mesh, enable transparency and
+     * switch to smooth (linear) texture filtering so the map looks soft rather
+     * than pixelated.
+     */
+    _patchMapMaterial() {
+        const grid = this.gridClient && this.gridClient.currentGrid;
+        if (!grid) return;
+
+        const mat = grid.material;
+        const tex = grid.texture;
+
+        if (mat && !mat.transparent) {
+            mat.transparent = true;
+            mat.needsUpdate = true;
+        }
+
+        if (tex) {
+            // Switch from NearestFilter to LinearFilter for smooth map edges
+            tex.minFilter = THREE.LinearFilter;
+            tex.magFilter = THREE.LinearFilter;
+            tex.needsUpdate = true;
+        }
     }
 
     clearGroup(group) {

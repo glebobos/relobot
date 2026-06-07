@@ -428,7 +428,7 @@ export class ControlPanel {
                 },
             },
             (result) => console.log('[Undock] result:', result),
-            (feedback) => console.log('[Undock] feedback:', feedback),
+            (feedback) => {},
             (error) => console.error('[Undock] failed:', error),
         );
         console.log('[Undock] goal sent, id:', id);
