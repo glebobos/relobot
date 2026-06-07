@@ -2,6 +2,7 @@ import { rosService } from '../services/ros-service.js';
 import { DynamicLine } from './dynamic-line.js';
 import { installMapColorOverride } from './map-color-override.js';
 import { MapInteractionHandler } from './map-interaction.js';
+import { buildRobotModelFromUrdf } from './robot-model.js';
 
 export class MapView {
     constructor(containerId) {
@@ -92,6 +93,30 @@ export class MapView {
 
         console.log = originalLog;
 
+        // ROS3D.Viewer automatically adds a ROS3D.Axes helper (6 cylinders/cones at
+        // the world origin) to the scene. When the camera pans to show the origin,
+        // these appear as a blue bar + orange cone that look like a broken robot model.
+        // Remove everything the viewer added — we manage the scene ourselves.
+        while (this.viewer.scene.children.length > 0) {
+            this.viewer.scene.remove(this.viewer.scene.children[0]);
+        }
+
+        // Lock the camera to pan/zoom only — prevent accidental rotation that
+        // would show the robot model from a confusing side angle.
+        if (this.viewer.cameraControls) {
+            this.viewer.cameraControls.enableRotate = false;
+            this.viewer.cameraControls.enablePan   = true;
+            this.viewer.cameraControls.enableZoom  = true;
+        }
+
+        // Add Ambient and Directional Lights for realistic 3D shading of the robot model
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
+        this.viewer.scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.85);
+        dirLight.position.set(5, -5, 10);
+        this.viewer.scene.add(dirLight);
+
         this.viewer.scene.add(this.previewLayer);
         this.viewer.scene.add(this.mapPolygonLayer);
         this.viewer.scene.add(this.obstacleLayer);
@@ -160,15 +185,10 @@ export class MapView {
         // After every map update, patch the material for transparency + smooth filtering
         this.gridClient.on('change', () => this._patchMapMaterial());
 
-        // Setup robot marker as an arrow for odometry
-        this.robotMarker = new window.ROS3D.Arrow({
-            length: 0.5,
-            headLength: 0.25,
-            shaftDiameter: 0.4,
-            headDiameter: 0.4,
-            material: new THREE.MeshBasicMaterial({ color: 0xff0000 }),
-        });
+        // Setup robot marker as an empty group initially (swapped with URDF once loaded)
+        this.robotMarker = new THREE.Group();
         this.viewer.scene.add(this.robotMarker);
+
 
         this.resizeOverlay();
         this.setupEventListeners();
@@ -693,6 +713,30 @@ export class MapView {
             obstaclesTopic.subscribe((msg) => this.renderObstacles(msg));
         }
 
+        // Subscribe to robot description to load the 3D model dynamically
+        const robotDescTopic = rosService.createTopicV1('/robot_description', 'std_msgs/msg/String', {
+            durability: 'transient_local',
+            reliability: 'reliable'
+        });
+        if (robotDescTopic) {
+            robotDescTopic.subscribe((msg) => {
+                if (msg && msg.data) {
+                    const newModel = buildRobotModelFromUrdf(msg.data);
+                    if (newModel) {
+                        this.viewer.scene.remove(this.robotMarker);
+                        this.robotMarker = newModel;
+                        this.viewer.scene.add(this.robotMarker);
+                        console.log('[MapView] Robot model loaded from URDF.');
+                    } else {
+                        console.error('[MapView] buildRobotModelFromUrdf returned null.');
+                    }
+                } else {
+                    console.error('[MapView] Empty /robot_description message.');
+                }
+                robotDescTopic.unsubscribe();
+            });
+        }
+
         const odomSub = rosService.createTopicV1("/odometry/filtered", "nav_msgs/Odometry", {
             throttle_rate: 100
         });
@@ -703,7 +747,6 @@ export class MapView {
 
                 this.robotMarker.position.x = robotX;
                 this.robotMarker.position.y = robotY;
-                this.robotMarker.position.z = 0.1;
 
                 this.robotPosition = { x: robotX, y: robotY };
 
@@ -726,10 +769,9 @@ export class MapView {
                 const q = message.pose.pose.orientation;
                 const quaternion = new THREE.Quaternion(q.x, q.y, q.z, q.w);
 
-                const direction = new THREE.Vector3(1, 0, 0);
-                direction.applyQuaternion(quaternion);
-
-                this.robotMarker.setDirection(direction);
+                // Apply odometry pose to the 3D robot model
+                this.robotMarker.position.z = 0.01;
+                this.robotMarker.quaternion.copy(quaternion);
             });
         }
 
