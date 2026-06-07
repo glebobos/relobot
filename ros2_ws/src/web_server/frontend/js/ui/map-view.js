@@ -148,7 +148,11 @@ export class MapView {
             width: containerWidth,
             height: containerHeight,
             antialias: true,
+            background: '#0c0f14',
         });
+        if (this.viewer.renderer) {
+            this.viewer.renderer.setClearColor(0x0c0f14, 1.0);
+        }
 
         console.log = originalLog;
 
@@ -157,6 +161,51 @@ export class MapView {
         this.viewer.scene.add(this.obstacleLayer);
         this.viewer.scene.add(this.zoneLayer);
         this.viewer.scene.add(this.navTargetLayer);
+
+        // Define our custom ShaderMaterial for seamless grass rendering
+        this.customGrassMaterial = new THREE.ShaderMaterial({
+            uniforms: {
+                uMapTex: { value: null },
+                uGrassTex: { value: null },
+            },
+            vertexShader: `
+                varying vec2 vUv;
+                varying vec3 vWorldPosition;
+                void main() {
+                    vUv = uv;
+                    vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+                    vWorldPosition = worldPosition.xyz;
+                    gl_Position = projectionMatrix * viewMatrix * worldPosition;
+                }
+            `,
+            fragmentShader: `
+                uniform sampler2D uMapTex;
+                uniform sampler2D uGrassTex;
+                varying vec2 vUv;
+                varying vec3 vWorldPosition;
+                void main() {
+                    vec4 mapColor = texture2D(uMapTex, vUv);
+                    
+                    // Tiling in world space (x, y). Scale factor 0.5 tiles every 2 meters.
+                    vec2 grassUv = vWorldPosition.xy * 0.5;
+                    vec4 grassColor = texture2D(uGrassTex, grassUv);
+                    
+                    if (mapColor.a == 0.0) {
+                        // Free space (value = 0) -> render grass texture
+                        gl_FragColor = grassColor;
+                    } else if (mapColor.a < 0.9) {
+                        // Unknown space (value < 0) -> blend into background color
+                        gl_FragColor = vec4(0.0470588, 0.0588235, 0.0784314, 1.0);
+                    } else {
+                        // Occupied space (value > 0) -> render occupied wall color (fully opaque)
+                        gl_FragColor = vec4(mapColor.rgb, 1.0);
+                    }
+                }
+            `,
+            transparent: true,
+            depthWrite: false,
+            side: THREE.DoubleSide
+        });
 
         // Install custom colour override before subscribing to map topic
         installMapColorOverride();
@@ -191,8 +240,7 @@ export class MapView {
     }
 
     /**
-     * Build a large tiling grass texture plane slightly below z=0 so it is
-     * visible wherever the occupancy grid is transparent (free / unknown cells).
+     * Load the grass texture and assign it to our custom ShaderMaterial uniform.
      */
     _buildGrassPlane() {
         const loader = new THREE.TextureLoader();
@@ -200,46 +248,38 @@ export class MapView {
             this.grassTexture = texture;
             texture.wrapS = THREE.RepeatWrapping;
             texture.wrapT = THREE.RepeatWrapping;
-            // Tile every ~2 metres so individual grass blades are visible
-            texture.repeat.set(25, 25);
             texture.minFilter = THREE.LinearMipMapLinearFilter;
             texture.magFilter = THREE.LinearFilter;
             texture.anisotropy = 4;
 
-            const geom = new THREE.PlaneBufferGeometry(50, 50);
-            const mat = new THREE.MeshBasicMaterial({
-                map: texture,
-                depthWrite: false,
-            });
-            this.grassPlane = new THREE.Mesh(geom, mat);
-            // Place just behind the occupancy grid (which lives at z ≈ 0)
-            this.grassPlane.position.z = -0.02;
-            this.viewer.scene.add(this.grassPlane);
+            if (this.customGrassMaterial) {
+                this.customGrassMaterial.uniforms.uGrassTex.value = texture;
+            }
         });
     }
 
     /**
-     * After the OccupancyGridClient rebuilds its mesh, enable transparency and
-     * switch to smooth (linear) texture filtering so the map looks soft rather
-     * than pixelated.
+     * After the OccupancyGridClient rebuilds its mesh, apply our custom ShaderMaterial
+     * and smooth (linear) texture filtering.
      */
     _patchMapMaterial() {
         const grid = this.gridClient && this.gridClient.currentGrid;
         if (!grid) return;
 
-        const mat = grid.material;
         const tex = grid.texture;
-
-        if (mat && !mat.transparent) {
-            mat.transparent = true;
-            mat.needsUpdate = true;
-        }
 
         if (tex) {
             // Switch from NearestFilter to LinearFilter for smooth map edges
             tex.minFilter = THREE.LinearFilter;
             tex.magFilter = THREE.LinearFilter;
             tex.needsUpdate = true;
+        }
+
+        // Apply our custom shader material
+        if (grid.material !== this.customGrassMaterial) {
+            this.customGrassMaterial.uniforms.uMapTex.value = tex;
+            grid.material = this.customGrassMaterial;
+            grid.material.needsUpdate = true;
         }
     }
 
