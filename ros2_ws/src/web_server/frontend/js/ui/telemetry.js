@@ -10,8 +10,6 @@ export class Telemetry {
         this.chargerSpan = document.getElementById('charger-voltage-display');
         this.rpmSpan = document.getElementById('rpm-display');
         this.rpmSpanCam = document.getElementById('rpm-display-cam');
-        this.speedSpan = document.getElementById('speed-display');
-        this.latencySpan = document.getElementById('latency-display');
         
         this.dockBtn = document.getElementById('dock-btn');
 
@@ -51,17 +49,6 @@ export class Telemetry {
             });
         }
 
-        if (this.speedSpan) {
-            const odomTopic = rosService.createTopicV2('/odometry/filtered', 'nav_msgs/Odometry', { throttle_rate: 500 });
-            this.odomSubscription = odomTopic.subscribe(msg => {
-                const s = Math.abs(msg.twist.twist.linear.x);
-                if (Number.isFinite(s)) this.updateSpeed(s);
-            });
-        }
-
-        // Periodically measure network latency
-        this.measureLatency();
-        setInterval(() => this.measureLatency(), 3000);
     }
 
     updateVoltage(volts) {
@@ -161,12 +148,6 @@ export class Telemetry {
         });
     }
 
-    updateSpeed(speed) {
-        if (this.speedSpan) {
-            this.speedSpan.textContent = speed.toFixed(1);
-        }
-    }
-
     updateOnDock(isOnDock) {
         this.isRobotOnDock = isOnDock;
         if (this.dockBtn && !this.dockingActive) {
@@ -186,20 +167,4 @@ export class Telemetry {
         }
     }
 
-    measureLatency() {
-        const t0 = performance.now();
-        // Fetch headers only to prevent overhead, use cache-busting timestamp query param
-        fetch('/index.html?t=' + Date.now(), { method: 'HEAD', cache: 'no-store' })
-            .then(() => {
-                const rtt = Math.round(performance.now() - t0);
-                if (this.latencySpan) {
-                    this.latencySpan.textContent = rtt + 'ms';
-                }
-            })
-            .catch(() => {
-                if (this.latencySpan) {
-                    this.latencySpan.textContent = 'Offline';
-                }
-            });
-    }
 }

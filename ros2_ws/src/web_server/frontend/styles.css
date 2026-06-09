@@ -489,9 +489,6 @@ body {
 
 /* Camera screen RED stop button */
 .camera-stop-btn {
-    position: absolute;
-    bottom: 24px;
-    right: 24px;
     width: 56px;
     height: 56px;
     border-radius: 50%;
@@ -507,89 +504,162 @@ body {
     z-index: 25;
     animation: stop-pulse 2s infinite ease-in-out;
     transition: transform var(--transition-snappy);
+    flex-shrink: 0;
 }
 
 .camera-stop-btn:active {
     transform: scale(0.92);
 }
 
-/* Blade RPM Vertical Slider */
-.vertical-slider-container {
-    position: absolute;
-    right: 24px;
-    top: 50%;
-    transform: translateY(-60%);
-    width: 44px;
-    height: 180px;
-    border-radius: 22px;
-    background: rgba(22, 28, 38, 0.45);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    border: 1.5px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+.stop-btn-wide {
+    width: 100%;
+    height: 60px;
+    border-radius: 14px;
+    background-color: var(--color-red);
+    color: #fff;
+    border: none;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    cursor: pointer;
+    box-shadow: 0 4px 15px var(--color-red-glow);
+    z-index: 25;
+    transition: transform var(--transition-snappy), background-color var(--transition-snappy);
+}
+
+.stop-btn-wide:active {
+    transform: scale(0.98);
+}
+
+/* Bottom Controls (Knives Speed & Stop Button) */
+.camera-bottom-controls {
+    padding: 16px 20px 24px;
+    background: rgba(10, 14, 20, 0.6);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid var(--border-glass);
     display: flex;
     flex-direction: column;
+    gap: 16px;
+    z-index: 40;
+}
+
+/* Floating Top Controls Row (Dock, Undock, Explore, Go to Point) */
+.map-top-controls {
+    position: absolute;
+    right: 16px;
+    top: 16px;
+    display: flex;
+    gap: 8px;
+    z-index: 110;
+}
+
+/* Bottom Controls for Screen 1 Map (Floating directly on map) */
+.map-bottom-controls {
+    position: absolute;
+    bottom: 24px;
+    left: 24px;
+    right: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    z-index: 110;
+    pointer-events: none;
+}
+
+.map-bottom-controls .map-action-buttons {
+    display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: 10px 0;
-    z-index: 25;
+    justify-content: center;
+    gap: 12px;
+    pointer-events: auto;
 }
 
-.v-slider-icon {
-    font-size: 14px;
-    color: rgba(255, 255, 255, 0.6);
+.map-bottom-controls .stop-btn-wide {
+    pointer-events: auto;
 }
 
-.v-slider-icon-down i {
+/* Knives Speed horizontal slider layout */
+.knives-slider-container {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex: 1;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 16px;
+    padding: 16px 20px;
+}
+
+#vSliderFanIcon {
+    font-size: 18px;
+    color: var(--color-green);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+}
+
+#vSliderFanIcon i {
     animation: spin 3s linear infinite;
     animation-play-state: paused;
 }
 
-.v-slider-track {
-    position: relative;
-    width: 6px;
-    height: 100px;
-    background: rgba(255,255,255,0.15);
-    border-radius: 3px;
-    display: flex;
-    justify-content: center;
-}
-
-.v-slider-track input[type="range"] {
+.horizontal-slider {
+    flex: 1;
     -webkit-appearance: none;
     appearance: none;
-    position: absolute;
-    width: 100px;
     height: 6px;
-    background: transparent;
-    transform: rotate(-90deg);
-    top: 47px;
-    cursor: pointer;
-    outline: none;
-    z-index: 5;
-    opacity: 0; /* Hidden, but handles events */
-}
-
-.v-slider-progress {
-    position: absolute;
-    bottom: 0;
-    width: 100%;
-    background: linear-gradient(to top, var(--color-green) 0%, hsl(142, 70%, 65%) 100%);
     border-radius: 3px;
-    height: 0%;
+    background: rgba(255, 255, 255, 0.15);
+    outline: none;
+    cursor: pointer;
 }
 
-.v-slider-thumb-custom {
-    position: absolute;
+/* Customize horizontal slider thumb */
+.horizontal-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
     width: 20px;
     height: 20px;
     border-radius: 50%;
     background: #fff;
     box-shadow: 0 2px 6px rgba(0,0,0,0.4);
-    bottom: 0;
-    transform: translateY(50%);
-    pointer-events: none;
-    z-index: 4;
+    cursor: pointer;
+    transition: transform var(--transition-snappy);
+}
+
+.horizontal-slider::-webkit-slider-thumb:active {
+    transform: scale(1.2);
+}
+
+.horizontal-slider::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border: none;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+    cursor: pointer;
+    transition: transform var(--transition-snappy);
+}
+
+.horizontal-slider::-moz-range-thumb:active {
+    transform: scale(1.2);
+}
+
+.knives-speed-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--color-text);
+    min-width: 80px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
 }
 
 @keyframes spin {

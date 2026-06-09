@@ -94,6 +94,7 @@ export class ControlPanel {
             });
             this.knifeSlider.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: false });
             this.knifeSlider.addEventListener('mousedown',  (e) => e.stopPropagation());
+            this.syncKnifeSliderVisuals(parseInt(this.knifeSlider.value, 10) || 0);
         }
 
         // Listen to gamepadService knife RPM updates (keeps UI slider in sync)
@@ -426,10 +427,9 @@ export class ControlPanel {
     }
 
     syncKnifeSliderVisuals(rpm) {
-        const progress = document.getElementById('vSliderProgress');
-        const thumb = document.getElementById('vSliderThumb');
         const pct = (rpm / 3000) * 100;
-        if (progress) progress.style.height = `${pct}%`;
-        if (thumb) thumb.style.bottom = `${pct}%`;
+        if (this.knifeSlider) {
+            this.knifeSlider.style.background = `linear-gradient(to right, var(--color-green) 0%, var(--color-green) ${pct}%, rgba(255, 255, 255, 0.15) ${pct}%, rgba(255, 255, 255, 0.15) 100%)`;
+        }
     }
 }

@@ -57,36 +57,8 @@
                                 Coverage idle. Map boundary auto-detected.
                             </div>
 
-                            <!-- Floating Sidebar Controls (Circular Buttons) -->
-                            <div class="map-sidebar">
-                                <!-- Save Map -->
-                                <button id="save-map-btn" class="sidebar-btn" title="Save Map">
-                                    <i class="fas fa-save"></i>
-                                </button>
-                                <!-- Draw Zone -->
-                                <button id="coverage-draw-zone-btn" class="sidebar-btn" title="Draw Zone">
-                                    <i class="fas fa-crop-alt"></i>
-                                </button>
-                                <!-- Clear Zone -->
-                                <button id="coverage-clear-zone-btn" class="sidebar-btn" title="Clear Zone">
-                                    <i class="fas fa-trash-can"></i>
-                                </button>
-                                <!-- Go to Point -->
-                                <button id="goto-point-btn" class="sidebar-btn" title="Go to Point">
-                                    <i class="fas fa-location-dot"></i>
-                                </button>
-                                <!-- Preview Path -->
-                                <button id="coverage-preview-btn" class="sidebar-btn" title="Preview Coverage">
-                                    <i class="fas fa-eye"></i>
-                                </button>
-                                <!-- Start/Execute Coverage -->
-                                <button id="coverage-execute-btn" class="sidebar-btn" title="Execute Coverage">
-                                    <i class="fas fa-seedling"></i>
-                                </button>
-                                <!-- RED STOP BUTTON -->
-                                <button id="coverage-stop-btn" class="sidebar-btn btn-stop-danger" title="Emergency Stop">
-                                    <i class="fas fa-stop"></i>
-                                </button>
+                            <!-- Floating Top Controls Row (Dock, Undock, Explore, Go to Point) -->
+                            <div class="map-top-controls">
                                 <!-- Dock -->
                                 <button id="dock-btn" class="sidebar-btn" title="Dock Robot">
                                     <i class="fas fa-charging-station"></i>
@@ -99,7 +71,43 @@
                                 <button id="explore-btn" class="sidebar-btn" title="Start Exploration">
                                     <i class="fas fa-rocket"></i>
                                 </button>
+                                <!-- Go to Point -->
+                                <button id="goto-point-btn" class="sidebar-btn" title="Go to Point">
+                                    <i class="fas fa-location-dot"></i>
+                                </button>
                             </div>
+                        </div>
+
+                        <!-- Bottom Controls (Action Buttons & Wide Stop Button) -->
+                        <div class="map-bottom-controls">
+                            <div class="map-action-buttons">
+                                <!-- Save Map -->
+                                <button id="save-map-btn" class="sidebar-btn" title="Save Map">
+                                    <i class="fas fa-save"></i>
+                                </button>
+                                <!-- Draw Zone -->
+                                <button id="coverage-draw-zone-btn" class="sidebar-btn" title="Draw Zone">
+                                    <i class="fas fa-crop-alt"></i>
+                                </button>
+                                <!-- Clear Zone -->
+                                <button id="coverage-clear-zone-btn" class="sidebar-btn" title="Clear Zone">
+                                    <i class="fas fa-trash-can"></i>
+                                </button>
+                                <!-- Preview Path -->
+                                <button id="coverage-preview-btn" class="sidebar-btn" title="Preview Coverage">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <!-- Start/Execute Coverage -->
+                                <button id="coverage-execute-btn" class="sidebar-btn" title="Execute Coverage">
+                                    <i class="fas fa-seedling"></i>
+                                </button>
+                            </div>
+                            
+                            <!-- RED STOP BUTTON -->
+                            <button id="coverage-stop-btn" class="stop-btn-wide" title="Emergency Stop">
+                                <i class="fas fa-stop"></i> EMERGENCY STOP
+                            </button>
+                        </div>
                         </div>
 
 
@@ -119,36 +127,21 @@
 
 
 
-                                <!-- Vertical Knife Slider overlay -->
-                                <div class="vertical-slider-container">
-                                    <span class="v-slider-icon v-slider-icon-up"><i class="fas fa-chevron-up"></i></span>
-                                    <div class="v-slider-track">
-                                        <input type="range" id="knifeSlider" min="0" max="3000" value="0" step="50">
-                                        <div class="v-slider-progress" id="vSliderProgress"></div>
-                                        <div class="v-slider-thumb-custom" id="vSliderThumb"></div>
-                                    </div>
-                                    <span class="v-slider-icon v-slider-icon-down" id="vSliderFanIcon"><i class="fas fa-fan"></i></span>
-                                </div>
-
-                                <!-- RED STOP BUTTON overlay -->
-                                <button id="camera-stop-btn" class="camera-stop-btn" title="Emergency Stop">
-                                    <i class="fas fa-stop"></i>
-                                </button>
                             </div>
                         </div>
 
-                        <!-- Bottom Telemetry Grid (2 values) -->
-                        <div class="telemetry-grid telemetry-grid-two">
-                            <div class="telemetry-card">
-                                <i class="fas fa-tachometer-alt tel-icon"></i>
-                                <span id="speed-display" class="tel-value">0.0</span>
-                                <span class="tel-label">M/S</span>
+                        <!-- Bottom Controls (Knives Speed & Stop Button) -->
+                        <div class="camera-bottom-controls">
+                            <div class="knives-slider-container">
+                                <span id="vSliderFanIcon"><i class="fas fa-fan"></i></span>
+                                <input type="range" id="knifeSlider" min="0" max="3000" value="0" step="50" class="horizontal-slider">
+                                <span class="knives-speed-label"><span id="knifeSliderValue">0</span> RPM</span>
                             </div>
-                            <div class="telemetry-card">
-                                <i class="fas fa-network-wired tel-icon"></i>
-                                <span id="latency-display" class="tel-value">--</span>
-                                <span class="tel-label">LATENCY</span>
-                            </div>
+                            
+                            <!-- RED STOP BUTTON -->
+                             <button id="camera-stop-btn" class="stop-btn-wide" title="Emergency Stop">
+                                 <i class="fas fa-stop"></i> EMERGENCY STOP
+                             </button>
                         </div>
                     </div>
 
