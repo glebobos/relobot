@@ -81,10 +81,6 @@
                         <!-- Bottom Controls (Action Buttons & Wide Stop Button) -->
                         <div class="map-bottom-controls">
                             <div class="map-action-buttons">
-                                <!-- Save Map -->
-                                <button id="save-map-btn" class="sidebar-btn" title="Save Map">
-                                    <i class="fas fa-save"></i>
-                                </button>
                                 <!-- Draw Zone -->
                                 <button id="coverage-draw-zone-btn" class="sidebar-btn" title="Draw Zone">
                                     <i class="fas fa-crop-alt"></i>
@@ -108,9 +104,6 @@
                                 <i class="fas fa-stop"></i> EMERGENCY STOP
                             </button>
                         </div>
-                        </div>
-
-
                     </div>
 
                     <!-- SCREEN 2: CAMERA VIEW & MANUAL CONTROL -->
@@ -151,7 +144,13 @@
                             <h2 class="settings-title">Settings</h2>
                             <div class="settings-list">
 
-
+                                <div class="settings-item" data-setting="navigation">
+                                    <div class="settings-item-left">
+                                        <i class="fas fa-map settings-icon"></i>
+                                        <span>Navigation & Mapping</span>
+                                    </div>
+                                    <i class="fas fa-chevron-right settings-chevron"></i>
+                                </div>
 
                                 <div class="settings-item" data-setting="sensors">
                                     <div class="settings-item-left">
@@ -202,6 +201,10 @@
         <span id="knifeSliderValue">0</span>
         <span id="rpm-display-cam">---</span>
         <span id="rpm-icon-cam"></span>
+        <!-- Moved and new navigation/mapping hidden triggers -->
+        <button id="save-map-btn"></button>
+        <button id="reset-map-btn"></button>
+        <button id="restart-slam-btn"></button>
     </div>
 
     <!-- Import Maps for ESModules -->

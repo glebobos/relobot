@@ -125,7 +125,7 @@ export class SettingsPanel {
         const content = this.drawerContent;
 
         const info = document.createElement('p');
-        info.textContent = 'Map coverage boundaries, manual waypoints, and docking controls:';
+        info.textContent = 'SLAM Toolbox mapping and localization control:';
         content.appendChild(info);
 
         // helper function to create a mapped button
@@ -145,17 +145,14 @@ export class SettingsPanel {
             return btn;
         };
 
-        // Go to point button
-        content.appendChild(createMappedBtn('📍 Go to Point (Tap on Map)', 'goto-point-btn', 'drawer-btn-primary'));
-        
-        // Preview Coverage path
-        content.appendChild(createMappedBtn('🔍 Preview Coverage Plan', 'coverage-preview-btn'));
-        
-        // Undock robot
-        content.appendChild(createMappedBtn('🔌 Execute Undock Sequence', 'undock-btn'));
+        // Save Current Map button
+        content.appendChild(createMappedBtn('💾 Save Current Map', 'save-map-btn', 'drawer-btn-primary'));
 
-        // Clear drawn zone
-        content.appendChild(createMappedBtn('🗑️ Clear Boundary Zone', 'coverage-clear-zone-btn', 'drawer-btn-danger'));
+        // Restart SLAM Toolbox button
+        content.appendChild(createMappedBtn('🔄 Restart SLAM Toolbox', 'restart-slam-btn'));
+
+        // Reset Map button
+        content.appendChild(createMappedBtn('🗑️ Reset Map (Mapping Mode)', 'reset-map-btn', 'drawer-btn-danger'));
     }
 
 

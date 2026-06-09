@@ -1,5 +1,5 @@
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
+from launch.actions import DeclareLaunchArgument, Shutdown
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import ComposableNodeContainer, Node
 from launch_ros.descriptions import ComposableNode
@@ -66,6 +66,7 @@ def generate_launch_description():
             ),
         ],
         output='screen',
+        on_exit=Shutdown(),
     )
 
     always_on_env = os.environ.get('ALWAYS_ON_APRILTAG', 'false').lower() == 'true'
@@ -78,6 +79,7 @@ def generate_launch_description():
         name='apriltag_manager',
         output='screen',
         parameters=[{'always_on': always_on_env}],
+        on_exit=Shutdown(),
     )
 
     return LaunchDescription([

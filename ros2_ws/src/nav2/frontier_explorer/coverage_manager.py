@@ -189,8 +189,44 @@ class CoverageManager(Node):
         if command == 'clear_zone':
             self._on_clear_zone()
             return
+        if command == 'restart_slam':
+            self._restart_slam()
+            return
+        if command == 'reset_map':
+            self._reset_map()
+            return
 
         self._publish_status('error', f'Unknown coverage command: {command}')
+
+    def _restart_slam(self) -> None:
+        self.get_logger().info('Restarting SLAM toolbox by terminating the nav2 launch process...')
+        import subprocess
+        try:
+            # Terminate the ros2 launch process gracefully, allowing child nodes to clean up
+            subprocess.run(['pkill', '-f', 'ros2 launch nav2'], check=True)
+        except Exception as e:
+            self.get_logger().error(f'Failed to kill launch process with pkill: {e}')
+            import os
+            import signal
+            try:
+                os.kill(1, signal.SIGTERM)
+            except Exception as ex:
+                self.get_logger().error(f'Failed to kill PID 1: {ex}')
+
+    def _reset_map(self) -> None:
+        self.get_logger().info('Resetting map (deleting serialized pose graph and data files)...')
+        import os
+        for ext in ('.posegraph', '.data'):
+            path = '/ros2_ws/map_serialized' + ext
+            if os.path.isfile(path):
+                try:
+                    os.remove(path)
+                    self.get_logger().info(f'Successfully deleted: {path}')
+                except Exception as e:
+                    self.get_logger().error(f'Failed to delete {path}: {e}')
+            else:
+                self.get_logger().info(f'Map file does not exist: {path}')
+        self._restart_slam()
 
     def _start_preview(self) -> None:
         if self._compute_goal_handle or self._nav_goal_handle:

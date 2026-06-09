@@ -19,6 +19,8 @@ export class ControlPanel {
         this.gotoPointBtn = document.getElementById('goto-point-btn');
         this.coverageStatus = document.getElementById('coverage-status');
         this.saveMapBtn = document.getElementById('save-map-btn');
+        this.resetMapBtn = document.getElementById('reset-map-btn');
+        this.restartSlamBtn = document.getElementById('restart-slam-btn');
         this.dockBtn = document.getElementById('dock-btn');
         this.undockBtn = document.getElementById('undock-btn');
         this.knifeSlider = document.getElementById('knifeSlider');
@@ -258,6 +260,26 @@ export class ControlPanel {
                         console.error('[SaveMap] serialize_map service not ready');
                         showAlert('Error: serialize_map service unavailable.');
                     }
+                });
+            });
+        }
+
+        // Reset Map Button with custom confirmation modal
+        if (this.resetMapBtn) {
+            this.resetMapBtn.addEventListener('click', () => {
+                showConfirm('Reset map? This will delete the saved map and restart SLAM in mapping mode.', () => {
+                    this.sendCoverageCommand('reset_map');
+                    showAlert('Resetting map and restarting SLAM...');
+                });
+            });
+        }
+
+        // Restart SLAM Button with custom confirmation modal
+        if (this.restartSlamBtn) {
+            this.restartSlamBtn.addEventListener('click', () => {
+                showConfirm('Restart SLAM toolbox? This will reload the saved map if it exists.', () => {
+                    this.sendCoverageCommand('restart_slam');
+                    showAlert('Restarting SLAM...');
                 });
             });
         }
