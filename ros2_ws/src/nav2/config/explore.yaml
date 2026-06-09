@@ -434,7 +434,7 @@ docking_server:
     controller:
       k_phi: 4.0
       k_delta: 2.0
-      beta: 0.4
+      beta: 0.3
       lambda: 2.0
       v_linear_min: 0.1  # Hardware minimum: 0.35 rad/s × 0.095 m wheel_radius ≈ 0.033 m/s; 0.04 adds small margin
       v_linear_max: 0.3  # Slow approach speed
