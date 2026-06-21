@@ -1,0 +1,144 @@
+/* SCREEN 2: CAMERA VIEW */
+.c-camera-view {
+    flex: 1;
+    position: relative;
+    background-color: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.c-camera-view__video-wrapper {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.c-camera-view__video-wrapper img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Fallback connecting text */
+.c-camera-view__video-wrapper::before {
+    content: 'Connecting to camera stream...';
+    position: absolute;
+    color: var(--color-text-muted);
+    font-size: 14px;
+    z-index: 1;
+}
+
+.c-camera-view__video-wrapper img[src] {
+    position: relative;
+    z-index: 2;
+}
+
+
+/* Wide stop button */
+.c-stop-btn-wide {
+    width: 100%;
+    height: 60px;
+    border-radius: 14px;
+    background-color: var(--color-red);
+    color: #fff;
+    border: none;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    cursor: pointer;
+    box-shadow: 0 4px 15px var(--color-red-glow);
+    z-index: 25;
+    transition: transform var(--transition-snappy), background-color var(--transition-snappy);
+}
+
+.c-stop-btn-wide:active {
+    transform: scale(0.98);
+}
+
+/* Bottom Controls */
+.c-camera-view__bottom-controls {
+    padding: 16px 20px 24px;
+    background: rgba(10, 14, 20, 0.6);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid var(--border-glass);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    z-index: 40;
+}
+
+/* Knives Speed horizontal slider layout */
+.c-camera-view__slider-container {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex: 1;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 16px;
+    padding: 16px 20px;
+}
+
+#vSliderFanIcon {
+    font-size: 18px;
+    color: var(--color-green);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+}
+
+#vSliderFanIcon i {
+    animation: spin 3s linear infinite;
+    animation-play-state: paused;
+}
+
+
+@media (orientation: landscape) {
+    .c-camera-view__bottom-controls {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: transparent;
+        border-top: none;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+        padding: 0;
+        pointer-events: none;
+        z-index: 40;
+    }
+
+    /* Emergency stop button transparent on bottom */
+    .c-camera-view__bottom-controls .c-stop-btn-wide {
+        position: absolute;
+        bottom: 16px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 90%;
+        max-width: 500px;
+        background: rgba(239, 68, 68, 0.4);
+        border: 1.5px solid rgba(239, 68, 68, 0.6);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        pointer-events: auto;
+        box-shadow: none;
+    }
+
+    .c-camera-view__bottom-controls .c-stop-btn-wide:active {
+        background: rgba(239, 68, 68, 0.7);
+        transform: translateX(-50%) scale(0.98);
+    }
+}

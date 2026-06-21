@@ -5,21 +5,21 @@
  */
 export function showConfirm(message, onConfirm) {
     const backdrop = document.createElement('div');
-    backdrop.className = 'modal-backdrop';
+    backdrop.className = 'c-modal-backdrop';
 
     const modal = document.createElement('div');
-    modal.className = 'modal-content';
+    modal.className = 'c-modal-content';
 
     const text = document.createElement('p');
     text.textContent = message;
     modal.appendChild(text);
 
     const btnContainer = document.createElement('div');
-    btnContainer.className = 'modal-buttons';
+    btnContainer.className = 'c-modal-content__buttons';
 
     const yesBtn = document.createElement('button');
     yesBtn.textContent = 'Yes';
-    yesBtn.className = 'modal-btn modal-btn-yes';
+    yesBtn.className = 'c-modal-content__btn c-modal-content__btn--yes';
     yesBtn.addEventListener('click', () => {
         backdrop.remove();
         if (typeof onConfirm === 'function') {
@@ -29,7 +29,7 @@ export function showConfirm(message, onConfirm) {
 
     const noBtn = document.createElement('button');
     noBtn.textContent = 'No';
-    noBtn.className = 'modal-btn modal-btn-no';
+    noBtn.className = 'c-modal-content__btn c-modal-content__btn--no';
     noBtn.addEventListener('click', () => {
         backdrop.remove();
     });
@@ -47,21 +47,21 @@ export function showConfirm(message, onConfirm) {
  */
 export function showAlert(message) {
     const backdrop = document.createElement('div');
-    backdrop.className = 'modal-backdrop';
+    backdrop.className = 'c-modal-backdrop';
 
     const modal = document.createElement('div');
-    modal.className = 'modal-content';
+    modal.className = 'c-modal-content';
 
     const text = document.createElement('p');
     text.textContent = message;
     modal.appendChild(text);
 
     const btnContainer = document.createElement('div');
-    btnContainer.className = 'modal-buttons';
+    btnContainer.className = 'c-modal-content__buttons';
 
     const okBtn = document.createElement('button');
     okBtn.textContent = 'OK';
-    okBtn.className = 'modal-btn modal-btn-ok';
+    okBtn.className = 'c-modal-content__btn c-modal-content__btn--ok';
     okBtn.addEventListener('click', () => {
         backdrop.remove();
     });

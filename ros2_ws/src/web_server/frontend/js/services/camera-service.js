@@ -1,8 +1,10 @@
+import { TOPICS } from '../shared/constants.js';
+
 export class CameraService {
     constructor(imgElementId) {
         this.cameraStream = document.getElementById(imgElementId);
         this.clientId = 'web-ui-' + Math.random().toString(36).substring(2, 9);
-        this.baseUrl = `http://${window.location.hostname}:8080/stream?topic=/camera/image_raw&type=mjpeg&client_id=${this.clientId}`;
+        this.baseUrl = `http://${window.location.hostname}:8080/stream?topic=${TOPICS.CAMERA_IMAGE}&type=mjpeg&client_id=${this.clientId}`;
         this.isActive = false;
         this.init();
     }

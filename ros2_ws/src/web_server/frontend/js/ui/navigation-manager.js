@@ -36,7 +36,7 @@ export class NavigationManager {
             this.screensWrapper.style.transform = `translateX(-${index * 33.3333}%)`;
         }
         this.tabs.forEach((tab, idx) => {
-            tab.classList.toggle('active', idx === index);
+            tab.classList.toggle('is-active', idx === index);
         });
 
         // Optimize camera streams based on active screen

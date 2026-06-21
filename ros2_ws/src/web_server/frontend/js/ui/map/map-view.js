@@ -1,8 +1,9 @@
-import { rosService } from '../services/ros-service.js';
+import { rosService } from '../../services/ros-service.js';
 import { DynamicLine } from './dynamic-line.js';
 import { installMapColorOverride } from './map-color-override.js';
 import { MapInteractionHandler } from './map-interaction.js';
 import { buildRobotModelFromUrdf } from './robot-model.js';
+import { TOPICS, MSG_TYPES } from '../../shared/constants.js';
 
 export class MapView {
     constructor(containerId) {
@@ -692,12 +693,12 @@ export class MapView {
     }
 
     setupSubscriptions() {
-        const previewPathTopic = rosService.createTopicV1('/coverage/preview_path', 'nav_msgs/Path');
+        const previewPathTopic = rosService.createTopicV1(TOPICS.COVERAGE_PREVIEW_PATH, MSG_TYPES.PATH);
         if (previewPathTopic) {
             previewPathTopic.subscribe((msg) => this.renderPreviewPath(msg));
         }
 
-        const polygonActiveTopic = rosService.createTopicV1('/coverage/polygon_active', 'geometry_msgs/PolygonStamped', {
+        const polygonActiveTopic = rosService.createTopicV1(TOPICS.COVERAGE_POLYGON_ACTIVE, MSG_TYPES.POLYGON_STAMPED, {
             durability: 'transient_local',
             reliability: 'reliable'
         });
@@ -705,7 +706,7 @@ export class MapView {
             polygonActiveTopic.subscribe((msg) => this.renderMapPolygon(msg));
         }
 
-        const obstaclesTopic = rosService.createTopicV1('/coverage/obstacles_active', 'std_msgs/String', {
+        const obstaclesTopic = rosService.createTopicV1(TOPICS.COVERAGE_OBSTACLES_ACTIVE, MSG_TYPES.STRING, {
             durability: 'transient_local',
             reliability: 'reliable'
         });
@@ -714,7 +715,7 @@ export class MapView {
         }
 
         // Subscribe to robot description to load the 3D model dynamically
-        const robotDescTopic = rosService.createTopicV1('/robot_description', 'std_msgs/msg/String', {
+        const robotDescTopic = rosService.createTopicV1(TOPICS.ROBOT_DESCRIPTION, MSG_TYPES.STRING, {
             durability: 'transient_local',
             reliability: 'reliable'
         });
@@ -737,7 +738,7 @@ export class MapView {
             });
         }
 
-        const odomSub = rosService.createTopicV1("/odometry/filtered", "nav_msgs/Odometry", {
+        const odomSub = rosService.createTopicV1(TOPICS.ODOMETRY, MSG_TYPES.ODOMETRY, {
             throttle_rate: 100
         });
         if (odomSub) {

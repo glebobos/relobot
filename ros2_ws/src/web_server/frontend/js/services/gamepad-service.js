@@ -1,5 +1,5 @@
 import { rosService } from './ros-service.js';
-import { CFG } from '../config.js';
+import { CFG, TOPICS, MSG_TYPES } from '../shared/constants.js';
 
 class GamepadService {
     constructor() {
@@ -19,11 +19,11 @@ class GamepadService {
 
     init() {
         // Create topics
-        this.cmdVelTopic = rosService.createTopicV2('/cmd_vel', 'geometry_msgs/Twist');
-        this.knifeRpmTopic = rosService.createTopicV2('/knives/set_rpm', 'std_msgs/Float32');
+        this.cmdVelTopic = rosService.createTopicV2(TOPICS.CMD_VEL, MSG_TYPES.TWIST);
+        this.knifeRpmTopic = rosService.createTopicV2(TOPICS.CMD_KNIVES, MSG_TYPES.FLOAT32);
 
         // Publish knife RPM at a fixed interval (200ms)
-        setInterval(() => this.publishRpm(this.knifeCurrentRpm), 200);
+        this.rpmPublishInterval = setInterval(() => this.publishRpm(this.knifeCurrentRpm), 200);
 
         this.gamepadConnectedHandler = (e) => {
             console.log('[GamepadService] Connected:', e.gamepad.id);
@@ -142,6 +142,10 @@ class GamepadService {
         if (this.pollingInterval) {
             clearInterval(this.pollingInterval);
             this.pollingInterval = null;
+        }
+        if (this.rpmPublishInterval) {
+            clearInterval(this.rpmPublishInterval);
+            this.rpmPublishInterval = null;
         }
     }
 }

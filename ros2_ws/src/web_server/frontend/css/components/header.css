@@ -1,0 +1,238 @@
+/* App Header (Desktop Navigation Bar) */
+.c-app-header {
+    height: 64px;
+    padding: 0 28px;
+    background: rgba(18, 24, 34, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border-glass);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 100;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+}
+
+.c-app-header__logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--color-text);
+    letter-spacing: -0.5px;
+}
+
+.c-app-header__logo i {
+    color: var(--color-green);
+}
+
+.c-app-header__nav {
+    display: flex;
+    gap: 12px;
+    background: rgba(0, 0, 0, 0.35);
+    padding: 10px 20px;
+    border-radius: 18px;
+    border: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.c-app-header__right {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+}
+
+/* ---- Inline RPM expand panel ---- */
+.c-rpm-widget {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-text);
+    background: rgba(255, 255, 255, 0.03);
+    padding: 6px 12px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    position: relative;
+    cursor: pointer;
+    user-select: none;
+    transition: background-color var(--transition-snappy), border-color var(--transition-snappy);
+}
+
+.c-rpm-widget:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.c-rpm-widget.is-dropdown-open {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(34, 197, 94, 0.4);
+    cursor: default;
+}
+
+/* RPM value + label – hidden when panel is open */
+.c-rpm-widget__collapsed-info {
+    transition: opacity 0.2s ease, max-width 0.3s ease;
+    opacity: 1;
+    max-width: 80px;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.c-rpm-widget__unit {
+    font-size: 11px;
+    opacity: 0.7;
+    margin-left: 2px;
+}
+
+.c-rpm-widget.is-dropdown-open .c-rpm-widget__collapsed-info {
+    opacity: 0;
+    max-width: 0;
+    margin: 0;
+    padding: 0;
+}
+
+/* Inline slider panel */
+.c-rpm-widget__slider-dropdown {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    opacity: 0;
+    max-width: 0;
+    overflow: hidden;
+    padding: 6px 0;
+    margin: -6px 0;
+    transition: opacity 0.3s ease 0.05s, max-width 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
+    pointer-events: none;
+}
+
+.c-rpm-widget.is-dropdown-open .c-rpm-widget__slider-dropdown {
+    opacity: 1;
+    max-width: 280px;
+    pointer-events: auto;
+}
+
+.c-rpm-widget__slider-dropdown .c-slider {
+    width: 160px;
+    flex-shrink: 0;
+}
+
+.c-rpm-widget__slider-dropdown .c-rpm-widget__speed-label {
+    min-width: 70px;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.c-rpm-widget i {
+    font-size: 14px;
+    color: var(--color-green);
+    animation: spin 3s linear infinite;
+    animation-play-state: paused;
+}
+
+.c-battery-widget {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-text);
+    background: rgba(255, 255, 255, 0.03);
+    padding: 6px 12px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    position: relative;
+    cursor: pointer;
+    user-select: none;
+    transition: background-color var(--transition-snappy), border-color var(--transition-snappy);
+}
+
+.c-battery-widget:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.c-battery-widget.is-dropdown-open {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(34, 197, 94, 0.4);
+}
+
+.c-battery-widget i {
+    font-size: 16px;
+    color: var(--color-green);
+}
+
+/* Dock/Undock dropdown panel — appears below the battery widget */
+.c-battery-widget__dock-dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    display: flex;
+    gap: 8px;
+    padding: 8px;
+    border-radius: 14px;
+    background: rgba(18, 24, 34, 0.92);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    z-index: 200;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-6px);
+    transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.c-battery-widget.is-dropdown-open .c-battery-widget__dock-dropdown {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+}
+
+/* Dock dropdown buttons */
+.c-battery-widget__dock-btn {
+    width: 40px;
+    height: 40px;
+    font-size: 15px;
+    flex-shrink: 0;
+}
+
+.c-battery-widget__dock-btn.is-active {
+    background-color: rgba(34, 197, 94, 0.15) !important;
+    border-color: rgba(34, 197, 94, 0.6) !important;
+    color: var(--color-green) !important;
+    box-shadow: 0 0 10px rgba(34, 197, 94, 0.25) !important;
+}
+
+/* Battery widget pulsing green dot when docking is active */
+.c-battery-widget.is-docking-active::after {
+    content: '';
+    display: block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background-color: var(--color-green);
+    box-shadow: 0 0 6px var(--color-green-glow);
+    animation: dock-dot-pulse 1.5s ease-in-out infinite;
+    flex-shrink: 0;
+}
+
+
+@media (orientation: landscape) {
+    .c-app-header {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        background: transparent;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+        border-bottom: none;
+        box-shadow: none;
+        z-index: 100;
+        pointer-events: none;
+    }
+    
+    .c-app-header > * {
+        pointer-events: auto;
+    }
+}

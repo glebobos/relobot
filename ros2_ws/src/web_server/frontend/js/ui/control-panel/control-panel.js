@@ -1,7 +1,7 @@
-import { rosService } from '../services/ros-service.js';
-import { gamepadService } from '../services/gamepad-service.js';
-import { BT_DIR, DOCK_ID } from '../config.js';
-import { showConfirm, showAlert } from './modal.js';
+import { rosService } from '../../services/ros-service.js';
+import { gamepadService } from '../../services/gamepad-service.js';
+import { BT_DIR, DOCK_ID, TOPICS, ACTIONS, SERVICES, CMDS, MSG_TYPES, EXPLORE_STATUS } from '../../shared/constants.js';
+import { showConfirm, showAlert } from '../modal.js';
 
 export class ControlPanel {
     constructor(mapView, telemetry) {
@@ -46,22 +46,23 @@ export class ControlPanel {
 
     init() {
         // Initialize ROS publishers/subscribers/action clients (using ESM v2 connection)
-        this.exploreTopic = rosService.createTopicV2('/explore/resume', 'std_msgs/Bool');
-        this.coverageCommandTopic = rosService.createTopicV2('/coverage/command', 'std_msgs/String');
+        this.exploreTopic = rosService.createTopicV2(TOPICS.EXPLORE_RESUME, MSG_TYPES.BOOL);
+        this.coverageCommandTopic = rosService.createTopicV2(TOPICS.COVERAGE_COMMAND, MSG_TYPES.STRING);
 
-        this.dockAction = rosService.createActionV2('/dock_robot', 'opennav_docking_msgs/action/DockRobot');
-        this.nav2Action = rosService.createActionV2('/navigate_to_pose', 'nav2_msgs/action/NavigateToPose');
+        this.dockAction = rosService.createActionV2(ACTIONS.DOCK_ROBOT, MSG_TYPES.DOCK_ROBOT);
+        this.nav2Action = rosService.createActionV2(ACTIONS.NAVIGATE_TO_POSE, MSG_TYPES.NAVIGATE_TO_POSE);
 
         // Subscribe to explore status
-        const exploreStatusTopic = rosService.createTopicV2('/explore/status', 'explore_lite_msgs/ExploreStatus');
-        exploreStatusTopic.subscribe((msg) => {
-            const exploring = msg.status === 'exploration_started' || msg.status === 'exploration_in_progress';
+        this.exploreStatusTopic = rosService.createTopicV2(TOPICS.EXPLORE_STATUS, MSG_TYPES.EXPLORE_STATUS);
+        this.exploreStatusCallback = (msg) => {
+            const exploring = msg.status === EXPLORE_STATUS.STARTED || msg.status === EXPLORE_STATUS.IN_PROGRESS;
             this.updateExploreButton(exploring);
-        });
+        };
+        this.exploreStatusTopic.subscribe(this.exploreStatusCallback);
 
         // Subscribe to coverage status
-        const coverageStatusTopic = rosService.createTopicV2('/coverage/status', 'std_msgs/String');
-        coverageStatusTopic.subscribe((msg) => {
+        this.coverageStatusTopic = rosService.createTopicV2(TOPICS.COVERAGE_STATUS, MSG_TYPES.STRING);
+        this.coverageStatusCallback = (msg) => {
             let payload;
             try {
                 payload = JSON.parse(msg.data);
@@ -69,16 +70,18 @@ export class ControlPanel {
                 payload = { state: 'error', message: msg.data || 'Invalid coverage status payload.' };
             }
             this.updateCoverageControls(payload);
-        });
+        };
+        this.coverageStatusTopic.subscribe(this.coverageStatusCallback);
 
         // Subscribe to dock action status
-        const dockStatusTopic = rosService.createTopicV2('/dock_robot/_action/status', 'action_msgs/GoalStatusArray', { throttle_rate: 500 });
-        dockStatusTopic.subscribe((msg) => {
+        this.dockStatusTopic = rosService.createTopicV2(TOPICS.DOCK_ACTION_STATUS, MSG_TYPES.GOAL_STATUS_ARRAY, { throttle_rate: 500 });
+        this.dockStatusCallback = (msg) => {
             const active = (msg.status_list || []).some(
                 (s) => s.status === 1 || s.status === 2 || s.status === 3,
             );
             this.setDockingState(active);
-        });
+        };
+        this.dockStatusTopic.subscribe(this.dockStatusCallback);
 
         // Register MapView callbacks
         if (this.mapView) {
@@ -118,14 +121,14 @@ export class ControlPanel {
             // Toggle open/close on widget click — but not when a button inside is clicked
             headerBatteryWidget.addEventListener('click', (e) => {
                 if (batteryDockDropdown.contains(e.target)) return;
-                headerBatteryWidget.classList.toggle('dropdown-open');
+                headerBatteryWidget.classList.toggle('is-dropdown-open');
             });
 
             // Prevent button clicks from bubbling up to the widget toggle
             batteryDockDropdown.addEventListener('click', (e) => {
                 e.stopPropagation();
                 // Close after a short delay so the user sees the button activate
-                setTimeout(() => headerBatteryWidget.classList.remove('dropdown-open'), 300);
+                setTimeout(() => headerBatteryWidget.classList.remove('is-dropdown-open'), 300);
             });
         }
 
@@ -137,7 +140,7 @@ export class ControlPanel {
             // Toggle open/close on click — EXCEPT when clicking the slider input itself
             headerRpmWidget.addEventListener('click', (e) => {
                 if (knifeSliderInput && knifeSliderInput.contains(e.target)) return;
-                headerRpmWidget.classList.toggle('dropdown-open');
+                headerRpmWidget.classList.toggle('is-dropdown-open');
             });
 
             // Prevent slider drag events from bubbling (don't interfere with touch/mouse drag)
@@ -153,15 +156,13 @@ export class ControlPanel {
         // consume the subsequent click.
         const closeAllDropdowns = (e) => {
             if (headerBatteryWidget && !headerBatteryWidget.contains(e.target)) {
-                headerBatteryWidget.classList.remove('dropdown-open');
+                headerBatteryWidget.classList.remove('is-dropdown-open');
             }
             if (headerRpmWidget && !headerRpmWidget.contains(e.target)) {
-                headerRpmWidget.classList.remove('dropdown-open');
+                headerRpmWidget.classList.remove('is-dropdown-open');
             }
         };
         document.addEventListener('pointerdown', closeAllDropdowns, { passive: true });
-
-
 
         this.setupEventListeners();
         this.updateCoverageControls(this.lastCoverageState);
@@ -185,14 +186,14 @@ export class ControlPanel {
                     state: 'planning',
                     message: 'Computing coverage path.',
                 });
-                this.sendCoverageCommand('preview');
+                this.sendCoverageCommand(CMDS.COVERAGE_PREVIEW);
             });
         }
 
         // Coverage Execute
         if (this.coverageExecuteBtn) {
             this.coverageExecuteBtn.addEventListener('click', () => {
-                const isExecuting = this.coverageExecuteBtn.classList.contains('active');
+                const isExecuting = this.coverageExecuteBtn.classList.contains('is-active');
                 if (isExecuting) {
                     // Toggle stop
                     const stopBtn = document.getElementById('coverage-stop-btn');
@@ -202,8 +203,8 @@ export class ControlPanel {
                         state: 'executing',
                         message: 'Executing cached coverage path.',
                     });
-                    this.sendCoverageCommand('execute');
-                    this.coverageExecuteBtn.classList.add('active');
+                    this.sendCoverageCommand(CMDS.COVERAGE_EXECUTE);
+                    this.coverageExecuteBtn.classList.add('is-active');
                 }
             });
         }
@@ -218,7 +219,7 @@ export class ControlPanel {
             });
 
             // 1. Cancel active coverage task
-            this.sendCoverageCommand('cancel');
+            this.sendCoverageCommand(CMDS.COVERAGE_CANCEL);
 
             // 2. Halt drive motors
             gamepadService.publishTwist(0, 0);
@@ -244,8 +245,8 @@ export class ControlPanel {
             }
 
             // Remove active classes
-            if (this.coverageExecuteBtn) this.coverageExecuteBtn.classList.remove('active');
-            if (this.exploreBtn) this.exploreBtn.classList.remove('active');
+            if (this.coverageExecuteBtn) this.coverageExecuteBtn.classList.remove('is-active');
+            if (this.exploreBtn) this.exploreBtn.classList.remove('is-active');
             this.setDockingState(false);
         };
 
@@ -264,7 +265,7 @@ export class ControlPanel {
         if (this.coverageRefreshMapBtn) {
             this.coverageRefreshMapBtn.addEventListener('click', () => {
                 this.updateCoverageControls({ state: 'planning', message: 'Re-extracting map boundary...' });
-                this.sendCoverageCommand('refresh_map');
+                this.sendCoverageCommand(CMDS.COVERAGE_REFRESH_MAP);
             });
         }
 
@@ -297,7 +298,7 @@ export class ControlPanel {
         if (this.saveMapBtn) {
             this.saveMapBtn.addEventListener('click', () => {
                 showConfirm('Save current map? This will overwrite the previous save.', () => {
-                    const saveMapClient = rosService.createServiceV2('/slam_toolbox/serialize_map', 'slam_toolbox/srv/SerializePoseGraph');
+                    const saveMapClient = rosService.createServiceV2(SERVICES.SERIALIZE_MAP, MSG_TYPES.SERIALIZE_MAP_SRV);
                     if (saveMapClient) {
                         saveMapClient.callService(
                             { filename: 'map_serialized' },
@@ -322,7 +323,7 @@ export class ControlPanel {
         if (this.resetMapBtn) {
             this.resetMapBtn.addEventListener('click', () => {
                 showConfirm('Reset map? This will delete the saved map and restart SLAM in mapping mode.', () => {
-                    this.sendCoverageCommand('reset_map');
+                    this.sendCoverageCommand(CMDS.RESET_MAP);
                     showAlert('Resetting map and restarting SLAM...');
                 });
             });
@@ -332,7 +333,7 @@ export class ControlPanel {
         if (this.restartSlamBtn) {
             this.restartSlamBtn.addEventListener('click', () => {
                 showConfirm('Restart SLAM toolbox? This will reload the saved map if it exists.', () => {
-                    this.sendCoverageCommand('restart_slam');
+                    this.sendCoverageCommand(CMDS.RESTART_SLAM);
                     showAlert('Restarting SLAM...');
                 });
             });
@@ -342,7 +343,7 @@ export class ControlPanel {
         if (this.rebootPiBtn) {
             this.rebootPiBtn.addEventListener('click', () => {
                 showConfirm('Are you sure you want to reboot the Relobot?', () => {
-                    this.sendCoverageCommand('reboot');
+                    this.sendCoverageCommand(CMDS.REBOOT);
                     showAlert('Rebooting Relobot...');
                 });
             });
@@ -352,7 +353,7 @@ export class ControlPanel {
         if (this.poweroffPiBtn) {
             this.poweroffPiBtn.addEventListener('click', () => {
                 showConfirm('Are you sure you want to power off the Relobot?', () => {
-                    this.sendCoverageCommand('poweroff');
+                    this.sendCoverageCommand(CMDS.POWEROFF);
                     showAlert('Powering off Relobot...');
                 });
             });
@@ -387,7 +388,7 @@ export class ControlPanel {
     updateExploreButton(exploring) {
         this.exploringActive = exploring;
         if (this.exploreBtn) {
-            this.exploreBtn.classList.toggle('active', exploring);
+            this.exploreBtn.classList.toggle('is-active', exploring);
         }
     }
 
@@ -396,7 +397,7 @@ export class ControlPanel {
 
         if (this.coverageStatus) {
             // Always show the toast when a new message arrives
-            this.coverageStatus.classList.remove('toast-hidden');
+            this.coverageStatus.classList.remove('is-toast-hidden');
             this.coverageStatus.textContent = status.message || 'Coverage status updated.';
             this.coverageStatus.dataset.state = status.state || 'idle';
         }
@@ -408,7 +409,7 @@ export class ControlPanel {
         if (this.coveragePreviewBtn) this.coveragePreviewBtn.disabled = busy;
         if (this.coverageExecuteBtn) {
             this.coverageExecuteBtn.disabled = busy && status.state !== 'executing';
-            this.coverageExecuteBtn.classList.toggle('active', status.state === 'executing');
+            this.coverageExecuteBtn.classList.toggle('is-active', status.state === 'executing');
         }
         if (this.coverageStopBtn) this.coverageStopBtn.disabled = false;
         if (this.coverageRefreshMapBtn) this.coverageRefreshMapBtn.disabled = busy;
@@ -418,20 +419,20 @@ export class ControlPanel {
         clearTimeout(this._toastTimer);
         if (!busy && !isError && this.coverageStatus) {
             this._toastTimer = setTimeout(() => {
-                this.coverageStatus.classList.add('toast-hidden');
+                this.coverageStatus.classList.add('is-toast-hidden');
             }, 3500);
         }
     }
 
     updateZoneDrawBtnState(active) {
         if (this.coverageDrawZoneBtn) {
-            this.coverageDrawZoneBtn.classList.toggle('active', active);
+            this.coverageDrawZoneBtn.classList.toggle('is-active', active);
         }
     }
 
     updateNavPointBtnState(active) {
         if (this.gotoPointBtn) {
-            this.gotoPointBtn.classList.toggle('active', active);
+            this.gotoPointBtn.classList.toggle('is-active', active);
         }
     }
 
@@ -466,12 +467,12 @@ export class ControlPanel {
             this.telemetry.setDockingActive(active);
         }
         if (this.dockBtn) {
-            this.dockBtn.classList.toggle('active', active);
+            this.dockBtn.classList.toggle('is-active', active);
         }
         // Show pulsing indicator on the battery widget when docking is active
         const batteryWidget = document.getElementById('headerBatteryWidget');
         if (batteryWidget) {
-            batteryWidget.classList.toggle('docking-active', active);
+            batteryWidget.classList.toggle('is-docking-active', active);
         }
     }
 
@@ -531,6 +532,25 @@ export class ControlPanel {
         const pct = (rpm / 3000) * 100;
         if (this.knifeSlider) {
             this.knifeSlider.style.background = `linear-gradient(to right, var(--color-green) 0%, var(--color-green) ${pct}%, rgba(255, 255, 255, 0.15) ${pct}%, rgba(255, 255, 255, 0.15) 100%)`;
+        }
+    }
+
+    destroy() {
+        if (this.exploreStatusTopic && this.exploreStatusCallback) {
+            this.exploreStatusTopic.unsubscribe(this.exploreStatusCallback);
+            this.exploreStatusTopic = null;
+        }
+        if (this.coverageStatusTopic && this.coverageStatusCallback) {
+            this.coverageStatusTopic.unsubscribe(this.coverageStatusCallback);
+            this.coverageStatusTopic = null;
+        }
+        if (this.dockStatusTopic && this.dockStatusCallback) {
+            this.dockStatusTopic.unsubscribe(this.dockStatusCallback);
+            this.dockStatusTopic = null;
+        }
+        if (this._toastTimer) {
+            clearTimeout(this._toastTimer);
+            this._toastTimer = null;
         }
     }
 }
