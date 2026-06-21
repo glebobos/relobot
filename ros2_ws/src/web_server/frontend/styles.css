@@ -1263,3 +1263,64 @@ body {
         padding-top: 80px; /* Offset below absolute transparent header */
     }
 }
+
+/* ── Virtual Joystick ────────────────────────────────────────────────── */
+#vj-overlay {
+    position: fixed;
+    z-index: 9999;
+    pointer-events: none;
+}
+
+/* Outer ring */
+#vj-base {
+    position: absolute;
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    border: 2.5px solid rgba(255, 255, 255, 0.55);
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(4px);
+    box-shadow:
+        0 0 0 1px var(--border-glass),
+        0 4px 24px rgba(0, 0, 0, 0.35);
+    transform: translate(-50%, -50%);
+}
+
+/* Cross-hair lines inside the ring */
+#vj-base::before,
+#vj-base::after {
+    content: '';
+    position: absolute;
+    background: rgba(255, 255, 255, 0.18);
+}
+#vj-base::before {
+    width: 1px;
+    height: 100%;
+    left: 50%;
+    top: 0;
+    transform: translateX(-50%);
+}
+#vj-base::after {
+    height: 1px;
+    width: 100%;
+    top: 50%;
+    left: 0;
+    transform: translateY(-50%);
+}
+
+/* Inner knob */
+#vj-knob {
+    position: absolute;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%,
+        rgba(255, 255, 255, 0.95),
+        rgba(180, 210, 255, 0.85) 55%,
+        rgba(100, 160, 255, 0.75));
+    box-shadow:
+        0 2px 12px rgba(80, 140, 255, 0.55),
+        0 0 0 2px rgba(255, 255, 255, 0.4);
+    transform: translate(-50%, -50%);
+    transition: box-shadow 0.1s ease;
+}
