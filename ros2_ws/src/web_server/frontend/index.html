@@ -14,10 +14,17 @@
         <!-- Premium Top Navigation Header -->
         <header class="app-header">
             <!-- Blade RPM (Header Left) -->
-            <div class="header-rpm">
+            <div class="header-rpm" id="headerRpmWidget">
                 <i class="fas fa-fan" id="rpm-icon-header"></i>
-                <span id="rpm-display">---</span>
-                <span style="font-size: 11px; opacity: 0.7; margin-left: 2px;">RPM</span>
+                <!-- RPM value: visible only when collapsed -->
+                <span class="rpm-collapsed-info" id="rpm-display">---</span>
+                <span class="rpm-collapsed-info rpm-unit">RPM</span>
+                
+                <!-- Inline slider panel: expands to the right when open -->
+                <div class="knives-slider-inline" id="knivesSliderDropdown">
+                    <input type="range" id="knifeSlider" min="0" max="3000" value="0" step="50" class="horizontal-slider">
+                    <span class="knives-speed-label"><span id="knifeSliderValue">0</span> RPM</span>
+                </div>
             </div>
             <nav class="header-nav dots-nav-top" id="headerNav">
                 <div class="dot active" data-index="0"></div>
@@ -25,12 +32,24 @@
                 <div class="dot" data-index="2"></div>
             </nav>
             <div class="header-right">
-                <!-- Battery / Charging Status -->
-                <div class="header-battery">
+                <!-- Battery / Charging Status + Dock Dropdown -->
+                <div class="header-battery" id="headerBatteryWidget">
                     <i class="fas fa-bolt" id="header-charging-icon" style="display: none; margin-right: 4px; color: var(--color-green);"></i>
                     <span id="charger-voltage-display" style="display: none; margin-right: 6px; color: var(--color-green); font-weight: 700;">--.- V</span>
                     <span id="status-battery-pct">25.4 V</span>
                     <i class="fas fa-battery-three-quarters" id="status-battery-icon"></i>
+
+                    <!-- Dock/Undock dropdown panel -->
+                    <div class="battery-dock-dropdown" id="batteryDockDropdown">
+                        <!-- Dock -->
+                        <button id="dock-btn" class="sidebar-btn dock-dropdown-btn" title="Dock Robot">
+                            <i class="fas fa-charging-station"></i>
+                        </button>
+                        <!-- Undock -->
+                        <button id="undock-btn" class="sidebar-btn dock-dropdown-btn" title="Undock Robot">
+                            <i class="fas fa-arrow-up-from-bracket"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
         </header>
@@ -57,16 +76,8 @@
                                 Coverage idle. Map boundary auto-detected.
                             </div>
 
-                            <!-- Floating Top Controls Row (Dock, Undock, Explore, Go to Point) -->
+                            <!-- Floating Top Controls Row (Explore, Go to Point) -->
                             <div class="map-top-controls">
-                                <!-- Dock -->
-                                <button id="dock-btn" class="sidebar-btn" title="Dock Robot">
-                                    <i class="fas fa-charging-station"></i>
-                                </button>
-                                <!-- Undock -->
-                                <button id="undock-btn" class="sidebar-btn" title="Undock Robot">
-                                    <i class="fas fa-arrow-up-from-bracket"></i>
-                                </button>
                                 <!-- Explore -->
                                 <button id="explore-btn" class="sidebar-btn" title="Start Exploration">
                                     <i class="fas fa-rocket"></i>
@@ -123,14 +134,8 @@
                             </div>
                         </div>
 
-                        <!-- Bottom Controls (Knives Speed & Stop Button) -->
+                        <!-- Bottom Controls (Stop Button Only) -->
                         <div class="camera-bottom-controls">
-                            <div class="knives-slider-container">
-                                <span id="vSliderFanIcon"><i class="fas fa-fan"></i></span>
-                                <input type="range" id="knifeSlider" min="0" max="3000" value="0" step="50" class="horizontal-slider">
-                                <span class="knives-speed-label"><span id="knifeSliderValue">0</span> RPM</span>
-                            </div>
-                            
                             <!-- RED STOP BUTTON -->
                              <button id="camera-stop-btn" class="stop-btn-wide" title="Emergency Stop">
                                  <i class="fas fa-stop"></i> EMERGENCY STOP
@@ -198,7 +203,7 @@
     <div style="display: none;">
         <span id="vin-display">--.-</span>
         <span id="vin-display-cam">--.-</span>
-        <span id="knifeSliderValue">0</span>
+
         <span id="rpm-display-cam">---</span>
         <span id="rpm-icon-cam"></span>
         <!-- Moved and new navigation/mapping hidden triggers -->

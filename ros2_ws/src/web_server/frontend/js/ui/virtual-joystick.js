@@ -58,6 +58,13 @@ export class VirtualJoystick {
         const knifeOverlay = document.getElementById('knifeControlOverlay');
         if (knifeOverlay && knifeOverlay.contains(e.target)) return;
         
+        // Don't activate touch-joystick when interacting with knives slider
+        const knifeSlider = document.getElementById('knifeSlider');
+        if (knifeSlider && knifeSlider.contains(e.target)) return;
+        
+        const knifeSliderContainer = document.querySelector('.knives-slider-dropdown') || document.querySelector('.knives-slider-container');
+        if (knifeSliderContainer && knifeSliderContainer.contains(e.target)) return;
+        
         const verticalSlider = document.querySelector('.vertical-slider-container');
         if (verticalSlider && verticalSlider.contains(e.target)) return;
 

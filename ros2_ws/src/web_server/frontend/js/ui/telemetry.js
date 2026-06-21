@@ -133,8 +133,7 @@ export class Telemetry {
         // Spin the blade icon visually
         const rpmIconHeader = document.getElementById('rpm-icon-header');
         const rpmIconCam = document.getElementById('rpm-icon-cam');
-        const vSliderFanIcon = document.getElementById('vSliderFanIcon');
-        [rpmIconHeader, rpmIconCam, vSliderFanIcon].forEach(icon => {
+        [rpmIconHeader, rpmIconCam].forEach(icon => {
             if (icon) {
                 const img = icon.querySelector('i') || icon;
                 if (rounded > 100) {

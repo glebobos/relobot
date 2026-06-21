@@ -101,6 +101,7 @@ body {
     gap: 24px;
 }
 
+/* ---- Inline RPM expand panel ---- */
 .header-rpm {
     display: flex;
     align-items: center;
@@ -112,7 +113,77 @@ body {
     padding: 6px 12px;
     border-radius: 12px;
     border: 1px solid rgba(255, 255, 255, 0.05);
+    position: relative;
+    cursor: pointer;
+    user-select: none;
+    transition: background-color var(--transition-snappy), border-color var(--transition-snappy);
+    /* NO overflow:hidden here — it clips the slider thumb vertically */
 }
+
+.header-rpm:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.header-rpm.dropdown-open {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(34, 197, 94, 0.4);
+    cursor: default;
+}
+
+/* RPM value + label – hidden when panel is open */
+.rpm-collapsed-info {
+    transition: opacity 0.2s ease, max-width 0.3s ease;
+    opacity: 1;
+    max-width: 80px;
+    overflow: hidden;
+    white-space: nowrap;
+}
+.rpm-unit {
+    font-size: 11px;
+    opacity: 0.7;
+    margin-left: 2px;
+}
+
+.header-rpm.dropdown-open .rpm-collapsed-info {
+    opacity: 0;
+    max-width: 0;
+    margin: 0;
+    padding: 0;
+}
+
+/* Inline slider panel — overflow:hidden here handles the expand clipping horizontally */
+.knives-slider-inline {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    /* Hidden initially */
+    opacity: 0;
+    max-width: 0;
+    overflow: hidden;
+    /* vertical padding gives the slider thumb room so it isn't clipped */
+    padding: 6px 0;
+    margin: -6px 0;
+    transition: opacity 0.3s ease 0.05s, max-width 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
+    pointer-events: none;
+}
+
+.header-rpm.dropdown-open .knives-slider-inline {
+    opacity: 1;
+    max-width: 280px;
+    pointer-events: auto;
+}
+
+.knives-slider-inline .horizontal-slider {
+    width: 160px;
+    flex-shrink: 0;
+}
+
+.knives-slider-inline .knives-speed-label {
+    min-width: 70px;
+    text-align: right;
+    white-space: nowrap;
+}
+
 
 .header-rpm i {
     font-size: 14px;
@@ -128,11 +199,90 @@ body {
     font-size: 14px;
     font-weight: 600;
     color: var(--color-text);
+    background: rgba(255, 255, 255, 0.03);
+    padding: 6px 12px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    position: relative;
+    cursor: pointer;
+    user-select: none;
+    transition: background-color var(--transition-snappy), border-color var(--transition-snappy);
+}
+
+.header-battery:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.header-battery.dropdown-open {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(34, 197, 94, 0.4);
 }
 
 .header-battery i {
     font-size: 16px;
     color: var(--color-green);
+}
+
+/* Dock/Undock dropdown panel — appears below the battery widget */
+.battery-dock-dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    display: flex;
+    gap: 8px;
+    padding: 8px;
+    border-radius: 14px;
+    background: rgba(18, 24, 34, 0.92);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    z-index: 200;
+    /* Hidden by default */
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-6px);
+    transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.header-battery.dropdown-open .battery-dock-dropdown {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+}
+
+/* Dock dropdown buttons — slightly smaller than standard sidebar-btn */
+.dock-dropdown-btn {
+    width: 40px;
+    height: 40px;
+    font-size: 15px;
+    flex-shrink: 0;
+}
+
+/* Active state inside dropdown: subtle green border + icon, NOT full green fill */
+.dock-dropdown-btn.active {
+    background-color: rgba(34, 197, 94, 0.15) !important;
+    border-color: rgba(34, 197, 94, 0.6) !important;
+    color: var(--color-green) !important;
+    box-shadow: 0 0 10px rgba(34, 197, 94, 0.25) !important;
+}
+
+/* Battery widget pulsing green dot when docking is active */
+.header-battery.docking-active::after {
+    content: '';
+    display: block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background-color: var(--color-green);
+    box-shadow: 0 0 6px var(--color-green-glow);
+    animation: dock-dot-pulse 1.5s ease-in-out infinite;
+    flex-shrink: 0;
+}
+
+@keyframes dock-dot-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%       { opacity: 0.4; transform: scale(0.7); }
 }
 
 .header-time {
@@ -1014,4 +1164,102 @@ body {
 .coverage-toast[data-state="error"] {
     border-color: rgba(239, 68, 68, 0.4);
     color: var(--color-red);
+}
+
+/* ==========================================
+   LANDSCAPE OPTIMIZATIONS (Smartphones turned horizontally)
+   ========================================== */
+@media (orientation: landscape) {
+    /* 1. Header overlay */
+    .app-header {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        background: transparent;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+        border-bottom: none;
+        box-shadow: none;
+        z-index: 100;
+        pointer-events: none;
+    }
+    
+    .app-header > * {
+        pointer-events: auto;
+    }
+
+    /* Allow screens viewport to occupy the full 100vh height */
+    .screens-viewport {
+        height: 100vh;
+    }
+
+    /* 2. Map View Adjustments (Screen 1) */
+    .camera-pip {
+        top: 72px; /* Offset below header RPM info */
+        left: 16px;
+    }
+
+    .map-top-controls {
+        top: 72px; /* Offset below header battery status */
+        right: 16px;
+    }
+
+    /* 3. Camera View & Controls Layout (Screen 2) */
+    .screen-camera {
+        position: relative;
+    }
+
+    .camera-view-container {
+        height: 100%;
+        width: 100%;
+    }
+
+    .camera-bottom-controls {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: transparent;
+        border-top: none;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+        padding: 0;
+        pointer-events: none;
+        z-index: 40;
+    }
+
+
+    /* Emergency stop button transparent on bottom */
+    .camera-bottom-controls .stop-btn-wide {
+        position: absolute;
+        bottom: 16px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 90%;
+        max-width: 500px;
+        background: rgba(239, 68, 68, 0.4);
+        border: 1.5px solid rgba(239, 68, 68, 0.6);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        pointer-events: auto;
+        box-shadow: none;
+    }
+
+    .camera-bottom-controls .stop-btn-wide:active {
+        background: rgba(239, 68, 68, 0.7);
+        transform: translateX(-50%) scale(0.98);
+    }
+
+    /* Map Pip button (Screen 2) position */
+    .map-pip {
+        top: 72px; /* Offset below header battery info */
+        right: 16px;
+    }
+
+    /* 4. Settings Screen Adjustment (Screen 3) */
+    .settings-container {
+        padding-top: 80px; /* Offset below absolute transparent header */
+    }
 }
