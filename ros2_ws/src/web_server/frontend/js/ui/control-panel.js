@@ -19,6 +19,8 @@ export class ControlPanel {
         this.gotoPointBtn = document.getElementById('goto-point-btn');
         this.coverageStatus = document.getElementById('coverage-status');
         this.saveMapBtn = document.getElementById('save-map-btn');
+        this.resetMapBtn = document.getElementById('reset-map-btn');
+        this.restartSlamBtn = document.getElementById('restart-slam-btn');
         this.dockBtn = document.getElementById('dock-btn');
         this.undockBtn = document.getElementById('undock-btn');
         this.knifeSlider = document.getElementById('knifeSlider');
@@ -94,6 +96,7 @@ export class ControlPanel {
             });
             this.knifeSlider.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: false });
             this.knifeSlider.addEventListener('mousedown',  (e) => e.stopPropagation());
+            this.syncKnifeSliderVisuals(parseInt(this.knifeSlider.value, 10) || 0);
         }
 
         // Listen to gamepadService knife RPM updates (keeps UI slider in sync)
@@ -105,6 +108,58 @@ export class ControlPanel {
             this.syncKnifeSliderVisuals(absRpm);
             if (this.knifeSliderVal) this.knifeSliderVal.textContent = Math.round(absRpm);
         };
+
+        // Battery widget dock/undock dropdown toggle
+        const headerBatteryWidget = document.getElementById('headerBatteryWidget');
+        const batteryDockDropdown = document.getElementById('batteryDockDropdown');
+        if (headerBatteryWidget && batteryDockDropdown) {
+            // Toggle open/close on widget click — but not when a button inside is clicked
+            headerBatteryWidget.addEventListener('click', (e) => {
+                if (batteryDockDropdown.contains(e.target)) return;
+                headerBatteryWidget.classList.toggle('dropdown-open');
+            });
+
+            // Prevent button clicks from bubbling up to the widget toggle
+            batteryDockDropdown.addEventListener('click', (e) => {
+                e.stopPropagation();
+                // Close after a short delay so the user sees the button activate
+                setTimeout(() => headerBatteryWidget.classList.remove('dropdown-open'), 300);
+            });
+        }
+
+        // RPM monitoring widget inline-expand interaction
+        const headerRpmWidget = document.getElementById('headerRpmWidget');
+        const knivesSliderInline = document.getElementById('knivesSliderDropdown');
+        const knifeSliderInput = document.getElementById('knifeSlider');
+        if (headerRpmWidget && knivesSliderInline) {
+            // Toggle open/close on click — EXCEPT when clicking the slider input itself
+            headerRpmWidget.addEventListener('click', (e) => {
+                if (knifeSliderInput && knifeSliderInput.contains(e.target)) return;
+                headerRpmWidget.classList.toggle('dropdown-open');
+            });
+
+            // Prevent slider drag events from bubbling (don't interfere with touch/mouse drag)
+            if (knifeSliderInput) {
+                knifeSliderInput.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: true });
+                knifeSliderInput.addEventListener('mousedown', (e) => e.stopPropagation());
+            }
+        }
+
+        // ── Unified outside-tap/click handler (closes ALL dropdowns) ──
+        // Uses 'pointerdown' which fires reliably on both mouse AND touch
+        // before any click event, so it works even when map/canvas elements
+        // consume the subsequent click.
+        const closeAllDropdowns = (e) => {
+            if (headerBatteryWidget && !headerBatteryWidget.contains(e.target)) {
+                headerBatteryWidget.classList.remove('dropdown-open');
+            }
+            if (headerRpmWidget && !headerRpmWidget.contains(e.target)) {
+                headerRpmWidget.classList.remove('dropdown-open');
+            }
+        };
+        document.addEventListener('pointerdown', closeAllDropdowns, { passive: true });
+
+
 
         this.setupEventListeners();
         this.updateCoverageControls(this.lastCoverageState);
@@ -261,6 +316,26 @@ export class ControlPanel {
             });
         }
 
+        // Reset Map Button with custom confirmation modal
+        if (this.resetMapBtn) {
+            this.resetMapBtn.addEventListener('click', () => {
+                showConfirm('Reset map? This will delete the saved map and restart SLAM in mapping mode.', () => {
+                    this.sendCoverageCommand('reset_map');
+                    showAlert('Resetting map and restarting SLAM...');
+                });
+            });
+        }
+
+        // Restart SLAM Button with custom confirmation modal
+        if (this.restartSlamBtn) {
+            this.restartSlamBtn.addEventListener('click', () => {
+                showConfirm('Restart SLAM toolbox? This will reload the saved map if it exists.', () => {
+                    this.sendCoverageCommand('restart_slam');
+                    showAlert('Restarting SLAM...');
+                });
+            });
+        }
+
         // Dock Button
         if (this.dockBtn) {
             this.dockBtn.addEventListener('click', (e) => {
@@ -371,6 +446,11 @@ export class ControlPanel {
         if (this.dockBtn) {
             this.dockBtn.classList.toggle('active', active);
         }
+        // Show pulsing indicator on the battery widget when docking is active
+        const batteryWidget = document.getElementById('headerBatteryWidget');
+        if (batteryWidget) {
+            batteryWidget.classList.toggle('docking-active', active);
+        }
     }
 
     sendDockGoal() {
@@ -426,10 +506,9 @@ export class ControlPanel {
     }
 
     syncKnifeSliderVisuals(rpm) {
-        const progress = document.getElementById('vSliderProgress');
-        const thumb = document.getElementById('vSliderThumb');
         const pct = (rpm / 3000) * 100;
-        if (progress) progress.style.height = `${pct}%`;
-        if (thumb) thumb.style.bottom = `${pct}%`;
+        if (this.knifeSlider) {
+            this.knifeSlider.style.background = `linear-gradient(to right, var(--color-green) 0%, var(--color-green) ${pct}%, rgba(255, 255, 255, 0.15) ${pct}%, rgba(255, 255, 255, 0.15) 100%)`;
+        }
     }
 }

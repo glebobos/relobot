@@ -13,7 +13,12 @@ ReloBot is a ROS2-based robotics platform running on Raspberry Pi 5.
     - `docker-compose.yml`: Orchestration for all robot services.
     - `*.dockerfile`: Docker definitions for various nodes.
 - `helpers/`: Utility scripts (joystick testing, etc.).
-- `pico_ware_*/`: Microcontroller firmware (MicroPython).
+- `pico_ware_*/`: Microcontroller C/C++ firmware using micro-ROS (e.g. wheels, knives, sensors).
+- `wiki/`: Reference guides and architecture details.
+- `FLASHING.md`: Detailed guides for flashing the microcontroller firmware.
+- `start_robot.sh`: Core host script to start/stop the Docker containers (supports development `--dev` mode).
+- `rviz2.sh`: Shell script to run RViz2 container.
+- `start_camera_calibration.sh`: Script to calibrate the camera.
 
 ## Setup
 1. **Repository**: `git clone ...` (already done if you are reading this).
@@ -24,6 +29,10 @@ ReloBot is a ROS2-based robotics platform running on Raspberry Pi 5.
 ### Running the Robot
 To start the entire stack:
 ```bash
+# Recommended launcher (adds --dev to rebuild nodes on startup):
+./start_robot.sh up [--dev]
+
+# Alternatively, manual compose start:
 cd ros2_ws
 export HOST_IP=$(hostname -I | awk '{print $1}')
 docker compose up
@@ -43,20 +52,21 @@ docker compose up
     - To apply changes: Restart the specific container (`docker compose restart <service_name>`).
 
 ### Frontend Development
-The web server frontend (`ros2_frontend` service) serves static files located in `ros2_ws/src/web_server/frontend` via Nginx. This directory is directly volume-mounted into the Nginx container:
-- Mounting configuration is defined in `ros2_ws/docker-compose.yml`.
-- **Crucial**: Editing HTML, CSS, or JavaScript files on the host will take effect **immediately** inside the running container. There is **no need to restart the container or the service** to apply frontend changes. Simply refresh your browser page to see updates.
+The web server frontend (`ros2_frontend` service) serves static files located in `ros2_ws/src/web_server/frontend` via Nginx.
+- **Serving & Access**: The container uses `network_mode: host` and Nginx is configured to listen on **Port 80**. The web interface can be accessed via a browser at `http://localhost` (or `http://<pi-ip-address>`).
+- **Volume Mounting**: The frontend directory is volume-mounted directly into Nginx's HTML root inside the container as defined in `ros2_ws/docker-compose.yml`.
+- **Immediate Effect**: Editing HTML, CSS, or JavaScript files on the host takes effect **immediately** inside the running container. There is **no need to restart the container or the service** to apply frontend changes. Simply refresh the browser page to see updates.
 
 ### Visualization / Debugging
-- **RViz2**: Run `start_rviz2.sh` (or `rviz` alias if configured) from the host. It runs RViz in a Docker container connected to the Discovery Server.
+- **RViz2**: Run `./rviz2.sh` (or `rviz` alias if configured) from the host. It runs RViz in a Docker container connected to the Discovery Server.
 - **Logs**: `docker compose logs -f <service_name>`.
 - **Shell Access**: `docker compose exec <service_name> bash` to enter a running container.
 
 ## Commands
 | Action | Command |
 | :--- | :--- |
-| **Start All** | `cd ros2_ws && docker compose up` |
-| **Stop All** | `docker compose down` |
+| **Start All** | `./start_robot.sh up` or `cd ros2_ws && docker compose up` |
+| **Stop All** | `./start_robot.sh down` or `docker compose down` |
 | **Rebuild Node** | `docker compose restart <service_name>` |
 | **View Logs** | `docker compose logs -f` |
 | **Find Devices** | `python3 finddevice.py` |

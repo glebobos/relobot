@@ -43,7 +43,7 @@ def generate_launch_description():
     }
     slam_toolbox_node = Node(
         package='slam_toolbox',
-        executable='async_slam_toolbox_node',
+        executable='localization_slam_toolbox_node' if map_exists else 'async_slam_toolbox_node',
         name='slam_toolbox',
         output='screen',
         parameters=[slam_config_file, slam_params],

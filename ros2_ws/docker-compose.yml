@@ -1,6 +1,7 @@
 x-ros-env: &ros-env
   DEV: ${DEV:-false}
   PYTHONUNBUFFERED: 1
+  FASTDDS_DEFAULT_PROFILES_FILE: /ros2_ws/fastdds_localhost.xml
 
 services:
   ros2_frontend:

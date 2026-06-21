@@ -15,6 +15,7 @@
 import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
+from launch.actions import Shutdown
 from launch.substitutions import Command, FindExecutable, PathJoinSubstitution
 from launch_ros.parameter_descriptions import ParameterValue
 
@@ -67,6 +68,7 @@ def generate_launch_description():
         name='imu_micro_ros_agent',
         arguments=['multiserial', '--devs', ' '.join(serial_devs), '-b', '115200'],
         output='screen',
+        on_exit=Shutdown(),
     )
 
     control_node = Node(
@@ -76,7 +78,8 @@ def generate_launch_description():
         output="both",
         remappings=[
             ("diff_drive_controller/cmd_vel_unstamped", "cmd_vel"),
-        ]
+        ],
+        on_exit=Shutdown(),
     )
 
     robot_state_pub_node = Node(
