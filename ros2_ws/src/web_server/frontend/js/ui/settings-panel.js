@@ -8,7 +8,7 @@ export class SettingsPanel {
         this.drawerContent = document.getElementById('drawerContent');
         this.backBtn = document.getElementById('drawerBackBtn');
         this.settingsItems = document.querySelectorAll('.settings-item');
-        
+
         // Logs buffer
         this.logBuffer = [];
         this.maxLogs = 50;
@@ -67,6 +67,11 @@ export class SettingsPanel {
                 this.drawerTitle.textContent = 'Logs & Diagnostics';
                 this.renderLogsPanel();
                 break;
+
+            case 'system':
+                this.drawerTitle.textContent = 'System Operations';
+                this.renderSystemPanel();
+                break;
             default:
                 this.drawerTitle.textContent = 'Settings';
                 const p = document.createElement('p');
@@ -77,7 +82,7 @@ export class SettingsPanel {
 
     unsubscribeActive() {
         if (this.imuSubscription) {
-            try { this.imuSubscription.unsubscribe(); } catch(e){}
+            try { this.imuSubscription.unsubscribe(); } catch (e) { }
             this.imuSubscription = null;
         }
     }
@@ -89,7 +94,7 @@ export class SettingsPanel {
         if (this.logBuffer.length > this.maxLogs) {
             this.logBuffer.shift();
         }
-        
+
         // If the log screen is open, append immediately
         const consoleEl = document.getElementById('logs-console-box');
         if (consoleEl) {
@@ -109,7 +114,7 @@ export class SettingsPanel {
                     else if (msg.level === 30) levelStr = 'WARN';
                     else if (msg.level === 40) levelStr = 'ERROR';
                     else if (msg.level === 50) levelStr = 'FATAL';
-                    
+
                     const formatted = `[${levelStr}] [${msg.name}]: ${msg.msg}`;
                     this.addMockLog(formatted);
                 });
@@ -121,6 +126,22 @@ export class SettingsPanel {
 
     // --- RENDER CATEGORY DRAWERS ---
 
+    _createMappedBtn(label, targetId, extraClass = '') {
+        const btn = document.createElement('button');
+        btn.className = `drawer-btn ${extraClass}`;
+        btn.textContent = label;
+        btn.addEventListener('click', () => {
+            const target = document.getElementById(targetId);
+            if (target) {
+                target.click();
+                this.addMockLog(`[SettingsPanel] Clicked: ${label}`);
+            } else {
+                this.addMockLog(`[SettingsPanel] Failed: ${label} (DOM target unavailable)`);
+            }
+        });
+        return btn;
+    }
+
     renderNavigationPanel() {
         const content = this.drawerContent;
 
@@ -128,31 +149,28 @@ export class SettingsPanel {
         info.textContent = 'SLAM Toolbox mapping and localization control:';
         content.appendChild(info);
 
-        // helper function to create a mapped button
-        const createMappedBtn = (label, targetId, extraClass = '') => {
-            const btn = document.createElement('button');
-            btn.className = `drawer-btn ${extraClass}`;
-            btn.textContent = label;
-            btn.addEventListener('click', () => {
-                const target = document.getElementById(targetId);
-                if (target) {
-                    target.click();
-                    this.addMockLog(`[NavPanel] Clicked: ${label}`);
-                } else {
-                    this.addMockLog(`[NavPanel] Failed: ${label} (DOM target unavailable)`);
-                }
-            });
-            return btn;
-        };
-
         // Save Current Map button
-        content.appendChild(createMappedBtn('💾 Save Current Map', 'save-map-btn', 'drawer-btn-primary'));
+        content.appendChild(this._createMappedBtn('💾 Save Current Map', 'save-map-btn', 'drawer-btn-primary'));
 
         // Restart SLAM Toolbox button
-        content.appendChild(createMappedBtn('🔄 Restart SLAM Toolbox', 'restart-slam-btn'));
+        content.appendChild(this._createMappedBtn('🔄 Restart SLAM Toolbox', 'restart-slam-btn'));
 
         // Reset Map button
-        content.appendChild(createMappedBtn('🗑️ Reset Map (Mapping Mode)', 'reset-map-btn', 'drawer-btn-danger'));
+        content.appendChild(this._createMappedBtn('🗑️ Reset Map (Mapping Mode)', 'reset-map-btn', 'drawer-btn-danger'));
+    }
+
+    renderSystemPanel() {
+        const content = this.drawerContent;
+
+        const info = document.createElement('p');
+        info.textContent = 'Hardware host control commands:';
+        content.appendChild(info);
+
+        // Reboot Pi button
+        content.appendChild(this._createMappedBtn('🔄 Reboot Relobot', 'reboot-pi-btn', 'drawer-btn-warning'));
+
+        // Power Off Pi button
+        content.appendChild(this._createMappedBtn('🔌 Power Off Relobot', 'poweroff-pi-btn', 'drawer-btn-danger'));
     }
 
 
@@ -219,7 +237,7 @@ export class SettingsPanel {
             }
         } catch (e) {
             console.warn('[SensorsPanel] IMU subscription setup failed, running mock simulation');
-            
+
             // Sim fallback loop
             let mockAngle = 0;
             const simInterval = setInterval(() => {
@@ -277,7 +295,7 @@ export class SettingsPanel {
         const consoleBox = document.createElement('div');
         consoleBox.id = 'logs-console-box';
         consoleBox.className = 'logs-console';
-        
+
         // Fill initial log lines from the buffer
         consoleBox.textContent = this.logBuffer.join('');
         content.appendChild(consoleBox);

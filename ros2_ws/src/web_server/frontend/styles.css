@@ -1013,6 +1013,11 @@ body {
     border-color: transparent;
 }
 
+.drawer-btn-warning {
+    background-color: var(--color-orange);
+    border-color: transparent;
+}
+
 /* Logs and console display */
 .logs-console {
     background: #090d14;
