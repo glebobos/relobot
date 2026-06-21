@@ -1,0 +1,38 @@
+.o-app-container {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background-color: var(--bg-app);
+}
+
+.o-screens-viewport {
+    flex: 1;
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+}
+
+.o-screens-wrapper {
+    display: flex;
+    width: 300%;
+    height: 100%;
+    transition: transform var(--transition-smooth);
+}
+
+.o-screen {
+    width: 33.3333%;
+    height: 100%;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+@media (orientation: landscape) {
+    .o-screens-viewport {
+        height: 100vh;
+    }
+}

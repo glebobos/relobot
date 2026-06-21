@@ -5,48 +5,70 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ReloBot Controller</title>
     <link rel="icon" href="data:,">
+    
+    <!-- Google Fonts parallel loading -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
     <!-- FontAwesome CDN for sleek icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="styles.css">
+    
+    <!-- ITCSS Specificity Ordered Parallel Loading Link Tags -->
+    <link rel="stylesheet" href="css/settings/variables.css">
+    <link rel="stylesheet" href="css/generic/reset.css">
+    <link rel="stylesheet" href="css/elements/base.css">
+    <link rel="stylesheet" href="css/objects/layout.css">
+    <link rel="stylesheet" href="css/components/form.css">
+    <link rel="stylesheet" href="css/components/navigation.css">
+    <link rel="stylesheet" href="css/components/header.css">
+    <link rel="stylesheet" href="css/components/map.css">
+    <link rel="stylesheet" href="css/components/camera.css">
+    <link rel="stylesheet" href="css/components/telemetry.css">
+    <link rel="stylesheet" href="css/components/settings.css">
+    <link rel="stylesheet" href="css/components/modal.css">
+    <link rel="stylesheet" href="css/components/joystick.css">
+    <link rel="stylesheet" href="css/components/toast.css">
+    <link rel="stylesheet" href="css/utilities/helpers.css">
 </head>
 <body>
-    <div class="app-container">
+    <div class="o-app-container">
         <!-- Premium Top Navigation Header -->
-        <header class="app-header">
+        <header class="c-app-header">
             <!-- Blade RPM (Header Left) -->
-            <div class="header-rpm" id="headerRpmWidget">
+            <div class="c-rpm-widget" id="headerRpmWidget">
                 <i class="fas fa-fan" id="rpm-icon-header"></i>
                 <!-- RPM value: visible only when collapsed -->
-                <span class="rpm-collapsed-info" id="rpm-display">---</span>
-                <span class="rpm-collapsed-info rpm-unit">RPM</span>
+                <span class="c-rpm-widget__collapsed-info" id="rpm-display">---</span>
+                <span class="c-rpm-widget__collapsed-info c-rpm-widget__unit">RPM</span>
                 
                 <!-- Inline slider panel: expands to the right when open -->
-                <div class="knives-slider-inline" id="knivesSliderDropdown">
-                    <input type="range" id="knifeSlider" min="0" max="3000" value="0" step="50" class="horizontal-slider">
-                    <span class="knives-speed-label"><span id="knifeSliderValue">0</span> RPM</span>
+                <div class="c-rpm-widget__slider-dropdown" id="knivesSliderDropdown">
+                    <input type="range" id="knifeSlider" min="0" max="3000" value="0" step="50" class="c-slider">
+                    <span class="c-rpm-widget__speed-label"><span id="knifeSliderValue">0</span> RPM</span>
                 </div>
             </div>
-            <nav class="header-nav dots-nav-top" id="headerNav">
-                <div class="dot active" data-index="0"></div>
-                <div class="dot" data-index="1"></div>
-                <div class="dot" data-index="2"></div>
+            <nav class="c-app-header__nav c-dots-nav" id="headerNav">
+                <div class="c-dots-nav__dot is-active" data-index="0"></div>
+                <div class="c-dots-nav__dot" data-index="1"></div>
+                <div class="c-dots-nav__dot" data-index="2"></div>
             </nav>
-            <div class="header-right">
+            <div class="c-app-header__right">
                 <!-- Battery / Charging Status + Dock Dropdown -->
-                <div class="header-battery" id="headerBatteryWidget">
+                <div class="c-battery-widget" id="headerBatteryWidget">
                     <i class="fas fa-bolt" id="header-charging-icon" style="display: none; margin-right: 4px; color: var(--color-green);"></i>
                     <span id="charger-voltage-display" style="display: none; margin-right: 6px; color: var(--color-green); font-weight: 700;">--.- V</span>
                     <span id="status-battery-pct">25.4 V</span>
                     <i class="fas fa-battery-three-quarters" id="status-battery-icon"></i>
 
                     <!-- Dock/Undock dropdown panel -->
-                    <div class="battery-dock-dropdown" id="batteryDockDropdown">
+                    <div class="c-battery-widget__dock-dropdown" id="batteryDockDropdown">
                         <!-- Dock -->
-                        <button id="dock-btn" class="sidebar-btn dock-dropdown-btn" title="Dock Robot">
+                        <button id="dock-btn" class="c-sidebar-btn c-battery-widget__dock-btn" title="Dock Robot">
                             <i class="fas fa-charging-station"></i>
                         </button>
                         <!-- Undock -->
-                        <button id="undock-btn" class="sidebar-btn dock-dropdown-btn" title="Undock Robot">
+                        <button id="undock-btn" class="c-sidebar-btn c-battery-widget__dock-btn" title="Undock Robot">
                             <i class="fas fa-arrow-up-from-bracket"></i>
                         </button>
                     </div>
@@ -55,149 +77,161 @@
         </header>
 
         <!-- Viewport -->
-        <div class="screens-viewport">
-            <div class="screens-wrapper" id="screensWrapper">
+        <div class="o-screens-viewport">
+            <div class="o-screens-wrapper" id="screensWrapper">
                     
                     <!-- SCREEN 1: MAP VIEW & PRIMARY CONTROLS -->
-                    <div class="screen" id="screen-map">
-                        <div class="map-view-container" id="videoContainer">
+                    <div class="o-screen" id="screen-map">
+                        <div class="c-map-view" id="videoContainer">
                             <!-- Main 3D Map -->
                             <div id="map"></div>
                             <canvas id="zone-draw-canvas"></canvas>
 
                             <!-- Mini Floating Camera PIP -->
-                            <div class="pip-overlay camera-pip" id="pipCamera">
+                            <div class="c-pip-overlay c-pip-overlay--camera" id="pipCamera">
                                 <img id="pipCameraStream" src="" alt="Camera stream disconnected">
-                                <div class="pip-label"><i class="fas fa-video"></i></div>
+                                <div class="c-pip-overlay__label"><i class="fas fa-video"></i></div>
+                            </div>
+
+                            <!-- FUI 0.0 Charging Station panel -->
+                            <div class="c-fui-dock-panel">
+                                <div class="c-fui-dock-panel__icon">
+                                    <i class="fas fa-charging-station"></i>
+                                </div>
+                                <div class="c-fui-dock-panel__text">
+                                    <span class="c-fui-dock-panel__title">Charging Station</span>
+                                    <span class="c-fui-dock-panel__sub" id="fuiDockSub">Disconnected (FUI 0.0)</span>
+                                </div>
                             </div>
 
                             <!-- Hud Toast for Coverage Status -->
-                            <div id="coverage-status" class="coverage-toast" data-state="idle">
+                            <div id="coverage-status" class="c-coverage-toast" data-state="idle">
                                 Coverage idle. Map boundary auto-detected.
                             </div>
 
                             <!-- Floating Top Controls Row (Explore, Go to Point) -->
-                            <div class="map-top-controls">
+                            <div class="c-map-view__top-controls">
                                 <!-- Explore -->
-                                <button id="explore-btn" class="sidebar-btn" title="Start Exploration">
+                                <button id="explore-btn" class="c-sidebar-btn" title="Start Exploration">
                                     <i class="fas fa-rocket"></i>
                                 </button>
                                 <!-- Go to Point -->
-                                <button id="goto-point-btn" class="sidebar-btn" title="Go to Point">
+                                <button id="goto-point-btn" class="c-sidebar-btn" title="Go to Point">
                                     <i class="fas fa-location-dot"></i>
                                 </button>
                             </div>
                         </div>
 
                         <!-- Bottom Controls (Action Buttons & Wide Stop Button) -->
-                        <div class="map-bottom-controls">
-                            <div class="map-action-buttons">
+                        <div class="c-map-view__bottom-controls">
+                            <div class="c-map-view__action-buttons">
                                 <!-- Draw Zone -->
-                                <button id="coverage-draw-zone-btn" class="sidebar-btn" title="Draw Zone">
+                                <button id="coverage-draw-zone-btn" class="c-sidebar-btn" title="Draw Zone">
                                     <i class="fas fa-crop-alt"></i>
                                 </button>
                                 <!-- Clear Zone -->
-                                <button id="coverage-clear-zone-btn" class="sidebar-btn" title="Clear Zone">
+                                <button id="coverage-clear-zone-btn" class="c-sidebar-btn" title="Clear Zone">
                                     <i class="fas fa-trash-can"></i>
                                 </button>
+                                <!-- Refresh Map -->
+                                <button id="coverage-refresh-map-btn" class="c-sidebar-btn" title="Refresh Map Boundary">
+                                    <i class="fas fa-arrows-rotate"></i>
+                                </button>
                                 <!-- Preview Path -->
-                                <button id="coverage-preview-btn" class="sidebar-btn" title="Preview Coverage">
+                                <button id="coverage-preview-btn" class="c-sidebar-btn" title="Preview Coverage">
                                     <i class="fas fa-eye"></i>
                                 </button>
                                 <!-- Start/Execute Coverage -->
-                                <button id="coverage-execute-btn" class="sidebar-btn" title="Execute Coverage">
+                                <button id="coverage-execute-btn" class="c-sidebar-btn" title="Execute Coverage">
                                     <i class="fas fa-seedling"></i>
                                 </button>
                             </div>
                             
                             <!-- RED STOP BUTTON -->
-                            <button id="coverage-stop-btn" class="stop-btn-wide" title="Emergency Stop">
+                            <button id="coverage-stop-btn" class="c-stop-btn-wide" title="Emergency Stop">
                                 <i class="fas fa-stop"></i> EMERGENCY STOP
                             </button>
                         </div>
                     </div>
 
                     <!-- SCREEN 2: CAMERA VIEW & MANUAL CONTROL -->
-                    <div class="screen" id="screen-camera">
-                        <div class="camera-view-container">
-                            <div class="video-wrapper" id="largeCameraWrapper">
+                    <div class="o-screen" id="screen-camera">
+                        <div class="c-camera-view">
+                            <div class="c-camera-view__video-wrapper" id="largeCameraWrapper">
                                 <!-- Main Camera stream image -->
                                 <img id="cameraStream" src="" alt="Camera stream loading">
 
                                 <!-- Mini Map Button (navigates to Map screen) -->
-                                <div class="pip-overlay map-pip" id="pipMap">
+                                <div class="c-pip-overlay c-pip-overlay--map" id="pipMap">
                                     <i class="fas fa-map"></i>
                                 </div>
-
-
-
                             </div>
                         </div>
 
                         <!-- Bottom Controls (Stop Button Only) -->
-                        <div class="camera-bottom-controls">
+                        <div class="c-camera-view__bottom-controls">
                             <!-- RED STOP BUTTON -->
-                             <button id="camera-stop-btn" class="stop-btn-wide" title="Emergency Stop">
+                             <button id="camera-stop-btn" class="c-stop-btn-wide" title="Emergency Stop">
                                  <i class="fas fa-stop"></i> EMERGENCY STOP
                              </button>
                         </div>
                     </div>
 
                     <!-- SCREEN 3: SETTINGS -->
-                    <div class="screen" id="screen-settings">
-                        <div class="settings-container">
-                            <h2 class="settings-title">Settings</h2>
-                            <div class="settings-list">
+                    <div class="o-screen" id="screen-settings">
+                        <div class="c-settings-panel">
+                            <h2 class="c-settings-panel__title">Settings</h2>
+                            <div class="c-settings-panel__list">
 
-                                <div class="settings-item" data-setting="navigation">
-                                    <div class="settings-item-left">
-                                        <i class="fas fa-map settings-icon"></i>
+                                <div class="c-settings-item" data-setting="navigation">
+                                    <div class="c-settings-item__left">
+                                        <i class="fas fa-map c-settings-item__icon"></i>
                                         <span>Navigation & Mapping</span>
                                     </div>
-                                    <i class="fas fa-chevron-right settings-chevron"></i>
+                                    <i class="fas fa-chevron-right c-settings-item__chevron"></i>
                                 </div>
 
-                                <div class="settings-item" data-setting="sensors">
-                                    <div class="settings-item-left">
-                                        <i class="fas fa-wave-square settings-icon"></i>
+                                <div class="c-settings-item" data-setting="sensors">
+                                    <div class="c-settings-item__left">
+                                        <i class="fas fa-wave-square c-settings-item__icon"></i>
                                         <span>Sensors</span>
                                     </div>
-                                    <i class="fas fa-chevron-right settings-chevron"></i>
+                                    <i class="fas fa-chevron-right c-settings-item__chevron"></i>
                                 </div>
 
-                                <div class="settings-item" data-setting="wifi">
-                                    <div class="settings-item-left">
-                                        <i class="fas fa-wifi settings-icon"></i>
+                                <div class="c-settings-item" data-setting="wifi">
+                                    <div class="c-settings-item__left">
+                                        <i class="fas fa-wifi c-settings-item__icon"></i>
                                         <span>Wi-Fi / Connectivity</span>
                                     </div>
-                                    <i class="fas fa-chevron-right settings-chevron"></i>
+                                    <i class="fas fa-chevron-right c-settings-item__chevron"></i>
                                 </div>
 
-                                <div class="settings-item" data-setting="logs">
-                                    <div class="settings-item-left">
-                                        <i class="fas fa-file-alt settings-icon"></i>
+                                <div class="c-settings-item" data-setting="logs">
+                                    <div class="c-settings-item__left">
+                                        <i class="fas fa-file-alt c-settings-item__icon"></i>
                                         <span>Logs & Diagnostics</span>
                                     </div>
-                                    <i class="fas fa-chevron-right settings-chevron"></i>
+                                    <i class="fas fa-chevron-right c-settings-item__chevron"></i>
                                 </div>
 
-                                <div class="settings-item" data-setting="system">
-                                    <div class="settings-item-left">
-                                        <i class="fas fa-power-off settings-icon"></i>
+                                <div class="c-settings-item" data-setting="system">
+                                    <div class="c-settings-item__left">
+                                        <i class="fas fa-power-off c-settings-item__icon"></i>
                                         <span>System Operations</span>
                                     </div>
-                                    <i class="fas fa-chevron-right settings-chevron"></i>
+                                    <i class="fas fa-chevron-right c-settings-item__chevron"></i>
                                 </div>
                             </div>
                         </div>
 
                         <!-- Settings Drawer Container (will hold active settings drawers dynamically) -->
-                        <div id="settingsDrawer" class="settings-drawer">
-                            <div class="drawer-header">
-                                <button class="drawer-back-btn" id="drawerBackBtn"><i class="fas fa-arrow-left"></i></button>
-                                <span class="drawer-title" id="drawerTitle">Setting Name</span>
+                        <div id="settingsDrawer" class="c-settings-drawer">
+                            <div class="c-settings-drawer__header">
+                                <button class="c-settings-drawer__back-btn" id="drawerBackBtn"><i class="fas fa-arrow-left"></i></button>
+                                <span class="c-settings-drawer__title" id="drawerTitle">Setting Name</span>
                             </div>
-                            <div class="drawer-content" id="drawerContent">
+                            <div class="c-settings-drawer__content" id="drawerContent">
                                 <!-- Dynamic settings items will be injected here safely via DOM operations -->
                             </div>
                         </div>

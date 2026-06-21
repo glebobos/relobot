@@ -1,0 +1,46 @@
+/* Floating overlay status indicator for coverage status */
+.c-coverage-toast {
+    position: absolute;
+    top: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 30;
+    padding: 8px 16px;
+    border-radius: 20px;
+    background: rgba(30, 41, 59, 0.85);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1.5px solid var(--border-glass);
+    font-size: 12px;
+    font-weight: 500;
+    max-width: 80%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    pointer-events: none;
+    transition: opacity 0.5s ease, visibility 0.5s ease;
+}
+
+.c-coverage-toast.is-toast-hidden {
+    opacity: 0;
+    visibility: hidden;
+}
+
+.c-coverage-toast[data-state="planning"],
+.c-coverage-toast[data-state="executing"] {
+    border-color: rgba(245, 158, 11, 0.4);
+    color: hsl(38, 92%, 60%);
+}
+
+.c-coverage-toast[data-state="preview_ready"],
+.c-coverage-toast[data-state="completed"] {
+    border-color: rgba(34, 197, 94, 0.4);
+    color: var(--color-green);
+}
+
+.c-coverage-toast[data-state="failed"],
+.c-coverage-toast[data-state="error"] {
+    border-color: rgba(239, 68, 68, 0.4);
+    color: var(--color-red);
+}

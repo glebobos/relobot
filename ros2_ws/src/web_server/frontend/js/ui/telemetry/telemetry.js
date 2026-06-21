@@ -1,4 +1,5 @@
-import { rosService } from '../services/ros-service.js';
+import { rosService } from '../../services/ros-service.js';
+import { TOPICS, MSG_TYPES } from '../../shared/constants.js';
 
 export class Telemetry {
     constructor() {
@@ -23,7 +24,7 @@ export class Telemetry {
 
     init() {
         if (this.vinSpan || this.vinSpanCam) {
-            const vinTopic = rosService.createTopicV2('/battery_voltage', 'std_msgs/Float32', { throttle_rate: 1000 });
+            const vinTopic = rosService.createTopicV2(TOPICS.BATTERY, MSG_TYPES.FLOAT32, { throttle_rate: 1000 });
             this.vinSubscription = vinTopic.subscribe(msg => {
                 const v = parseFloat(msg.data);
                 if (Number.isFinite(v)) this.updateVoltage(v);
@@ -31,18 +32,18 @@ export class Telemetry {
         }
 
         if (this.chargerSpan) {
-            const chargerTopic = rosService.createTopicV2('/charger_voltage', 'std_msgs/Float32', { throttle_rate: 1000 });
+            const chargerTopic = rosService.createTopicV2(TOPICS.CHARGER, MSG_TYPES.FLOAT32, { throttle_rate: 1000 });
             this.chargerSubscription = chargerTopic.subscribe(msg => {
                 const v = parseFloat(msg.data);
                 if (Number.isFinite(v)) this.updateChargerVoltage(v);
             });
         }
 
-        const onDockTopic = rosService.createTopicV2('/on_dock', 'std_msgs/Bool', { throttle_rate: 1000 });
+        const onDockTopic = rosService.createTopicV2(TOPICS.ON_DOCK, MSG_TYPES.BOOL, { throttle_rate: 1000 });
         this.onDockSubscription = onDockTopic.subscribe(msg => this.updateOnDock(msg.data));
 
         if (this.rpmSpan || this.rpmSpanCam) {
-            const rpmTopic = rosService.createTopicV2('/knives/current_rpm', 'std_msgs/Float32', { throttle_rate: 1000 });
+            const rpmTopic = rosService.createTopicV2(TOPICS.KNIVES, MSG_TYPES.FLOAT32, { throttle_rate: 1000 });
             this.rpmSubscription = rpmTopic.subscribe(msg => {
                 const r = parseFloat(msg.data);
                 if (Number.isFinite(r)) this.updateRpm(r);
@@ -61,13 +62,13 @@ export class Telemetry {
         // Update Screen 1 Card
         if (this.vinSpan) {
             this.vinSpan.textContent = formattedVolts;
-            this.vinSpan.parentElement.classList.toggle('warning', isLow);
+            this.vinSpan.parentElement.classList.toggle('is-warning', isLow);
         }
 
         // Update Screen 2 Card
         if (this.vinSpanCam) {
             this.vinSpanCam.textContent = formattedVolts;
-            this.vinSpanCam.parentElement.classList.toggle('warning', isLow);
+            this.vinSpanCam.parentElement.classList.toggle('is-warning', isLow);
         }
 
         // Update Top Status Bar Battery
@@ -163,6 +164,24 @@ export class Telemetry {
             } else {
                 this.dockBtn.disabled = this.isRobotOnDock;
             }
+        }
+    }
+    destroy() {
+        if (this.vinSubscription) {
+            this.vinSubscription.unsubscribe();
+            this.vinSubscription = null;
+        }
+        if (this.chargerSubscription) {
+            this.chargerSubscription.unsubscribe();
+            this.chargerSubscription = null;
+        }
+        if (this.onDockSubscription) {
+            this.onDockSubscription.unsubscribe();
+            this.onDockSubscription = null;
+        }
+        if (this.rpmSubscription) {
+            this.rpmSubscription.unsubscribe();
+            this.rpmSubscription = null;
         }
     }
 

@@ -1,0 +1,69 @@
+/* Telemetry Grid (Common bottom panel) */
+.c-telemetry-grid {
+    padding: 16px 20px 24px;
+    background: linear-gradient(to top, rgba(10,14,20,0.95) 0%, rgba(10,14,20,0.8) 100%);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid var(--border-glass);
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    z-index: 40;
+}
+
+.c-telemetry-grid--two {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+.c-telemetry-grid--one {
+    grid-template-columns: 1fr;
+}
+
+.c-telemetry-card {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 16px;
+    padding: 14px 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: background-color var(--transition-snappy);
+}
+
+.c-telemetry-card__icon {
+    font-size: 16px;
+    color: var(--color-text-muted);
+}
+
+.c-telemetry-card__value {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--color-text);
+    font-variant-numeric: tabular-nums;
+}
+
+.c-telemetry-card__label {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    color: var(--color-text-muted);
+}
+
+/* Highlights */
+.c-telemetry-card--highlight-green .c-telemetry-card__value {
+    color: var(--color-green);
+}
+
+.c-telemetry-card--highlight-green .c-telemetry-card__icon {
+    color: var(--color-green);
+}
+
+.c-telemetry-card.is-warning .c-telemetry-card__value {
+    color: var(--color-red);
+}
+
+.c-telemetry-card.is-warning .c-telemetry-card__icon {
+    color: var(--color-red);
+}

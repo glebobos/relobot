@@ -57,17 +57,17 @@ export class VirtualJoystick {
     _createVisual(x, y) {
         // Outer overlay (position anchor)
         this.overlay = document.createElement('div');
-        this.overlay.id = 'vj-overlay';
+        this.overlay.className = 'c-joystick-overlay';
         this.overlay.style.left = `${x}px`;
         this.overlay.style.top  = `${y}px`;
 
         // Base ring — stays fixed at touch origin
         this.base = document.createElement('div');
-        this.base.id = 'vj-base';
+        this.base.className = 'c-joystick-base';
 
         // Inner knob — starts centered at (0, 0) relative to parent
         this.knob = document.createElement('div');
-        this.knob.id = 'vj-knob';
+        this.knob.className = 'c-joystick-knob';
 
         this.overlay.appendChild(this.base);
         this.overlay.appendChild(this.knob);
@@ -105,9 +105,8 @@ export class VirtualJoystick {
         const guards = [
             document.getElementById('knifeControlOverlay'),
             document.getElementById('knifeSlider'),
-            document.querySelector('.knives-slider-dropdown'),
-            document.querySelector('.knives-slider-container'),
-            document.querySelector('.vertical-slider-container'),
+            document.querySelector('.c-rpm-widget__slider-dropdown'),
+            document.querySelector('.c-camera-view__slider-container'),
             document.getElementById('camera-stop-btn'),
             document.getElementById('pipMap'),
         ];
@@ -145,20 +144,43 @@ export class VirtualJoystick {
     /* ── Utilities ─────────────────────────────────────────────────────── */
 
     throttle(func, limit) {
-        let lastFunc, lastRan;
-        return function (...args) {
-            if (!lastRan) {
-                func.apply(this, args);
+        let timeout = null;
+        let lastRan = 0;
+        let lastArgs = null;
+        let lastContext = null;
+
+        const throttled = function (...args) {
+            const now = Date.now();
+            lastArgs = args;
+            lastContext = this;
+
+            const run = () => {
                 lastRan = Date.now();
-            } else {
-                clearTimeout(lastFunc);
-                lastFunc = setTimeout(() => {
-                    if ((Date.now() - lastRan) >= limit) {
-                        func.apply(this, args);
-                        lastRan = Date.now();
-                    }
-                }, limit - (Date.now() - lastRan));
+                timeout = null;
+                func.apply(lastContext, lastArgs);
+            };
+
+            // If linear and angular are both 0 (stop command), bypass throttle and execute immediately!
+            if (args[0] === 0 && args[1] === 0) {
+                if (timeout) {
+                    clearTimeout(timeout);
+                    timeout = null;
+                }
+                run();
+                return;
+            }
+
+            const remaining = limit - (now - lastRan);
+            if (remaining <= 0 || remaining > limit) {
+                if (timeout) {
+                    clearTimeout(timeout);
+                    timeout = null;
+                }
+                run();
+            } else if (!timeout) {
+                timeout = setTimeout(run, remaining);
             }
         };
+        return throttled;
     }
 }

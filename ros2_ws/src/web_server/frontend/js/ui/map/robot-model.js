@@ -1,4 +1,3 @@
-
 /**
  * Utility to parse URDF XML strings and build a Three.js 3D model.
  * Complies with ROS coordinates (X=forward, Y=left, Z=up) and handles

@@ -1,0 +1,192 @@
+/* SCREEN 3: SETTINGS */
+.c-settings-panel {
+    flex: 1;
+    padding: 24px;
+    background-color: var(--bg-app);
+    overflow-y: auto;
+}
+
+/* Hide scrollbar */
+.c-settings-panel::-webkit-scrollbar {
+    display: none;
+}
+
+.c-settings-panel__title {
+    font-size: 26px;
+    font-weight: 700;
+    margin-bottom: 24px;
+    text-align: left;
+    letter-spacing: -0.5px;
+}
+
+.c-settings-panel__list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.c-settings-item {
+    background: var(--bg-glass);
+    border: 1px solid var(--border-glass);
+    border-radius: 16px;
+    padding: 16px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    transition: background-color var(--transition-snappy), transform var(--transition-snappy);
+}
+
+.c-settings-item:active {
+    transform: scale(0.98);
+    background: rgba(255,255,255,0.05);
+}
+
+.c-settings-item__left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    font-size: 16px;
+    font-weight: 500;
+}
+
+.c-settings-item__icon {
+    font-size: 18px;
+    color: var(--color-text-muted);
+    width: 24px;
+    text-align: center;
+}
+
+.c-settings-item__chevron {
+    font-size: 14px;
+    color: rgba(255,255,255,0.25);
+}
+
+/* Sub-drawers & Config Modals */
+.c-settings-drawer {
+    position: absolute;
+    top: 44px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--bg-app);
+    z-index: 80;
+    transform: translateX(100%);
+    transition: transform var(--transition-smooth);
+    display: flex;
+    flex-direction: column;
+    padding: 24px;
+}
+
+.c-settings-drawer.is-open {
+    transform: translateX(0);
+}
+
+.c-settings-drawer__header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.c-settings-drawer__back-btn {
+    background: transparent;
+    border: none;
+    color: var(--color-text);
+    font-size: 20px;
+    cursor: pointer;
+}
+
+.c-settings-drawer__title {
+    font-size: 20px;
+    font-weight: 700;
+}
+
+.c-settings-drawer__content {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    text-align: left;
+}
+
+.c-settings-drawer__content p {
+    font-size: 14px;
+    color: var(--color-text-muted);
+    line-height: 1.5;
+}
+
+/* Custom styles inside drawer content */
+.c-settings-drawer__row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.c-settings-drawer__row-label {
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.c-settings-drawer__row-val {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-green);
+}
+
+.c-settings-drawer__btn {
+    background: var(--bg-glass);
+    border: 1px solid var(--border-glass);
+    color: var(--color-text);
+    border-radius: 12px;
+    padding: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: center;
+    transition: background-color var(--transition-snappy);
+    margin-top: 8px;
+}
+
+.c-settings-drawer__btn:active {
+    background: rgba(255,255,255,0.08);
+}
+
+.c-settings-drawer__btn--primary {
+    background-color: var(--color-blue);
+    border-color: transparent;
+}
+
+.c-settings-drawer__btn--danger {
+    background-color: var(--color-red);
+    border-color: transparent;
+}
+
+.c-settings-drawer__btn--warning {
+    background-color: var(--color-orange);
+    border-color: transparent;
+}
+
+/* Logs and console display */
+.c-logs-console {
+    background: #090d14;
+    border-radius: 12px;
+    padding: 14px;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    color: #4af626;
+    flex: 1;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    text-align: left;
+    border: 1px solid rgba(255,255,255,0.05);
+}
+
+@media (orientation: landscape) {
+    .c-settings-panel {
+        padding-top: 80px; /* Offset below absolute transparent header */
+    }
+}
