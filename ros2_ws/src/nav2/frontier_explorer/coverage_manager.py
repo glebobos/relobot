@@ -195,6 +195,12 @@ class CoverageManager(Node):
         if command == 'reset_map':
             self._reset_map()
             return
+        if command == 'reboot':
+            self._reboot_pi()
+            return
+        if command == 'poweroff':
+            self._poweroff_pi()
+            return
 
         self._publish_status('error', f'Unknown coverage command: {command}')
 
@@ -227,6 +233,38 @@ class CoverageManager(Node):
             else:
                 self.get_logger().info(f'Map file does not exist: {path}')
         self._restart_slam()
+
+    def _reboot_pi(self) -> None:
+        self.get_logger().info('Rebooting Raspberry Pi...')
+        self._publish_status('rebooting', 'Rebooting Raspberry Pi...')
+        import subprocess
+        try:
+            subprocess.run([
+                'dbus-send', '--system', '--print-reply',
+                '--dest=org.freedesktop.login1',
+                '/org/freedesktop/login1',
+                'org.freedesktop.login1.Manager.Reboot',
+                'boolean:true'
+            ], check=True)
+        except Exception as e:
+            self.get_logger().error(f'Failed to send D-Bus reboot command: {e}')
+            self._publish_status('error', f'Reboot failed: {e}')
+
+    def _poweroff_pi(self) -> None:
+        self.get_logger().info('Powering off Raspberry Pi...')
+        self._publish_status('powering_off', 'Powering off Raspberry Pi...')
+        import subprocess
+        try:
+            subprocess.run([
+                'dbus-send', '--system', '--print-reply',
+                '--dest=org.freedesktop.login1',
+                '/org/freedesktop/login1',
+                'org.freedesktop.login1.Manager.PowerOff',
+                'boolean:true'
+            ], check=True)
+        except Exception as e:
+            self.get_logger().error(f'Failed to send D-Bus poweroff command: {e}')
+            self._publish_status('error', f'Power off failed: {e}')
 
     def _start_preview(self) -> None:
         if self._compute_goal_handle or self._nav_goal_handle:

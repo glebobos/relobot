@@ -21,6 +21,8 @@ export class ControlPanel {
         this.saveMapBtn = document.getElementById('save-map-btn');
         this.resetMapBtn = document.getElementById('reset-map-btn');
         this.restartSlamBtn = document.getElementById('restart-slam-btn');
+        this.rebootPiBtn = document.getElementById('reboot-pi-btn');
+        this.poweroffPiBtn = document.getElementById('poweroff-pi-btn');
         this.dockBtn = document.getElementById('dock-btn');
         this.undockBtn = document.getElementById('undock-btn');
         this.knifeSlider = document.getElementById('knifeSlider');
@@ -95,7 +97,7 @@ export class ControlPanel {
                 if (this.knifeSliderVal) this.knifeSliderVal.textContent = rpm;
             });
             this.knifeSlider.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: false });
-            this.knifeSlider.addEventListener('mousedown',  (e) => e.stopPropagation());
+            this.knifeSlider.addEventListener('mousedown', (e) => e.stopPropagation());
             this.syncKnifeSliderVisuals(parseInt(this.knifeSlider.value, 10) || 0);
         }
 
@@ -209,12 +211,12 @@ export class ControlPanel {
         // Unified Emergency Stop
         const triggerEmergencyStop = () => {
             console.log('[StopBtn] Unified Emergency Stop engaged.');
-            
+
             this.updateCoverageControls({
                 state: 'cancel_requested',
                 message: 'EMERGENCY STOP ENGAGED.',
             });
-            
+
             // 1. Cancel active coverage task
             this.sendCoverageCommand('cancel');
 
@@ -226,7 +228,7 @@ export class ControlPanel {
 
             // 4. Invalidate navigation goal
             if (this.nav2Action) {
-                try { this.nav2Action.cancelAllGoals(); } catch(e){}
+                try { this.nav2Action.cancelAllGoals(); } catch (e) { }
             }
             if (this.mapView && this.mapView.clearNavTarget) {
                 this.mapView.clearNavTarget();
@@ -299,13 +301,13 @@ export class ControlPanel {
                     if (saveMapClient) {
                         saveMapClient.callService(
                             { filename: 'map_serialized' },
-                            (result) => { 
-                                console.log('[SaveMap] result:', result); 
-                                showAlert('Map saved!'); 
+                            (result) => {
+                                console.log('[SaveMap] result:', result);
+                                showAlert('Map saved!');
                             },
-                            (error) => { 
-                                console.error('[SaveMap] error:', error); 
-                                showAlert('Error saving map: ' + error); 
+                            (error) => {
+                                console.error('[SaveMap] error:', error);
+                                showAlert('Error saving map: ' + error);
                             },
                         );
                     } else {
@@ -332,6 +334,26 @@ export class ControlPanel {
                 showConfirm('Restart SLAM toolbox? This will reload the saved map if it exists.', () => {
                     this.sendCoverageCommand('restart_slam');
                     showAlert('Restarting SLAM...');
+                });
+            });
+        }
+
+        // Reboot Pi Button with custom confirmation modal
+        if (this.rebootPiBtn) {
+            this.rebootPiBtn.addEventListener('click', () => {
+                showConfirm('Are you sure you want to reboot the Relobot?', () => {
+                    this.sendCoverageCommand('reboot');
+                    showAlert('Rebooting Relobot...');
+                });
+            });
+        }
+
+        // Power Off Pi Button with custom confirmation modal
+        if (this.poweroffPiBtn) {
+            this.poweroffPiBtn.addEventListener('click', () => {
+                showConfirm('Are you sure you want to power off the Relobot?', () => {
+                    this.sendCoverageCommand('poweroff');
+                    showAlert('Powering off Relobot...');
                 });
             });
         }
@@ -415,14 +437,14 @@ export class ControlPanel {
 
     navigateToPoint(worldX, worldY, yawRad) {
         if (!this.nav2Action) { console.error('[ControlPanel] nav2Action not ready'); return; }
-        
+
         // Convert heading angle → quaternion (rotation around Z axis)
         const halfYaw = (yawRad || 0) / 2;
         const goal = {
             pose: {
                 header: { frame_id: 'map' },
                 pose: {
-                    position:    { x: worldX, y: worldY, z: 0 },
+                    position: { x: worldX, y: worldY, z: 0 },
                     orientation: { x: 0, y: 0, z: Math.sin(halfYaw), w: Math.cos(halfYaw) },
                 },
             },
@@ -430,12 +452,12 @@ export class ControlPanel {
 
         const id = this.nav2Action.sendGoal(
             goal,
-            (result)   => console.log('[NavPoint] reached:', result),
+            (result) => console.log('[NavPoint] reached:', result),
             (feedback) => console.log('[NavPoint] dist remaining:', feedback.distance_remaining),
-            (error)    => console.error('[NavPoint] failed:', error),
+            (error) => console.error('[NavPoint] failed:', error),
         );
         console.log('[NavPoint] goal sent to', worldX.toFixed(3), worldY.toFixed(3),
-            'yaw=', ((yawRad||0) * 180 / Math.PI).toFixed(1) + '°', 'id:', id);
+            'yaw=', ((yawRad || 0) * 180 / Math.PI).toFixed(1) + '°', 'id:', id);
     }
 
     setDockingState(active) {
@@ -499,7 +521,7 @@ export class ControlPanel {
                 },
             },
             (result) => console.log('[Undock] result:', result),
-            (feedback) => {},
+            (feedback) => { },
             (error) => console.error('[Undock] failed:', error),
         );
         console.log('[Undock] goal sent, id:', id);
