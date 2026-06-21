@@ -53,7 +53,7 @@ docker compose up
 
 ### Frontend Development
 The web server frontend (`ros2_frontend` service) serves static files located in `ros2_ws/src/web_server/frontend` via Nginx.
-- **Serving & Access**: The container uses `network_mode: host` and Nginx is configured to listen on **Port 80**. The web interface can be accessed via a browser at `http://localhost` (or `http://<pi-ip-address>`).
+- **Serving & Access**: The container uses `network_mode: host` and Nginx is configured to listen on **Port 80**. The web interface can be accessed via a browser at `http://raspberrypi.local/` (or `http://localhost` / `http://<pi-ip-address>`). **Note**: When using a browser subagent, you MUST navigate to `http://raspberrypi.local/` instead of localhost for it to be resolved correctly.
 - **Volume Mounting**: The frontend directory is volume-mounted directly into Nginx's HTML root inside the container as defined in `ros2_ws/docker-compose.yml`.
 - **Immediate Effect**: Editing HTML, CSS, or JavaScript files on the host takes effect **immediately** inside the running container. There is **no need to restart the container or the service** to apply frontend changes. Simply refresh the browser page to see updates.
 
