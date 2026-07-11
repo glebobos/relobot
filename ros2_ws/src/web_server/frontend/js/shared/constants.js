@@ -27,7 +27,7 @@ export const TOPICS = {
     ODOMETRY: '/odometry/filtered',
     
     // Camera
-    CAMERA_IMAGE: '/camera/image_raw',
+    CAMERA_IMAGE: '/camera/image_rect',
     
     // Control / Drive
     CMD_VEL: '/cmd_vel',

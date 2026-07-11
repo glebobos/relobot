@@ -6,6 +6,7 @@ import { renderSensorsSettings } from './panels/sensors-settings.js';
 import { renderWifiSettings } from './panels/wifi-settings.js';
 import { renderLogsSettings } from './panels/logs-settings.js';
 import { renderSystemSettings } from './panels/system-settings.js';
+import { renderCalibrationSettings } from './panels/calibration-settings.js';
 
 export class SettingsPanel {
     constructor(telemetry) {
@@ -46,6 +47,16 @@ export class SettingsPanel {
 
         // Initialize general rosout logs subscription
         this.subscribeRosout();
+
+        // Listen for screen changes to close the drawer and unsubscribe from active settings (like IMU/sensors)
+        window.addEventListener('screenChanged', (e) => {
+            if (e.detail.index !== 2) { // 2 is the settings screen
+                if (this.drawer && this.drawer.classList.contains('is-open')) {
+                    this.drawer.classList.remove('is-open');
+                    this.unsubscribeActive();
+                }
+            }
+        });
     }
 
     openDrawer(type) {
@@ -89,6 +100,15 @@ export class SettingsPanel {
                 this.drawerTitle.textContent = 'System Operations';
                 renderSystemSettings(this.drawerContent, context);
                 break;
+
+            case 'calibration': {
+                this.drawerTitle.textContent = 'Camera & Calibration';
+                const calibrationInstance = renderCalibrationSettings(this.drawerContent, context);
+                if (calibrationInstance && typeof calibrationInstance.cleanup === 'function') {
+                    this.activePanelCleanup = calibrationInstance.cleanup;
+                }
+                break;
+            }
                 
             default: {
                 this.drawerTitle.textContent = 'Settings';

@@ -50,5 +50,8 @@ export class NavigationManager {
             if (this.mainCameraService) this.mainCameraService.stop();
             if (this.pipCameraService) this.pipCameraService.stop();
         }
+
+        // Dispatch custom event to notify other components of screen change
+        window.dispatchEvent(new CustomEvent('screenChanged', { detail: { index } }));
     }
 }

@@ -28,7 +28,7 @@ The tool is self-contained. The Docker image will be built automatically the fir
    **Custom parameters:**
    You can specify the checkerboard size, square size, and image topic:
    ```bash
-   ./start_camera_calibration.sh --size 7x9 --square 0.02 --topic /my_camera/image_raw
+   ./start_camera_calibration.sh --size 9x7 --square 0.025 --fisheye
    ```
    
    - `--size`: Number of interior corners (cols x rows). Example: `8x6`
@@ -39,9 +39,10 @@ The tool is self-contained. The Docker image will be built automatically the fir
 ## Calibration Process
 
 1. The GUI window will open showing the camera feed.
-2. Hold the checkerboard in the camera's view.
-3. Move the checkerboard to different positions (left, right, top, bottom, near, far) and orientations (tilt X, tilt Y, skew).
-4. The bars on the right side of the window (X, Y, Size, Skew) will turn green as you collect enough data.
+2. **IMPORTANT FOR FISHEYE LENSES**: Locate the trackbar at the top of the GUI window labeled `Camera type: 0 : pinhole \n 1 : fisheye` and slide it from `0` to `1` to select the fisheye (equidistant) calibration model.
+3. Hold the checkerboard in the camera's view.
+4. Move the checkerboard to different positions (left, right, top, bottom, near, far) and orientations (tilt X, tilt Y, skew).
+5. The bars on the right side of the window (X, Y, Size, Skew) will turn green as you collect enough data.
 5. When the "CALIBRATE" button becomes active, click it. This may hang the window for a minute while processing.
 6. Once calibration is done, click "SAVE" to save the calibration data.
 7. Click "COMMIT" to send data to the camera info manager (if supported) or use the saved file.

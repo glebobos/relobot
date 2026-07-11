@@ -159,7 +159,7 @@ class AprilTagManager(Node):
         req.plugin_name = 'AprilTagNode'
         req.node_name = 'apriltag'
         req.remap_rules = [
-            'image_rect:=/camera/image_raw',
+            'image_rect:=/camera/image_rect',
             'camera_info:=/camera/camera_info',
         ]
         req.parameters = self._apriltag_params

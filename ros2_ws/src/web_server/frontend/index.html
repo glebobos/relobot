@@ -6,6 +6,14 @@
     <title>ReloBot Controller</title>
     <link rel="icon" href="data:,">
     
+    <!-- PWA & Mobile Optimization -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#0b0e13">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+    <link rel="manifest" href="manifest.json">
+    
     <!-- Google Fonts parallel loading -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -161,6 +169,22 @@
                                 <!-- Main Camera stream image -->
                                 <img id="cameraStream" src="" alt="Camera stream loading">
 
+                                <!-- Center crosshair overlay -->
+                                <div class="c-camera-view__crosshair">
+                                    <div class="c-camera-view__crosshair-center"></div>
+                                </div>
+
+                                <!-- AprilTag HUD Overlay -->
+                                <div class="c-camera-view__hud" id="cameraHud" style="display: none;">
+                                    <div class="c-camera-view__hud-title"><i class="fas fa-tag"></i> AprilTag HUD</div>
+                                    <div class="c-camera-view__hud-data">
+                                        <div><span>X (Lateral):</span> <strong id="hud-x">0.000</strong> m</div>
+                                        <div><span>Y (Vertical):</span> <strong id="hud-y">0.000</strong> m</div>
+                                        <div><span>Z (Distance):</span> <strong id="hud-z">0.000</strong> m</div>
+                                        <div><span>Yaw:</span> <strong id="hud-yaw">0.0</strong>°</div>
+                                    </div>
+                                </div>
+
                                 <!-- Mini Map Button (navigates to Map screen) -->
                                 <div class="c-pip-overlay c-pip-overlay--map" id="pipMap">
                                     <i class="fas fa-map"></i>
@@ -195,6 +219,14 @@
                                     <div class="c-settings-item__left">
                                         <i class="fas fa-wave-square c-settings-item__icon"></i>
                                         <span>Sensors</span>
+                                    </div>
+                                    <i class="fas fa-chevron-right c-settings-item__chevron"></i>
+                                </div>
+
+                                <div class="c-settings-item" data-setting="calibration">
+                                    <div class="c-settings-item__left">
+                                        <i class="fas fa-crosshairs c-settings-item__icon"></i>
+                                        <span>Camera & Calibration</span>
                                     </div>
                                     <i class="fas fa-chevron-right c-settings-item__chevron"></i>
                                 </div>
@@ -274,5 +306,14 @@
     <script src="https://cdn.jsdelivr.net/npm/eventemitter2@6.4.9/lib/eventemitter2.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/ros3d@1.1.0/build/ros3d.min.js"></script>
     <script type="module" src="/js/app.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(reg => console.log('ServiceWorker registered:', reg.scope))
+                    .catch(err => console.error('ServiceWorker registration failed:', err));
+            });
+        }
+    </script>
 </body>
 </html>

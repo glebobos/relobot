@@ -50,6 +50,18 @@ def generate_launch_description():
                 }],
                 extra_arguments=[{'use_intra_process_comms': True}],
             ),
+            # Image Rectification Node
+            ComposableNode(
+                package='image_proc',
+                plugin='image_proc::RectifyNode',
+                name='rectify_node',
+                remappings=[
+                    ('image', '/camera/image_raw'),
+                    ('camera_info', '/camera/camera_info'),
+                    ('image_rect', '/camera/image_rect'),
+                ],
+                extra_arguments=[{'use_intra_process_comms': True}],
+            ),
             # AprilTag is loaded on-demand by apriltag_manager
             # Web Video Server for HTTP streaming (port 8080)
             ComposableNode(
