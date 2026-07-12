@@ -44,7 +44,7 @@ def generate_launch_description():
                     "camera": camera_param,
                     "width": 800,
                     "height": 600,
-                    "format": "UYVY",
+                    "format": "RGB888",
                     "FrameDurationLimits": [100000, 100000],
                     "camera_info_url": "file:///ros2_ws/src/camera_ros/calibration/camera.yaml"
                 }],
