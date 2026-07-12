@@ -66,10 +66,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Spawn tf subscriber task
     let state_clone_tf = state.clone();
     tokio::spawn(async move {
+        let mut last_sent: Option<std::time::Instant> = None;
+        let throttle_duration = std::time::Duration::from_millis(40); // Max ~25 Hz
         while let Some(msg) = tf_sub.next().await {
-            if let Ok(val) = serde_json::to_value(&msg) {
-                *state_clone_tf.tf_json.write().await = Some(val.clone());
-                let _ = state_clone_tf.tf_tx.send(val);
+            let now = std::time::Instant::now();
+            let should_send = match last_sent {
+                None => true,
+                Some(last) => now.duration_since(last) >= throttle_duration,
+            };
+            if should_send {
+                if let Ok(val) = serde_json::to_value(&msg) {
+                    *state_clone_tf.tf_json.write().await = Some(val.clone());
+                    let _ = state_clone_tf.tf_tx.send(val);
+                }
+                last_sent = Some(now);
             }
         }
     });
@@ -210,58 +220,16 @@ async fn handle_connection(
                             // 2. Subscribe to broadcast channel
                             match topic_str.as_str() {
                                 "/tf" => {
-                                    let mut rx = state_clone.tf_tx.subscribe();
-                                    while let Ok(val) = rx.recv().await {
-                                        let mut response = serde_json::json!({
-                                            "op": "publish",
-                                            "topic": topic_str,
-                                            "msg": val
-                                        });
-                                        if let Some(ref sub_id) = id_clone {
-                                            response["id"] = Value::String(sub_id.clone());
-                                        }
-                                        if let Ok(resp_str) = serde_json::to_string(&response) {
-                                            if browser_out_tx_clone.send(Message::Text(resp_str)).await.is_err() {
-                                                break;
-                                            }
-                                        }
-                                    }
+                                    let rx = state_clone.tf_tx.subscribe();
+                                    forward_broadcast_to_browser(rx, topic_str, id_clone, browser_out_tx_clone).await;
                                 }
                                 "/map" => {
-                                    let mut rx = state_clone.map_tx.subscribe();
-                                    while let Ok(val) = rx.recv().await {
-                                        let mut response = serde_json::json!({
-                                            "op": "publish",
-                                            "topic": topic_str,
-                                            "msg": val
-                                        });
-                                        if let Some(ref sub_id) = id_clone {
-                                            response["id"] = Value::String(sub_id.clone());
-                                        }
-                                        if let Ok(resp_str) = serde_json::to_string(&response) {
-                                            if browser_out_tx_clone.send(Message::Text(resp_str)).await.is_err() {
-                                                break;
-                                            }
-                                        }
-                                    }
+                                    let rx = state_clone.map_tx.subscribe();
+                                    forward_broadcast_to_browser(rx, topic_str, id_clone, browser_out_tx_clone).await;
                                 }
                                 "/odometry/filtered" => {
-                                    let mut rx = state_clone.odom_tx.subscribe();
-                                    while let Ok(val) = rx.recv().await {
-                                        let mut response = serde_json::json!({
-                                            "op": "publish",
-                                            "topic": topic_str,
-                                            "msg": val
-                                        });
-                                        if let Some(ref sub_id) = id_clone {
-                                            response["id"] = Value::String(sub_id.clone());
-                                        }
-                                        if let Ok(resp_str) = serde_json::to_string(&response) {
-                                            if browser_out_tx_clone.send(Message::Text(resp_str)).await.is_err() {
-                                                break;
-                                            }
-                                        }
-                                    }
+                                    let rx = state_clone.odom_tx.subscribe();
+                                    forward_broadcast_to_browser(rx, topic_str, id_clone, browser_out_tx_clone).await;
                                 }
                                 _ => {}
                             }
@@ -297,4 +265,36 @@ async fn handle_connection(
 
     println!("[RosbridgeRust] Client disconnected.");
     Ok(())
+}
+
+async fn forward_broadcast_to_browser(
+    mut rx: broadcast::Receiver<Value>,
+    topic: String,
+    id: Option<String>,
+    tx: mpsc::Sender<Message>,
+) {
+    loop {
+        match rx.recv().await {
+            Ok(val) => {
+                let mut response = serde_json::json!({
+                    "op": "publish",
+                    "topic": topic,
+                    "msg": val
+                });
+                if let Some(ref sub_id) = id {
+                    response["id"] = Value::String(sub_id.clone());
+                }
+                if let Ok(resp_str) = serde_json::to_string(&response) {
+                    if tx.send(Message::Text(resp_str)).await.is_err() {
+                        break;
+                    }
+                }
+            }
+            Err(broadcast::error::RecvError::Lagged(n)) => {
+                eprintln!("[RosbridgeRust] Lagged {} messages on {}", n, topic);
+                continue;
+            }
+            Err(broadcast::error::RecvError::Closed) => break,
+        }
+    }
 }

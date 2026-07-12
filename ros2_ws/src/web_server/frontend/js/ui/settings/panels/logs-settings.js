@@ -10,8 +10,6 @@ function dbmToPercent(dbm) {
 }
 
 export function renderLogsSettings(contentEl, context) {
-
-
     // Metric Container
     const metricContainer = safeCreateElement('div', 'c-metric-container');
     
@@ -58,10 +56,6 @@ export function renderLogsSettings(contentEl, context) {
     metricContainer.appendChild(ramRow);
     metricContainer.appendChild(wifiSignalRow);
     contentEl.appendChild(metricContainer);
-
-
-
-
 
     // Toggle row for background logging
     const toggleRow = safeCreateElement('div', 'c-settings-drawer__row');

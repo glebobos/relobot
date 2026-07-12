@@ -22,6 +22,7 @@ WORKDIR /ros2_ws
 # Startup script to build / run both bridges
 RUN echo '#!/bin/bash\n\
 set -e\n\
+trap "kill \$(jobs -p) 2>/dev/null; wait" SIGTERM SIGINT EXIT\n\
 source /opt/ros/humble/setup.bash\n\
 cd /ros2_ws\n\
 if [ "$DEV" = "true" ] && [ ! -d "/ros2_ws/install/explore_lite_msgs" ]; then\n\
@@ -41,7 +42,10 @@ fi\n\
 ros2 launch /ros2_ws/src/rosbridge_webvideo_launch.py &\n\
 \n\
 # Wait for Python backend to initialize\n\
-sleep 2\n\
+for i in $(seq 1 30); do\n\
+  curl -s 127.0.0.1:9091 >/dev/null && break\n\
+  sleep 1\n\
+done\n\
 \n\
 # Run the Rust WebSocket server/proxy on port 9090 in foreground\n\
 /ros2_ws/src/rosbridge_rust/target/release/rosbridge_rust' > /start.sh && \

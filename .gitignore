@@ -33,5 +33,4 @@ pico_ware_imu_microros/*.uf2
 
 # Rust / Cargo build directories
 ros2_ws/src/rosbridge_rust/target/
-**/target/
 **/Cargo.lock

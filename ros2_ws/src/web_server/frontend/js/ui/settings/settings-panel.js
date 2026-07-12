@@ -83,8 +83,6 @@ export class SettingsPanel {
                 renderNavigationSettings(this.drawerContent, context);
                 break;
 
-
-
             case 'logs': {
                 this.drawerTitle.textContent = 'Logs & Diagnostics';
 
