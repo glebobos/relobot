@@ -24,6 +24,7 @@ export class SettingsPanel {
         // Subscriptions & active panel cleanups
         this.rosoutSubscription = null;
         this.activePanelCleanup = null;
+        this.currentActivePanelType = null;
 
         this.init();
     }
@@ -69,6 +70,7 @@ export class SettingsPanel {
         safeClear(this.drawerContent);
         this.drawer.classList.add('is-open');
         this.unsubscribeActive();
+        this.currentActivePanelType = type;
 
         const context = {
             addLog: (msg) => this.addLog(msg),
@@ -124,15 +126,6 @@ export class SettingsPanel {
                 };
 
                 renderLogsSettings(this.drawerContent, logsContext);
-
-                // Unsubscribe when drawer is closed if background logs are disabled
-                this.activePanelCleanup = () => {
-                    const bgEnabledAfter = localStorage.getItem('background_logs_enabled') === 'true';
-                    if (!bgEnabledAfter) {
-                        console.log('[SettingsPanel] Unsubscribing from /rosout (drawer closed)');
-                        this.unsubscribeRosout();
-                    }
-                };
                 break;
             }
 
@@ -160,10 +153,20 @@ export class SettingsPanel {
     }
 
     unsubscribeActive() {
+        if (this.currentActivePanelType === 'logs') {
+            const bgEnabled = localStorage.getItem('background_logs_enabled') === 'true';
+            if (!bgEnabled) {
+                console.log('[SettingsPanel] Unsubscribing from /rosout (panel cleanup)');
+                this.unsubscribeRosout();
+            }
+        }
+
         if (this.activePanelCleanup) {
             try { this.activePanelCleanup(); } catch (e) { }
             this.activePanelCleanup = null;
         }
+
+        this.currentActivePanelType = null;
     }
 
     addLog(msg) {
