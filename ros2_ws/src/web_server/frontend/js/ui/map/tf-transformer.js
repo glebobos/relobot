@@ -1,6 +1,8 @@
 export class TfTransformer {
     constructor() {
         this.transforms = {}; // map of parent_frame -> child_frame -> THREE.Matrix4
+        this._cache = {};     // cache of resolved transforms: "parent>child" -> THREE.Matrix4
+        this._dirty = false;  // flag: true when transforms have been updated since last cache build
     }
 
     /**
@@ -32,6 +34,9 @@ export class TfTransformer {
             
             this.transforms[parent][child] = matrix;
         }
+
+        // Invalidate the resolved-transform cache after any update
+        this._dirty = true;
     }
 
     /**
@@ -44,6 +49,7 @@ export class TfTransformer {
 
     /**
      * Compute the composite transformation matrix from parent to child frame.
+     * Uses a cache to avoid BFS on every call when the tree hasn't changed.
      * @param {string} parentFrame - The source/parent frame ID (e.g. 'map')
      * @param {string} childFrame - The destination/child frame ID (e.g. 'base_link')
      * @returns {THREE.Matrix4|null} The transformation matrix or null if no path exists.
@@ -56,6 +62,13 @@ export class TfTransformer {
             return new THREE.Matrix4();
         }
 
+        const cacheKey = parent + '>' + child;
+
+        // Return cached result if the tree hasn't changed since last resolve
+        if (!this._dirty && this._cache[cacheKey]) {
+            return this._cache[cacheKey];
+        }
+
         // BFS to find a path from parent to child in the TF tree
         const queue = [{ frame: parent, matrix: new THREE.Matrix4() }];
         const visited = new Set([parent]);
@@ -63,6 +76,8 @@ export class TfTransformer {
         while (queue.length > 0) {
             const { frame, matrix } = queue.shift();
             if (frame === child) {
+                this._cache[cacheKey] = matrix;
+                this._dirty = false;
                 return matrix;
             }
 
@@ -78,6 +93,9 @@ export class TfTransformer {
             }
         }
 
+        // No path found — cache null to avoid repeated BFS failures
+        this._cache[cacheKey] = null;
+        this._dirty = false;
         return null;
     }
 }

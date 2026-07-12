@@ -4,7 +4,6 @@ import { installMapColorOverride } from './map-color-override.js';
 import { MapInteractionHandler } from './map-interaction.js';
 import { buildRobotModelFromUrdf } from './robot-model.js';
 import { TOPICS, MSG_TYPES } from '../../shared/constants.js';
-import { TfTransformer } from './tf-transformer.js';
 
 export class MapView {
     constructor(containerId) {
@@ -59,8 +58,10 @@ export class MapView {
         this.activeNavTarget = null;
         this.arrivalTimer = null;
         this.robotPosition = null;
-        this.tfTransformer = new TfTransformer();
+        this._mapToOdom = null;     // THREE.Matrix4: map→odom correction from SLAM (extracted from /tf)
         this.poseBuffer = [];
+        this._chaseSpeed = 0;       // EMA-smoothed speed for constant-velocity rendering
+        this._lastAnimTime = 0;     // previous animation frame timestamp
 
         // Initialize consolidated interaction handler
         this.interactionHandler = new MapInteractionHandler(this);
@@ -746,91 +747,81 @@ export class MapView {
             });
         }
 
-        // Flag to track if we've successfully resolved a map-corrected TF pose.
-        // Once this becomes true, we prefer the TF pose and ignore direct odometry.
-        let hasMapTf = false;
+        // ---- Robot pose: /odometry/filtered (30 Hz, odom frame) + map→odom correction from /tf ----
 
+        // Subscribe to /tf to extract the map→odom offset published by SLAM Toolbox.
+        // We only care about the single map→odom transform — no tree traversal needed.
         const tfSub = rosService.createTopicV2('/tf', 'tf2_msgs/msg/TFMessage', {
-            throttle_rate: 100
+            throttle_rate: 200   // SLAM publishes map→odom at ~50 Hz, we only need occasional corrections
         });
-
         if (tfSub) {
             tfSub.subscribe((message) => {
-                this.tfTransformer.update(message);
-
-                const transformMatrix = this.tfTransformer.getTransform('map', 'base_link');
-                if (transformMatrix) {
-                    hasMapTf = true;
-
-                    const position = new THREE.Vector3();
-                    const quaternion = new THREE.Quaternion();
-                    const scale = new THREE.Vector3();
-                    transformMatrix.decompose(position, quaternion, scale);
-
-                    this.poseBuffer.push({
-                        position: new THREE.Vector3(position.x, position.y, 0.01),
-                        quaternion: quaternion.clone(),
-                        timestamp: performance.now()
-                    });
-                    const cutoff = performance.now() - 3000; // Keep up to 3 seconds of history
-                    while (this.poseBuffer.length > 1 && this.poseBuffer[0].timestamp < cutoff) {
-                        this.poseBuffer.shift();
-                    }
-
-                    // Handle arrival timer for navigation pin
-                    if (this.activeNavTarget) {
-                        const dx = position.x - this.activeNavTarget.x;
-                        const dy = position.y - this.activeNavTarget.y;
-                        const dist = Math.sqrt(dx * dx + dy * dy);
-
-                        if (dist < 0.25) { // 25 cm threshold for arrival
-                            if (!this.arrivalTimer) {
-                                console.log('[MapView] Arrived at target point. Clearing pin in 5 seconds.');
-                                this.arrivalTimer = setTimeout(() => {
-                                    this.clearNavTarget();
-                                }, 5000);
-                            }
-                        }
+                if (!message || !message.transforms) return;
+                for (const t of message.transforms) {
+                    const parent = (t.header.frame_id || '').replace(/^\/+/, '');
+                    const child  = (t.child_frame_id || '').replace(/^\/+/, '');
+                    if (parent === 'map' && child === 'odom') {
+                        const tr = t.transform.translation;
+                        const ro = t.transform.rotation;
+                        this._mapToOdom = new THREE.Matrix4().compose(
+                            new THREE.Vector3(tr.x, tr.y, tr.z),
+                            new THREE.Quaternion(ro.x, ro.y, ro.z, ro.w),
+                            new THREE.Vector3(1, 1, 1)
+                        );
                     }
                 }
             });
         }
 
-        const odomSub = rosService.createTopicV1(TOPICS.ODOMETRY, MSG_TYPES.ODOMETRY, {
-            throttle_rate: 100
+        // Subscribe to /odometry/filtered (30 Hz, odom frame) — primary smooth position source.
+        // Apply the map→odom correction to get the robot pose in the map frame.
+        const odomSub = rosService.createTopicV2(TOPICS.ODOMETRY, 'nav_msgs/msg/Odometry', {
+            throttle_rate: 50    // 20 Hz to the browser — plenty for smooth rendering
         });
         if (odomSub) {
             odomSub.subscribe((message) => {
-                if (hasMapTf) return; // Skip if we have map-corrected TF position
-
-                const robotX = message.pose.pose.position.x;
-                const robotY = message.pose.pose.position.y;
-
+                const p = message.pose.pose.position;
                 const q = message.pose.pose.orientation;
-                const quaternion = new THREE.Quaternion(q.x, q.y, q.z, q.w);
+
+                // Build odom-frame pose matrix
+                const odomMatrix = new THREE.Matrix4().compose(
+                    new THREE.Vector3(p.x, p.y, p.z),
+                    new THREE.Quaternion(q.x, q.y, q.z, q.w),
+                    new THREE.Vector3(1, 1, 1)
+                );
+
+                // Compose with map→odom correction (if available) to get map-frame pose
+                const mapMatrix = this._mapToOdom
+                    ? this._mapToOdom.clone().multiply(odomMatrix)
+                    : odomMatrix;
+
+                const position = new THREE.Vector3();
+                const quaternion = new THREE.Quaternion();
+                const scale = new THREE.Vector3();
+                mapMatrix.decompose(position, quaternion, scale);
 
                 this.poseBuffer.push({
-                    position: new THREE.Vector3(robotX, robotY, 0.01),
+                    position: new THREE.Vector3(position.x, position.y, 0.01),
                     quaternion: quaternion,
                     timestamp: performance.now()
                 });
-                const cutoff = performance.now() - 3000; // Keep up to 3 seconds of history
+                const cutoff = performance.now() - 1500;
                 while (this.poseBuffer.length > 1 && this.poseBuffer[0].timestamp < cutoff) {
                     this.poseBuffer.shift();
                 }
 
                 // Handle arrival timer for navigation pin
                 if (this.activeNavTarget) {
-                    const dx = robotX - this.activeNavTarget.x;
-                    const dy = robotY - this.activeNavTarget.y;
+                    const dx = position.x - this.activeNavTarget.x;
+                    const dy = position.y - this.activeNavTarget.y;
                     const dist = Math.sqrt(dx * dx + dy * dy);
 
-                    if (dist < 0.25) { // 25 cm threshold for arrival
+                    if (dist < 0.25) {
                         if (!this.arrivalTimer) {
                             console.log('[MapView] Arrived at target point. Clearing pin in 5 seconds.');
                             this.arrivalTimer = setTimeout(() => {
-                                    this.clearNavTarget();
-                                }, 5000);
+                                this.clearNavTarget();
+                            }, 5000);
                         }
                     }
                 }
@@ -885,48 +876,79 @@ export class MapView {
     isNavPointMode() { return this.navPointMode; }
 
     /**
-     * Animation loop to smoothly interpolate (lerp/slerp) the robot marker
-     * towards its target position and orientation.
+     * Animation loop: moves the robot marker toward the delayed target position
+     * at a constant, EMA-smoothed speed. This eliminates the jerky speed changes
+     * that occur with frame-by-frame linear interpolation.
      */
     animateRobotSmoothing() {
-        if (this.robotMarker && this.poseBuffer && this.poseBuffer.length > 0) {
-            const now = performance.now();
-            const delayMs = 1000; // 1000ms delay for smooth playback (renders movements after a 1-second delay)
-            const playbackTime = now - delayMs;
+        const now = performance.now();
+        // dt in seconds, clamped to 50ms to handle tab-away / lag spikes
+        const dt = this._lastAnimTime ? Math.min((now - this._lastAnimTime) / 1000, 0.05) : 0;
+        this._lastAnimTime = now;
 
-            // Find two adjacent frames in the buffer such that frameA.timestamp <= playbackTime < frameB.timestamp
-            let index = -1;
+        if (this.robotMarker && this.poseBuffer && this.poseBuffer.length > 0) {
+            // --- Determine target position from delayed buffer playback ---
+            const delayMs = 200;
+            const playbackTime = now - delayMs;
+            let targetPos = null;
+            let targetQuat = null;
+
+            // Find bracketing frames for interpolation
             for (let i = 0; i < this.poseBuffer.length - 1; i++) {
-                if (this.poseBuffer[i].timestamp <= playbackTime && this.poseBuffer[i + 1].timestamp > playbackTime) {
-                    index = i;
+                const a = this.poseBuffer[i], b = this.poseBuffer[i + 1];
+                if (a.timestamp <= playbackTime && b.timestamp > playbackTime) {
+                    const span = b.timestamp - a.timestamp;
+                    const t = span > 0 ? (playbackTime - a.timestamp) / span : 1;
+                    targetPos = a.position.clone().lerp(b.position, t);
+                    targetQuat = a.quaternion.clone().slerp(b.quaternion, t);
                     break;
                 }
             }
 
-            if (index !== -1) {
-                const frameA = this.poseBuffer[index];
-                const frameB = this.poseBuffer[index + 1];
-                const total = frameB.timestamp - frameA.timestamp;
-                const t = total > 0 ? (playbackTime - frameA.timestamp) / total : 1.0;
-
-                this.robotMarker.position.copy(frameA.position).lerp(frameB.position, t);
-                this.robotMarker.quaternion.copy(frameA.quaternion).slerp(frameB.quaternion, t);
-                this.robotMarker.position.z = 0.01;
-            } else {
-                // If playbackTime is before the oldest frame (startup/buffering), hold at the oldest frame.
-                // Otherwise, if we have a lag/drop in messages, smoothly catch up to the latest received frame.
+            // Fallback when no bracketing frames found
+            if (!targetPos) {
                 if (playbackTime < this.poseBuffer[0].timestamp) {
-                    const first = this.poseBuffer[0];
-                    this.robotMarker.position.copy(first.position);
-                    this.robotMarker.quaternion.copy(first.quaternion);
-                    this.robotMarker.position.z = 0.01;
+                    targetPos = this.poseBuffer[0].position;
+                    targetQuat = this.poseBuffer[0].quaternion;
                 } else {
-                    const latest = this.poseBuffer[this.poseBuffer.length - 1];
-                    this.robotMarker.position.lerp(latest.position, 0.15);
-                    this.robotMarker.quaternion.slerp(latest.quaternion, 0.15);
-                    this.robotMarker.position.z = 0.01;
+                    const last = this.poseBuffer[this.poseBuffer.length - 1];
+                    targetPos = last.position;
+                    targetQuat = last.quaternion;
                 }
             }
+
+            // --- Move toward target at constant speed ---
+            const dx = targetPos.x - this.robotMarker.position.x;
+            const dy = targetPos.y - this.robotMarker.position.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            // Desired speed: close the current gap in ~150ms
+            const desiredSpeed = dist / 0.15;
+
+            // Smooth the speed with EMA so it changes gradually, not abruptly.
+            // Factor 0.93/0.07 at 60fps ≈ 0.5s time constant for speed changes.
+            this._chaseSpeed = this._chaseSpeed * 0.93 + desiredSpeed * 0.07;
+
+            const step = this._chaseSpeed * dt;
+
+            if (dist < 0.001) {
+                // At target — hold position
+                this.robotMarker.position.x = targetPos.x;
+                this.robotMarker.position.y = targetPos.y;
+            } else if (step >= dist) {
+                // Would overshoot — snap to target
+                this.robotMarker.position.x = targetPos.x;
+                this.robotMarker.position.y = targetPos.y;
+            } else {
+                // Move at constant speed toward target
+                const ratio = step / dist;
+                this.robotMarker.position.x += dx * ratio;
+                this.robotMarker.position.y += dy * ratio;
+            }
+            this.robotMarker.position.z = 0.01;
+
+            // Smooth rotation at ~3 rad/s angular speed
+            this.robotMarker.quaternion.slerp(targetQuat, Math.min(3.0 * dt, 1.0));
 
             // Sync visual position for overlays and interaction checks
             this.robotPosition = {
