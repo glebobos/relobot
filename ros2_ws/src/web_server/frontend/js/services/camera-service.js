@@ -4,7 +4,11 @@ export class CameraService {
     constructor(imgElementId) {
         this.cameraStream = document.getElementById(imgElementId);
         this.clientId = 'web-ui-' + Math.random().toString(36).substring(2, 9);
-        this.baseUrl = `http://${window.location.hostname}:8080/stream?topic=${TOPICS.CAMERA_IMAGE}&type=mjpeg&client_id=${this.clientId}`;
+        const isHttps = window.location.protocol === 'https:';
+        const protocol = isHttps ? 'https:' : 'http:';
+        const port = isHttps ? '' : ':8080';
+        const path = isHttps ? '/camera-stream' : '';
+        this.baseUrl = `${protocol}//${window.location.hostname}${port}${path}/stream?topic=${TOPICS.CAMERA_IMAGE}&type=mjpeg&client_id=${this.clientId}`;
         this.isActive = false;
         this.init();
     }

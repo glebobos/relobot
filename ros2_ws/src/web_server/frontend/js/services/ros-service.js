@@ -2,7 +2,11 @@ import { Ros, Action, Service, Topic } from 'roslib';
 
 class RosService {
     constructor() {
-        this.url = `ws://${window.location.hostname}:9090`;
+        const isHttps = window.location.protocol === 'https:';
+        const protocol = isHttps ? 'wss:' : 'ws:';
+        const port = isHttps ? '' : ':9090';
+        const path = isHttps ? '/rosbridge/' : '';
+        this.url = `${protocol}//${window.location.hostname}${port}${path}`;
         this._connectedV2 = false;
         this._connectedV1 = false;
         
