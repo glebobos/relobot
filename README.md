@@ -75,6 +75,34 @@ The differential drive uses `topic_based_ros2_control/TopicBasedSystem` as the h
 - All Pico boards flashed with their respective micro-ROS firmware (see [FLASHING.md](FLASHING.md))
 - USB devices plugged in (see device mapping in [FLASHING.md](FLASHING.md))
 
+### Configuring 5 GHz WiFi (DFS Channels)
+
+By default, the Raspberry Pi's physical WiFi chip operates under a restricted regulatory domain (`country 99: DFS-UNSET`). This prevents the Pi from scanning or connecting to 5 GHz **DFS channels** (like Channel 52). 
+
+To configure and enable 5 GHz WiFi:
+
+1. **Set the WLAN Country Code**:
+   Run the following command on the Raspberry Pi host (replace `PL` with your local two-letter ISO country code, e.g. `PL`, `US`, `GB`):
+   ```bash
+   sudo raspi-config nonint do_wifi_country PL
+   ```
+
+2. **Reboot the Raspberry Pi**:
+   ```bash
+   sudo reboot
+   ```
+
+3. **Verify the Domain**:
+   Run `iw reg get` to verify that `phy#0` now lists your country code instead of `99`.
+
+4. **Force/Prefer 5 GHz (Optional)**:
+   If your router uses the same SSID for both 2.4 GHz and 5 GHz, you can lock the connection profile to the 5 GHz band:
+   ```bash
+   sudo nmcli connection modify preconfigured 802-11-wireless.band a
+   sudo nmcli connection up preconfigured
+   ```
+   *(To revert this back to automatic band selection, run `sudo nmcli connection modify preconfigured 802-11-wireless.band ""`)*
+
 ### Start the stack
 
 ```bash
