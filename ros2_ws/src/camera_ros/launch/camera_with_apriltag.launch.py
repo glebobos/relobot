@@ -46,7 +46,8 @@ def generate_launch_description():
                     "height": 600,
                     "format": "RGB888",
                     "FrameDurationLimits": [100000, 100000],
-                    "camera_info_url": "file:///ros2_ws/src/camera_ros/calibration/camera.yaml"
+                    "camera_info_url": "file:///ros2_ws/src/camera_ros/calibration/camera.yaml",
+                    "ExposureValue": 1.5
                 }],
                 extra_arguments=[{'use_intra_process_comms': True}],
             ),
