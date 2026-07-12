@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import json
+import subprocess
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String
@@ -55,10 +56,51 @@ class SystemMonitor(Node):
         super().__init__('system_monitor')
         self.publisher = self.create_publisher(String, '/system/metrics', 10)
         self.timer = self.create_timer(1.0, self.timer_callback)
+        self.command_sub = self.create_subscription(
+            String,
+            '/system/command',
+            self.command_callback,
+            10
+        )
         self.prev_idle = 0
         self.prev_total = 0
         self.has_prev = False
-        self.get_logger().info("System Monitor Node initialized.")
+        self.get_logger().info("System Monitor Node initialized with command listener.")
+
+    def command_callback(self, msg: String):
+        command = msg.data.strip().lower()
+        if command == 'reboot':
+            self._reboot_pi()
+        elif command == 'poweroff':
+            self._poweroff_pi()
+        else:
+            self.get_logger().warn(f"Unknown system command: {command}")
+
+    def _reboot_pi(self):
+        self.get_logger().info('Rebooting Raspberry Pi...')
+        try:
+            subprocess.run([
+                'dbus-send', '--system', '--print-reply',
+                '--dest=org.freedesktop.login1',
+                '/org/freedesktop/login1',
+                'org.freedesktop.login1.Manager.Reboot',
+                'boolean:true'
+            ], check=True)
+        except Exception as e:
+            self.get_logger().error(f'Failed to send D-Bus reboot command: {e}')
+
+    def _poweroff_pi(self):
+        self.get_logger().info('Powering off Raspberry Pi...')
+        try:
+            subprocess.run([
+                'dbus-send', '--system', '--print-reply',
+                '--dest=org.freedesktop.login1',
+                '/org/freedesktop/login1',
+                'org.freedesktop.login1.Manager.PowerOff',
+                'boolean:true'
+            ], check=True)
+        except Exception as e:
+            self.get_logger().error(f'Failed to send D-Bus poweroff command: {e}')
 
     def timer_callback(self):
         subs = self.publisher.get_subscription_count()
