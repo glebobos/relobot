@@ -56,7 +56,11 @@ def bootstrap_self_signed(domain_name):
 
 def main():
     hosted_zone_id = os.environ.get('HOSTED_ZONE_ID')
-    domain_name = os.environ.get('DOMAIN_NAME', 'robot.glebos.click')
+    domain_name = os.environ.get('DOMAIN_NAME')
+
+    if not domain_name:
+        print("[-] Error: DOMAIN_NAME environment variable is not set.", file=sys.stderr)
+        sys.exit(1)
 
     if not hosted_zone_id:
         print("[-] Error: HOSTED_ZONE_ID environment variable is not set.", file=sys.stderr)

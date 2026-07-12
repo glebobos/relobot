@@ -2,7 +2,10 @@
 set -e
 
 # Ensure DOMAIN_NAME is set
-DOMAIN_NAME="${DOMAIN_NAME:-robot.glebos.click}"
+if [ -z "${DOMAIN_NAME}" ]; then
+  echo "[-] Error: DOMAIN_NAME environment variable is not set." >&2
+  exit 1
+fi
 
 # Run the update DNS script
 python3 /scripts/update_dns.py
