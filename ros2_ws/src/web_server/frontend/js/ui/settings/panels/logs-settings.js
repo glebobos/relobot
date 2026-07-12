@@ -43,14 +43,6 @@ export function renderLogsSettings(contentEl, context) {
     ramBar.appendChild(ramFill);
     ramRow.appendChild(ramBar);
     
-    // Wi-Fi SSID Row
-    const wifiSsidRow = safeCreateElement('div', 'c-metric-row');
-    const wifiSsidMeta = safeCreateElement('div', 'c-metric-header');
-    wifiSsidMeta.appendChild(safeCreateElement('span', [], {}, 'Wi-Fi SSID'));
-    const wifiSsidVal = safeCreateElement('span', 'c-metric-value', {}, 'Disconnected');
-    wifiSsidMeta.appendChild(wifiSsidVal);
-    wifiSsidRow.appendChild(wifiSsidMeta);
-
     // Wi-Fi Signal Row
     const wifiSignalRow = safeCreateElement('div', 'c-metric-row');
     const wifiSignalMeta = safeCreateElement('div', 'c-metric-header');
@@ -66,7 +58,6 @@ export function renderLogsSettings(contentEl, context) {
 
     metricContainer.appendChild(cpuRow);
     metricContainer.appendChild(ramRow);
-    metricContainer.appendChild(wifiSsidRow);
     metricContainer.appendChild(wifiSignalRow);
     contentEl.appendChild(metricContainer);
 
@@ -164,9 +155,7 @@ export function renderLogsSettings(contentEl, context) {
                         ramVal.textContent = data.ram.toFixed(1) + '%';
                         ramFill.style.width = data.ram + '%';
                     }
-                    if (data.wifi_ssid !== undefined) {
-                        wifiSsidVal.textContent = data.wifi_ssid;
-                    }
+
                     if (data.wifi_dbm !== undefined && data.wifi_dbm !== null) {
                         wifiSignalVal.textContent = data.wifi_dbm + ' dBm';
                         const percent = dbmToPercent(data.wifi_dbm);
