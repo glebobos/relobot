@@ -1,6 +1,46 @@
+import { rosService } from '../../../services/ros-service.js';
+import { TOPICS, MSG_TYPES } from '../../../shared/constants.js';
 import { safeCreateElement } from '../../../shared/dom-utils.js';
 
 export function renderLogsSettings(contentEl, context) {
+    // Section Header for metrics
+    const statHeader = safeCreateElement('p', [], {}, 'System Health & Metrics:');
+    contentEl.appendChild(statHeader);
+
+    // Metric Container
+    const metricContainer = safeCreateElement('div', 'c-metric-container');
+    
+    // CPU Row
+    const cpuRow = safeCreateElement('div', 'c-metric-row');
+    const cpuMeta = safeCreateElement('div', 'c-metric-header');
+    cpuMeta.appendChild(safeCreateElement('span', [], {}, 'CPU Usage'));
+    const cpuVal = safeCreateElement('span', 'c-metric-value', {}, '0.0%');
+    cpuMeta.appendChild(cpuVal);
+    cpuRow.appendChild(cpuMeta);
+    
+    const cpuBar = safeCreateElement('div', 'c-metric-bar');
+    const cpuFill = safeCreateElement('div', 'c-metric-bar__fill');
+    cpuBar.appendChild(cpuFill);
+    cpuRow.appendChild(cpuBar);
+    
+    // RAM Row
+    const ramRow = safeCreateElement('div', 'c-metric-row');
+    const ramMeta = safeCreateElement('div', 'c-metric-header');
+    ramMeta.appendChild(safeCreateElement('span', [], {}, 'Memory Usage'));
+    const ramVal = safeCreateElement('span', 'c-metric-value', {}, '0.0%');
+    ramMeta.appendChild(ramVal);
+    ramRow.appendChild(ramMeta);
+    
+    const ramBar = safeCreateElement('div', 'c-metric-bar');
+    const ramFill = safeCreateElement('div', 'c-metric-bar__fill');
+    ramBar.appendChild(ramFill);
+    ramRow.appendChild(ramBar);
+    
+    metricContainer.appendChild(cpuRow);
+    metricContainer.appendChild(ramRow);
+    contentEl.appendChild(metricContainer);
+
+    // Logs Section
     const info = safeCreateElement('p', [], {}, 'Echoing diagnostics logs from active ROS2 nodes (/rosout):');
     contentEl.appendChild(info);
 
@@ -59,4 +99,43 @@ export function renderLogsSettings(contentEl, context) {
         }
     });
     contentEl.appendChild(clearBtn);
+
+    // Subscription to system/metrics
+    let subscription = null;
+    try {
+        subscription = rosService.createTopicV2(TOPICS.SYSTEM_METRICS, MSG_TYPES.STRING);
+        if (subscription) {
+            subscription.subscribe((msg) => {
+                try {
+                    const data = JSON.parse(msg.data);
+                    if (data.cpu !== undefined) {
+                        cpuVal.textContent = data.cpu.toFixed(1) + '%';
+                        cpuFill.style.width = data.cpu + '%';
+                    }
+                    if (data.ram !== undefined) {
+                        ramVal.textContent = data.ram.toFixed(1) + '%';
+                        ramFill.style.width = data.ram + '%';
+                    }
+                } catch (err) {
+                    console.error('[LogsSettings] Failed to parse metrics JSON:', err);
+                }
+            });
+        }
+    } catch (err) {
+        console.warn('[LogsSettings] Could not subscribe to system metrics:', err);
+    }
+
+    return {
+        cleanup: () => {
+            if (subscription) {
+                try {
+                    subscription.unsubscribe();
+                    console.log('[LogsSettings] Unsubscribed from system metrics');
+                } catch (err) {
+                    console.warn('[LogsSettings] Failed to unsubscribe from system metrics:', err);
+                }
+                subscription = null;
+            }
+        }
+    };
 }

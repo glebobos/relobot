@@ -125,7 +125,10 @@ export class SettingsPanel {
                     }
                 };
 
-                renderLogsSettings(this.drawerContent, logsContext);
+                const logsInstance = renderLogsSettings(this.drawerContent, logsContext);
+                if (logsInstance && typeof logsInstance.cleanup === 'function') {
+                    this.activePanelCleanup = logsInstance.cleanup;
+                }
                 break;
             }
 
