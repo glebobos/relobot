@@ -4,14 +4,14 @@ camera_name: ov5647__base_axi_pcie_1000120000_rp1_i2c_80000_ov5647_36_800x600
 camera_matrix:
   rows: 3
   cols: 3
-  data: [796.95435,   0.     , 391.62632,
-           0.     , 795.11867, 233.1891 ,
+  data: [170.64216,   0.     , 416.34507,
+           0.     , 171.55864, 266.36415,
            0.     ,   0.     ,   1.     ]
-distortion_model: plumb_bob
+distortion_model: equidistant
 distortion_coefficients:
   rows: 1
-  cols: 5
-  data: [-0.073203, -0.033150, 0.001065, -0.000260, 0.000000]
+  cols: 4
+  data: [0.097011, -0.032007, -0.001546, 0.000448]
 rectification_matrix:
   rows: 3
   cols: 3
@@ -21,6 +21,6 @@ rectification_matrix:
 projection_matrix:
   rows: 3
   cols: 4
-  data: [778.72192,   0.     , 390.53602,   0.     ,
-           0.     , 783.56323, 231.56123,   0.     ,
+  data: [170.64216,   0.     , 398.345,   0.     ,
+           0.     , 171.55864, 266.36415,   0.     ,
            0.     ,   0.     ,   1.     ,   0.     ]

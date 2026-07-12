@@ -44,10 +44,23 @@ def generate_launch_description():
                     "camera": camera_param,
                     "width": 800,
                     "height": 600,
-                    "format": "UYVY",
+                    "format": "RGB888",
                     "FrameDurationLimits": [100000, 100000],
-                    "camera_info_url": "file:///ros2_ws/src/camera_ros/calibration/camera.yaml"
+                    "camera_info_url": "file:///ros2_ws/src/camera_ros/calibration/camera.yaml",
+                    "ExposureValue": 1.5
                 }],
+                extra_arguments=[{'use_intra_process_comms': True}],
+            ),
+            # Image Rectification Node
+            ComposableNode(
+                package='image_proc',
+                plugin='image_proc::RectifyNode',
+                name='rectify_node',
+                remappings=[
+                    ('image', '/camera/image_raw'),
+                    ('camera_info', '/camera/camera_info'),
+                    ('image_rect', '/camera/image_rect'),
+                ],
                 extra_arguments=[{'use_intra_process_comms': True}],
             ),
             # AprilTag is loaded on-demand by apriltag_manager
@@ -62,14 +75,12 @@ def generate_launch_description():
                     'ros_threads': 2,
                     'default_stream_type': 'mjpeg',
                 }],
-                extra_arguments=[{'use_intra_process_comms': True}],
+                extra_arguments=[{'use_intra_process_comms': False}],
             ),
         ],
         output='screen',
         on_exit=Shutdown(),
     )
-
-    always_on_env = os.environ.get('ALWAYS_ON_APRILTAG', 'false').lower() == 'true'
 
     # AprilTag manager: dynamically loads/unloads AprilTag + dock_pose_publisher
     # when the /dock_robot action becomes active/inactive.
@@ -78,7 +89,6 @@ def generate_launch_description():
         executable='apriltag_manager',
         name='apriltag_manager',
         output='screen',
-        parameters=[{'always_on': always_on_env}],
         on_exit=Shutdown(),
     )
 

@@ -19,7 +19,8 @@ RUN apt-get update && apt-get install -y \
     ros-humble-rclcpp-components \
     ros-humble-sensor-msgs \
     ros-humble-image-view \
-    ros-humble-web-video-server
+    ros-humble-web-video-server \
+    ros-humble-image-proc
 
 # Install newer meson via pip (required for libcamera build)
 RUN pip3 install --upgrade meson

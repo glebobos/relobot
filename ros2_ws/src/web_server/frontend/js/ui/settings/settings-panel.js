@@ -6,6 +6,7 @@ import { renderSensorsSettings } from './panels/sensors-settings.js';
 import { renderWifiSettings } from './panels/wifi-settings.js';
 import { renderLogsSettings } from './panels/logs-settings.js';
 import { renderSystemSettings } from './panels/system-settings.js';
+import { renderCalibrationSettings } from './panels/calibration-settings.js';
 
 export class SettingsPanel {
     constructor(telemetry) {
@@ -23,6 +24,7 @@ export class SettingsPanel {
         // Subscriptions & active panel cleanups
         this.rosoutSubscription = null;
         this.activePanelCleanup = null;
+        this.currentActivePanelType = null;
 
         this.init();
     }
@@ -44,14 +46,31 @@ export class SettingsPanel {
             });
         });
 
-        // Initialize general rosout logs subscription
-        this.subscribeRosout();
+        // Initialize general rosout logs subscription if background logs are enabled
+        const bgEnabled = localStorage.getItem('background_logs_enabled') === 'true';
+        if (bgEnabled) {
+            console.log('[SettingsPanel] Background logs enabled: subscribing at startup');
+            this.subscribeRosout();
+        } else {
+            console.log('[SettingsPanel] Background logs disabled: skipping startup subscription');
+        }
+
+        // Listen for screen changes to close the drawer and unsubscribe from active settings (like IMU/sensors)
+        window.addEventListener('screenChanged', (e) => {
+            if (e.detail.index !== 2) { // 2 is the settings screen
+                if (this.drawer && this.drawer.classList.contains('is-open')) {
+                    this.drawer.classList.remove('is-open');
+                    this.unsubscribeActive();
+                }
+            }
+        });
     }
 
     openDrawer(type) {
         safeClear(this.drawerContent);
         this.drawer.classList.add('is-open');
         this.unsubscribeActive();
+        this.currentActivePanelType = type;
 
         const context = {
             addLog: (msg) => this.addLog(msg),
@@ -80,15 +99,49 @@ export class SettingsPanel {
                 renderWifiSettings(this.drawerContent, context);
                 break;
 
-            case 'logs':
+            case 'logs': {
                 this.drawerTitle.textContent = 'Logs & Diagnostics';
-                renderLogsSettings(this.drawerContent, context);
+
+                // If background logs are disabled, subscribe now when opening the drawer
+                const bgEnabled = localStorage.getItem('background_logs_enabled') === 'true';
+                if (!bgEnabled && !this.rosoutSubscription) {
+                    console.log('[SettingsPanel] Subscribing to /rosout on-demand');
+                    this.subscribeRosout();
+                }
+
+                const logsContext = {
+                    ...context,
+                    isBackgroundEnabled: () => localStorage.getItem('background_logs_enabled') === 'true',
+                    setBackgroundEnabled: (enabled) => {
+                        localStorage.setItem('background_logs_enabled', enabled ? 'true' : 'false');
+                        if (enabled) {
+                            if (!this.rosoutSubscription) {
+                                console.log('[SettingsPanel] Background logs enabled: subscribing');
+                                this.subscribeRosout();
+                            }
+                        } else {
+                            console.log('[SettingsPanel] Background logs disabled (will unsubscribe when drawer closes)');
+                        }
+                    }
+                };
+
+                renderLogsSettings(this.drawerContent, logsContext);
                 break;
+            }
 
             case 'system':
                 this.drawerTitle.textContent = 'System Operations';
                 renderSystemSettings(this.drawerContent, context);
                 break;
+
+            case 'calibration': {
+                this.drawerTitle.textContent = 'Camera & Calibration';
+                const calibrationInstance = renderCalibrationSettings(this.drawerContent, context);
+                if (calibrationInstance && typeof calibrationInstance.cleanup === 'function') {
+                    this.activePanelCleanup = calibrationInstance.cleanup;
+                }
+                break;
+            }
                 
             default: {
                 this.drawerTitle.textContent = 'Settings';
@@ -100,10 +153,20 @@ export class SettingsPanel {
     }
 
     unsubscribeActive() {
+        if (this.currentActivePanelType === 'logs') {
+            const bgEnabled = localStorage.getItem('background_logs_enabled') === 'true';
+            if (!bgEnabled) {
+                console.log('[SettingsPanel] Unsubscribing from /rosout (panel cleanup)');
+                this.unsubscribeRosout();
+            }
+        }
+
         if (this.activePanelCleanup) {
             try { this.activePanelCleanup(); } catch (e) { }
             this.activePanelCleanup = null;
         }
+
+        this.currentActivePanelType = null;
     }
 
     addLog(msg) {
@@ -139,6 +202,17 @@ export class SettingsPanel {
             }
         } catch (err) {
             console.warn('[SettingsPanel] Could not subscribe to /rosout:', err);
+        }
+    }
+
+    unsubscribeRosout() {
+        if (this.rosoutSubscription) {
+            try {
+                this.rosoutSubscription.unsubscribe();
+            } catch (err) {
+                console.warn('[SettingsPanel] Could not unsubscribe from /rosout:', err);
+            }
+            this.rosoutSubscription = null;
         }
     }
 }

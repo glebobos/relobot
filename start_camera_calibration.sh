@@ -10,6 +10,7 @@ CAMERA_NAME="camera"
 SIZE="8x6"
 SQUARE="0.02"
 TOPIC="/camera/image_raw"
+FISHEYE="false"
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -30,9 +31,13 @@ while [[ $# -gt 0 ]]; do
       CAMERA_NAME="$2"
       shift 2
       ;;
+    --fisheye)
+      FISHEYE="true"
+      shift 1
+      ;;
     *)
       echo "Unknown option: $1"
-      echo "Usage: ./start_camera_calibration.sh [--size 8x6] [--square 0.02] [--topic /camera/image_raw] [--camera_name camera]"
+      echo "Usage: ./start_camera_calibration.sh [--size 8x6] [--square 0.02] [--topic /camera/image_raw] [--camera_name camera] [--fisheye]"
       exit 1
       ;;
   esac
@@ -42,6 +47,7 @@ echo "Starting Camera Calibration Tool..."
 echo "Targeting topic: $TOPIC"
 echo "Checkerboard size: $SIZE"
 echo "Square size: $SQUARE m"
+echo "Fisheye calibration: $FISHEYE"
 
 # Setup X11 forwarding
 echo "Configuring X11 access..."
@@ -60,6 +66,17 @@ if [[ "$(docker images -q camera_calibration:latest 2> /dev/null)" == "" ]]; the
   docker build -t camera_calibration:latest helpers/camera_calibration
 fi
 
+# Prepare calibration arguments
+CALIB_ARGS=()
+if [ "$FISHEYE" = "true" ]; then
+  # Note: The typo "--fisheye-recompute-extrinsicsts" is intentional as it is hardcoded 
+  # with the spelling "extrinsicsts" in the ROS 2 Humble camera_calibration package.
+  CALIB_ARGS+=(
+    "--fisheye-recompute-extrinsicsts"
+    "--fisheye-fix-skew"
+  )
+fi
+
 # Run the container
 echo "Launching calibration node..."
 docker run -it --rm \
@@ -74,6 +91,7 @@ docker run -it --rm \
     ros2 run camera_calibration cameracalibrator \
     --size "$SIZE" \
     --square "$SQUARE" \
+    "${CALIB_ARGS[@]}" \
     --ros-args -r image:="$TOPIC" -p camera:="$CAMERA_NAME"
 
 echo "Calibration tool exited."
