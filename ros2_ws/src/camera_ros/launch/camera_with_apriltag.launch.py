@@ -42,8 +42,8 @@ def generate_launch_description():
                 name='camera',
                 parameters=[{
                     "camera": camera_param,
-                    "width": 800,
-                    "height": 600,
+                    "width": 1024,
+                    "height": 768,
                     "format": "RGB888",
                     "FrameDurationLimits": [100000, 100000],
                     "camera_info_url": "file:///ros2_ws/src/camera_ros/calibration/camera.yaml",

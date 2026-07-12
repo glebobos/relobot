@@ -8,7 +8,7 @@ export class CameraService {
         const protocol = isHttps ? 'https:' : 'http:';
         const port = isHttps ? '' : ':8080';
         const path = isHttps ? '/camera-stream' : '';
-        this.baseUrl = `${protocol}//${window.location.hostname}${port}${path}/stream?topic=${TOPICS.CAMERA_IMAGE}&type=mjpeg&client_id=${this.clientId}`;
+        this.baseUrl = `${protocol}//${window.location.hostname}${port}${path}/stream?topic=${TOPICS.CAMERA_IMAGE}&type=mjpeg&quality=80&qos_profile=sensor_data&client_id=${this.clientId}`;
         this.isActive = false;
         this.init();
     }
