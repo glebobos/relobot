@@ -22,7 +22,6 @@ export const TOPICS = {
     KNIVES: '/knives/current_rpm',
     CHARGER: '/charger_voltage',
     ON_DOCK: '/on_dock',
-    IMU: '/imu',
     ROSOUT: '/rosout',
     ODOMETRY: '/odometry/filtered',
 
@@ -82,7 +81,6 @@ export const MSG_TYPES = {
     PATH: 'nav_msgs/Path',
     ODOMETRY: 'nav_msgs/Odometry',
     // sensor_msgs
-    IMU: 'sensor_msgs/Imu',
     // rcl_interfaces
     LOG: 'rcl_interfaces/Log',
     // action_msgs

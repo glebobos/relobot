@@ -2,7 +2,6 @@ import { rosService } from '../../services/ros-service.js';
 import { TOPICS, MSG_TYPES } from '../../shared/constants.js';
 import { safeClear, safeCreateElement } from '../../shared/dom-utils.js';
 import { renderNavigationSettings } from './panels/navigation-settings.js';
-import { renderSensorsSettings } from './panels/sensors-settings.js';
 import { renderLogsSettings } from './panels/logs-settings.js';
 import { renderSystemSettings } from './panels/system-settings.js';
 import { renderCalibrationSettings } from './panels/calibration-settings.js';
@@ -54,7 +53,7 @@ export class SettingsPanel {
             console.log('[SettingsPanel] Background logs disabled: skipping startup subscription');
         }
 
-        // Listen for screen changes to close the drawer and unsubscribe from active settings (like IMU/sensors)
+        // Listen for screen changes to close the drawer and unsubscribe from active settings
         window.addEventListener('screenChanged', (e) => {
             if (e.detail.index !== 2) { // 2 is the settings screen
                 if (this.drawer && this.drawer.classList.contains('is-open')) {
@@ -84,14 +83,7 @@ export class SettingsPanel {
                 renderNavigationSettings(this.drawerContent, context);
                 break;
 
-            case 'sensors': {
-                this.drawerTitle.textContent = 'Sensors & IMU';
-                const sensorsInstance = renderSensorsSettings(this.drawerContent, context);
-                if (sensorsInstance && typeof sensorsInstance.cleanup === 'function') {
-                    this.activePanelCleanup = sensorsInstance.cleanup;
-                }
-                break;
-            }
+
 
             case 'logs': {
                 this.drawerTitle.textContent = 'Logs & Diagnostics';

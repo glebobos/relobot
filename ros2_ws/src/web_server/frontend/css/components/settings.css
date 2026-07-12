@@ -178,6 +178,7 @@
     font-family: 'Courier New', monospace;
     font-size: 11px;
     color: #4af626;
+    min-height: 280px;
     flex: 1;
     overflow-y: auto;
     white-space: pre-wrap;
