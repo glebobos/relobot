@@ -4,6 +4,7 @@ import { installMapColorOverride } from './map-color-override.js';
 import { MapInteractionHandler } from './map-interaction.js';
 import { buildRobotModelFromUrdf } from './robot-model.js';
 import { TOPICS, MSG_TYPES } from '../../shared/constants.js';
+import { TfTransformer } from './tf-transformer.js';
 
 export class MapView {
     constructor(containerId) {
@@ -58,6 +59,8 @@ export class MapView {
         this.activeNavTarget = null;
         this.arrivalTimer = null;
         this.robotPosition = null;
+        this.tfTransformer = new TfTransformer();
+        this.poseBuffer = [];
 
         // Initialize consolidated interaction handler
         this.interactionHandler = new MapInteractionHandler(this);
@@ -194,6 +197,9 @@ export class MapView {
         this.resizeOverlay();
         this.setupEventListeners();
         this.setupSubscriptions();
+
+        // Start the animation loop for smoothing robot movements
+        this.animateRobotSmoothing();
     }
 
     /**
@@ -725,6 +731,8 @@ export class MapView {
                     const newModel = buildRobotModelFromUrdf(msg.data);
                     if (newModel) {
                         this.viewer.scene.remove(this.robotMarker);
+                        newModel.position.copy(this.robotMarker.position);
+                        newModel.quaternion.copy(this.robotMarker.quaternion);
                         this.robotMarker = newModel;
                         this.viewer.scene.add(this.robotMarker);
                         console.log('[MapView] Robot model loaded from URDF.');
@@ -738,18 +746,78 @@ export class MapView {
             });
         }
 
+        // Flag to track if we've successfully resolved a map-corrected TF pose.
+        // Once this becomes true, we prefer the TF pose and ignore direct odometry.
+        let hasMapTf = false;
+
+        const tfSub = rosService.createTopicV2('/tf', 'tf2_msgs/msg/TFMessage', {
+            throttle_rate: 100
+        });
+
+        if (tfSub) {
+            tfSub.subscribe((message) => {
+                this.tfTransformer.update(message);
+
+                const transformMatrix = this.tfTransformer.getTransform('map', 'base_link');
+                if (transformMatrix) {
+                    hasMapTf = true;
+
+                    const position = new THREE.Vector3();
+                    const quaternion = new THREE.Quaternion();
+                    const scale = new THREE.Vector3();
+                    transformMatrix.decompose(position, quaternion, scale);
+
+                    this.poseBuffer.push({
+                        position: new THREE.Vector3(position.x, position.y, 0.01),
+                        quaternion: quaternion.clone(),
+                        timestamp: performance.now()
+                    });
+                    const cutoff = performance.now() - 3000; // Keep up to 3 seconds of history
+                    while (this.poseBuffer.length > 1 && this.poseBuffer[0].timestamp < cutoff) {
+                        this.poseBuffer.shift();
+                    }
+
+                    // Handle arrival timer for navigation pin
+                    if (this.activeNavTarget) {
+                        const dx = position.x - this.activeNavTarget.x;
+                        const dy = position.y - this.activeNavTarget.y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+
+                        if (dist < 0.25) { // 25 cm threshold for arrival
+                            if (!this.arrivalTimer) {
+                                console.log('[MapView] Arrived at target point. Clearing pin in 5 seconds.');
+                                this.arrivalTimer = setTimeout(() => {
+                                    this.clearNavTarget();
+                                }, 5000);
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
         const odomSub = rosService.createTopicV1(TOPICS.ODOMETRY, MSG_TYPES.ODOMETRY, {
             throttle_rate: 100
         });
         if (odomSub) {
             odomSub.subscribe((message) => {
+                if (hasMapTf) return; // Skip if we have map-corrected TF position
+
                 const robotX = message.pose.pose.position.x;
                 const robotY = message.pose.pose.position.y;
 
-                this.robotMarker.position.x = robotX;
-                this.robotMarker.position.y = robotY;
+                const q = message.pose.pose.orientation;
+                const quaternion = new THREE.Quaternion(q.x, q.y, q.z, q.w);
 
-                this.robotPosition = { x: robotX, y: robotY };
+                this.poseBuffer.push({
+                    position: new THREE.Vector3(robotX, robotY, 0.01),
+                    quaternion: quaternion,
+                    timestamp: performance.now()
+                });
+                const cutoff = performance.now() - 3000; // Keep up to 3 seconds of history
+                while (this.poseBuffer.length > 1 && this.poseBuffer[0].timestamp < cutoff) {
+                    this.poseBuffer.shift();
+                }
 
                 // Handle arrival timer for navigation pin
                 if (this.activeNavTarget) {
@@ -761,18 +829,11 @@ export class MapView {
                         if (!this.arrivalTimer) {
                             console.log('[MapView] Arrived at target point. Clearing pin in 5 seconds.');
                             this.arrivalTimer = setTimeout(() => {
-                                this.clearNavTarget();
-                            }, 5000);
+                                    this.clearNavTarget();
+                                }, 5000);
                         }
                     }
                 }
-
-                const q = message.pose.pose.orientation;
-                const quaternion = new THREE.Quaternion(q.x, q.y, q.z, q.w);
-
-                // Apply odometry pose to the 3D robot model
-                this.robotMarker.position.z = 0.01;
-                this.robotMarker.quaternion.copy(quaternion);
             });
         }
 
@@ -822,4 +883,57 @@ export class MapView {
     isZoneDrawMode() { return this.zoneDrawMode; }
     hasActiveZone() { return this.activeZoneCorners !== null; }
     isNavPointMode() { return this.navPointMode; }
+
+    /**
+     * Animation loop to smoothly interpolate (lerp/slerp) the robot marker
+     * towards its target position and orientation.
+     */
+    animateRobotSmoothing() {
+        if (this.robotMarker && this.poseBuffer && this.poseBuffer.length > 0) {
+            const now = performance.now();
+            const delayMs = 1000; // 1000ms delay for smooth playback (renders movements after a 1-second delay)
+            const playbackTime = now - delayMs;
+
+            // Find two adjacent frames in the buffer such that frameA.timestamp <= playbackTime < frameB.timestamp
+            let index = -1;
+            for (let i = 0; i < this.poseBuffer.length - 1; i++) {
+                if (this.poseBuffer[i].timestamp <= playbackTime && this.poseBuffer[i + 1].timestamp > playbackTime) {
+                    index = i;
+                    break;
+                }
+            }
+
+            if (index !== -1) {
+                const frameA = this.poseBuffer[index];
+                const frameB = this.poseBuffer[index + 1];
+                const total = frameB.timestamp - frameA.timestamp;
+                const t = total > 0 ? (playbackTime - frameA.timestamp) / total : 1.0;
+
+                this.robotMarker.position.copy(frameA.position).lerp(frameB.position, t);
+                this.robotMarker.quaternion.copy(frameA.quaternion).slerp(frameB.quaternion, t);
+                this.robotMarker.position.z = 0.01;
+            } else {
+                // If playbackTime is before the oldest frame (startup/buffering), hold at the oldest frame.
+                // Otherwise, if we have a lag/drop in messages, smoothly catch up to the latest received frame.
+                if (playbackTime < this.poseBuffer[0].timestamp) {
+                    const first = this.poseBuffer[0];
+                    this.robotMarker.position.copy(first.position);
+                    this.robotMarker.quaternion.copy(first.quaternion);
+                    this.robotMarker.position.z = 0.01;
+                } else {
+                    const latest = this.poseBuffer[this.poseBuffer.length - 1];
+                    this.robotMarker.position.lerp(latest.position, 0.15);
+                    this.robotMarker.quaternion.slerp(latest.quaternion, 0.15);
+                    this.robotMarker.position.z = 0.01;
+                }
+            }
+
+            // Sync visual position for overlays and interaction checks
+            this.robotPosition = {
+                x: this.robotMarker.position.x,
+                y: this.robotMarker.position.y
+            };
+        }
+        requestAnimationFrame(() => this.animateRobotSmoothing());
+    }
 }
