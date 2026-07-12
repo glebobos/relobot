@@ -90,6 +90,7 @@ export const MSG_TYPES = {
     DOCK_ROBOT: 'opennav_docking_msgs/action/DockRobot',
     NAVIGATE_TO_POSE: 'nav2_msgs/action/NavigateToPose',
     SERIALIZE_MAP_SRV: 'slam_toolbox/srv/SerializePoseGraph',
+    SET_PARAMETERS: 'rcl_interfaces/srv/SetParameters',
 };
 
 /**
@@ -106,5 +107,6 @@ export const ACTIONS = {
 };
 
 export const SERVICES = {
-    SERIALIZE_MAP: '/slam_toolbox/serialize_map'
+    SERIALIZE_MAP: '/slam_toolbox/serialize_map',
+    SET_APRILTAG_PARAMETERS: '/apriltag_manager/set_parameters'
 };

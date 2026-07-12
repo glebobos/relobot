@@ -1,5 +1,6 @@
 import { CameraService } from '../services/camera-service.js';
 import { rosService } from '../services/ros-service.js';
+import { SERVICES, MSG_TYPES } from '../shared/constants.js';
 
 export class CameraController {
     constructor() {
@@ -8,6 +9,7 @@ export class CameraController {
         this.tfTopic = null;
         this.hudTimeout = null;
         this.currentScreenIndex = 0;
+        this._lastSyncedAprilTagState = null;
     }
 
     init() {
@@ -45,6 +47,12 @@ export class CameraController {
         // Listen for settings changes
         window.addEventListener('calibrationSettingsChanged', () => {
             this.updateCalibrationViews(this.currentScreenIndex);
+        });
+
+        // Sync ROS parameter when ROS connects
+        rosService.rosV2.on('connection', () => {
+            const apriltagEnabled = localStorage.getItem('calibration_apriltag_enabled') === 'true';
+            this.syncAprilTagParameter(apriltagEnabled);
         });
 
         // Initial setup
@@ -88,6 +96,43 @@ export class CameraController {
             if (hud) {
                 hud.style.display = 'none';
             }
+        }
+
+        // Sync ROS parameter for AprilTag if state changed
+        if (this._lastSyncedAprilTagState !== apriltagEnabled) {
+            this._lastSyncedAprilTagState = apriltagEnabled;
+            this.syncAprilTagParameter(apriltagEnabled);
+        }
+    }
+
+    syncAprilTagParameter(enabled) {
+        console.log('[CameraController] Syncing AprilTag parameter always_on =', enabled);
+        const setParamsClient = rosService.createServiceV2(
+            SERVICES.SET_APRILTAG_PARAMETERS,
+            MSG_TYPES.SET_PARAMETERS
+        );
+        if (setParamsClient) {
+            setParamsClient.callService(
+                {
+                    parameters: [
+                        {
+                            name: 'always_on',
+                            value: {
+                                type: 1, // PARAMETER_BOOL
+                                bool_value: enabled
+                            }
+                        }
+                    ]
+                },
+                (result) => {
+                    console.log('[CameraController] AprilTag always_on set successful:', result);
+                },
+                (error) => {
+                    console.error('[CameraController] Failed to set AprilTag always_on:', error);
+                }
+            );
+        } else {
+            console.warn('[CameraController] set_parameters service client not ready');
         }
     }
 

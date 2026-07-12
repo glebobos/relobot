@@ -82,8 +82,6 @@ def generate_launch_description():
         on_exit=Shutdown(),
     )
 
-    always_on_env = os.environ.get('ALWAYS_ON_APRILTAG', 'false').lower() == 'true'
-
     # AprilTag manager: dynamically loads/unloads AprilTag + dock_pose_publisher
     # when the /dock_robot action becomes active/inactive.
     apriltag_manager = Node(
@@ -91,7 +89,6 @@ def generate_launch_description():
         executable='apriltag_manager',
         name='apriltag_manager',
         output='screen',
-        parameters=[{'always_on': always_on_env}],
         on_exit=Shutdown(),
     )
 

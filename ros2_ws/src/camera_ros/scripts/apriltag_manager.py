@@ -15,6 +15,7 @@ from rcl_interfaces.msg import (
     Parameter as ParameterMsg,
     ParameterValue,
     ParameterType,
+    SetParametersResult,
 )
 from ament_index_python.packages import get_package_share_directory
 
@@ -106,15 +107,39 @@ class AprilTagManager(Node):
         self._unload_cli = self.create_client(
             UnloadNode, f'{container}/_container/unload_node', callback_group=cb)
 
+        # --- Always subscribe to status ---
+        self.create_subscription(
+            GoalStatusArray, f'{dock_action}/_action/status',
+            self._on_dock_status, 10)
+
+        # --- Register parameter callback ---
+        self.add_on_set_parameters_callback(self._on_set_parameters)
+
         # --- kick-off ---
         if self._always_on:
             self.get_logger().info('always_on — will load AprilTag permanently')
             self._retry_timer = self.create_timer(1.0, self._try_load)
         else:
-            self.create_subscription(
-                GoalStatusArray, f'{dock_action}/_action/status',
-                self._on_dock_status, 10)
             self.get_logger().info('Waiting for dock goals')
+
+    # ------------------------------------------------------------------
+    def _on_set_parameters(self, params):
+        result = SetParametersResult(successful=True)
+        for param in params:
+            if param.name == 'always_on':
+                new_val = param.value
+                self.get_logger().info(f'always_on parameter set dynamically to {new_val}')
+                if new_val != self._always_on:
+                    self._always_on = new_val
+                    if self._always_on:
+                        if self._retry_timer is not None:
+                            self._retry_timer.cancel()
+                            self._retry_timer = None
+                        self._load_apriltag()
+                    else:
+                        if not self._active_goals:
+                            self._unload_apriltag()
+        return result
 
     # ------------------------------------------------------------------
     def _try_load(self):
@@ -135,10 +160,11 @@ class AprilTagManager(Node):
         was, now = bool(self._active_goals), bool(current)
         self._active_goals = current
 
-        if now and not was:
-            self._load_apriltag()
-        elif not now and was:
-            self._unload_apriltag()
+        if not self._always_on:
+            if now and not was:
+                self._load_apriltag()
+            elif not now and was:
+                self._unload_apriltag()
 
     # ------------------------------------------------------------------
     def _load_apriltag(self):
