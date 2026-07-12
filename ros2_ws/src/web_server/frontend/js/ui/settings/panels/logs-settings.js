@@ -2,6 +2,13 @@ import { rosService } from '../../../services/ros-service.js';
 import { TOPICS, MSG_TYPES } from '../../../shared/constants.js';
 import { safeCreateElement } from '../../../shared/dom-utils.js';
 
+function dbmToPercent(dbm) {
+    if (dbm === null || dbm === undefined) return 0;
+    if (dbm >= -30) return 100;
+    if (dbm <= -100) return 0;
+    return Math.round((dbm - (-100)) * (100 / 70));
+}
+
 export function renderLogsSettings(contentEl, context) {
     // Section Header for metrics
     const statHeader = safeCreateElement('p', [], {}, 'System Health & Metrics:');
@@ -36,9 +43,50 @@ export function renderLogsSettings(contentEl, context) {
     ramBar.appendChild(ramFill);
     ramRow.appendChild(ramBar);
     
+    // Wi-Fi SSID Row
+    const wifiSsidRow = safeCreateElement('div', 'c-metric-row');
+    const wifiSsidMeta = safeCreateElement('div', 'c-metric-header');
+    wifiSsidMeta.appendChild(safeCreateElement('span', [], {}, 'Wi-Fi SSID'));
+    const wifiSsidVal = safeCreateElement('span', 'c-metric-value', {}, 'Disconnected');
+    wifiSsidMeta.appendChild(wifiSsidVal);
+    wifiSsidRow.appendChild(wifiSsidMeta);
+
+    // Wi-Fi Signal Row
+    const wifiSignalRow = safeCreateElement('div', 'c-metric-row');
+    const wifiSignalMeta = safeCreateElement('div', 'c-metric-header');
+    wifiSignalMeta.appendChild(safeCreateElement('span', [], {}, 'Wi-Fi Signal Strength'));
+    const wifiSignalVal = safeCreateElement('span', 'c-metric-value', {}, 'N/A');
+    wifiSignalMeta.appendChild(wifiSignalVal);
+    wifiSignalRow.appendChild(wifiSignalMeta);
+
+    const wifiSignalBar = safeCreateElement('div', 'c-metric-bar');
+    const wifiSignalFill = safeCreateElement('div', 'c-metric-bar__fill');
+    wifiSignalBar.appendChild(wifiSignalFill);
+    wifiSignalRow.appendChild(wifiSignalBar);
+
     metricContainer.appendChild(cpuRow);
     metricContainer.appendChild(ramRow);
+    metricContainer.appendChild(wifiSsidRow);
+    metricContainer.appendChild(wifiSignalRow);
     contentEl.appendChild(metricContainer);
+
+    // Websocket and Connection details container
+    const netHeader = safeCreateElement('p', [], {}, 'Websocket & Interface Coordinates:');
+    contentEl.appendChild(netHeader);
+
+    const netContainer = safeCreateElement('div', 'c-metric-container');
+    const createRow = (label, valText) => {
+        const row = safeCreateElement('div', 'c-settings-drawer__row');
+        const labelEl = safeCreateElement('span', 'c-settings-drawer__row-label', {}, label);
+        const valEl = safeCreateElement('span', 'c-settings-drawer__row-val', {}, valText);
+        row.appendChild(labelEl);
+        row.appendChild(valEl);
+        return row;
+    };
+    netContainer.appendChild(createRow('Websocket IP Address', window.location.hostname));
+    netContainer.appendChild(createRow('Websocket Port', '9090'));
+    netContainer.appendChild(createRow('Connection Protocol', 'ESM / Legacy Rosbridge'));
+    contentEl.appendChild(netContainer);
 
     // Logs Section
     const info = safeCreateElement('p', [], {}, 'Echoing diagnostics logs from active ROS2 nodes (/rosout):');
@@ -115,6 +163,17 @@ export function renderLogsSettings(contentEl, context) {
                     if (data.ram !== undefined) {
                         ramVal.textContent = data.ram.toFixed(1) + '%';
                         ramFill.style.width = data.ram + '%';
+                    }
+                    if (data.wifi_ssid !== undefined) {
+                        wifiSsidVal.textContent = data.wifi_ssid;
+                    }
+                    if (data.wifi_dbm !== undefined && data.wifi_dbm !== null) {
+                        wifiSignalVal.textContent = data.wifi_dbm + ' dBm';
+                        const percent = dbmToPercent(data.wifi_dbm);
+                        wifiSignalFill.style.width = percent + '%';
+                    } else {
+                        wifiSignalVal.textContent = 'Disconnected';
+                        wifiSignalFill.style.width = '0%';
                     }
                 } catch (err) {
                     console.error('[LogsSettings] Failed to parse metrics JSON:', err);

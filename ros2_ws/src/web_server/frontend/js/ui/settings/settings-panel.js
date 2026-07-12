@@ -3,7 +3,6 @@ import { TOPICS, MSG_TYPES } from '../../shared/constants.js';
 import { safeClear, safeCreateElement } from '../../shared/dom-utils.js';
 import { renderNavigationSettings } from './panels/navigation-settings.js';
 import { renderSensorsSettings } from './panels/sensors-settings.js';
-import { renderWifiSettings } from './panels/wifi-settings.js';
 import { renderLogsSettings } from './panels/logs-settings.js';
 import { renderSystemSettings } from './panels/system-settings.js';
 import { renderCalibrationSettings } from './panels/calibration-settings.js';
@@ -93,11 +92,6 @@ export class SettingsPanel {
                 }
                 break;
             }
-
-            case 'wifi':
-                this.drawerTitle.textContent = 'Connectivity';
-                renderWifiSettings(this.drawerContent, context);
-                break;
 
             case 'logs': {
                 this.drawerTitle.textContent = 'Logs & Diagnostics';

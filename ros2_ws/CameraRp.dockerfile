@@ -7,6 +7,7 @@ RUN apt-get update && apt-get install -y \
     meson \
     ninja-build \
     pkg-config \
+    wireless-tools \
     libgnutls28-dev \
     openssl \
     libboost-dev \

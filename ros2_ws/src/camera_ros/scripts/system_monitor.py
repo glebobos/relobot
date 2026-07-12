@@ -1,8 +1,45 @@
 #!/usr/bin/env python3
 import json
+import subprocess
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String
+
+def get_wifi_info():
+    ssid = "Disconnected"
+    signal = None
+    interface = None
+    
+    try:
+        with open('/proc/net/wireless', 'r') as f:
+            lines = f.readlines()
+        for line in lines:
+            if ':' in line:
+                parts = line.split(':')
+                iface = parts[0].strip()
+                if iface.startswith('wl'):
+                    interface = iface
+                    data_parts = parts[1].split()
+                    if len(data_parts) >= 3:
+                        try:
+                            signal = int(data_parts[2].rstrip('.'))
+                        except ValueError:
+                            pass
+                    break
+    except Exception:
+        pass
+        
+    if interface:
+        try:
+            res = subprocess.run(["iwgetid", "-r", interface], capture_output=True, text=True, timeout=1.0)
+            if res.returncode == 0:
+                s = res.stdout.strip()
+                if s:
+                    ssid = s
+        except Exception:
+            pass
+            
+    return ssid, signal
 
 def get_memory_usage():
     try:
@@ -49,6 +86,9 @@ class SystemMonitor(Node):
         # Calculate memory
         ram_percent = get_memory_usage()
 
+        # Calculate WiFi info
+        wifi_ssid, wifi_dbm = get_wifi_info()
+
         # Calculate CPU
         cpu_percent = 0.0
         try:
@@ -85,7 +125,9 @@ class SystemMonitor(Node):
         msg = String()
         msg.data = json.dumps({
             "cpu": cpu_percent,
-            "ram": ram_percent
+            "ram": ram_percent,
+            "wifi_ssid": wifi_ssid,
+            "wifi_dbm": wifi_dbm
         })
         self.publisher.publish(msg)
 
