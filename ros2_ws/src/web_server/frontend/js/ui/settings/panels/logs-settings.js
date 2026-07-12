@@ -10,10 +10,6 @@ function dbmToPercent(dbm) {
 }
 
 export function renderLogsSettings(contentEl, context) {
-    // Section Header for metrics
-    const statHeader = safeCreateElement('p', [], {}, 'System Health & Metrics:');
-    contentEl.appendChild(statHeader);
-
     // Metric Container
     const metricContainer = safeCreateElement('div', 'c-metric-container');
     
@@ -60,28 +56,6 @@ export function renderLogsSettings(contentEl, context) {
     metricContainer.appendChild(ramRow);
     metricContainer.appendChild(wifiSignalRow);
     contentEl.appendChild(metricContainer);
-
-    // Websocket and Connection details container
-    const netHeader = safeCreateElement('p', [], {}, 'Websocket & Interface Coordinates:');
-    contentEl.appendChild(netHeader);
-
-    const netContainer = safeCreateElement('div', 'c-metric-container');
-    const createRow = (label, valText) => {
-        const row = safeCreateElement('div', 'c-settings-drawer__row');
-        const labelEl = safeCreateElement('span', 'c-settings-drawer__row-label', {}, label);
-        const valEl = safeCreateElement('span', 'c-settings-drawer__row-val', {}, valText);
-        row.appendChild(labelEl);
-        row.appendChild(valEl);
-        return row;
-    };
-    netContainer.appendChild(createRow('Websocket IP Address', window.location.hostname));
-    netContainer.appendChild(createRow('Websocket Port', '9090'));
-    netContainer.appendChild(createRow('Connection Protocol', 'ESM / Legacy Rosbridge'));
-    contentEl.appendChild(netContainer);
-
-    // Logs Section
-    const info = safeCreateElement('p', [], {}, 'Echoing diagnostics logs from active ROS2 nodes (/rosout):');
-    contentEl.appendChild(info);
 
     // Toggle row for background logging
     const toggleRow = safeCreateElement('div', 'c-settings-drawer__row');
