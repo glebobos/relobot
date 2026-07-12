@@ -32,11 +32,17 @@ install(DIRECTORY
   DESTINATION share/${PROJECT_NAME}/
 )
 
-# Python scripts (apriltag_manager)
+# Python scripts (apriltag_manager, system_monitor)
 install(PROGRAMS
   scripts/apriltag_manager.py
   DESTINATION lib/${PROJECT_NAME}
   RENAME apriltag_manager
+)
+
+install(PROGRAMS
+  scripts/system_monitor.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME system_monitor
 )
 
 ament_package()

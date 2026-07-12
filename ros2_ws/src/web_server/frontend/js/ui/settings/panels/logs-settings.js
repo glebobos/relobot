@@ -1,6 +1,85 @@
+import { rosService } from '../../../services/ros-service.js';
+import { TOPICS, MSG_TYPES } from '../../../shared/constants.js';
 import { safeCreateElement } from '../../../shared/dom-utils.js';
 
+function dbmToPercent(dbm) {
+    if (dbm === null || dbm === undefined) return 0;
+    if (dbm >= -30) return 100;
+    if (dbm <= -100) return 0;
+    return Math.round((dbm - (-100)) * (100 / 70));
+}
+
 export function renderLogsSettings(contentEl, context) {
+    // Section Header for metrics
+    const statHeader = safeCreateElement('p', [], {}, 'System Health & Metrics:');
+    contentEl.appendChild(statHeader);
+
+    // Metric Container
+    const metricContainer = safeCreateElement('div', 'c-metric-container');
+    
+    // CPU Row
+    const cpuRow = safeCreateElement('div', 'c-metric-row');
+    const cpuMeta = safeCreateElement('div', 'c-metric-header');
+    cpuMeta.appendChild(safeCreateElement('span', [], {}, 'CPU Usage'));
+    const cpuVal = safeCreateElement('span', 'c-metric-value', {}, '0.0%');
+    cpuMeta.appendChild(cpuVal);
+    cpuRow.appendChild(cpuMeta);
+    
+    const cpuBar = safeCreateElement('div', 'c-metric-bar');
+    const cpuFill = safeCreateElement('div', 'c-metric-bar__fill');
+    cpuBar.appendChild(cpuFill);
+    cpuRow.appendChild(cpuBar);
+    
+    // RAM Row
+    const ramRow = safeCreateElement('div', 'c-metric-row');
+    const ramMeta = safeCreateElement('div', 'c-metric-header');
+    ramMeta.appendChild(safeCreateElement('span', [], {}, 'Memory Usage'));
+    const ramVal = safeCreateElement('span', 'c-metric-value', {}, '0.0%');
+    ramMeta.appendChild(ramVal);
+    ramRow.appendChild(ramMeta);
+    
+    const ramBar = safeCreateElement('div', 'c-metric-bar');
+    const ramFill = safeCreateElement('div', 'c-metric-bar__fill');
+    ramBar.appendChild(ramFill);
+    ramRow.appendChild(ramBar);
+    
+    // Wi-Fi Signal Row
+    const wifiSignalRow = safeCreateElement('div', 'c-metric-row');
+    const wifiSignalMeta = safeCreateElement('div', 'c-metric-header');
+    wifiSignalMeta.appendChild(safeCreateElement('span', [], {}, 'Wi-Fi Signal Strength'));
+    const wifiSignalVal = safeCreateElement('span', 'c-metric-value', {}, 'N/A');
+    wifiSignalMeta.appendChild(wifiSignalVal);
+    wifiSignalRow.appendChild(wifiSignalMeta);
+
+    const wifiSignalBar = safeCreateElement('div', 'c-metric-bar');
+    const wifiSignalFill = safeCreateElement('div', 'c-metric-bar__fill');
+    wifiSignalBar.appendChild(wifiSignalFill);
+    wifiSignalRow.appendChild(wifiSignalBar);
+
+    metricContainer.appendChild(cpuRow);
+    metricContainer.appendChild(ramRow);
+    metricContainer.appendChild(wifiSignalRow);
+    contentEl.appendChild(metricContainer);
+
+    // Websocket and Connection details container
+    const netHeader = safeCreateElement('p', [], {}, 'Websocket & Interface Coordinates:');
+    contentEl.appendChild(netHeader);
+
+    const netContainer = safeCreateElement('div', 'c-metric-container');
+    const createRow = (label, valText) => {
+        const row = safeCreateElement('div', 'c-settings-drawer__row');
+        const labelEl = safeCreateElement('span', 'c-settings-drawer__row-label', {}, label);
+        const valEl = safeCreateElement('span', 'c-settings-drawer__row-val', {}, valText);
+        row.appendChild(labelEl);
+        row.appendChild(valEl);
+        return row;
+    };
+    netContainer.appendChild(createRow('Websocket IP Address', window.location.hostname));
+    netContainer.appendChild(createRow('Websocket Port', '9090'));
+    netContainer.appendChild(createRow('Connection Protocol', 'ESM / Legacy Rosbridge'));
+    contentEl.appendChild(netContainer);
+
+    // Logs Section
     const info = safeCreateElement('p', [], {}, 'Echoing diagnostics logs from active ROS2 nodes (/rosout):');
     contentEl.appendChild(info);
 
@@ -59,4 +138,52 @@ export function renderLogsSettings(contentEl, context) {
         }
     });
     contentEl.appendChild(clearBtn);
+
+    // Subscription to system/metrics
+    let subscription = null;
+    try {
+        subscription = rosService.createTopicV2(TOPICS.SYSTEM_METRICS, MSG_TYPES.STRING);
+        if (subscription) {
+            subscription.subscribe((msg) => {
+                try {
+                    const data = JSON.parse(msg.data);
+                    if (data.cpu !== undefined) {
+                        cpuVal.textContent = data.cpu.toFixed(1) + '%';
+                        cpuFill.style.width = data.cpu + '%';
+                    }
+                    if (data.ram !== undefined) {
+                        ramVal.textContent = data.ram.toFixed(1) + '%';
+                        ramFill.style.width = data.ram + '%';
+                    }
+
+                    if (data.wifi_dbm !== undefined && data.wifi_dbm !== null) {
+                        wifiSignalVal.textContent = data.wifi_dbm + ' dBm';
+                        const percent = dbmToPercent(data.wifi_dbm);
+                        wifiSignalFill.style.width = percent + '%';
+                    } else {
+                        wifiSignalVal.textContent = 'Disconnected';
+                        wifiSignalFill.style.width = '0%';
+                    }
+                } catch (err) {
+                    console.error('[LogsSettings] Failed to parse metrics JSON:', err);
+                }
+            });
+        }
+    } catch (err) {
+        console.warn('[LogsSettings] Could not subscribe to system metrics:', err);
+    }
+
+    return {
+        cleanup: () => {
+            if (subscription) {
+                try {
+                    subscription.unsubscribe();
+                    console.log('[LogsSettings] Unsubscribed from system metrics');
+                } catch (err) {
+                    console.warn('[LogsSettings] Failed to unsubscribe from system metrics:', err);
+                }
+                subscription = null;
+            }
+        }
+    };
 }

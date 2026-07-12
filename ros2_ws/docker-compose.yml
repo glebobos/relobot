@@ -52,6 +52,7 @@ services:
       dockerfile: CameraRp.dockerfile
     volumes:
       - .:/ros2_ws/
+      - /var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket
     devices:
       - /dev/:/dev/
     environment:
@@ -69,7 +70,6 @@ services:
     ipc: host
     volumes:
       - .:/ros2_ws/
-      - /var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket #For reboot and shutdown
     devices:
       - /dev/:/dev/
     environment:

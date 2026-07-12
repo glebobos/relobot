@@ -38,6 +38,7 @@ export class ControlPanel {
         // Topics & Action Clients
         this.exploreTopic = null;
         this.coverageCommandTopic = null;
+        this.systemCommandTopic = null;
         this.dockAction = null;
         this.nav2Action = null;
 
@@ -48,6 +49,7 @@ export class ControlPanel {
         // Initialize ROS publishers/subscribers/action clients (using ESM v2 connection)
         this.exploreTopic = rosService.createTopicV2(TOPICS.EXPLORE_RESUME, MSG_TYPES.BOOL);
         this.coverageCommandTopic = rosService.createTopicV2(TOPICS.COVERAGE_COMMAND, MSG_TYPES.STRING);
+        this.systemCommandTopic = rosService.createTopicV2(TOPICS.SYSTEM_COMMAND, MSG_TYPES.STRING);
 
         this.dockAction = rosService.createActionV2(ACTIONS.DOCK_ROBOT, MSG_TYPES.DOCK_ROBOT);
         this.nav2Action = rosService.createActionV2(ACTIONS.NAVIGATE_TO_POSE, MSG_TYPES.NAVIGATE_TO_POSE);
@@ -343,7 +345,7 @@ export class ControlPanel {
         if (this.rebootPiBtn) {
             this.rebootPiBtn.addEventListener('click', () => {
                 showConfirm('Are you sure you want to reboot the Relobot?', () => {
-                    this.sendCoverageCommand(CMDS.REBOOT);
+                    this.sendSystemCommand(CMDS.REBOOT);
                     showAlert('Rebooting Relobot...');
                 });
             });
@@ -353,7 +355,7 @@ export class ControlPanel {
         if (this.poweroffPiBtn) {
             this.poweroffPiBtn.addEventListener('click', () => {
                 showConfirm('Are you sure you want to power off the Relobot?', () => {
-                    this.sendCoverageCommand(CMDS.POWEROFF);
+                    this.sendSystemCommand(CMDS.POWEROFF);
                     showAlert('Powering off Relobot...');
                 });
             });
@@ -383,6 +385,11 @@ export class ControlPanel {
     sendCoverageCommand(command) {
         if (!this.coverageCommandTopic) return;
         this.coverageCommandTopic.publish({ data: command });
+    }
+
+    sendSystemCommand(command) {
+        if (!this.systemCommandTopic) return;
+        this.systemCommandTopic.publish({ data: command });
     }
 
     updateExploreButton(exploring) {

@@ -46,7 +46,9 @@ export const TOPICS = {
 
     // System
     ROBOT_DESCRIPTION: '/robot_description',
-    DOCK_ACTION_STATUS: '/dock_robot/_action/status'
+    DOCK_ACTION_STATUS: '/dock_robot/_action/status',
+    SYSTEM_METRICS: '/system/metrics',
+    SYSTEM_COMMAND: '/system/command'
 };
 
 /**

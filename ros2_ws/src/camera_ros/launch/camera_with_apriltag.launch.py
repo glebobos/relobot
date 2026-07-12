@@ -92,10 +92,20 @@ def generate_launch_description():
         on_exit=Shutdown(),
     )
 
+    # System monitor node: monitors and publishes CPU and RAM stats
+    system_monitor = Node(
+        package='camera_ros',
+        executable='system_monitor',
+        name='system_monitor',
+        output='screen',
+        on_exit=Shutdown(),
+    )
+
     return LaunchDescription([
         camera_launch_arg,
         container,
         apriltag_manager,
+        system_monitor,
     ])
 
 
