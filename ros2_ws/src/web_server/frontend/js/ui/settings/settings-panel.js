@@ -45,8 +45,14 @@ export class SettingsPanel {
             });
         });
 
-        // Initialize general rosout logs subscription
-        this.subscribeRosout();
+        // Initialize general rosout logs subscription if background logs are enabled
+        const bgEnabled = localStorage.getItem('background_logs_enabled') === 'true';
+        if (bgEnabled) {
+            console.log('[SettingsPanel] Background logs enabled: subscribing at startup');
+            this.subscribeRosout();
+        } else {
+            console.log('[SettingsPanel] Background logs disabled: skipping startup subscription');
+        }
 
         // Listen for screen changes to close the drawer and unsubscribe from active settings (like IMU/sensors)
         window.addEventListener('screenChanged', (e) => {
@@ -91,10 +97,44 @@ export class SettingsPanel {
                 renderWifiSettings(this.drawerContent, context);
                 break;
 
-            case 'logs':
+            case 'logs': {
                 this.drawerTitle.textContent = 'Logs & Diagnostics';
-                renderLogsSettings(this.drawerContent, context);
+
+                // If background logs are disabled, subscribe now when opening the drawer
+                const bgEnabled = localStorage.getItem('background_logs_enabled') === 'true';
+                if (!bgEnabled && !this.rosoutSubscription) {
+                    console.log('[SettingsPanel] Subscribing to /rosout on-demand');
+                    this.subscribeRosout();
+                }
+
+                const logsContext = {
+                    ...context,
+                    isBackgroundEnabled: () => localStorage.getItem('background_logs_enabled') === 'true',
+                    setBackgroundEnabled: (enabled) => {
+                        localStorage.setItem('background_logs_enabled', enabled ? 'true' : 'false');
+                        if (enabled) {
+                            if (!this.rosoutSubscription) {
+                                console.log('[SettingsPanel] Background logs enabled: subscribing');
+                                this.subscribeRosout();
+                            }
+                        } else {
+                            console.log('[SettingsPanel] Background logs disabled (will unsubscribe when drawer closes)');
+                        }
+                    }
+                };
+
+                renderLogsSettings(this.drawerContent, logsContext);
+
+                // Unsubscribe when drawer is closed if background logs are disabled
+                this.activePanelCleanup = () => {
+                    const bgEnabledAfter = localStorage.getItem('background_logs_enabled') === 'true';
+                    if (!bgEnabledAfter) {
+                        console.log('[SettingsPanel] Unsubscribing from /rosout (drawer closed)');
+                        this.unsubscribeRosout();
+                    }
+                };
                 break;
+            }
 
             case 'system':
                 this.drawerTitle.textContent = 'System Operations';
@@ -159,6 +199,17 @@ export class SettingsPanel {
             }
         } catch (err) {
             console.warn('[SettingsPanel] Could not subscribe to /rosout:', err);
+        }
+    }
+
+    unsubscribeRosout() {
+        if (this.rosoutSubscription) {
+            try {
+                this.rosoutSubscription.unsubscribe();
+            } catch (err) {
+                console.warn('[SettingsPanel] Could not unsubscribe from /rosout:', err);
+            }
+            this.rosoutSubscription = null;
         }
     }
 }

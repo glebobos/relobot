@@ -75,7 +75,7 @@ def generate_launch_description():
                     'ros_threads': 2,
                     'default_stream_type': 'mjpeg',
                 }],
-                extra_arguments=[{'use_intra_process_comms': True}],
+                extra_arguments=[{'use_intra_process_comms': False}],
             ),
         ],
         output='screen',
