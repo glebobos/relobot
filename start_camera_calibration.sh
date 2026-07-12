@@ -69,6 +69,8 @@ fi
 # Prepare calibration arguments
 CALIB_ARGS=()
 if [ "$FISHEYE" = "true" ]; then
+  # Note: The typo "--fisheye-recompute-extrinsicsts" is intentional as it is hardcoded 
+  # with the spelling "extrinsicsts" in the ROS 2 Humble camera_calibration package.
   CALIB_ARGS+=(
     "--fisheye-recompute-extrinsicsts"
     "--fisheye-fix-skew"
