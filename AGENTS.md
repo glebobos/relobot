@@ -32,10 +32,6 @@ To start the entire stack:
 # Recommended launcher (adds --dev to rebuild nodes on startup):
 ./start_robot.sh up [--dev]
 
-# Alternatively, manual compose start:
-cd ros2_ws
-export HOST_IP=$(hostname -I | awk '{print $1}')
-docker compose up
 ```
 
 ### Developing a New Node (Agent)
@@ -45,7 +41,6 @@ docker compose up
     - Otherwise, you may reuse `ros:humble` base or existing images.
 3. **Orchestration**: Add a new service to `ros2_ws/docker-compose.yml`.
     - **Network**: Must use `network_mode: host` and `ipc: host`.
-    - **Discovery**: Must set `ROS_DISCOVERY_SERVER=${HOST_IP}:11811` and `ROS_SUPER_CLIENT=True`.
     - **Volumes**: Mount `.:/ros2_ws/` to allow code editing from host.
 4. **Build**:
     - The existing containers are configured to run `colcon build` on startup (via entrypoint scripts like `start_dev.sh` generated in Dockerfiles).
@@ -65,9 +60,8 @@ The web server frontend (`ros2_frontend` service) serves static files located in
 ## Commands
 | Action | Command |
 | :--- | :--- |
-| **Start All** | `./start_robot.sh up` or `cd ros2_ws && docker compose up` |
-| **Stop All** | `./start_robot.sh down` or `docker compose down` |
-| **Rebuild Node** | `docker compose restart <service_name>` |
+| **Start All** | `./start_robot.sh up --dev` |
+| **Stop All** | `./start_robot.sh down` |
 | **View Logs** | `docker compose logs -f` |
 | **Find Devices** | `python3 finddevice.py` |
 
