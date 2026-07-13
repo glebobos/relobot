@@ -65,7 +65,7 @@
 /* Sub-drawers & Config Modals */
 .c-settings-drawer {
     position: absolute;
-    top: 44px;
+    top: 0;
     left: 0;
     right: 0;
     bottom: 0;
@@ -296,6 +296,9 @@
 
 @media (orientation: landscape) {
     .c-settings-panel {
+        padding-top: 80px; /* Offset below absolute transparent header */
+    }
+    .c-settings-drawer {
         padding-top: 80px; /* Offset below absolute transparent header */
     }
 }
