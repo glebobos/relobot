@@ -1,6 +1,6 @@
 import { rosService } from '../../services/ros-service.js';
 import { TOPICS, MSG_TYPES } from '../../shared/constants.js';
-import { safeClear, safeCreateElement } from '../../shared/dom-utils.js';
+import { safeClear, safeCreateElement, appendLogLine } from '../../shared/dom-utils.js';
 import { renderNavigationSettings } from './panels/navigation-settings.js';
 import { renderLogsSettings } from './panels/logs-settings.js';
 import { renderSystemSettings } from './panels/system-settings.js';
@@ -167,7 +167,10 @@ export class SettingsPanel {
         // If the log screen is open, append immediately
         const consoleEl = document.getElementById('logs-console-box');
         if (consoleEl) {
-            consoleEl.textContent += logLine;
+            appendLogLine(consoleEl, logLine);
+            while (consoleEl.childNodes.length > this.maxLogs) {
+                consoleEl.removeChild(consoleEl.firstChild);
+            }
             consoleEl.scrollTop = consoleEl.scrollHeight;
         }
     }

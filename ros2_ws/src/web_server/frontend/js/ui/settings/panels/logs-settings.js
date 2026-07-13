@@ -1,6 +1,6 @@
 import { rosService } from '../../../services/ros-service.js';
 import { TOPICS, MSG_TYPES } from '../../../shared/constants.js';
-import { safeCreateElement } from '../../../shared/dom-utils.js';
+import { safeCreateElement, safeClear, appendLogLine } from '../../../shared/dom-utils.js';
 
 function dbmToPercent(dbm) {
     if (dbm === null || dbm === undefined) return 0;
@@ -91,7 +91,10 @@ export function renderLogsSettings(contentEl, context) {
 
     // Fill initial log lines from the buffer provided in context
     if (context && typeof context.getLogBuffer === 'function') {
-        consoleElement.textContent = context.getLogBuffer().join('');
+        safeClear(consoleElement);
+        context.getLogBuffer().forEach(line => {
+            appendLogLine(consoleElement, line);
+        });
     }
     contentEl.appendChild(consoleElement);
 
@@ -108,7 +111,7 @@ export function renderLogsSettings(contentEl, context) {
             context.clearLogs();
         }
         if (consoleElement) {
-            consoleElement.textContent = '';
+            safeClear(consoleElement);
         }
     });
     contentEl.appendChild(clearBtn);

@@ -55,19 +55,27 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         QosProfile::default(),
     )?;
 
-    // Spawn ROS 2 background spin task
-    tokio::task::spawn_blocking(move || {
-        loop {
-            node.spin_once(std::time::Duration::from_millis(10));
-            std::thread::sleep(std::time::Duration::from_millis(10));
-        }
-    });
+    // Spawn ROS 2 background spin task in a dedicated OS thread
+    let _spin_thread = std::thread::Builder::new()
+        .name("ros2_spin".to_string())
+        .spawn(move || {
+            let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(move || {
+                println!("[RosbridgeRust] ROS2 spin thread started.");
+                loop {
+                    node.spin_once(std::time::Duration::from_millis(10));
+                    std::thread::sleep(std::time::Duration::from_millis(10));
+                }
+            }));
+            eprintln!("[RosbridgeRust] FATAL: ROS2 spin thread panicked or exited: {:?}", result);
+            std::process::exit(1);
+        })?;
 
     // Spawn tf subscriber task
     let state_clone_tf = state.clone();
-    tokio::spawn(async move {
+    let tf_handle = tokio::spawn(async move {
         let mut last_sent: Option<std::time::Instant> = None;
         let throttle_duration = std::time::Duration::from_millis(40); // Max ~25 Hz
+        println!("[RosbridgeRust] TF subscriber task started");
         while let Some(msg) = tf_sub.next().await {
             let now = std::time::Instant::now();
             let should_send = match last_sent {
@@ -82,28 +90,49 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 last_sent = Some(now);
             }
         }
+        println!("[RosbridgeRust] WARNING: TF subscriber stream ended");
     });
 
     // Spawn map subscriber task
     let state_clone_map = state.clone();
-    tokio::spawn(async move {
+    let map_handle = tokio::spawn(async move {
+        println!("[RosbridgeRust] Map subscriber task started");
         while let Some(msg) = map_sub.next().await {
             if let Ok(val) = serde_json::to_value(&msg) {
                 *state_clone_map.map_json.write().await = Some(val.clone());
                 let _ = state_clone_map.map_tx.send(val);
             }
         }
+        println!("[RosbridgeRust] WARNING: Map subscriber stream ended");
     });
 
     // Spawn odom subscriber task
     let state_clone_odom = state.clone();
-    tokio::spawn(async move {
+    let odom_handle = tokio::spawn(async move {
+        println!("[RosbridgeRust] Odom subscriber task started");
         while let Some(msg) = odom_sub.next().await {
             if let Ok(val) = serde_json::to_value(&msg) {
                 *state_clone_odom.odom_json.write().await = Some(val.clone());
                 let _ = state_clone_odom.odom_tx.send(val);
             }
         }
+        println!("[RosbridgeRust] WARNING: Odom subscriber stream ended");
+    });
+
+    // Spawn task to monitor subscriber health
+    tokio::spawn(async move {
+        tokio::select! {
+            res = tf_handle => {
+                eprintln!("[RosbridgeRust] FATAL: TF subscriber task exited: {:?}", res);
+            }
+            res = map_handle => {
+                eprintln!("[RosbridgeRust] FATAL: Map subscriber task exited: {:?}", res);
+            }
+            res = odom_handle => {
+                eprintln!("[RosbridgeRust] FATAL: Odom subscriber task exited: {:?}", res);
+            }
+        }
+        std::process::exit(1);
     });
 
     // Start WebSocket Server on 0.0.0.0:9090
