@@ -65,7 +65,7 @@
 /* Sub-drawers & Config Modals */
 .c-settings-drawer {
     position: absolute;
-    top: 44px;
+    top: 0;
     left: 0;
     right: 0;
     bottom: 0;
@@ -177,13 +177,20 @@
     padding: 14px;
     font-family: 'Courier New', monospace;
     font-size: 11px;
-    color: #4af626;
+    color: #e2e8f0;
     min-height: 280px;
     flex: 1;
     overflow-y: auto;
     white-space: pre-wrap;
     text-align: left;
     border: 1px solid rgba(255,255,255,0.05);
+    user-select: text;
+    -webkit-user-select: text;
+}
+
+.c-logs-line {
+    line-height: 1.4;
+    word-break: break-all;
 }
 
 /* Toggle Switch Container */
@@ -289,6 +296,9 @@
 
 @media (orientation: landscape) {
     .c-settings-panel {
+        padding-top: 80px; /* Offset below absolute transparent header */
+    }
+    .c-settings-drawer {
         padding-top: 80px; /* Offset below absolute transparent header */
     }
 }

@@ -40,6 +40,7 @@ fi\n\
 \n\
 # Launch Python rosbridge on port 9091 in the background\n\
 ros2 launch /ros2_ws/src/rosbridge_webvideo_launch.py &\n\
+PYTHON_PID=$!\n\
 \n\
 # Wait for Python backend to initialize\n\
 for i in $(seq 1 30); do\n\
@@ -47,8 +48,16 @@ for i in $(seq 1 30); do\n\
   sleep 1\n\
 done\n\
 \n\
-# Run the Rust WebSocket server/proxy on port 9090 in foreground\n\
-/ros2_ws/src/rosbridge_rust/target/release/rosbridge_rust' > /start.sh && \
+# Run the Rust WebSocket server/proxy on port 9090 in the background\n\
+/ros2_ws/src/rosbridge_rust/target/release/rosbridge_rust &\n\
+RUST_PID=$!\n\
+\n\
+# Wait for either process to exit\n\
+wait -n\n\
+\n\
+# If one exited, kill the other and exit\n\
+kill $PYTHON_PID $RUST_PID 2>/dev/null || true\n\
+exit 1' > /start.sh && \
 chmod +x /start.sh
 
 CMD ["/start.sh"]
