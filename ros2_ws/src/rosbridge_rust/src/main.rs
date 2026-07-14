@@ -13,10 +13,10 @@ use tokio_tungstenite::tungstenite::Message;
 struct SharedState {
     tf_json: RwLock<Option<Value>>,
     map_json: RwLock<Option<Value>>,
-    odom_json: RwLock<Option<Value>>,
+    pose_json: RwLock<Option<Value>>,
     tf_tx: broadcast::Sender<Value>,
     map_tx: broadcast::Sender<Value>,
-    odom_tx: broadcast::Sender<Value>,
+    pose_tx: broadcast::Sender<Value>,
 }
 
 #[tokio::main]
@@ -30,15 +30,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Broadcast channels for active topics
     let (tf_tx, _) = broadcast::channel(100);
     let (map_tx, _) = broadcast::channel(10);
-    let (odom_tx, _) = broadcast::channel(100);
+    let (pose_tx, _) = broadcast::channel(100);
 
     let state = Arc::new(SharedState {
         tf_json: RwLock::new(None),
         map_json: RwLock::new(None),
-        odom_json: RwLock::new(None),
+        pose_json: RwLock::new(None),
         tf_tx: tf_tx.clone(),
         map_tx: map_tx.clone(),
-        odom_tx: odom_tx.clone(),
+        pose_tx: pose_tx.clone(),
     });
 
     // Native ROS 2 Subscriptions
@@ -50,8 +50,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .reliable()
             .keep_last(1),
     )?;
-    let mut odom_sub = node.subscribe::<r2r::nav_msgs::msg::Odometry>(
-        "/odometry/filtered",
+    let mut pose_sub = node.subscribe::<r2r::geometry_msgs::msg::PoseStamped>(
+        "/robot_pose",
         QosProfile::default(),
     )?;
 
@@ -106,17 +106,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("[RosbridgeRust] WARNING: Map subscriber stream ended");
     });
 
-    // Spawn odom subscriber task
-    let state_clone_odom = state.clone();
-    let odom_handle = tokio::spawn(async move {
-        println!("[RosbridgeRust] Odom subscriber task started");
-        while let Some(msg) = odom_sub.next().await {
+    // Spawn robot pose subscriber task
+    let state_clone_pose = state.clone();
+    let pose_handle = tokio::spawn(async move {
+        println!("[RosbridgeRust] Robot pose subscriber task started");
+        while let Some(msg) = pose_sub.next().await {
             if let Ok(val) = serde_json::to_value(&msg) {
-                *state_clone_odom.odom_json.write().await = Some(val.clone());
-                let _ = state_clone_odom.odom_tx.send(val);
+                *state_clone_pose.pose_json.write().await = Some(val.clone());
+                let _ = state_clone_pose.pose_tx.send(val);
             }
         }
-        println!("[RosbridgeRust] WARNING: Odom subscriber stream ended");
+        println!("[RosbridgeRust] WARNING: Robot pose subscriber stream ended");
     });
 
     // Spawn task to monitor subscriber health
@@ -128,8 +128,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             res = map_handle => {
                 eprintln!("[RosbridgeRust] FATAL: Map subscriber task exited: {:?}", res);
             }
-            res = odom_handle => {
-                eprintln!("[RosbridgeRust] FATAL: Odom subscriber task exited: {:?}", res);
+            res = pose_handle => {
+                eprintln!("[RosbridgeRust] FATAL: Robot pose subscriber task exited: {:?}", res);
             }
         }
         std::process::exit(1);
@@ -212,7 +212,7 @@ async fn handle_connection(
                 let topic = json_val["topic"].as_str().unwrap_or("");
                 let id = json_val["id"].as_str().map(|s| s.to_string());
 
-                if op == "subscribe" && (topic == "/tf" || topic == "/map" || topic == "/odometry/filtered") {
+                if op == "subscribe" && (topic == "/tf" || topic == "/map" || topic == "/robot_pose") {
                     let key = (topic.to_string(), id.clone());
                     if !active_subs.contains_key(&key) {
                         println!("[RosbridgeRust] Subscribing locally to {}", topic);
@@ -228,7 +228,7 @@ async fn handle_connection(
                             let cached = match topic_str.as_str() {
                                 "/tf" => state_clone.tf_json.read().await.clone(),
                                 "/map" => state_clone.map_json.read().await.clone(),
-                                "/odometry/filtered" => state_clone.odom_json.read().await.clone(),
+                                "/robot_pose" => state_clone.pose_json.read().await.clone(),
                                 _ => None,
                             };
 
@@ -256,8 +256,8 @@ async fn handle_connection(
                                     let rx = state_clone.map_tx.subscribe();
                                     forward_broadcast_to_browser(rx, topic_str, id_clone, browser_out_tx_clone).await;
                                 }
-                                "/odometry/filtered" => {
-                                    let rx = state_clone.odom_tx.subscribe();
+                                "/robot_pose" => {
+                                    let rx = state_clone.pose_tx.subscribe();
                                     forward_broadcast_to_browser(rx, topic_str, id_clone, browser_out_tx_clone).await;
                                 }
                                 _ => {}
@@ -265,7 +265,7 @@ async fn handle_connection(
                         });
                         active_subs.insert(key, handle);
                     }
-                } else if op == "unsubscribe" && (topic == "/tf" || topic == "/map" || topic == "/odometry/filtered") {
+                } else if op == "unsubscribe" && (topic == "/tf" || topic == "/map" || topic == "/robot_pose") {
                     let key = (topic.to_string(), id.clone());
                     if let Some(handle) = active_subs.remove(&key) {
                         println!("[RosbridgeRust] Unsubscribing locally from {}", topic);
