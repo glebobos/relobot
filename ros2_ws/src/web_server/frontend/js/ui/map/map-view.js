@@ -95,7 +95,6 @@ export class MapView {
         this.activeNavTarget = null;
         this.arrivalTimer = null;
         this.robotPosition = null;
-        this._mapToOdom = null;     // THREE.Matrix4: map→odom correction from SLAM
         this.poseBuffer = [];
         this._chaseSpeed = 0;       // EMA-smoothed speed for constant-velocity rendering
         this._lastAnimTime = 0;     // previous animation frame timestamp
@@ -1529,55 +1528,21 @@ export class MapView {
             this.topics.push(obstaclesTopic);
         }
 
-        const tfSub = rosService.createTopicV2('/tf', 'tf2_msgs/msg/TFMessage', {
-            throttle_rate: 200
+        // The backend `robot_pose_publisher` node (nav2 package) already
+        // resolves map -> base_link via tf2 and republishes it here, so the
+        // UI no longer needs to combine /tf (map->odom) and
+        // /odometry/filtered (odom->base_link) itself.
+        const robotPoseSub = rosService.createTopicV2(TOPICS.ROBOT_POSE, MSG_TYPES.POSE_STAMPED, {
+            throttle_rate: 33
         });
-        if (tfSub) {
-            tfSub.subscribe((message) => {
-                if (!message || !message.transforms) return;
-                for (const t of message.transforms) {
-                    const parent = (t.header.frame_id || '').replace(/^\/+/, '');
-                    const child = (t.child_frame_id || '').replace(/^\/+/, '');
-                    if (parent === 'map' && child === 'odom') {
-                        const tr = t.transform.translation;
-                        const ro = t.transform.rotation;
-                        this._mapToOdom = new THREE.Matrix4().compose(
-                            new THREE.Vector3(tr.x, tr.y, tr.z),
-                            new THREE.Quaternion(ro.x, ro.y, ro.z, ro.w),
-                            new THREE.Vector3(1, 1, 1)
-                        );
-                    }
-                }
-            });
-            this.topics.push(tfSub);
-        }
-
-        const odomSub = rosService.createTopicV2(TOPICS.ODOMETRY, 'nav_msgs/msg/Odometry', {
-            throttle_rate: 50
-        });
-        if (odomSub) {
-            odomSub.subscribe((message) => {
-                const p = message.pose.pose.position;
-                const q = message.pose.pose.orientation;
-
-                const odomMatrix = new THREE.Matrix4().compose(
-                    new THREE.Vector3(p.x, p.y, p.z),
-                    new THREE.Quaternion(q.x, q.y, q.z, q.w),
-                    new THREE.Vector3(1, 1, 1)
-                );
-
-                const mapMatrix = this._mapToOdom
-                    ? this._mapToOdom.clone().multiply(odomMatrix)
-                    : odomMatrix;
-
-                const position = new THREE.Vector3();
-                const quaternion = new THREE.Quaternion();
-                const scale = new THREE.Vector3();
-                mapMatrix.decompose(position, quaternion, scale);
+        if (robotPoseSub) {
+            robotPoseSub.subscribe((message) => {
+                const p = message.pose.position;
+                const q = message.pose.orientation;
 
                 this.poseBuffer.push({
-                    position: new THREE.Vector3(position.x, position.y, 0.01),
-                    quaternion: quaternion,
+                    position: new THREE.Vector3(p.x, p.y, 0.01),
+                    quaternion: new THREE.Quaternion(q.x, q.y, q.z, q.w),
                     timestamp: performance.now()
                 });
                 const cutoff = performance.now() - CUTOFF_TIME_MS;
@@ -1586,8 +1551,8 @@ export class MapView {
                 }
 
                 if (this.activeNavTarget) {
-                    const dx = position.x - this.activeNavTarget.x;
-                    const dy = position.y - this.activeNavTarget.y;
+                    const dx = p.x - this.activeNavTarget.x;
+                    const dy = p.y - this.activeNavTarget.y;
                     const dist = Math.sqrt(dx * dx + dy * dy);
 
                     if (dist < ARRIVAL_DISTANCE) {
@@ -1600,7 +1565,7 @@ export class MapView {
                     }
                 }
             });
-            this.topics.push(odomSub);
+            this.topics.push(robotPoseSub);
         }
 
         const mapTopic = rosService.createTopicV2('/map', 'nav_msgs/msg/OccupancyGrid', {

@@ -152,6 +152,15 @@ def generate_launch_description():
         remappings=remappings,
     )
 
+    robot_pose_publisher_node = Node(
+        package='nav2',
+        executable='robot_pose_publisher',
+        name='robot_pose_publisher',
+        output='screen',
+        arguments=['--ros-args', '--log-level', log_level],
+        remappings=remappings,
+    )
+
     # Component container for composition mode
     container = Node(
         condition=IfCondition(use_composition),
@@ -362,5 +371,6 @@ def generate_launch_description():
     ld.add_action(slam_toolbox_node)
     ld.add_action(explore_node)
     ld.add_action(coverage_manager_node)
+    ld.add_action(robot_pose_publisher_node)
 
     return ld

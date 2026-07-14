@@ -28,6 +28,7 @@ setup(
         'console_scripts': [
             'coverage_manager = frontier_explorer.coverage_manager:main',
             'coverage_preview_test = frontier_explorer.coverage_preview_test:main',
+            'robot_pose_publisher = frontier_explorer.robot_pose_publisher:main',
         ],
     },
 )
