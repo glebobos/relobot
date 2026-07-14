@@ -17,7 +17,7 @@ const CHASE_CLOSE_TIME = 0.15;
 const EMA_DECAY = 0.93;
 const EMA_GROWTH = 0.07;
 const ROTATION_SMOOTH_FACTOR = 3.0;
-const ARRIVAL_DISTANCE = 0.25;
+const ARRIVAL_DISTANCE = 0.20;
 const CUTOFF_TIME_MS = 1500;
 const MAP_THROTTLE_RATE = 2000;
 const WALL_COLOR = 0x1f242e;
@@ -45,9 +45,6 @@ export class MapView {
         // Map components
         this.mapGroup = null;
         this.floorMesh = null;
-        this.floorCanvas = null;
-        this.floorCtx = null;
-        this.floorTexture = null;
 
         // Cached map geometries/materials & Instanced Meshes
         this.wallGeometry = null;
@@ -103,6 +100,28 @@ export class MapView {
         this._chaseSpeed = 0;       // EMA-smoothed speed for constant-velocity rendering
         this._lastAnimTime = 0;     // previous animation frame timestamp
 
+        // Animation states for growing meshes
+        this.wallCells = [];
+        this.wallResolution = 0.05;
+        this.wallCellsMap = new Map();
+        this.wallMeshAnimating = false;
+        this.wallMeshReady = false;
+
+        this.unexploredCells = [];
+        this.unexploredResolution = 0.05;
+        this.unexploredCellsMap = new Map();
+        this.unexploredMeshAnimating = false;
+        this.unexploredMeshReady = false;
+
+        // Obstacles (3D)
+        this.obstacleSegments = [];
+        this.obstacleSegmentsMap = new Map();
+        this.obstacleMesh = null;
+        this.obstacleGeometry = null;
+        this.obstacleMaterial = null;
+        this.obstacleMeshAnimating = false;
+        this.obstacleMeshReady = false;
+
         // Initialize consolidated interaction handler
         this.interactionHandler = new MapInteractionHandler(this);
 
@@ -152,7 +171,6 @@ export class MapView {
         // Scene
         this.scene = new THREE.Scene();
         this.scene.background = new THREE.Color(0x0c0f14);
-        this.scene.fog = new THREE.Fog(0x0c0f14, 8, 20);
 
         // Camera - Z is UP in ROS
         this.camera = new THREE.PerspectiveCamera(52, containerWidth / containerHeight, 0.1, 100);
@@ -310,12 +328,48 @@ export class MapView {
         }
 
         this.animateRobotSmoothing(dt);
+        this.animateMapGrowth();
 
         if (this.renderer && this.scene && this.camera) {
             this.renderer.render(this.scene, this.camera);
         }
 
         this.animationFrameId = requestAnimationFrame(() => this.animate());
+    }
+
+    animateMapGrowth() {
+        const now = performance.now();
+
+        // Animate new floor fade-in and dispose of old floor only after it's complete
+        if (this.floorMesh && this.floorMesh.material && this.floorMesh.material.opacity < 1.0) {
+            const elapsed = now - this.newFloorStartTime;
+            const t = Math.min(elapsed / this.newFloorDuration, 1.0);
+            this.floorMesh.material.opacity = t;
+
+            if (t >= 1.0) {
+                this.floorMesh.material.transparent = false;
+                this.floorMesh.material.needsUpdate = true;
+                if (this.oldFloorMesh) {
+                    this.mapGroup.remove(this.oldFloorMesh);
+                    if (this.oldFloorMesh.geometry) this.oldFloorMesh.geometry.dispose();
+                    if (this.oldFloorMesh.material) {
+                        if (this.oldFloorMesh.material.map) this.oldFloorMesh.material.map.dispose();
+                        this.oldFloorMesh.material.dispose();
+                    }
+                    this.oldFloorMesh = null;
+                }
+            }
+        }
+
+        if (this.wallMeshAnimating || !this.wallMeshReady) {
+            this.updateWallMeshInstances(this.wallResolution);
+        }
+        if (this.unexploredMeshAnimating || !this.unexploredMeshReady) {
+            this.updateUnexploredMeshInstances(this.unexploredResolution);
+        }
+        if (this.obstacleMeshAnimating || !this.obstacleMeshReady) {
+            this.updateObstacleMeshInstances();
+        }
     }
 
     animateRobotSmoothing(dt) {
@@ -382,9 +436,47 @@ export class MapView {
         }
     }
 
+    arraysEqual(a, b) {
+        if (!a || !b) return false;
+        if (a.length !== b.length) return false;
+        for (let i = 0; i < a.length; i++) {
+            if (a[i] !== b[i]) return false;
+        }
+        return true;
+    }
+
     handleMapUpdate(msg) {
         if (!msg || !msg.info || !msg.data) return;
         if (this._isUpdatingMap) return;
+
+        // Check if map data has actually changed
+        const info = msg.info;
+        const origin = info.origin;
+        if (
+            this._lastMapWidth === info.width &&
+            this._lastMapHeight === info.height &&
+            this._lastMapResolution === info.resolution &&
+            this._lastMapOrigin &&
+            this._lastMapOrigin.position.x === origin.position.x &&
+            this._lastMapOrigin.position.y === origin.position.y &&
+            this._lastMapOrigin.orientation.z === origin.orientation.z &&
+            this._lastMapOrigin.orientation.w === origin.orientation.w &&
+            this._lastMapData &&
+            this.arraysEqual(this._lastMapData, msg.data)
+        ) {
+            return;
+        }
+
+        // Cache new map metadata and data
+        this._lastMapWidth = info.width;
+        this._lastMapHeight = info.height;
+        this._lastMapResolution = info.resolution;
+        this._lastMapOrigin = {
+            position: { x: origin.position.x, y: origin.position.y, z: origin.position.z },
+            orientation: { x: origin.orientation.x, y: origin.orientation.y, z: origin.orientation.z, w: origin.orientation.w }
+        };
+        this._lastMapData = new Int8Array(msg.data);
+
         this._isUpdatingMap = true;
 
         try {
@@ -433,10 +525,10 @@ export class MapView {
             this.updateFloorPlane(width, height, resolution, data);
 
             // Render 3D Walls (occupied cells)
-            this.updateWallMesh(resolution, occupiedCells);
+            this.updateWallMesh(resolution, occupiedCells, origin);
 
             // Render unexplored boundary cells
-            this.updateUnexploredMesh(resolution, unexploredBoundaryCells);
+            this.updateUnexploredMesh(resolution, unexploredBoundaryCells, origin);
         } finally {
             this._isUpdatingMap = false;
         }
@@ -446,99 +538,115 @@ export class MapView {
         const mapWidth = width * resolution;
         const mapHeight = height * resolution;
 
+        // Save current floorMesh as old floor for cross-fade
         if (this.floorMesh) {
-            const geom = this.floorMesh.geometry;
-            const params = geom.parameters;
-            if (params.width !== mapWidth || params.height !== mapHeight) {
-                this.mapGroup.remove(this.floorMesh);
-                this.floorMesh.geometry.dispose();
-                this.floorMesh.material.map.dispose();
-                this.floorMesh.material.dispose();
-                this.floorMesh = null;
+            if (this.oldFloorMesh) {
+                // If there's an older one still fading, dispose it immediately
+                this.mapGroup.remove(this.oldFloorMesh);
+                if (this.oldFloorMesh.geometry) this.oldFloorMesh.geometry.dispose();
+                if (this.oldFloorMesh.material) {
+                    if (this.oldFloorMesh.material.map) this.oldFloorMesh.material.map.dispose();
+                    this.oldFloorMesh.material.dispose();
+                }
             }
+            this.oldFloorMesh = this.floorMesh;
+            // Push old floor slightly down in Z so new floor renders on top
+            this.oldFloorMesh.position.z = -0.002;
+            this.oldFloorMesh.renderOrder = -11;
+            
+            // Keep old floor fully opaque! No fade out needed!
+            if (this.oldFloorMesh.material) {
+                this.oldFloorMesh.material.transparent = true;
+                this.oldFloorMesh.material.opacity = 1.0;
+            }
+            this.oldFloorStartTime = performance.now();
+            this.oldFloorDuration = 800;
         }
 
-        if (!this.floorMesh) {
-            this.floorCanvas = document.createElement('canvas');
-            this.floorCanvas.width = width;
-            this.floorCanvas.height = height;
-            this.floorCtx = this.floorCanvas.getContext('2d');
-
-            this.floorTexture = new THREE.CanvasTexture(this.floorCanvas);
-            this.floorTexture.minFilter = THREE.NearestFilter;
-            this.floorTexture.magFilter = THREE.NearestFilter;
-            this.floorTexture.colorSpace = THREE.SRGBColorSpace;
-
-            const floorGeom = new THREE.PlaneGeometry(mapWidth, mapHeight);
-            const floorMat = new THREE.MeshStandardMaterial({
-                map: this.floorTexture,
-                roughness: 0.8,
-                metalness: 0.05
-            });
-
-            this.floorMesh = new THREE.Mesh(floorGeom, floorMat);
-            this.floorMesh.receiveShadow = true;
-            this.floorMesh.position.set(mapWidth / 2, mapHeight / 2, 0);
-            this.mapGroup.add(this.floorMesh);
-        }
-
-        const imgData = this.floorCtx.createImageData(width, height);
+        const size = width * height;
+        const textureData = new Uint8Array(4 * size);
         for (let r = 0; r < height; r++) {
             const canvasRow = height - 1 - r; // Flip vertically to match ROS Y-up coordinates
             for (let c = 0; c < width; c++) {
                 const mapIdx = r * width + c;
-                const canvasIdx = (canvasRow * width + c) * 4;
+                const texIdx = (canvasRow * width + c) * 4;
                 const val = data[mapIdx];
+
+                let red = 12, green = 15, blue = 20; // Default: unexplored (#0c0f14)
 
                 if (val === 0) {
                     // Explored free space: beautiful POC green (#6e9868)
-                    imgData.data[canvasIdx] = 110;
-                    imgData.data[canvasIdx + 1] = 152;
-                    imgData.data[canvasIdx + 2] = 104;
-                    imgData.data[canvasIdx + 3] = 255;
+                    red = 110;
+                    green = 152;
+                    blue = 104;
                 } else if (val === 100) {
                     // Occupied space: dark charcoal base
-                    imgData.data[canvasIdx] = 20;
-                    imgData.data[canvasIdx + 1] = 22;
-                    imgData.data[canvasIdx + 2] = 24;
-                    imgData.data[canvasIdx + 3] = 255;
-                } else {
-                    // Unexplored: blend into dark background (#0c0f14)
-                    imgData.data[canvasIdx] = 12;
-                    imgData.data[canvasIdx + 1] = 15;
-                    imgData.data[canvasIdx + 2] = 20;
-                    imgData.data[canvasIdx + 3] = 255;
+                    red = 20;
+                    green = 22;
+                    blue = 24;
                 }
+
+                // Add a subtle grid/border pattern overlay for high-tech aesthetics directly in buffer
+                // (Grid lines every 10 pixels, blending 2% white: val_new = val_old * 0.98 + 5.1)
+                const isGridLine = (c % 10 === 0) || (canvasRow % 10 === 0);
+                if (isGridLine) {
+                    red = Math.round(red * 0.98 + 5.1);
+                    green = Math.round(green * 0.98 + 5.1);
+                    blue = Math.round(blue * 0.98 + 5.1);
+                }
+
+                textureData[texIdx] = red;
+                textureData[texIdx + 1] = green;
+                textureData[texIdx + 2] = blue;
+                textureData[texIdx + 3] = 255;
             }
         }
 
-        this.floorCtx.putImageData(imgData, 0, 0);
+        const floorTexture = new THREE.DataTexture(textureData, width, height, THREE.RGBAFormat);
+        floorTexture.minFilter = THREE.NearestFilter;
+        floorTexture.magFilter = THREE.NearestFilter;
+        floorTexture.colorSpace = THREE.SRGBColorSpace;
+        floorTexture.flipY = true;
+        floorTexture.needsUpdate = true;
 
-        // Add a subtle grid/border pattern overlay for high-tech aesthetics
-        this.floorCtx.strokeStyle = 'rgba(255, 255, 255, 0.02)';
-        this.floorCtx.lineWidth = 1;
-        for (let c = 0; c <= width; c += 10) {
-            this.floorCtx.beginPath();
-            this.floorCtx.moveTo(c, 0);
-            this.floorCtx.lineTo(c, height);
-            this.floorCtx.stroke();
-        }
-        for (let r = 0; r <= height; r += 10) {
-            this.floorCtx.beginPath();
-            this.floorCtx.moveTo(0, r);
-            this.floorCtx.lineTo(width, r);
-            this.floorCtx.stroke();
-        }
+        const floorGeom = new THREE.PlaneGeometry(mapWidth, mapHeight);
+        const floorMat = new THREE.MeshStandardMaterial({
+            map: floorTexture,
+            roughness: 0.8,
+            metalness: 0.05,
+            transparent: true,
+            opacity: 0.0 // Start fully transparent for fade-in
+        });
 
-        this.floorTexture.needsUpdate = true;
+        this.floorMesh = new THREE.Mesh(floorGeom, floorMat);
+        this.floorMesh.receiveShadow = true;
+        this.floorMesh.position.set(mapWidth / 2, mapHeight / 2, 0);
+        this.floorMesh.renderOrder = -10;
+        this.mapGroup.add(this.floorMesh);
+
+        this.newFloorStartTime = performance.now();
+        this.newFloorDuration = 800; // 800ms fade in
     }
 
-    updateWallMesh(resolution, cells) {
+    easeOutBack(t) {
+        const c1 = 2.0;
+        const c3 = c1 + 1;
+        return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+    }
+
+    updateWallMesh(resolution, cells, origin) {
+        this.wallResolution = resolution;
+        this.wallCells = cells;
+        this.wallOrigin = origin;
+
         if (cells.length === 0) {
             if (this.wallMesh) {
                 this.mapGroup.remove(this.wallMesh);
                 this.wallMesh = null;
             }
+            this.wallCellsMap.clear();
+            this.wallMeshReady = true;
+            this.wallMeshAnimating = false;
             return;
         }
 
@@ -568,25 +676,112 @@ export class MapView {
             this.wallMesh = new THREE.InstancedMesh(this.wallGeometry, this.wallMaterial, cells.length);
             this.wallMesh.castShadow = true;
             this.wallMesh.receiveShadow = true;
+            this.wallMesh.frustumCulled = false;
             this.mapGroup.add(this.wallMesh);
         }
 
-        const dummy = new THREE.Object3D();
+        // Update animation tracking map
+        const now = performance.now();
+        const incomingKeys = new Set();
+
         for (let i = 0; i < cells.length; i++) {
-            const { r, c } = cells[i];
-            dummy.position.set((c + 0.5) * resolution, (r + 0.5) * resolution, WALL_HEIGHT / 2);
+            const cell = cells[i];
+            const cellMapX = origin.position.x + (cell.c + 0.5) * resolution;
+            const cellMapY = origin.position.y + (cell.r + 0.5) * resolution;
+            const key = cellMapX.toFixed(3) + ',' + cellMapY.toFixed(3);
+            incomingKeys.add(key);
+
+            if (!this.wallCellsMap.has(key)) {
+                // Determine delay based on distance to robot
+                let delay = 0;
+                if (this.robotPosition) {
+                    const dx = cellMapX - this.robotPosition.x;
+                    const dy = cellMapY - this.robotPosition.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    delay = Math.min(dist * 150, 1000); // 150ms per meter, max 1s
+                } else {
+                    delay = Math.random() * 300;
+                }
+
+                this.wallCellsMap.set(key, {
+                    r: cell.r,
+                    c: cell.c,
+                    startTime: now,
+                    delay: delay,
+                    duration: 600 + Math.random() * 200 // 600-800ms duration
+                });
+            }
+        }
+
+        // Remove stale cells
+        for (const key of this.wallCellsMap.keys()) {
+            if (!incomingKeys.has(key)) {
+                this.wallCellsMap.delete(key);
+            }
+        }
+
+        this.wallMeshReady = false; // Trigger matrix updates
+        this.updateWallMeshInstances(resolution);
+    }
+
+    updateWallMeshInstances(resolution) {
+        if (!this.wallMesh || !this.wallCells) return;
+        const now = performance.now();
+        const dummy = new THREE.Object3D();
+        let anyAnimating = false;
+
+        for (let i = 0; i < this.wallCells.length; i++) {
+            const cell = this.wallCells[i];
+            const cellMapX = this.wallOrigin ? (this.wallOrigin.position.x + (cell.c + 0.5) * resolution) : (cell.c + 0.5) * resolution;
+            const cellMapY = this.wallOrigin ? (this.wallOrigin.position.y + (cell.r + 0.5) * resolution) : (cell.r + 0.5) * resolution;
+            const key = this.wallOrigin ? (cellMapX.toFixed(3) + ',' + cellMapY.toFixed(3)) : (cell.r + ',' + cell.c);
+            const anim = this.wallCellsMap.get(key);
+
+            let scaleZ = 1.0;
+            if (anim) {
+                const elapsed = now - anim.startTime;
+                if (elapsed < anim.delay) {
+                    scaleZ = 0.0001; // Avoid exact 0 scale to prevent singular matrix warning
+                    anyAnimating = true;
+                } else {
+                    const progress = elapsed - anim.delay;
+                    if (progress < anim.duration) {
+                        const t = progress / anim.duration;
+                        scaleZ = Math.max(0.0001, this.easeOutBack(t));
+                        anyAnimating = true;
+                    } else {
+                        scaleZ = 1.0;
+                    }
+                }
+            }
+
+            dummy.position.set(
+                (cell.c + 0.5) * resolution,
+                (cell.r + 0.5) * resolution,
+                (scaleZ * WALL_HEIGHT) / 2
+            );
+            dummy.scale.set(1, 1, scaleZ);
             dummy.updateMatrix();
             this.wallMesh.setMatrixAt(i, dummy.matrix);
         }
         this.wallMesh.instanceMatrix.needsUpdate = true;
+        this.wallMeshAnimating = anyAnimating;
+        this.wallMeshReady = !anyAnimating;
     }
 
-    updateUnexploredMesh(resolution, cells) {
+    updateUnexploredMesh(resolution, cells, origin) {
+        this.unexploredResolution = resolution;
+        this.unexploredCells = cells;
+        this.unexploredOrigin = origin;
+
         if (cells.length === 0) {
             if (this.unexploredMesh) {
                 this.mapGroup.remove(this.unexploredMesh);
                 this.unexploredMesh = null;
             }
+            this.unexploredCellsMap.clear();
+            this.unexploredMeshReady = true;
+            this.unexploredMeshAnimating = false;
             return;
         }
 
@@ -604,7 +799,8 @@ export class MapView {
                 roughness: 0.1,
                 metalness: 0.9,
                 transparent: true,
-                opacity: 0.32
+                opacity: 0.32,
+                depthWrite: false
             });
         }
 
@@ -616,17 +812,98 @@ export class MapView {
                 this.unexploredMesh = null;
             }
             this.unexploredMesh = new THREE.InstancedMesh(this.unexploredGeometry, this.unexploredMaterial, cells.length);
+            this.unexploredMesh.frustumCulled = false;
+            this.unexploredMesh.renderOrder = 10;
             this.mapGroup.add(this.unexploredMesh);
         }
 
-        const dummy = new THREE.Object3D();
+        // Update animation tracking map
+        const now = performance.now();
+        const incomingKeys = new Set();
+
         for (let i = 0; i < cells.length; i++) {
-            const { r, c } = cells[i];
-            dummy.position.set((c + 0.5) * resolution, (r + 0.5) * resolution, BOUNDARY_HEIGHT / 2);
+            const cell = cells[i];
+            const cellMapX = origin.position.x + (cell.c + 0.5) * resolution;
+            const cellMapY = origin.position.y + (cell.r + 0.5) * resolution;
+            const key = cellMapX.toFixed(3) + ',' + cellMapY.toFixed(3);
+            incomingKeys.add(key);
+
+            if (!this.unexploredCellsMap.has(key)) {
+                // Determine delay based on distance to robot
+                let delay = 0;
+                if (this.robotPosition) {
+                    const dx = cellMapX - this.robotPosition.x;
+                    const dy = cellMapY - this.robotPosition.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    delay = Math.min(dist * 150, 1000); // 150ms per meter, max 1s
+                } else {
+                    delay = Math.random() * 300;
+                }
+
+                this.unexploredCellsMap.set(key, {
+                    r: cell.r,
+                    c: cell.c,
+                    startTime: now,
+                    delay: delay,
+                    duration: 600 + Math.random() * 200 // 600-800ms duration
+                });
+            }
+        }
+
+        // Remove stale cells
+        for (const key of this.unexploredCellsMap.keys()) {
+            if (!incomingKeys.has(key)) {
+                this.unexploredCellsMap.delete(key);
+            }
+        }
+
+        this.unexploredMeshReady = false; // Trigger matrix updates
+        this.updateUnexploredMeshInstances(resolution);
+    }
+
+    updateUnexploredMeshInstances(resolution) {
+        if (!this.unexploredMesh || !this.unexploredCells) return;
+        const now = performance.now();
+        const dummy = new THREE.Object3D();
+        let anyAnimating = false;
+
+        for (let i = 0; i < this.unexploredCells.length; i++) {
+            const cell = this.unexploredCells[i];
+            const cellMapX = this.unexploredOrigin ? (this.unexploredOrigin.position.x + (cell.c + 0.5) * resolution) : (cell.c + 0.5) * resolution;
+            const cellMapY = this.unexploredOrigin ? (this.unexploredOrigin.position.y + (cell.r + 0.5) * resolution) : (cell.r + 0.5) * resolution;
+            const key = this.unexploredOrigin ? (cellMapX.toFixed(3) + ',' + cellMapY.toFixed(3)) : (cell.r + ',' + cell.c);
+            const anim = this.unexploredCellsMap.get(key);
+
+            let scaleZ = 1.0;
+            if (anim) {
+                const elapsed = now - anim.startTime;
+                if (elapsed < anim.delay) {
+                    scaleZ = 0.0001;
+                    anyAnimating = true;
+                } else {
+                    const progress = elapsed - anim.delay;
+                    if (progress < anim.duration) {
+                        const t = progress / anim.duration;
+                        scaleZ = Math.max(0.0001, this.easeOutBack(t));
+                        anyAnimating = true;
+                    } else {
+                        scaleZ = 1.0;
+                    }
+                }
+            }
+
+            dummy.position.set(
+                (cell.c + 0.5) * resolution,
+                (cell.r + 0.5) * resolution,
+                (scaleZ * BOUNDARY_HEIGHT) / 2
+            );
+            dummy.scale.set(1, 1, scaleZ);
             dummy.updateMatrix();
             this.unexploredMesh.setMatrixAt(i, dummy.matrix);
         }
         this.unexploredMesh.instanceMatrix.needsUpdate = true;
+        this.unexploredMeshAnimating = anyAnimating;
+        this.unexploredMeshReady = !anyAnimating;
     }
 
     clearGroup(group) {
@@ -713,8 +990,17 @@ export class MapView {
     renderObstacles(msg) {
         if (!msg || !msg.data) {
             this.obstacleLines.forEach(l => l.clear());
+            if (this.obstacleMesh) {
+                this.obstacleLayer.remove(this.obstacleMesh);
+                this.obstacleMesh = null;
+            }
+            this.obstacleSegments = [];
+            this.obstacleSegmentsMap.clear();
+            this.obstacleMeshReady = true;
+            this.obstacleMeshAnimating = false;
             return;
         }
+
         let polygons;
         try {
             polygons = JSON.parse(msg.data);
@@ -728,6 +1014,7 @@ export class MapView {
             return;
         }
 
+        // Draw flat 2D boundary lines (existing logic)
         const MAX_COORD = 100.0;
         let lineIdx = 0;
 
@@ -766,6 +1053,163 @@ export class MapView {
         for (let i = lineIdx; i < this.obstacleLines.length; i++) {
             this.obstacleLines[i].clear();
         }
+
+        // Now process 3D obstacles
+        const obstacleHeight = WALL_HEIGHT * 1.25; // slightly taller to stand out
+        const thickness = 0.04; // 4cm thick laser fence / wall
+
+        // Convert polygons to segments
+        const newSegments = [];
+        polygons.forEach((poly, polyIdx) => {
+            if (!Array.isArray(poly) || poly.length < 3) return;
+            const validPts = poly.filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y));
+            if (validPts.length < 3) return;
+
+            // Ensure closed loop
+            const pts = [...validPts];
+            if (Math.abs(pts[0].x - pts[pts.length - 1].x) > 1e-4 ||
+                Math.abs(pts[0].y - pts[pts.length - 1].y) > 1e-4) {
+                pts.push(pts[0]);
+            }
+
+            for (let i = 0; i < pts.length - 1; i++) {
+                const A = pts[i];
+                const B = pts[i + 1];
+                const k1 = `${A.x.toFixed(2)},${A.y.toFixed(2)}`;
+                const k2 = `${B.x.toFixed(2)},${B.y.toFixed(2)}`;
+                const key = k1 < k2 ? `${k1}->${k2}` : `${k2}->${k1}`;
+
+                newSegments.push({
+                    key,
+                    A,
+                    B,
+                    polyIdx,
+                    segIdx: i
+                });
+            }
+        });
+
+        this.obstacleSegments = newSegments;
+
+        if (newSegments.length === 0) {
+            if (this.obstacleMesh) {
+                this.obstacleLayer.remove(this.obstacleMesh);
+                this.obstacleMesh = null;
+            }
+            this.obstacleSegmentsMap.clear();
+            this.obstacleMeshReady = true;
+            this.obstacleMeshAnimating = false;
+            return;
+        }
+
+        // Geometry & Material
+        if (!this.obstacleGeometry) {
+            // Unit box centered at (0,0,0)
+            this.obstacleGeometry = new THREE.BoxGeometry(1, 1, 1);
+        }
+        if (!this.obstacleMaterial) {
+            // Glowing neon orange/red hologram barrier
+            this.obstacleMaterial = new THREE.MeshStandardMaterial({
+                color: 0xff4d00,
+                emissive: 0x4a1400,
+                roughness: 0.1,
+                metalness: 0.9,
+                transparent: true,
+                opacity: 0.72,
+                depthWrite: false
+            });
+        }
+
+        // Recreate InstancedMesh ONLY when the instance count changes
+        let needsRecreate = !this.obstacleMesh || this.obstacleMesh.count !== newSegments.length;
+        if (needsRecreate) {
+            if (this.obstacleMesh) {
+                this.obstacleLayer.remove(this.obstacleMesh);
+                this.obstacleMesh = null;
+            }
+             this.obstacleMesh = new THREE.InstancedMesh(this.obstacleGeometry, this.obstacleMaterial, newSegments.length);
+             this.obstacleMesh.frustumCulled = false;
+             this.obstacleMesh.renderOrder = 20;
+             this.obstacleLayer.add(this.obstacleMesh);
+        }
+
+        // Update animation map
+        const now = performance.now();
+        const incomingKeys = new Set();
+
+        newSegments.forEach((seg) => {
+            incomingKeys.add(seg.key);
+
+            if (!this.obstacleSegmentsMap.has(seg.key)) {
+                // Winding domino delay effect
+                const delay = seg.segIdx * 100; // 100ms per segment along the polygon path
+
+                this.obstacleSegmentsMap.set(seg.key, {
+                    key: seg.key,
+                    startTime: now,
+                    delay: delay,
+                    duration: 500 // 500ms growth duration
+                });
+            }
+        });
+
+        // Remove stale segments
+        for (const key of this.obstacleSegmentsMap.keys()) {
+            if (!incomingKeys.has(key)) {
+                this.obstacleSegmentsMap.delete(key);
+            }
+        }
+
+        this.obstacleMeshReady = false; // Trigger matrix updates
+        this.updateObstacleMeshInstances();
+    }
+
+    updateObstacleMeshInstances() {
+        if (!this.obstacleMesh || !this.obstacleSegments) return;
+        const now = performance.now();
+        const dummy = new THREE.Object3D();
+        let anyAnimating = false;
+        const obstacleHeight = WALL_HEIGHT * 1.25;
+        const thickness = 0.04;
+
+        for (let i = 0; i < this.obstacleSegments.length; i++) {
+            const seg = this.obstacleSegments[i];
+            const anim = this.obstacleSegmentsMap.get(seg.key);
+
+            let scaleZ = 1.0;
+            if (anim) {
+                const elapsed = now - anim.startTime;
+                if (elapsed < anim.delay) {
+                    scaleZ = 0.0001;
+                    anyAnimating = true;
+                } else {
+                    const progress = elapsed - anim.delay;
+                    if (progress < anim.duration) {
+                        const t = progress / anim.duration;
+                        scaleZ = Math.max(0.0001, this.easeOutBack(t));
+                        anyAnimating = true;
+                    } else {
+                        scaleZ = 1.0;
+                    }
+                }
+            }
+
+            const dx = seg.B.x - seg.A.x;
+            const dy = seg.B.y - seg.A.y;
+            const len = Math.sqrt(dx * dx + dy * dy);
+            const angle = Math.atan2(dy, dx);
+            const cx = seg.A.x + dx / 2;
+            const cy = seg.A.y + dy / 2;
+
+            dummy.position.set(cx, cy, (scaleZ * obstacleHeight) / 2);
+            dummy.scale.set(len, thickness, scaleZ * obstacleHeight);
+            dummy.rotation.set(0, 0, angle);
+            dummy.updateMatrix();
+            this.obstacleMesh.setMatrixAt(i, dummy.matrix);
+        }
+        this.obstacleMesh.instanceMatrix.needsUpdate = true;
+        this.obstacleMeshAnimating = anyAnimating;
+        this.obstacleMeshReady = !anyAnimating;
     }
 
     renderZoneRect(corners) {
@@ -1278,6 +1722,14 @@ export class MapView {
             this.unexploredMaterial.dispose();
             this.unexploredMaterial = null;
         }
+        if (this.obstacleGeometry) {
+            this.obstacleGeometry.dispose();
+            this.obstacleGeometry = null;
+        }
+        if (this.obstacleMaterial) {
+            this.obstacleMaterial.dispose();
+            this.obstacleMaterial = null;
+        }
 
         if (this.floorMesh) {
             if (this.floorMesh.geometry) this.floorMesh.geometry.dispose();
@@ -1288,11 +1740,23 @@ export class MapView {
             this.floorMesh = null;
         }
 
+        if (this.oldFloorMesh) {
+            if (this.oldFloorMesh.geometry) this.oldFloorMesh.geometry.dispose();
+            if (this.oldFloorMesh.material) {
+                if (this.oldFloorMesh.material.map) this.oldFloorMesh.material.map.dispose();
+                this.oldFloorMesh.material.dispose();
+            }
+            this.oldFloorMesh = null;
+        }
+
         if (this.wallMesh) {
             this.wallMesh = null;
         }
         if (this.unexploredMesh) {
             this.unexploredMesh = null;
+        }
+        if (this.obstacleMesh) {
+            this.obstacleMesh = null;
         }
 
         if (this.scene) {

@@ -1,4 +1,3 @@
-import * as THREE from 'three';
 import * as ROSLIB from 'roslib';
 import { CameraController } from './ui/camera-controller.js';
 import { NavigationManager } from './ui/navigation-manager.js';

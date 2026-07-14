@@ -16,6 +16,7 @@ export class DynamicLine {
         });
 
         this.line = new THREE.Line(this.geometry, this.material);
+        this.line.frustumCulled = false;
     }
 
     updatePoints(points) {
@@ -28,6 +29,8 @@ export class DynamicLine {
             array[i * 3 + 2] = p.z !== undefined ? p.z : 0.0;
         }
         this.positionAttr.needsUpdate = true;
+        this.geometry.computeBoundingSphere();
+        this.geometry.computeBoundingBox();
         this.geometry.setDrawRange(0, count);
         this.line.visible = count > 0;
     }
