@@ -1,3 +1,5 @@
+import * as THREE from 'three';
+import * as ROSLIB from 'roslib';
 import { CameraController } from './ui/camera-controller.js';
 import { NavigationManager } from './ui/navigation-manager.js';
 import { Telemetry } from './ui/telemetry/telemetry.js';
@@ -23,25 +25,10 @@ window.addEventListener('DOMContentLoaded', () => {
     );
     navigationManager.init();
 
-    // 4. Poll for ROS3D/ThreeJS/ROSLIB script readiness, then launch ROS UI components
-    const checkReadiness = () => {
-        return new Promise((resolve) => {
-            const check = () => {
-                if (window.THREE && window.ROS3D && window.ROSLIB) {
-                    resolve();
-                } else {
-                    setTimeout(check, 50);
-                }
-            };
-            check();
-        });
-    };
-
-    checkReadiness().then(() => {
-        console.log('[App] ROS/ThreeJS libraries loaded, initializing interface components...');
-        const mapView = new MapView('map');
-        const telemetry = new Telemetry();
-        const controlPanel = new ControlPanel(mapView, telemetry);
-        const settingsPanel = new SettingsPanel(telemetry);
-    });
+    // 4. Initialize interface components immediately
+    console.log('[App] ROS/ThreeJS libraries loaded, initializing interface components...');
+    const mapView = new MapView('map');
+    const telemetry = new Telemetry();
+    const controlPanel = new ControlPanel(mapView, telemetry);
+    const settingsPanel = new SettingsPanel(telemetry);
 });

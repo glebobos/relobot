@@ -1,0 +1,1 @@
+ros2_ws/src/web_server/frontend/models/robot.glb filter=lfs diff=lfs merge=lfs -text

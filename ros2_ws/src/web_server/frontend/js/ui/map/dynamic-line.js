@@ -1,11 +1,13 @@
+import * as THREE from 'three';
+
 export class DynamicLine {
     constructor(color, maxPoints = 5000, thickness = 1) {
         this.maxPoints = maxPoints;
         this.geometry = new THREE.BufferGeometry();
         this.positions = new Float32Array(maxPoints * 3);
         this.positionAttr = new THREE.BufferAttribute(this.positions, 3);
-        this.positionAttr.setDynamic(true);
-        this.geometry.addAttribute('position', this.positionAttr);
+        this.positionAttr.setUsage(THREE.DynamicDrawUsage);
+        this.geometry.setAttribute('position', this.positionAttr);
         this.geometry.setDrawRange(0, 0);
 
         this.material = new THREE.LineBasicMaterial({

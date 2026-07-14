@@ -18,6 +18,13 @@ server {
         expires -1;
     }
 
+    # Cache static 3D models and media assets to avoid redownloading large files
+    location ~* \.(?:glb|gltf|png|jpg|jpeg|gif|ico|svg|woff2?|eot|ttf|otf)$ {
+        root /usr/share/nginx/html;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+        access_log off;
+    }
+
     # WebSocket Proxy for Rosbridge
     location /rosbridge/ {
         proxy_pass http://127.0.0.1:9090/;
@@ -60,6 +67,13 @@ server {
         # Never cache JS/HTML so stale control code can't persist in the browser
         add_header Cache-Control "no-store, no-cache, must-revalidate";
         expires -1;
+    }
+
+    # Cache static 3D models and media assets to avoid redownloading large files
+    location ~* \.(?:glb|gltf|png|jpg|jpeg|gif|ico|svg|woff2?|eot|ttf|otf)$ {
+        root /usr/share/nginx/html;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+        access_log off;
     }
 
     # WebSocket Proxy for Rosbridge (WSS support)
