@@ -157,6 +157,7 @@ def generate_launch_description():
         executable='robot_pose_publisher',
         name='robot_pose_publisher',
         output='screen',
+        parameters=[{'use_sim_time': use_sim_time}],
         arguments=['--ros-args', '--log-level', log_level],
         remappings=remappings,
     )
