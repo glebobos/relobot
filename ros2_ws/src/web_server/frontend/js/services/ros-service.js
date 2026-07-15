@@ -1,4 +1,5 @@
 import { Ros, Action, Service, Topic } from 'roslib';
+import { RosSubscription } from './ros-subscription.js';
 
 class RosService {
     constructor() {
@@ -25,6 +26,12 @@ class RosService {
             messageType,
             ...options
         });
+    }
+
+    subscribeV2(name, messageType, callback, options = {}) {
+        const topic = this.createTopicV2(name, messageType, options);
+        topic.subscribe(callback);
+        return new RosSubscription(topic, callback);
     }
 
     createActionV2(name, actionType) {

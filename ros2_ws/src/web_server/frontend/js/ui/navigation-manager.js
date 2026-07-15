@@ -11,18 +11,23 @@ export class NavigationManager {
     }
 
     init() {
+        this.tabHandlers = new Map();
         this.tabs.forEach((tab) => {
-            tab.addEventListener('click', () => {
+            const handler = () => {
                 const index = parseInt(tab.getAttribute('data-index'), 10);
                 this.navigateToScreen(index);
-            });
+            };
+            this.tabHandlers.set(tab, handler);
+            tab.addEventListener('click', handler);
         });
 
         if (this.pipCamera) {
-            this.pipCamera.addEventListener('click', () => this.navigateToScreen(1));
+            this.pipCameraHandler = () => this.navigateToScreen(1);
+            this.pipCamera.addEventListener('click', this.pipCameraHandler);
         }
         if (this.pipMap) {
-            this.pipMap.addEventListener('click', () => this.navigateToScreen(0));
+            this.pipMapHandler = () => this.navigateToScreen(0);
+            this.pipMap.addEventListener('click', this.pipMapHandler);
         }
 
         // Initialize streams and view based on active screen
@@ -53,5 +58,18 @@ export class NavigationManager {
 
         // Dispatch custom event to notify other components of screen change
         window.dispatchEvent(new CustomEvent('screenChanged', { detail: { index } }));
+    }
+
+    destroy() {
+        if (this.tabHandlers) {
+            this.tabHandlers.forEach((handler, tab) => tab.removeEventListener('click', handler));
+            this.tabHandlers.clear();
+        }
+        if (this.pipCamera && this.pipCameraHandler) {
+            this.pipCamera.removeEventListener('click', this.pipCameraHandler);
+        }
+        if (this.pipMap && this.pipMapHandler) {
+            this.pipMap.removeEventListener('click', this.pipMapHandler);
+        }
     }
 }

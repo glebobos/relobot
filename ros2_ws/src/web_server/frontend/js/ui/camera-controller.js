@@ -17,21 +17,24 @@ export class CameraController {
         this.mainCameraService.stop();
 
         // Listen for screen changes
-        window.addEventListener('screenChanged', (e) => {
+        this.screenChangedHandler = (e) => {
             this.currentScreenIndex = e.detail.index;
             this.updateCalibrationViews(this.currentScreenIndex);
-        });
+        };
+        window.addEventListener('screenChanged', this.screenChangedHandler);
 
         // Listen for settings changes
-        window.addEventListener('calibrationSettingsChanged', () => {
+        this.calibrationSettingsHandler = () => {
             this.updateCalibrationViews(this.currentScreenIndex);
-        });
+        };
+        window.addEventListener('calibrationSettingsChanged', this.calibrationSettingsHandler);
 
         // Sync ROS parameter when ROS connects
-        rosService.rosV2.on('connection', () => {
+        this.rosConnectionHandler = () => {
             const apriltagEnabled = localStorage.getItem('calibration_apriltag_enabled') === 'true';
             this.syncAprilTagParameter(apriltagEnabled);
-        });
+        };
+        rosService.rosV2.on('connection', this.rosConnectionHandler);
 
         // Initial setup
         this.updateCalibrationViews(this.currentScreenIndex);
@@ -116,15 +119,13 @@ export class CameraController {
 
     initAprilTagListener() {
         // Create `/tf` topic listener using rosService
-        this.tfTopic = rosService.createTopicV2('/tf', 'tf2_msgs/msg/TFMessage', { throttle_rate: 100 });
-        
         const hud = document.getElementById('cameraHud');
         const elX = document.getElementById('hud-x');
         const elY = document.getElementById('hud-y');
         const elZ = document.getElementById('hud-z');
         const elYaw = document.getElementById('hud-yaw');
 
-        this.tfTopic.subscribe((message) => {
+        this.tfTopic = rosService.subscribeV2('/tf', 'tf2_msgs/msg/TFMessage', (message) => {
             if (!message.transforms || message.transforms.length === 0) return;
             
             // Look for a transform starting with tag25h9: or tag36h11: etc
@@ -158,6 +159,28 @@ export class CameraController {
                     if (hud) hud.style.display = 'none';
                 }, 1500);
             }
-        });
+        }, { throttle_rate: 100 });
+    }
+
+    destroy() {
+        if (this.tfTopic) {
+            this.tfTopic.unsubscribe();
+            this.tfTopic = null;
+        }
+        if (this.hudTimeout) {
+            clearTimeout(this.hudTimeout);
+            this.hudTimeout = null;
+        }
+        if (this.screenChangedHandler) {
+            window.removeEventListener('screenChanged', this.screenChangedHandler);
+        }
+        if (this.calibrationSettingsHandler) {
+            window.removeEventListener('calibrationSettingsChanged', this.calibrationSettingsHandler);
+        }
+        if (this.rosConnectionHandler && typeof rosService.rosV2.off === 'function') {
+            rosService.rosV2.off('connection', this.rosConnectionHandler);
+        }
+        this.mainCameraService.destroy();
+        this.pipCameraService.destroy();
     }
 }

@@ -4,16 +4,32 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::{broadcast, mpsc, RwLock};
 use tokio::task::JoinHandle;
 use tokio_tungstenite::connect_async;
 use tokio_tungstenite::tungstenite::Message;
 
+#[derive(Clone)]
+struct CachedValue {
+    value: Value,
+    received_at: Instant,
+}
+
+impl CachedValue {
+    fn new(value: Value) -> Self {
+        Self {
+            value,
+            received_at: Instant::now(),
+        }
+    }
+}
+
 struct SharedState {
-    tf_json: RwLock<Option<Value>>,
-    map_json: RwLock<Option<Value>>,
-    pose_json: RwLock<Option<Value>>,
+    tf_json: RwLock<Option<CachedValue>>,
+    map_json: RwLock<Option<CachedValue>>,
+    pose_json: RwLock<Option<CachedValue>>,
     tf_tx: broadcast::Sender<Value>,
     map_tx: broadcast::Sender<Value>,
     pose_tx: broadcast::Sender<Value>,
@@ -84,7 +100,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             };
             if should_send {
                 if let Ok(val) = serde_json::to_value(&msg) {
-                    *state_clone_tf.tf_json.write().await = Some(val.clone());
+                    *state_clone_tf.tf_json.write().await = Some(CachedValue::new(val.clone()));
                     let _ = state_clone_tf.tf_tx.send(val);
                 }
                 last_sent = Some(now);
@@ -99,7 +115,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("[RosbridgeRust] Map subscriber task started");
         while let Some(msg) = map_sub.next().await {
             if let Ok(val) = serde_json::to_value(&msg) {
-                *state_clone_map.map_json.write().await = Some(val.clone());
+                *state_clone_map.map_json.write().await = Some(CachedValue::new(val.clone()));
                 let _ = state_clone_map.map_tx.send(val);
             }
         }
@@ -112,7 +128,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("[RosbridgeRust] Robot pose subscriber task started");
         while let Some(msg) = pose_sub.next().await {
             if let Ok(val) = serde_json::to_value(&msg) {
-                *state_clone_pose.pose_json.write().await = Some(val.clone());
+                *state_clone_pose.pose_json.write().await = Some(CachedValue::new(val.clone()));
                 let _ = state_clone_pose.pose_tx.send(val);
             }
         }
@@ -211,8 +227,11 @@ async fn handle_connection(
                 let op = json_val["op"].as_str().unwrap_or("");
                 let topic = json_val["topic"].as_str().unwrap_or("");
                 let id = json_val["id"].as_str().map(|s| s.to_string());
+                let throttle_rate_ms = json_val["throttle_rate"].as_u64().unwrap_or(0);
 
-                if op == "subscribe" && (topic == "/tf" || topic == "/map" || topic == "/robot_pose") {
+                if op == "subscribe"
+                    && (topic == "/tf" || topic == "/map" || topic == "/robot_pose")
+                {
                     let key = (topic.to_string(), id.clone());
                     if !active_subs.contains_key(&key) {
                         println!("[RosbridgeRust] Subscribing locally to {}", topic);
@@ -232,7 +251,7 @@ async fn handle_connection(
                                 _ => None,
                             };
 
-                            if let Some(cached_val) = cached {
+                            if let Some(cached_val) = fresh_cached_value(&topic_str, cached) {
                                 let mut response = serde_json::json!({
                                     "op": "publish",
                                     "topic": topic_str,
@@ -242,7 +261,9 @@ async fn handle_connection(
                                     response["id"] = Value::String(sub_id.clone());
                                 }
                                 if let Ok(resp_str) = serde_json::to_string(&response) {
-                                    let _ = browser_out_tx_clone.send(Message::Text(resp_str)).await;
+                                    let _ = browser_out_tx_clone
+                                        .send(Message::Text(resp_str))
+                                        .await;
                                 }
                             }
 
@@ -250,22 +271,45 @@ async fn handle_connection(
                             match topic_str.as_str() {
                                 "/tf" => {
                                     let rx = state_clone.tf_tx.subscribe();
-                                    forward_broadcast_to_browser(rx, topic_str, id_clone, browser_out_tx_clone).await;
+                                    forward_broadcast_to_browser(
+                                        rx,
+                                        topic_str,
+                                        id_clone,
+                                        browser_out_tx_clone,
+                                        throttle_rate_ms,
+                                    )
+                                    .await;
                                 }
                                 "/map" => {
                                     let rx = state_clone.map_tx.subscribe();
-                                    forward_broadcast_to_browser(rx, topic_str, id_clone, browser_out_tx_clone).await;
+                                    forward_broadcast_to_browser(
+                                        rx,
+                                        topic_str,
+                                        id_clone,
+                                        browser_out_tx_clone,
+                                        throttle_rate_ms,
+                                    )
+                                    .await;
                                 }
                                 "/robot_pose" => {
                                     let rx = state_clone.pose_tx.subscribe();
-                                    forward_broadcast_to_browser(rx, topic_str, id_clone, browser_out_tx_clone).await;
+                                    forward_broadcast_to_browser(
+                                        rx,
+                                        topic_str,
+                                        id_clone,
+                                        browser_out_tx_clone,
+                                        throttle_rate_ms,
+                                    )
+                                    .await;
                                 }
                                 _ => {}
                             }
                         });
                         active_subs.insert(key, handle);
                     }
-                } else if op == "unsubscribe" && (topic == "/tf" || topic == "/map" || topic == "/robot_pose") {
+                } else if op == "unsubscribe"
+                    && (topic == "/tf" || topic == "/map" || topic == "/robot_pose")
+                {
                     let key = (topic.to_string(), id.clone());
                     if let Some(handle) = active_subs.remove(&key) {
                         println!("[RosbridgeRust] Unsubscribing locally from {}", topic);
@@ -301,10 +345,17 @@ async fn forward_broadcast_to_browser(
     topic: String,
     id: Option<String>,
     tx: mpsc::Sender<Message>,
+    throttle_rate_ms: u64,
 ) {
+    let throttle = Duration::from_millis(throttle_rate_ms);
+    let mut last_sent: Option<Instant> = None;
     loop {
         match rx.recv().await {
             Ok(val) => {
+                let now = Instant::now();
+                if !should_forward(last_sent, throttle, now) {
+                    continue;
+                }
                 let mut response = serde_json::json!({
                     "op": "publish",
                     "topic": topic,
@@ -317,6 +368,7 @@ async fn forward_broadcast_to_browser(
                     if tx.send(Message::Text(resp_str)).await.is_err() {
                         break;
                     }
+                    last_sent = Some(now);
                 }
             }
             Err(broadcast::error::RecvError::Lagged(n)) => {
@@ -325,5 +377,56 @@ async fn forward_broadcast_to_browser(
             }
             Err(broadcast::error::RecvError::Closed) => break,
         }
+    }
+}
+
+fn fresh_cached_value(topic: &str, cached: Option<CachedValue>) -> Option<Value> {
+    let max_age = match topic {
+        "/robot_pose" | "/tf" => Some(Duration::from_secs(2)),
+        "/map" => None,
+        _ => Some(Duration::ZERO),
+    };
+    cached.and_then(|entry| {
+        if max_age.map_or(true, |age| entry.received_at.elapsed() <= age) {
+            Some(entry.value)
+        } else {
+            None
+        }
+    })
+}
+
+fn should_forward(last_sent: Option<Instant>, throttle: Duration, now: Instant) -> bool {
+    last_sent.map_or(true, |last| now.duration_since(last) >= throttle)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn map_cache_does_not_expire() {
+        let cached = CachedValue {
+            value: serde_json::json!({"map": true}),
+            received_at: Instant::now() - Duration::from_secs(60),
+        };
+        assert!(fresh_cached_value("/map", Some(cached)).is_some());
+    }
+
+    #[test]
+    fn stale_pose_cache_is_not_replayed() {
+        let cached = CachedValue {
+            value: serde_json::json!({"pose": true}),
+            received_at: Instant::now() - Duration::from_secs(3),
+        };
+        assert!(fresh_cached_value("/robot_pose", Some(cached)).is_none());
+    }
+
+    #[test]
+    fn throttle_allows_first_and_due_messages() {
+        let now = Instant::now();
+        let throttle = Duration::from_millis(100);
+        assert!(should_forward(None, throttle, now));
+        assert!(!should_forward(Some(now), throttle, now + Duration::from_millis(99)));
+        assert!(should_forward(Some(now), throttle, now + throttle));
     }
 }

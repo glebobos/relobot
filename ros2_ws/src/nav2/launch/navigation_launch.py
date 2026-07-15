@@ -152,12 +152,13 @@ def generate_launch_description():
         remappings=remappings,
     )
 
+    robot_pose_params = os.path.join(nav2_dir, 'config', 'robot_pose_publisher.yaml')
     robot_pose_publisher_node = Node(
         package='nav2',
         executable='robot_pose_publisher',
         name='robot_pose_publisher',
         output='screen',
-        parameters=[{'use_sim_time': use_sim_time}],
+        parameters=[robot_pose_params, {'use_sim_time': use_sim_time}],
         arguments=['--ros-args', '--log-level', log_level],
         remappings=remappings,
     )

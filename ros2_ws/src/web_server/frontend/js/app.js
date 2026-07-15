@@ -1,4 +1,3 @@
-import * as ROSLIB from 'roslib';
 import { CameraController } from './ui/camera-controller.js';
 import { NavigationManager } from './ui/navigation-manager.js';
 import { Telemetry } from './ui/telemetry/telemetry.js';
@@ -6,6 +5,7 @@ import { MapView } from './ui/map/map-view.js';
 import { ControlPanel } from './ui/control-panel/control-panel.js';
 import { VirtualJoystick } from './ui/virtual-joystick.js';
 import { SettingsPanel } from './ui/settings/settings-panel.js';
+import { gamepadService } from './services/gamepad-service.js';
 
 window.addEventListener('DOMContentLoaded', () => {
     // 1. Initialize Camera Services and Controller
@@ -30,4 +30,20 @@ window.addEventListener('DOMContentLoaded', () => {
     const telemetry = new Telemetry();
     const controlPanel = new ControlPanel(mapView, telemetry);
     const settingsPanel = new SettingsPanel(telemetry);
+
+    let destroyed = false;
+    const destroyApplication = () => {
+        if (destroyed) return;
+        destroyed = true;
+        settingsPanel.destroy();
+        controlPanel.destroy();
+        mapView.destroy();
+        navigationManager.destroy();
+        virtualJoystick.destroy();
+        cameraController.destroy();
+        telemetry.destroy();
+        gamepadService.destroy();
+    };
+
+    window.addEventListener('pagehide', destroyApplication, { once: true });
 });

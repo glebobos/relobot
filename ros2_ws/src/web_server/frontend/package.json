@@ -1,0 +1,9 @@
+{
+  "name": "relobot-static-frontend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "check:syntax": "node scripts/check-syntax.js"
+  }
+}

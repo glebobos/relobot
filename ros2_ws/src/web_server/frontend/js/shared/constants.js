@@ -24,6 +24,8 @@ export const TOPICS = {
     ON_DOCK: '/on_dock',
     ROSOUT: '/rosout',
     ROBOT_POSE: '/robot_pose',
+    MAP: '/map',
+    TF: '/tf',
 
     // Camera
     CAMERA_IMAGE: '/camera/image_rect',
@@ -78,8 +80,10 @@ export const MSG_TYPES = {
     TWIST: 'geometry_msgs/Twist',
     POLYGON_STAMPED: 'geometry_msgs/PolygonStamped',
     POSE_STAMPED: 'geometry_msgs/PoseStamped',
+    TF_MESSAGE: 'tf2_msgs/msg/TFMessage',
     // nav_msgs
     PATH: 'nav_msgs/Path',
+    OCCUPANCY_GRID: 'nav_msgs/msg/OccupancyGrid',
     // sensor_msgs
     // rcl_interfaces
     LOG: 'rcl_interfaces/Log',

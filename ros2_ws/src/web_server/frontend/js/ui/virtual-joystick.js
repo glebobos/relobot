@@ -11,6 +11,7 @@ export class VirtualJoystick {
 
     init() {
         if (!this.videoContainer) return;
+        this.guardHandlers = [];
 
         // Install event stop-propagation guards on camera HUD overlays to prevent joystick activation
         const guards = [
@@ -24,8 +25,11 @@ export class VirtualJoystick {
         guards.forEach(selector => {
             const el = document.querySelector(selector);
             if (el) {
-                el.addEventListener('mousedown', (e) => e.stopPropagation());
-                el.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: true });
+                const mouseHandler = (e) => e.stopPropagation();
+                const touchHandler = (e) => e.stopPropagation();
+                el.addEventListener('mousedown', mouseHandler);
+                el.addEventListener('touchstart', touchHandler, { passive: true });
+                this.guardHandlers.push({ el, mouseHandler, touchHandler });
             }
         });
 
@@ -60,19 +64,28 @@ export class VirtualJoystick {
     }
 
     destroy() {
+        if (this.throttlePublish?.cancel) {
+            this.throttlePublish.cancel();
+        }
+        gamepadService.publishTwist(0, 0);
         if (this.manager) {
             this.manager.destroy();
             this.manager = null;
         }
+        this.guardHandlers?.forEach(({ el, mouseHandler, touchHandler }) => {
+            el.removeEventListener('mousedown', mouseHandler);
+            el.removeEventListener('touchstart', touchHandler);
+        });
+        this.guardHandlers = [];
     }
 
     throttle(func, limit) {
         let lastRan = 0;
         let timeout = null;
-        return function(...args) {
+        const throttled = function(...args) {
             const now = Date.now();
             const run = () => {
-                lastRan = now;
+                lastRan = Date.now();
                 func(...args);
             };
             // Publish stop commands immediately
@@ -90,5 +103,10 @@ export class VirtualJoystick {
                 }, limit - (now - lastRan));
             }
         };
+        throttled.cancel = () => {
+            if (timeout) clearTimeout(timeout);
+            timeout = null;
+        };
+        return throttled;
     }
 }
