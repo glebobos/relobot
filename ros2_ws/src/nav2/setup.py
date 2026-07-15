@@ -14,7 +14,12 @@ setup(
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
         ('share/' + package_name + '/launch', ['launch/navigation_launch.py']),
-        ('share/' + package_name + '/config', ['config/explore.yaml', 'config/slam_toolbox_config.yaml', 'config/explore_lite_params.yaml']),
+        ('share/' + package_name + '/config', [
+            'config/explore.yaml',
+            'config/slam_toolbox_config.yaml',
+            'config/explore_lite_params.yaml',
+            'config/robot_pose_publisher.yaml',
+        ]),
         ('share/' + package_name + '/behavior_trees', glob('behavior_trees/*.xml')),
     ],
     install_requires=['setuptools'],
@@ -28,6 +33,7 @@ setup(
         'console_scripts': [
             'coverage_manager = frontier_explorer.coverage_manager:main',
             'coverage_preview_test = frontier_explorer.coverage_preview_test:main',
+            'robot_pose_publisher = frontier_explorer.robot_pose_publisher:main',
         ],
     },
 )

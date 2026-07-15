@@ -18,36 +18,42 @@ export class Telemetry {
         this.currentChargerVolts = 0.0;
         this.isRobotOnDock = false;
         this.dockingActive = false;
+        this.subscriptions = [];
 
         this.init();
     }
 
     init() {
         if (this.vinSpan || this.vinSpanCam) {
-            const vinTopic = rosService.createTopicV2(TOPICS.BATTERY, MSG_TYPES.FLOAT32, { throttle_rate: 1000 });
-            this.vinSubscription = vinTopic.subscribe(msg => {
+            this.vinSubscription = rosService.subscribeV2(TOPICS.BATTERY, MSG_TYPES.FLOAT32, msg => {
                 const v = parseFloat(msg.data);
                 if (Number.isFinite(v)) this.updateVoltage(v);
-            });
+            }, { throttle_rate: 1000 });
+            this.subscriptions.push(this.vinSubscription);
         }
 
         if (this.chargerSpan) {
-            const chargerTopic = rosService.createTopicV2(TOPICS.CHARGER, MSG_TYPES.FLOAT32, { throttle_rate: 1000 });
-            this.chargerSubscription = chargerTopic.subscribe(msg => {
+            this.chargerSubscription = rosService.subscribeV2(TOPICS.CHARGER, MSG_TYPES.FLOAT32, msg => {
                 const v = parseFloat(msg.data);
                 if (Number.isFinite(v)) this.updateChargerVoltage(v);
-            });
+            }, { throttle_rate: 1000 });
+            this.subscriptions.push(this.chargerSubscription);
         }
 
-        const onDockTopic = rosService.createTopicV2(TOPICS.ON_DOCK, MSG_TYPES.BOOL, { throttle_rate: 1000 });
-        this.onDockSubscription = onDockTopic.subscribe(msg => this.updateOnDock(msg.data));
+        this.onDockSubscription = rosService.subscribeV2(
+            TOPICS.ON_DOCK,
+            MSG_TYPES.BOOL,
+            msg => this.updateOnDock(msg.data),
+            { throttle_rate: 1000 },
+        );
+        this.subscriptions.push(this.onDockSubscription);
 
         if (this.rpmSpan || this.rpmSpanCam) {
-            const rpmTopic = rosService.createTopicV2(TOPICS.KNIVES, MSG_TYPES.FLOAT32, { throttle_rate: 1000 });
-            this.rpmSubscription = rpmTopic.subscribe(msg => {
+            this.rpmSubscription = rosService.subscribeV2(TOPICS.KNIVES, MSG_TYPES.FLOAT32, msg => {
                 const r = parseFloat(msg.data);
                 if (Number.isFinite(r)) this.updateRpm(r);
-            });
+            }, { throttle_rate: 1000 });
+            this.subscriptions.push(this.rpmSubscription);
         }
 
     }
@@ -167,22 +173,12 @@ export class Telemetry {
         }
     }
     destroy() {
-        if (this.vinSubscription) {
-            this.vinSubscription.unsubscribe();
-            this.vinSubscription = null;
-        }
-        if (this.chargerSubscription) {
-            this.chargerSubscription.unsubscribe();
-            this.chargerSubscription = null;
-        }
-        if (this.onDockSubscription) {
-            this.onDockSubscription.unsubscribe();
-            this.onDockSubscription = null;
-        }
-        if (this.rpmSubscription) {
-            this.rpmSubscription.unsubscribe();
-            this.rpmSubscription = null;
-        }
+        this.subscriptions.forEach(subscription => subscription.unsubscribe());
+        this.subscriptions = [];
+        this.vinSubscription = null;
+        this.chargerSubscription = null;
+        this.onDockSubscription = null;
+        this.rpmSubscription = null;
     }
 
 }

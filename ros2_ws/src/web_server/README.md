@@ -1,5 +1,20 @@
 # ReloBot Web Server SSL/TLS Configuration
 
+## Static Frontend Development
+
+The controller is intentionally a build-free static application. Nginx serves
+`frontend/` directly and browser dependencies are pinned through the import map
+in `frontend/index.html`. There is no Vite/Webpack step and no generated bundle.
+
+- Edit HTML, CSS, JavaScript modules, or models in `frontend/`.
+- Refresh the browser; the frontend container does not need to be restarted.
+- Run `npm test` from `frontend/` for dependency-free domain tests.
+- Run `npm run check:syntax` from `frontend/` to parse every application module.
+
+Large modules are split by ownership: ROS adapters own subscriptions, UI
+controllers own DOM listeners, and Three.js renderers own and dispose their GPU
+resources. Every long-lived component must provide an idempotent `destroy()`.
+
 This directory contains configuration, scripts, and certificates for securing the ReloBot web controller interface using SSL/TLS.
 
 ## Architecture

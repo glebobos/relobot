@@ -31,17 +31,21 @@ export class SettingsPanel {
         if (!this.drawer || !this.backBtn) return;
 
         // Register back button click
-        this.backBtn.addEventListener('click', () => {
+        this.backHandler = () => {
             this.drawer.classList.remove('is-open');
             this.unsubscribeActive();
-        });
+        };
+        this.backBtn.addEventListener('click', this.backHandler);
 
         // Register settings items clicks
+        this.itemHandlers = new Map();
         this.settingsItems.forEach((item) => {
-            item.addEventListener('click', () => {
+            const handler = () => {
                 const settingType = item.getAttribute('data-setting');
                 this.openDrawer(settingType);
-            });
+            };
+            this.itemHandlers.set(item, handler);
+            item.addEventListener('click', handler);
         });
 
         // Initialize general rosout logs subscription if background logs are enabled
@@ -54,14 +58,15 @@ export class SettingsPanel {
         }
 
         // Listen for screen changes to close the drawer and unsubscribe from active settings
-        window.addEventListener('screenChanged', (e) => {
+        this.screenChangedHandler = (e) => {
             if (e.detail.index !== 2) { // 2 is the settings screen
                 if (this.drawer && this.drawer.classList.contains('is-open')) {
                     this.drawer.classList.remove('is-open');
                     this.unsubscribeActive();
                 }
             }
-        });
+        };
+        window.addEventListener('screenChanged', this.screenChangedHandler);
     }
 
     openDrawer(type) {
@@ -179,7 +184,7 @@ export class SettingsPanel {
         try {
             const topic = rosService.createTopicV2(TOPICS.ROSOUT, MSG_TYPES.LOG);
             if (topic) {
-                this.rosoutSubscription = topic.subscribe((msg) => {
+                this.rosoutCallback = (msg) => {
                     let levelStr = 'INFO';
                     if (msg.level === 10) levelStr = 'DEBUG';
                     else if (msg.level === 30) levelStr = 'WARN';
@@ -188,7 +193,11 @@ export class SettingsPanel {
 
                     const formatted = `[${levelStr}] [${msg.name}]: ${msg.msg}`;
                     this.addLog(formatted);
-                });
+                };
+                topic.subscribe(this.rosoutCallback);
+                this.rosoutSubscription = {
+                    unsubscribe: () => topic.unsubscribe(this.rosoutCallback),
+                };
             }
         } catch (err) {
             console.warn('[SettingsPanel] Could not subscribe to /rosout:', err);
@@ -203,6 +212,24 @@ export class SettingsPanel {
                 console.warn('[SettingsPanel] Could not unsubscribe from /rosout:', err);
             }
             this.rosoutSubscription = null;
+            this.rosoutCallback = null;
+        }
+    }
+
+    destroy() {
+        this.unsubscribeActive();
+        this.unsubscribeRosout();
+        if (this.backBtn && this.backHandler) {
+            this.backBtn.removeEventListener('click', this.backHandler);
+        }
+        if (this.itemHandlers) {
+            this.itemHandlers.forEach((handler, item) => {
+                item.removeEventListener('click', handler);
+            });
+            this.itemHandlers.clear();
+        }
+        if (this.screenChangedHandler) {
+            window.removeEventListener('screenChanged', this.screenChangedHandler);
         }
     }
 }

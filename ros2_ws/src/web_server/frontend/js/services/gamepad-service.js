@@ -29,8 +29,27 @@ class GamepadService {
             console.log('[GamepadService] Connected:', e.gamepad.id);
             this.startGamepadPolling();
         };
+        this.gamepadDisconnectedHandler = (e) => {
+            console.warn('[GamepadService] Disconnected:', e.gamepad.id);
+            this.stopMotion();
+            if (!navigator.getGamepads?.().some(Boolean) && this.pollingInterval) {
+                clearInterval(this.pollingInterval);
+                this.pollingInterval = null;
+            }
+        };
+        this.blurHandler = () => this.stopMotion();
+        this.visibilityHandler = () => {
+            if (document.visibilityState !== 'visible') this.stopMotion();
+        };
 
         window.addEventListener('gamepadconnected', this.gamepadConnectedHandler);
+        window.addEventListener('gamepaddisconnected', this.gamepadDisconnectedHandler);
+        window.addEventListener('blur', this.blurHandler);
+        document.addEventListener('visibilitychange', this.visibilityHandler);
+
+        if (navigator.getGamepads?.().some(Boolean)) {
+            this.startGamepadPolling();
+        }
     }
 
     publishTwist(linear, angular) {
@@ -137,8 +156,20 @@ class GamepadService {
         this.pollingInterval = setInterval(() => this.pollGamepad(), 20);
     }
 
+    stopMotion() {
+        this.publishTwist(0, 0);
+        this.lastSentNonZero = false;
+        this.cruiseActive = false;
+        this.setKnifeRpm(0, true);
+        this.publishRpm(0);
+    }
+
     destroy() {
+        this.stopMotion();
         window.removeEventListener('gamepadconnected', this.gamepadConnectedHandler);
+        window.removeEventListener('gamepaddisconnected', this.gamepadDisconnectedHandler);
+        window.removeEventListener('blur', this.blurHandler);
+        document.removeEventListener('visibilitychange', this.visibilityHandler);
         if (this.pollingInterval) {
             clearInterval(this.pollingInterval);
             this.pollingInterval = null;
@@ -147,6 +178,11 @@ class GamepadService {
             clearInterval(this.rpmPublishInterval);
             this.rpmPublishInterval = null;
         }
+        [this.cmdVelTopic, this.knifeRpmTopic].forEach((topic) => {
+            try { topic?.unadvertise(); } catch (_error) { }
+        });
+        this.cmdVelTopic = null;
+        this.knifeRpmTopic = null;
     }
 }
 

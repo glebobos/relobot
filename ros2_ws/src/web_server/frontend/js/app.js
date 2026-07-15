@@ -5,6 +5,7 @@ import { MapView } from './ui/map/map-view.js';
 import { ControlPanel } from './ui/control-panel/control-panel.js';
 import { VirtualJoystick } from './ui/virtual-joystick.js';
 import { SettingsPanel } from './ui/settings/settings-panel.js';
+import { gamepadService } from './services/gamepad-service.js';
 
 window.addEventListener('DOMContentLoaded', () => {
     // 1. Initialize Camera Services and Controller
@@ -23,25 +24,26 @@ window.addEventListener('DOMContentLoaded', () => {
     );
     navigationManager.init();
 
-    // 4. Poll for ROS3D/ThreeJS/ROSLIB script readiness, then launch ROS UI components
-    const checkReadiness = () => {
-        return new Promise((resolve) => {
-            const check = () => {
-                if (window.THREE && window.ROS3D && window.ROSLIB) {
-                    resolve();
-                } else {
-                    setTimeout(check, 50);
-                }
-            };
-            check();
-        });
+    // 4. Initialize interface components immediately
+    console.log('[App] ROS/ThreeJS libraries loaded, initializing interface components...');
+    const mapView = new MapView('map');
+    const telemetry = new Telemetry();
+    const controlPanel = new ControlPanel(mapView, telemetry);
+    const settingsPanel = new SettingsPanel(telemetry);
+
+    let destroyed = false;
+    const destroyApplication = () => {
+        if (destroyed) return;
+        destroyed = true;
+        settingsPanel.destroy();
+        controlPanel.destroy();
+        mapView.destroy();
+        navigationManager.destroy();
+        virtualJoystick.destroy();
+        cameraController.destroy();
+        telemetry.destroy();
+        gamepadService.destroy();
     };
 
-    checkReadiness().then(() => {
-        console.log('[App] ROS/ThreeJS libraries loaded, initializing interface components...');
-        const mapView = new MapView('map');
-        const telemetry = new Telemetry();
-        const controlPanel = new ControlPanel(mapView, telemetry);
-        const settingsPanel = new SettingsPanel(telemetry);
-    });
+    window.addEventListener('pagehide', destroyApplication, { once: true });
 });
