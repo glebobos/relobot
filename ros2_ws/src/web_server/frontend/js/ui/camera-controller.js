@@ -82,7 +82,9 @@ export class CameraController {
         // Sync ROS parameter for AprilTag if state changed
         if (this._lastSyncedAprilTagState !== apriltagEnabled) {
             this._lastSyncedAprilTagState = apriltagEnabled;
-            this.syncAprilTagParameter(apriltagEnabled);
+            if (rosService.rosV2.isConnected) {
+                this.syncAprilTagParameter(apriltagEnabled);
+            }
         }
     }
 

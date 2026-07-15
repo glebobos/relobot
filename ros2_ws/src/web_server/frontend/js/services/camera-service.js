@@ -15,7 +15,6 @@ export class CameraService {
 
     init() {
         if (!this.cameraStream) return;
-        this.connect();
 
         this.visibilityHandler = () => {
             if (document.visibilityState === 'visible') {
