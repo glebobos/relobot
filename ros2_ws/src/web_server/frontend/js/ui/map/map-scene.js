@@ -8,6 +8,8 @@ export class MapScene {
         this.onResize = onResize;
         this.destroyed = false;
         this.lastFrameTime = 0;
+        this.cameraAnimationFrameId = null;
+        this.savedCameraState = null;
         this.initialize();
     }
 
@@ -125,10 +127,101 @@ export class MapScene {
         ) ? { x: result.x, y: result.y } : null;
     }
 
+    animateCamera(from, to, duration, onDone) {
+        this.cancelCameraAnimation();
+        let startedAt = null;
+        const ease = value => value < 0.5
+            ? 4 * value * value * value
+            : 1 - Math.pow(-2 * value + 2, 3) / 2;
+        const step = (timestamp) => {
+            if (this.destroyed) return;
+            if (startedAt === null) startedAt = timestamp;
+            const raw = Math.min((timestamp - startedAt) / duration, 1);
+            const progress = ease(raw);
+            this.camera.position.lerpVectors(from.position, to.position, progress);
+            this.camera.up.lerpVectors(from.up, to.up, progress);
+            this.camera.quaternion.copy(from.quaternion).slerp(to.quaternion, progress);
+            this.camera.updateMatrixWorld();
+            if (raw < 1) {
+                this.cameraAnimationFrameId = requestAnimationFrame(step);
+            } else {
+                this.cameraAnimationFrameId = null;
+                onDone?.();
+            }
+        };
+        this.cameraAnimationFrameId = requestAnimationFrame(step);
+    }
+
+    snapTopDown() {
+        if (!this.camera || !this.controls || this.savedCameraState) return;
+        const target = this.controls.target;
+        this.savedCameraState = {
+            position: this.camera.position.clone(),
+            up: this.camera.up.clone(),
+            quaternion: this.camera.quaternion.clone(),
+            target: target.clone(),
+        };
+        this.controls.enabled = false;
+        const distance = this.camera.position.distanceTo(target);
+        const targetPosition = new THREE.Vector3(target.x, target.y, target.z + distance);
+        const targetUp = new THREE.Vector3(0, 1, 0);
+        const temporaryCamera = this.camera.clone();
+        temporaryCamera.position.copy(targetPosition);
+        temporaryCamera.up.copy(targetUp);
+        temporaryCamera.lookAt(target);
+        this.animateCamera(
+            {
+                position: this.camera.position.clone(),
+                up: this.camera.up.clone(),
+                quaternion: this.camera.quaternion.clone(),
+            },
+            { position: targetPosition, up: targetUp, quaternion: temporaryCamera.quaternion.clone() },
+            420,
+            () => {
+                this.camera.position.copy(targetPosition);
+                this.camera.up.copy(targetUp);
+                this.camera.lookAt(target);
+            },
+        );
+    }
+
+    restoreCamera() {
+        if (!this.savedCameraState || !this.camera || !this.controls) return;
+        const saved = this.savedCameraState;
+        this.savedCameraState = null;
+        this.animateCamera(
+            {
+                position: this.camera.position.clone(),
+                up: this.camera.up.clone(),
+                quaternion: this.camera.quaternion.clone(),
+            },
+            { position: saved.position, up: saved.up, quaternion: saved.quaternion },
+            420,
+            () => {
+                this.camera.position.copy(saved.position);
+                this.camera.up.copy(saved.up);
+                this.camera.quaternion.copy(saved.quaternion);
+                this.controls.target.copy(saved.target);
+                this.controls.enabled = true;
+                this.controls.update();
+            },
+        );
+    }
+
+    cancelCameraAnimation() {
+        if (this.cameraAnimationFrameId !== null) {
+            cancelAnimationFrame(this.cameraAnimationFrameId);
+        }
+        this.cameraAnimationFrameId = null;
+    }
+
     destroy() {
         if (this.destroyed) return;
         this.destroyed = true;
         this.stop();
+        this.cancelCameraAnimation();
+        this.savedCameraState = null;
+        if (this.controls) this.controls.enabled = true;
         window.removeEventListener('resize', this.resizeHandler);
         this.canvas.removeEventListener('webglcontextlost', this.contextLostHandler);
         this.canvas.removeEventListener('webglcontextrestored', this.contextRestoredHandler);

@@ -1,4 +1,3 @@
-import { MapCameraController } from './map-camera-controller.js';
 import { MapInteractionHandler } from './map-interaction.js';
 import { MapOverlayRenderer } from './map-overlay-renderer.js';
 import { MapRosAdapter } from './map-ros-adapter.js';
@@ -34,7 +33,6 @@ export class MapView {
         this.destroyed = false;
 
         this.scene = new MapScene(this.mapContainer, () => this.resizeOverlay());
-        this.cameraController = new MapCameraController(this.scene.camera, this.scene.controls);
         this.overlays = new MapOverlayRenderer(this.scene.scene);
         this.robot = new RobotVisual(this.scene.scene);
         this.occupancyGrid = new OccupancyGridRenderer(
@@ -131,11 +129,11 @@ export class MapView {
         this.updateInteractionSurface();
         if (this.zoneDrawMode) {
             this.resizeOverlay();
-            this.cameraController.snapTopDown();
+            this.scene.snapTopDown();
         } else {
             this.clearOverlay();
             this.interactionHandler.reset();
-            if (!this.navPointMode) this.cameraController.restore();
+            if (!this.navPointMode) this.scene.restoreCamera();
         }
         this.onZoneDrawModeChange?.(this.zoneDrawMode);
     }
@@ -151,10 +149,10 @@ export class MapView {
         if (this.navPointMode) {
             this.resizeOverlay();
             this.clearNavTarget();
-            this.cameraController.snapTopDown();
+            this.scene.snapTopDown();
         } else {
             this.clearOverlay();
-            if (!this.zoneDrawMode) this.cameraController.restore();
+            if (!this.zoneDrawMode) this.scene.restoreCamera();
         }
         this.onNavPointModeChange?.(this.navPointMode);
     }
@@ -187,7 +185,7 @@ export class MapView {
         this.interactionHandler.reset();
         this.clearOverlay();
         this.updateInteractionSurface();
-        if (!this.zoneDrawMode) this.cameraController.restore();
+        if (!this.zoneDrawMode) this.scene.restoreCamera();
         this.onNavPointModeChange?.(false);
     }
 
@@ -259,7 +257,6 @@ export class MapView {
         this.arrivalTimer = null;
         this.interactionHandler.destroy();
         this.rosAdapter.destroy();
-        this.cameraController.destroy();
         this.occupancyGrid.destroy();
         this.robot.destroy();
         this.overlays.destroy();
