@@ -49,6 +49,15 @@ export class MapView {
             map: message => this.occupancyGrid.handleMessage(message),
         });
 
+        this.navigationSettingsHandler = () => {
+            const coverageEnabled = localStorage.getItem('navigation_coverage_boundary_enabled') === 'true';
+            this.rosAdapter.subscribeCoveragePolygon(coverageEnabled);
+            if (!coverageEnabled) {
+                this.clearMapPolygon();
+            }
+        };
+        window.addEventListener('navigationSettingsChanged', this.navigationSettingsHandler);
+
         this.resizeOverlay();
         this.scene.start((dt, now) => {
             this.robot.animate(dt, now);
@@ -261,6 +270,9 @@ export class MapView {
         this.robot.destroy();
         this.overlays.destroy();
         this.scene.destroy();
+        if (this.navigationSettingsHandler) {
+            window.removeEventListener('navigationSettingsChanged', this.navigationSettingsHandler);
+        }
         this.onPublishCommand = null;
         this.onNavigateToPoint = null;
         this.onZoneDrawModeChange = null;
