@@ -23,6 +23,8 @@ class WheelCalibrationNode(Node):
         
         self.latest_left_vel = 0.0
         self.latest_right_vel = 0.0
+        self.latest_left_pos = 0.0
+        self.latest_right_pos = 0.0
         self.samples = []
         self.collecting = False
         self.get_logger().info("Wheel Calibration Node initialized.")
@@ -30,23 +32,33 @@ class WheelCalibrationNode(Node):
     def states_callback(self, msg):
         left_vel = None
         right_vel = None
+        left_pos = None
+        right_pos = None
         for i, name in enumerate(msg.name):
             if name == 'left_wheel_joint':
                 left_vel = msg.velocity[i]
+                left_pos = msg.position[i] if i < len(msg.position) else None
             elif name == 'right_wheel_joint':
                 right_vel = msg.velocity[i]
+                right_pos = msg.position[i] if i < len(msg.position) else None
         
         # Position-based fallback if names are not present
         if left_vel is None or right_vel is None:
             if len(msg.velocity) >= 2:
                 left_vel = msg.velocity[0]
                 right_vel = msg.velocity[1]
+            if len(msg.position) >= 2:
+                left_pos = msg.position[0]
+                right_pos = msg.position[1]
         
         if left_vel is not None and right_vel is not None:
             self.latest_left_vel = left_vel
             self.latest_right_vel = right_vel
+        if left_pos is not None and right_pos is not None:
+            self.latest_left_pos = left_pos
+            self.latest_right_pos = right_pos
             if self.collecting:
-                self.samples.append((left_vel, right_vel))
+                self.samples.append((left_pos, right_pos))
 
     def publish_pwm(self, left_pwm, right_pwm):
         msg = JointState()
@@ -68,6 +80,7 @@ class WheelCalibrationNode(Node):
         ]
         
         self.get_logger().info("Starting Simultaneous Wheel Calibration Sweeps...")
+        self.get_logger().info("Using position-delta velocity (ground truth from tick counts).")
         
         for direction, pwms in sweeps:
             self.get_logger().info(f"\n=== Sweeping BOTH motors {direction.upper()} ===")
@@ -83,29 +96,42 @@ class WheelCalibrationNode(Node):
                     rclpy.spin_once(self, timeout_sec=0.05)
                     time.sleep(0.05)
                 
-                # Phase 2: Collect samples (1.0s)
+                # Phase 2: Collect — record position at start and end of window.
+                # Velocity = (pos_end - pos_start) / dt.  This uses exact tick
+                # counts and is immune to EMA/staleness bugs in the firmware's
+                # instantaneous velocity estimate.
                 self.samples = []
                 self.collecting = True
-                start_time = time.time()
-                while time.time() - start_time < 1.0:
+                # Snapshot position at start of collection
+                rclpy.spin_once(self, timeout_sec=0.05)
+                pos_start_left  = self.latest_left_pos
+                pos_start_right = self.latest_right_pos
+                collect_start   = time.time()
+                
+                while time.time() - collect_start < 1.0:
                     self.publish_pwm(pwm, pwm)
                     rclpy.spin_once(self, timeout_sec=0.05)
                     time.sleep(0.05)
                 
                 self.collecting = False
+                collect_dt = time.time() - collect_start
                 
-                if not self.samples:
-                    self.get_logger().warn("  Warning: No samples received during this step!")
+                if collect_dt < 0.1:
+                    self.get_logger().warn("  Warning: Collection window too short!")
                     continue
                 
-                # Retrieve the measured velocities for both left and right
-                left_vels = [s[0] for s in self.samples]
-                right_vels = [s[1] for s in self.samples]
+                # Compute velocity from position delta (ground truth)
+                avg_left  = (self.latest_left_pos  - pos_start_left)  / collect_dt
+                avg_right = (self.latest_right_pos - pos_start_right) / collect_dt
                 
-                avg_left = sum(left_vels) / len(left_vels)
-                avg_right = sum(right_vels) / len(right_vels)
+                # Also show firmware's instantaneous velocity for comparison
+                fw_left  = self.latest_left_vel
+                fw_right = self.latest_right_vel
                 
-                self.get_logger().info(f"  Avg left velocity: {avg_left:.4f} rad/s, Avg right velocity: {avg_right:.4f} rad/s (samples count: {len(self.samples)})")
+                self.get_logger().info(
+                    f"  Position-delta velocity: L={avg_left:.4f}  R={avg_right:.4f} rad/s  "
+                    f"(firmware instantaneous: L={fw_left:.4f}  R={fw_right:.4f})  dt={collect_dt:.3f}s"
+                )
                 
                 # We store absolute velocity and absolute commanded PWM for feedforward fitting
                 results['left'][direction].append((abs(avg_left), abs(pwm)))

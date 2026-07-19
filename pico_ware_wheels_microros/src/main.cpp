@@ -15,7 +15,7 @@
 #include "pico_uart_transports.h"
 
 // --- Timing ---
-#define PWM_WRAP                    6249U       // ~20 kHz at 125 MHz sys_clk (silent)
+#define PWM_WRAP                    9614U       // ~13 kHz at 125 MHz sys_clk
 #define COMMAND_TIMEOUT_MS          2000U
 #define WATCHDOG_TIMEOUT_MS         2000U
 #define CONTROL_PERIOD_MS           10U         // 100 Hz
@@ -24,7 +24,7 @@
 // --- Physical constants ---
 #define COUNTS_PER_REVOLUTION       60.0f
 #define TWO_PI                      (2.0f * (float)M_PI)
-#define VELOCITY_EMA_ALPHA          0.25f
+#define VELOCITY_EMA_ALPHA_TICK     0.4f        // EMA alpha when a new encoder tick arrives
 
 // --- Feedforward: pwm_fraction = K * |omega_rad_s| + C ---
 // Right motor has different K in reverse (empirical, from code.py).
@@ -40,10 +40,10 @@
 // --- PI tuning ---
 // Output is a PWM *fraction* added to feedforward (range 0..1).
 // With period-based velocity measurement the error is in true rad/s.
-// Effective PWM gain = Kp_old(0.15) × FF_K(~0.123) ≈ 0.018 per rad/s error.
 #define PI_KP                       0.018f
 #define PI_KI                       0.005f
 #define PI_INTEGRAL_LIMIT           0.15f
+#define PI_UPDATE_INTERVAL_CYCLES   5           // update PI every 50ms (5 × 10ms)
 
 // --- Control limits ---
 #define MAX_VEL_RAD_S               7.5f        // absolute clamp on incoming commands
@@ -54,8 +54,8 @@
 // (~500 ms) so normal low-speed gaps never false-trigger stall detection.
 #define STALL_DETECT_CYCLES         50
 #define STALL_GIVEUP_CYCLES         300         // ~3 s at 100 Hz: stop motor if truly stuck
-#define STALL_BOOST_STEP            0.2f        // rad/s added per stall cycle
-#define STALL_BOOST_MAX             3.5f        // rad/s maximum stall boost
+#define KICKSTART_PWM               0.60f       // PWM fraction for stall kick-start pulse
+#define KICKSTART_DURATION_CYCLES   8           // 80ms at 10ms control period
 
 // --- Pin assignments (XIAO RP2040 board labels -> GPIO) ---
 #define PIN_LEFT_PWM                27          // D1, Slice 5 Ch B
@@ -91,6 +91,8 @@ enum states {
     AGENT_DISCONNECTED
 };
 
+#define VEL_BUFF_SIZE 4
+
 typedef struct {
     uint              pwm_pin;
     uint              dir_pin;
@@ -102,15 +104,19 @@ typedef struct {
     volatile uint32_t encoder_ticks;
     volatile uint32_t last_tick_us;    // µs timestamp of most recent tick (ISR-written)
     volatile uint32_t tick_period_us;  // µs between last two ticks  (ISR-written)
+    volatile uint32_t tick_buffer[VEL_BUFF_SIZE];
+    volatile uint     buf_idx;
     uint32_t          last_enc_ticks;
     float             cmd_vel;          // rad/s from command callback
     float             target_vel;       // rad/s, slew-limited
-    float             measured_vel;     // rad/s, EMA of period-based measurements
+    float             measured_vel;     // rad/s, current best estimate
     int64_t           tick_accumulator; // signed tick count for drift-free position
     bool              last_dir_fwd;
     uint64_t          dir_change_at_ms; // wall-clock time of last direction change
     uint32_t          encoder_age;      // control cycles since last encoder tick
-    float             stall_boost;      // extra rad/s to overcome stiction
+    uint32_t          kickstart_counter;// cycles remaining in kick-start pulse
+    uint32_t          pi_age;           // control cycles since last PI update
+    float             last_pi_adj;      // cached PI output between throttled updates
     pid_controller_t  pid;
 } motor_t;
 
@@ -210,8 +216,9 @@ static void stop_motor(motor_t *m)
     pwm_set_gpio_level(m->pwm_pin, 0);
     gpio_put(m->dir_pin, 0);
     pid_controller_reset(&m->pid);
-    m->stall_boost  = 0.0f;
-    m->encoder_age  = 0;     // reset so re-start doesn't immediately trigger stall
+    m->kickstart_counter = 0;
+    m->last_pi_adj       = 0.0f;
+    m->encoder_age       = 0;     // reset so re-start doesn't immediately trigger stall
 }
 
 static void emergency_stop_all(void)
@@ -230,17 +237,29 @@ static void encoder_isr(uint gpio, uint32_t events)
     uint32_t now_us = time_us_32();
     if (gpio == PIN_ENCODER_LEFT) {
         uint32_t diff = now_us - left_motor.last_tick_us;
-        if (diff > 7000U) {  // 7 ms debounce to filter noise/chatter
-            left_motor.tick_period_us = diff;
-            left_motor.last_tick_us   = now_us;
+        if (diff > 10000U) {  // 10 ms debounce
+            left_motor.last_tick_us = now_us;
             left_motor.encoder_ticks++;
+            left_motor.tick_buffer[left_motor.buf_idx] = diff;
+            left_motor.buf_idx = (left_motor.buf_idx + 1) % VEL_BUFF_SIZE;
+            uint32_t sum = 0;
+            for (int i = 0; i < VEL_BUFF_SIZE; i++) {
+                sum += left_motor.tick_buffer[i];
+            }
+            left_motor.tick_period_us = sum / VEL_BUFF_SIZE;
         }
     } else if (gpio == PIN_ENCODER_RIGHT) {
         uint32_t diff = now_us - right_motor.last_tick_us;
-        if (diff > 7000U) {  // 7 ms debounce to filter noise/chatter
-            right_motor.tick_period_us = diff;
-            right_motor.last_tick_us   = now_us;
+        if (diff > 10000U) {  // 10 ms debounce
+            right_motor.last_tick_us = now_us;
             right_motor.encoder_ticks++;
+            right_motor.tick_buffer[right_motor.buf_idx] = diff;
+            right_motor.buf_idx = (right_motor.buf_idx + 1) % VEL_BUFF_SIZE;
+            uint32_t sum = 0;
+            for (int i = 0; i < VEL_BUFF_SIZE; i++) {
+                sum += right_motor.tick_buffer[i];
+            }
+            right_motor.tick_period_us = sum / VEL_BUFF_SIZE;
         }
     }
 }
@@ -309,33 +328,37 @@ static void update_motor(motor_t *m, float dt_s)
     uint32_t delta = ticks - m->last_enc_ticks;
     m->last_enc_ticks = ticks;
 
+    float direction = m->last_dir_fwd ? 1.0f : -1.0f;
+
     // --- Velocity and position ---
     if (delta > 0) {
-        // Period-based velocity: use the time between the last two encoder ticks.
-        // At typical speeds (0.5–5 rad/s, CPR=60) the tick period (17–300 ms) is
-        // much longer than the control loop dt (10 ms).  Using delta/dt_control
-        // gives readings 10–30× too high, which causes the PI to suppress the
-        // feedforward entirely.  tick_period_us is a single volatile uint32_t
-        // written by the ISR — reads are atomic on ARM Cortex-M0+.
+        // Period-based velocity using the ISR's moving-average tick period.
         uint32_t period_us = m->tick_period_us;
-        if (period_us > 500U && period_us < 5000000U) {  // 500 µs .. 5 s bounds
-            float direction = m->last_dir_fwd ? 1.0f : -1.0f;
-            float raw_vel   = direction * TWO_PI
-                              / (COUNTS_PER_REVOLUTION * ((float)period_us * 1e-6f));
+        if (period_us > 500U && period_us < 5000000U) {
+            float raw_vel = direction * TWO_PI
+                            / (COUNTS_PER_REVOLUTION * ((float)period_us * 1e-6f));
             if (isfinite(raw_vel)) {
-                m->measured_vel = VELOCITY_EMA_ALPHA * raw_vel
-                                + (1.0f - VELOCITY_EMA_ALPHA) * m->measured_vel;
+                // Fix 5: higher EMA alpha on fresh tick for faster response
+                m->measured_vel = VELOCITY_EMA_ALPHA_TICK * raw_vel
+                                + (1.0f - VELOCITY_EMA_ALPHA_TICK) * m->measured_vel;
             }
         }
         // Accumulate ticks as int64 for drift-free position (avoids float rounding).
         m->tick_accumulator += m->last_dir_fwd ? (int64_t)delta : -(int64_t)delta;
-        m->encoder_age  = 0;
-        m->stall_boost  = 0.0f;
+        m->encoder_age       = 0;
+        m->kickstart_counter = 0;
     } else {
         m->encoder_age++;
-        // Decay measured_vel during stall so PID doesn't fight a phantom reading.
-        if (m->encoder_age > STALL_DETECT_CYCLES) {
-            m->measured_vel *= (1.0f - VELOCITY_EMA_ALPHA);
+        // Fix 1: Age-based velocity decay.  Use max(tick_period, age_since_last_tick)
+        // so measured_vel smoothly decreases between ticks instead of holding stale.
+        uint32_t age_us     = time_us_32() - m->last_tick_us;
+        uint32_t period_us  = m->tick_period_us;
+        if (age_us > period_us && age_us > 500U && age_us < 5000000U) {
+            float raw_vel = direction * TWO_PI
+                            / (COUNTS_PER_REVOLUTION * ((float)age_us * 1e-6f));
+            if (isfinite(raw_vel)) {
+                m->measured_vel = raw_vel;  // direct assignment — monotonically falls
+            }
         }
     }
 
@@ -347,33 +370,56 @@ static void update_motor(motor_t *m, float dt_s)
     // --- Deadband ---
     if (fabsf(m->target_vel) < MOTOR_DEADBAND_RAD_S) {
         stop_motor(m);
-        m->measured_vel *= (1.0f - VELOCITY_EMA_ALPHA);
+        // Decay velocity toward zero when stopped
+        uint32_t age_us = time_us_32() - m->last_tick_us;
+        if (age_us > m->tick_period_us && age_us > 500U && age_us < 5000000U) {
+            m->measured_vel = direction * TWO_PI
+                              / (COUNTS_PER_REVOLUTION * ((float)age_us * 1e-6f));
+        }
         return;
     }
 
-    // --- Stall detection and giveup ---
+    // --- Stall detection: kick-start or giveup ---
     if (m->encoder_age > STALL_DETECT_CYCLES && fabsf(m->cmd_vel) > MOTOR_DEADBAND_RAD_S) {
-        // Give up entirely after the giveup threshold — stop applying current to
-        // a mechanically blocked motor and let the operator re-command.
+        // Give up entirely after the giveup threshold.
         if (m->encoder_age > STALL_GIVEUP_CYCLES) {
             m->cmd_vel    = 0.0f;
             m->target_vel = 0.0f;
             stop_motor(m);
             return;
         }
-        m->stall_boost = fminf(m->stall_boost + STALL_BOOST_STEP, STALL_BOOST_MAX);
+        // Fix 4: Kick-start — short strong pulse to overcome stiction.
+        if (m->kickstart_counter == 0) {
+            m->kickstart_counter = KICKSTART_DURATION_CYCLES;
+            pid_controller_reset(&m->pid);
+            m->last_pi_adj = 0.0f;
+        }
+    }
+    if (m->kickstart_counter > 0) {
+        bool fwd = (m->target_vel >= 0.0f);
+        set_motor_pwm(m, KICKSTART_PWM, fwd);
+        m->kickstart_counter--;
+        return;
     }
 
-    // --- Magnitude-based feedforward + PI ---
-    bool  fwd          = (m->target_vel >= 0.0f);
-    float abs_target   = fabsf(m->target_vel) + m->stall_boost;
-    float abs_measured = fabsf(m->measured_vel);
-    float ff_k         = fwd ? m->ff_k     : m->ff_k_rev;
-    float ff_c         = fwd ? m->ff_c     : m->ff_c_rev;
-    float ff_pwm       = clampf(ff_k * abs_target + ff_c, 0.0f, 1.0f);
-    float pi_adj       = pid_controller_update(&m->pid, abs_target, abs_measured, dt_s);
-    float out_pwm      = clampf(ff_pwm + pi_adj, 0.0f, 1.0f);
+    // --- Feedforward (magnitude-based) ---
+    bool  fwd    = (m->target_vel >= 0.0f);
+    float ff_k   = fwd ? m->ff_k : m->ff_k_rev;
+    float ff_c   = fwd ? m->ff_c : m->ff_c_rev;
+    float ff_pwm = clampf(ff_k * fabsf(m->target_vel) + ff_c, 0.0f, 1.0f);
 
+    // --- PI controller (Fix 2: throttled, Fix 3: signed error) ---
+    m->pi_age++;
+    bool run_pi = (delta > 0) || (m->pi_age >= PI_UPDATE_INTERVAL_CYCLES);
+    if (run_pi) {
+        // Fix 3: signed error — PI sees actual direction, smooth zero-crossing
+        float pi_dt = (float)m->pi_age * ((float)CONTROL_PERIOD_MS / 1000.0f);
+        m->last_pi_adj = pid_controller_update(&m->pid,
+                                                m->target_vel, m->measured_vel, pi_dt);
+        m->pi_age = 0;
+    }
+
+    float out_pwm = clampf(ff_pwm + m->last_pi_adj, 0.0f, 1.0f);
     set_motor_pwm(m, out_pwm, fwd);
 }
 
@@ -520,6 +566,11 @@ static void init_motor_struct(motor_t *m,
     m->ff_k_rev     = ff_k_rev;
     m->ff_c_rev     = ff_c_rev;
     m->last_dir_fwd = true;
+    // Fix 6: init to current time so first tick doesn't get boot-time diff
+    m->last_tick_us = time_us_32();
+    for (int i = 0; i < VEL_BUFF_SIZE; i++) {
+        m->tick_buffer[i] = 2000000U; // 2 seconds (stops initially)
+    }
     pid_controller_init(
         &m->pid,
         PI_KP, PI_KI, 0.0f,

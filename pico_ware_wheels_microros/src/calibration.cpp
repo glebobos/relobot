@@ -14,7 +14,7 @@
 #include "pico_uart_transports.h"
 
 // --- Timing ---
-#define PWM_WRAP                    6249U       // ~20 kHz at 125 MHz sys_clk (silent)
+#define PWM_WRAP                    9614U       // ~13 kHz at 125 MHz sys_clk
 #define COMMAND_TIMEOUT_MS          2000U
 #define WATCHDOG_TIMEOUT_MS         2000U
 #define CONTROL_PERIOD_MS           10U         // 100 Hz
@@ -63,6 +63,8 @@ enum states {
     AGENT_DISCONNECTED
 };
 
+#define VEL_BUFF_SIZE 4
+
 typedef struct {
     uint              pwm_pin;
     uint              dir_pin;
@@ -70,6 +72,8 @@ typedef struct {
     volatile uint32_t encoder_ticks;
     volatile uint32_t last_tick_us;    // µs timestamp of most recent tick (ISR-written)
     volatile uint32_t tick_period_us;  // µs between last two ticks  (ISR-written)
+    volatile uint32_t tick_buffer[VEL_BUFF_SIZE];
+    volatile uint     buf_idx;
     uint32_t          last_enc_ticks;
     float             cmd_vel;          // direct PWM command (-1.0 to 1.0)
     float             measured_vel;     // rad/s, EMA of period-based measurements
@@ -190,17 +194,29 @@ static void encoder_isr(uint gpio, uint32_t events)
     uint32_t now_us = time_us_32();
     if (gpio == PIN_ENCODER_LEFT) {
         uint32_t diff = now_us - left_motor.last_tick_us;
-        if (diff > 7000U) {  // 7 ms debounce to filter noise/chatter
-            left_motor.tick_period_us = diff;
-            left_motor.last_tick_us   = now_us;
+        if (diff > 10000U) {  // 10 ms debounce
+            left_motor.last_tick_us = now_us;
             left_motor.encoder_ticks++;
+            left_motor.tick_buffer[left_motor.buf_idx] = diff;
+            left_motor.buf_idx = (left_motor.buf_idx + 1) % VEL_BUFF_SIZE;
+            uint32_t sum = 0;
+            for (int i = 0; i < VEL_BUFF_SIZE; i++) {
+                sum += left_motor.tick_buffer[i];
+            }
+            left_motor.tick_period_us = sum / VEL_BUFF_SIZE;
         }
     } else if (gpio == PIN_ENCODER_RIGHT) {
         uint32_t diff = now_us - right_motor.last_tick_us;
-        if (diff > 7000U) {  // 7 ms debounce to filter noise/chatter
-            right_motor.tick_period_us = diff;
-            right_motor.last_tick_us   = now_us;
+        if (diff > 10000U) {  // 10 ms debounce
+            right_motor.last_tick_us = now_us;
             right_motor.encoder_ticks++;
+            right_motor.tick_buffer[right_motor.buf_idx] = diff;
+            right_motor.buf_idx = (right_motor.buf_idx + 1) % VEL_BUFF_SIZE;
+            uint32_t sum = 0;
+            for (int i = 0; i < VEL_BUFF_SIZE; i++) {
+                sum += right_motor.tick_buffer[i];
+            }
+            right_motor.tick_period_us = sum / VEL_BUFF_SIZE;
         }
     }
 }
@@ -433,6 +449,11 @@ static void init_motor_struct(motor_t *m, uint pwm_pin, uint dir_pin, uint enc_p
     m->dir_pin      = dir_pin;
     m->enc_pin      = enc_pin;
     m->last_dir_fwd = true;
+    // Fix 6: init to current time so first tick doesn't get boot-time diff
+    m->last_tick_us = time_us_32();
+    for (int i = 0; i < VEL_BUFF_SIZE; i++) {
+        m->tick_buffer[i] = 2000000U; // 2 seconds (stops initially)
+    }
 }
 
 int main(void)
