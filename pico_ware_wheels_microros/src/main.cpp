@@ -28,14 +28,14 @@
 
 // --- Feedforward: pwm_fraction = K * |omega_rad_s| + C ---
 // Right motor has different K in reverse (empirical, from code.py).
-#define FF_K_LEFT_FWD               0.12281f
-#define FF_C_LEFT_FWD               0.029637f
-#define FF_K_LEFT_REV               0.12281f    // same as fwd (code.py uses same)
-#define FF_C_LEFT_REV               0.029637f
-#define FF_K_RIGHT_FWD              0.12681f
-#define FF_C_RIGHT_FWD              0.021466f
-#define FF_K_RIGHT_REV              0.11793f    // from code.py speed_to_pwm_right reverse
-#define FF_C_RIGHT_REV              0.021466f
+#define FF_K_LEFT_FWD               0.087294f
+#define FF_C_LEFT_FWD               0.010151f
+#define FF_K_LEFT_REV               0.081871f
+#define FF_C_LEFT_REV               0.021190f
+#define FF_K_RIGHT_FWD              0.151115f
+#define FF_C_RIGHT_FWD              0.030078f
+#define FF_K_RIGHT_REV              0.148510f
+#define FF_C_RIGHT_REV              0.033936f
 
 // --- PI tuning ---
 // Output is a PWM *fraction* added to feedforward (range 0..1).
@@ -229,13 +229,19 @@ static void encoder_isr(uint gpio, uint32_t events)
     (void)events;
     uint32_t now_us = time_us_32();
     if (gpio == PIN_ENCODER_LEFT) {
-        left_motor.tick_period_us = now_us - left_motor.last_tick_us;
-        left_motor.last_tick_us   = now_us;
-        left_motor.encoder_ticks++;
+        uint32_t diff = now_us - left_motor.last_tick_us;
+        if (diff > 7000U) {  // 7 ms debounce to filter noise/chatter
+            left_motor.tick_period_us = diff;
+            left_motor.last_tick_us   = now_us;
+            left_motor.encoder_ticks++;
+        }
     } else if (gpio == PIN_ENCODER_RIGHT) {
-        right_motor.tick_period_us = now_us - right_motor.last_tick_us;
-        right_motor.last_tick_us   = now_us;
-        right_motor.encoder_ticks++;
+        uint32_t diff = now_us - right_motor.last_tick_us;
+        if (diff > 7000U) {  // 7 ms debounce to filter noise/chatter
+            right_motor.tick_period_us = diff;
+            right_motor.last_tick_us   = now_us;
+            right_motor.encoder_ticks++;
+        }
     }
 }
 

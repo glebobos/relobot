@@ -189,13 +189,19 @@ static void encoder_isr(uint gpio, uint32_t events)
     (void)events;
     uint32_t now_us = time_us_32();
     if (gpio == PIN_ENCODER_LEFT) {
-        left_motor.tick_period_us = now_us - left_motor.last_tick_us;
-        left_motor.last_tick_us   = now_us;
-        left_motor.encoder_ticks++;
+        uint32_t diff = now_us - left_motor.last_tick_us;
+        if (diff > 7000U) {  // 7 ms debounce to filter noise/chatter
+            left_motor.tick_period_us = diff;
+            left_motor.last_tick_us   = now_us;
+            left_motor.encoder_ticks++;
+        }
     } else if (gpio == PIN_ENCODER_RIGHT) {
-        right_motor.tick_period_us = now_us - right_motor.last_tick_us;
-        right_motor.last_tick_us   = now_us;
-        right_motor.encoder_ticks++;
+        uint32_t diff = now_us - right_motor.last_tick_us;
+        if (diff > 7000U) {  // 7 ms debounce to filter noise/chatter
+            right_motor.tick_period_us = diff;
+            right_motor.last_tick_us   = now_us;
+            right_motor.encoder_ticks++;
+        }
     }
 }
 

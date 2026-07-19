@@ -58,7 +58,8 @@ If you suspect an encoder is damaged, disconnected, or picking up noise, you can
    ```
 2. In another terminal, run the diagnostic script:
    ```bash
-   docker compose -f ros2_ws/docker-compose.yml exec ros2_diff_robot python3 /ros2_ws/helpers/wheel_calibration/show_ticks.py
+docker compose -f ros2_ws/docker-compose.yml exec ros2_diff_robot bash -c "source /opt/ros/humble/setup.bash && python3 /ros2_ws/helpers/wheel_calibration/show_ticks.py"
+
    ```
 3. Manually turn the wheels. You should see the tick counts increase/decrease smoothly. If a wheel's ticks increase rapidly on their own when the wheel is stationary or spin is initiated, that indicates EMI/noise on that channel.
 

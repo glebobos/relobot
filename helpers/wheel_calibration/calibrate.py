@@ -48,13 +48,10 @@ class WheelCalibrationNode(Node):
             if self.collecting:
                 self.samples.append((left_vel, right_vel))
 
-    def publish_pwm(self, motor, pwm):
+    def publish_pwm(self, left_pwm, right_pwm):
         msg = JointState()
         msg.name = ['left_wheel_joint', 'right_wheel_joint']
-        if motor == 'left':
-            msg.velocity = [float(pwm), 0.0]
-        else:
-            msg.velocity = [0.0, float(pwm)]
+        msg.velocity = [float(left_pwm), float(right_pwm)]
         self.pub.publish(msg)
 
     def run_calibration(self):
@@ -66,16 +63,14 @@ class WheelCalibrationNode(Node):
         }
         
         sweeps = [
-            ('left', 'fwd', pwm_sweep),
-            ('left', 'rev', [-x for x in pwm_sweep]),
-            ('right', 'fwd', pwm_sweep),
-            ('right', 'rev', [-x for x in pwm_sweep])
+            ('fwd', pwm_sweep),
+            ('rev', [-x for x in pwm_sweep])
         ]
         
-        self.get_logger().info("Starting Wheel Calibration Sweeps...")
+        self.get_logger().info("Starting Simultaneous Wheel Calibration Sweeps...")
         
-        for motor, direction, pwms in sweeps:
-            self.get_logger().info(f"\n=== Sweeping {motor.upper()} motor {direction.upper()} ===")
+        for direction, pwms in sweeps:
+            self.get_logger().info(f"\n=== Sweeping BOTH motors {direction.upper()} ===")
             for pwm in pwms:
                 self.get_logger().info(f"Commanding PWM: {pwm:.2f}")
                 
@@ -84,7 +79,7 @@ class WheelCalibrationNode(Node):
                 self.collecting = False
                 start_time = time.time()
                 while time.time() - start_time < 1.5:
-                    self.publish_pwm(motor, pwm)
+                    self.publish_pwm(pwm, pwm)
                     rclpy.spin_once(self, timeout_sec=0.05)
                     time.sleep(0.05)
                 
@@ -93,7 +88,7 @@ class WheelCalibrationNode(Node):
                 self.collecting = True
                 start_time = time.time()
                 while time.time() - start_time < 1.0:
-                    self.publish_pwm(motor, pwm)
+                    self.publish_pwm(pwm, pwm)
                     rclpy.spin_once(self, timeout_sec=0.05)
                     time.sleep(0.05)
                 
@@ -103,27 +98,29 @@ class WheelCalibrationNode(Node):
                     self.get_logger().warn("  Warning: No samples received during this step!")
                     continue
                 
-                # Retrieve the commanded motor's measured velocity
-                idx = 0 if motor == 'left' else 1
-                vels = [s[idx] for s in self.samples]
-                avg_vel = sum(vels) / len(vels)
+                # Retrieve the measured velocities for both left and right
+                left_vels = [s[0] for s in self.samples]
+                right_vels = [s[1] for s in self.samples]
                 
-                self.get_logger().info(f"  Avg velocity: {avg_vel:.4f} rad/s (samples count: {len(vels)})")
+                avg_left = sum(left_vels) / len(left_vels)
+                avg_right = sum(right_vels) / len(right_vels)
+                
+                self.get_logger().info(f"  Avg left velocity: {avg_left:.4f} rad/s, Avg right velocity: {avg_right:.4f} rad/s (samples count: {len(self.samples)})")
                 
                 # We store absolute velocity and absolute commanded PWM for feedforward fitting
-                results[motor][direction].append((abs(avg_vel), abs(pwm)))
+                results['left'][direction].append((abs(avg_left), abs(pwm)))
+                results['right'][direction].append((abs(avg_right), abs(pwm)))
                 
                 # Phase 3: Coast to stop (0.5s)
                 start_time = time.time()
                 while time.time() - start_time < 0.5:
-                    self.publish_pwm(motor, 0.0)
+                    self.publish_pwm(0.0, 0.0)
                     rclpy.spin_once(self, timeout_sec=0.05)
                     time.sleep(0.05)
         
         # Shutdown motors at the end
         for _ in range(10):
-            self.publish_pwm('left', 0.0)
-            self.publish_pwm('right', 0.0)
+            self.publish_pwm(0.0, 0.0)
             time.sleep(0.05)
             
         self.analyze_results(results)
