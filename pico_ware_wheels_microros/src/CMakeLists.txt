@@ -38,3 +38,26 @@ add_compile_definitions(PICO_STDIO_ENABLE_CRLF_SUPPORT=0)
 add_compile_definitions(PICO_STDIO_DEFAULT_CRLF=0)
 
 pico_add_extra_outputs(pico_wheels_microros)
+
+# --- Calibration Executable ---
+add_executable(pico_wheels_calibration
+    calibration.cpp
+    pico_uart_transport.c
+)
+
+target_link_libraries(pico_wheels_calibration
+    pico_stdlib
+    hardware_pwm
+    hardware_watchdog
+    microros
+)
+
+target_include_directories(pico_wheels_calibration PUBLIC
+    /project/libmicroros/include
+    ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+pico_enable_stdio_usb(pico_wheels_calibration 1)
+pico_enable_stdio_uart(pico_wheels_calibration 0)
+
+pico_add_extra_outputs(pico_wheels_calibration)

@@ -11,7 +11,6 @@
 #include "hardware/gpio.h"
 #include "hardware/pwm.h"
 #include "hardware/watchdog.h"
-#include "pid_controller.h"
 #include "pico_uart_transports.h"
 
 // --- Timing ---
@@ -26,36 +25,9 @@
 #define TWO_PI                      (2.0f * (float)M_PI)
 #define VELOCITY_EMA_ALPHA          0.25f
 
-// --- Feedforward: pwm_fraction = K * |omega_rad_s| + C ---
-// Right motor has different K in reverse (empirical, from code.py).
-#define FF_K_LEFT_FWD               0.12281f
-#define FF_C_LEFT_FWD               0.029637f
-#define FF_K_LEFT_REV               0.12281f    // same as fwd (code.py uses same)
-#define FF_C_LEFT_REV               0.029637f
-#define FF_K_RIGHT_FWD              0.12681f
-#define FF_C_RIGHT_FWD              0.021466f
-#define FF_K_RIGHT_REV              0.11793f    // from code.py speed_to_pwm_right reverse
-#define FF_C_RIGHT_REV              0.021466f
-
-// --- PI tuning ---
-// Output is a PWM *fraction* added to feedforward (range 0..1).
-// With period-based velocity measurement the error is in true rad/s.
-// Effective PWM gain = Kp_old(0.15) × FF_K(~0.123) ≈ 0.018 per rad/s error.
-#define PI_KP                       0.018f
-#define PI_KI                       0.005f
-#define PI_INTEGRAL_LIMIT           0.15f
-
 // --- Control limits ---
-#define MAX_VEL_RAD_S               7.5f        // absolute clamp on incoming commands
-#define SLEW_LIMIT_RAD_S_PER_CYCLE  0.5f        // max delta per CONTROL_PERIOD_MS step
-#define MOTOR_DEADBAND_RAD_S        0.35f
-// At 100 Hz with CPR=60, a motor at deadband speed (0.35 rad/s) produces one
-// encoder tick every ~30 control cycles.  Set the stall threshold to 50 cycles
-// (~500 ms) so normal low-speed gaps never false-trigger stall detection.
+#define MAX_PWM_COMMAND             1.0f        // absolute clamp on raw PWM commands
 #define STALL_DETECT_CYCLES         50
-#define STALL_GIVEUP_CYCLES         300         // ~3 s at 100 Hz: stop motor if truly stuck
-#define STALL_BOOST_STEP            0.2f        // rad/s added per stall cycle
-#define STALL_BOOST_MAX             3.5f        // rad/s maximum stall boost
 
 // --- Pin assignments (XIAO RP2040 board labels -> GPIO) ---
 #define PIN_LEFT_PWM                27          // D1, Slice 5 Ch B
@@ -95,23 +67,16 @@ typedef struct {
     uint              pwm_pin;
     uint              dir_pin;
     uint              enc_pin;
-    float             ff_k;
-    float             ff_c;
-    float             ff_k_rev;     // feedforward K for reverse direction
-    float             ff_c_rev;     // feedforward C for reverse direction
     volatile uint32_t encoder_ticks;
     volatile uint32_t last_tick_us;    // µs timestamp of most recent tick (ISR-written)
     volatile uint32_t tick_period_us;  // µs between last two ticks  (ISR-written)
     uint32_t          last_enc_ticks;
-    float             cmd_vel;          // rad/s from command callback
-    float             target_vel;       // rad/s, slew-limited
+    float             cmd_vel;          // direct PWM command (-1.0 to 1.0)
     float             measured_vel;     // rad/s, EMA of period-based measurements
     int64_t           tick_accumulator; // signed tick count for drift-free position
     bool              last_dir_fwd;
     uint64_t          dir_change_at_ms; // wall-clock time of last direction change
     uint32_t          encoder_age;      // control cycles since last encoder tick
-    float             stall_boost;      // extra rad/s to overcome stiction
-    pid_controller_t  pid;
 } motor_t;
 
 typedef struct {
@@ -188,7 +153,6 @@ static void set_motor_pwm(motor_t *m, float pwm_fraction, bool fwd)
         gpio_put(m->dir_pin, 0);
         m->dir_change_at_ms = now_ms();
         m->last_dir_fwd     = fwd;
-        pid_controller_reset(&m->pid);
         return;  // coast this cycle; PWM applied once deadtime has elapsed
     }
 
@@ -209,8 +173,6 @@ static void stop_motor(motor_t *m)
 {
     pwm_set_gpio_level(m->pwm_pin, 0);
     gpio_put(m->dir_pin, 0);
-    pid_controller_reset(&m->pid);
-    m->stall_boost  = 0.0f;
     m->encoder_age  = 0;     // reset so re-start doesn't immediately trigger stall
 }
 
@@ -219,9 +181,7 @@ static void emergency_stop_all(void)
     stop_motor(&left_motor);
     stop_motor(&right_motor);
     left_motor.cmd_vel    = 0.0f;
-    left_motor.target_vel = 0.0f;
-    right_motor.cmd_vel    = 0.0f;
-    right_motor.target_vel = 0.0f;
+    right_motor.cmd_vel   = 0.0f;
 }
 
 static void encoder_isr(uint gpio, uint32_t events)
@@ -255,18 +215,18 @@ static void command_callback(const void *msg_in)
     for (size_t i = 0; i < msg->name.size && i < msg->velocity.size; i++) {
         const char *name = msg->name.data[i].data;
         if (name && strncmp(name, "left_wheel_joint",  msg->name.data[i].size) == 0) {
-            new_left = clampf((float)msg->velocity.data[i], -MAX_VEL_RAD_S, MAX_VEL_RAD_S);
+            new_left = clampf((float)msg->velocity.data[i], -MAX_PWM_COMMAND, MAX_PWM_COMMAND);
             got_left = true;
         } else if (name && strncmp(name, "right_wheel_joint", msg->name.data[i].size) == 0) {
-            new_right = clampf((float)msg->velocity.data[i], -MAX_VEL_RAD_S, MAX_VEL_RAD_S);
+            new_right = clampf((float)msg->velocity.data[i], -MAX_PWM_COMMAND, MAX_PWM_COMMAND);
             got_right = true;
         }
     }
 
     // Fall back to positional mapping if names are absent (e.g. testing with ros2 topic pub).
     if (!got_left && !got_right) {
-        new_left  = clampf((float)msg->velocity.data[0], -MAX_VEL_RAD_S, MAX_VEL_RAD_S);
-        new_right = clampf((float)msg->velocity.data[1], -MAX_VEL_RAD_S, MAX_VEL_RAD_S);
+        new_left  = clampf((float)msg->velocity.data[0], -MAX_PWM_COMMAND, MAX_PWM_COMMAND);
+        new_right = clampf((float)msg->velocity.data[1], -MAX_PWM_COMMAND, MAX_PWM_COMMAND);
     }
 
     left_motor.cmd_vel  = new_left;
@@ -293,24 +253,17 @@ static void publish_timer_callback(rcl_timer_t *timer, int64_t last_call_time)
 
 static void update_motor(motor_t *m, float dt_s)
 {
-    // Guard against zero/invalid dt to prevent NaN/Inf in velocity computation.
     if (dt_s <= 0.0f || !isfinite(dt_s)) {
         return;
     }
 
-    // --- Encoder delta (ISR-safe: read once) ---
+    // --- Encoder delta ---
     uint32_t ticks = m->encoder_ticks;
     uint32_t delta = ticks - m->last_enc_ticks;
     m->last_enc_ticks = ticks;
 
     // --- Velocity and position ---
     if (delta > 0) {
-        // Period-based velocity: use the time between the last two encoder ticks.
-        // At typical speeds (0.5–5 rad/s, CPR=60) the tick period (17–300 ms) is
-        // much longer than the control loop dt (10 ms).  Using delta/dt_control
-        // gives readings 10–30× too high, which causes the PI to suppress the
-        // feedforward entirely.  tick_period_us is a single volatile uint32_t
-        // written by the ISR — reads are atomic on ARM Cortex-M0+.
         uint32_t period_us = m->tick_period_us;
         if (period_us > 500U && period_us < 5000000U) {  // 500 µs .. 5 s bounds
             float direction = m->last_dir_fwd ? 1.0f : -1.0f;
@@ -321,54 +274,21 @@ static void update_motor(motor_t *m, float dt_s)
                                 + (1.0f - VELOCITY_EMA_ALPHA) * m->measured_vel;
             }
         }
-        // Accumulate ticks as int64 for drift-free position (avoids float rounding).
         m->tick_accumulator += m->last_dir_fwd ? (int64_t)delta : -(int64_t)delta;
         m->encoder_age  = 0;
-        m->stall_boost  = 0.0f;
     } else {
         m->encoder_age++;
-        // Decay measured_vel during stall so PID doesn't fight a phantom reading.
         if (m->encoder_age > STALL_DETECT_CYCLES) {
             m->measured_vel *= (1.0f - VELOCITY_EMA_ALPHA);
         }
     }
 
-    // --- Slew limit ---
-    float delta_cmd = m->cmd_vel - m->target_vel;
-    delta_cmd = clampf(delta_cmd, -SLEW_LIMIT_RAD_S_PER_CYCLE, SLEW_LIMIT_RAD_S_PER_CYCLE);
-    m->target_vel += delta_cmd;
+    // --- Calibration: directly apply command as PWM fraction ---
+    float out_pwm = m->cmd_vel; // direct PWM command (from -1.0 to 1.0)
+    bool  fwd     = (out_pwm >= 0.0f);
+    float abs_pwm = fabsf(out_pwm);
 
-    // --- Deadband ---
-    if (fabsf(m->target_vel) < MOTOR_DEADBAND_RAD_S) {
-        stop_motor(m);
-        m->measured_vel *= (1.0f - VELOCITY_EMA_ALPHA);
-        return;
-    }
-
-    // --- Stall detection and giveup ---
-    if (m->encoder_age > STALL_DETECT_CYCLES && fabsf(m->cmd_vel) > MOTOR_DEADBAND_RAD_S) {
-        // Give up entirely after the giveup threshold — stop applying current to
-        // a mechanically blocked motor and let the operator re-command.
-        if (m->encoder_age > STALL_GIVEUP_CYCLES) {
-            m->cmd_vel    = 0.0f;
-            m->target_vel = 0.0f;
-            stop_motor(m);
-            return;
-        }
-        m->stall_boost = fminf(m->stall_boost + STALL_BOOST_STEP, STALL_BOOST_MAX);
-    }
-
-    // --- Magnitude-based feedforward + PI ---
-    bool  fwd          = (m->target_vel >= 0.0f);
-    float abs_target   = fabsf(m->target_vel) + m->stall_boost;
-    float abs_measured = fabsf(m->measured_vel);
-    float ff_k         = fwd ? m->ff_k     : m->ff_k_rev;
-    float ff_c         = fwd ? m->ff_c     : m->ff_c_rev;
-    float ff_pwm       = clampf(ff_k * abs_target + ff_c, 0.0f, 1.0f);
-    float pi_adj       = pid_controller_update(&m->pid, abs_target, abs_measured, dt_s);
-    float out_pwm      = clampf(ff_pwm + pi_adj, 0.0f, 1.0f);
-
-    set_motor_pwm(m, out_pwm, fwd);
+    set_motor_pwm(m, abs_pwm, fwd);
 }
 
 static void update_control(void)
@@ -409,7 +329,7 @@ static bool create_entities(void)
     if (rclc_support_init(&ctx.support, 0, NULL, &ctx.allocator) != RCL_RET_OK)
         return false;
 
-    if (rclc_node_init_default(&ctx.node, "wheels_node", "", &ctx.support) != RCL_RET_OK)
+    if (rclc_node_init_default(&ctx.node, "wheels_calibration_node", "", &ctx.support) != RCL_RET_OK)
         goto fail_support;
 
     if (rclc_subscription_init_default(
@@ -500,25 +420,13 @@ static void init_encoder_pin(uint pin)
     gpio_pull_up(pin);
 }
 
-static void init_motor_struct(motor_t *m,
-                               uint pwm_pin, uint dir_pin, uint enc_pin,
-                               float ff_k, float ff_c,
-                               float ff_k_rev, float ff_c_rev)
+static void init_motor_struct(motor_t *m, uint pwm_pin, uint dir_pin, uint enc_pin)
 {
     memset(m, 0, sizeof(*m));
     m->pwm_pin      = pwm_pin;
     m->dir_pin      = dir_pin;
     m->enc_pin      = enc_pin;
-    m->ff_k         = ff_k;
-    m->ff_c         = ff_c;
-    m->ff_k_rev     = ff_k_rev;
-    m->ff_c_rev     = ff_c_rev;
     m->last_dir_fwd = true;
-    pid_controller_init(
-        &m->pid,
-        PI_KP, PI_KI, 0.0f,
-        -PI_INTEGRAL_LIMIT, PI_INTEGRAL_LIMIT,
-        -PI_INTEGRAL_LIMIT, PI_INTEGRAL_LIMIT);
 }
 
 int main(void)
@@ -535,12 +443,8 @@ int main(void)
     gpio_set_dir(LED_PIN, GPIO_OUT);
 
     // --- Motor initialisation ---
-    init_motor_struct(&left_motor,
-                      PIN_LEFT_PWM, PIN_LEFT_DIR, PIN_ENCODER_LEFT,
-                      FF_K_LEFT_FWD, FF_C_LEFT_FWD, FF_K_LEFT_REV, FF_C_LEFT_REV);
-    init_motor_struct(&right_motor,
-                      PIN_RIGHT_PWM, PIN_RIGHT_DIR, PIN_ENCODER_RIGHT,
-                      FF_K_RIGHT_FWD, FF_C_RIGHT_FWD, FF_K_RIGHT_REV, FF_C_RIGHT_REV);
+    init_motor_struct(&left_motor,  PIN_LEFT_PWM,  PIN_LEFT_DIR,  PIN_ENCODER_LEFT);
+    init_motor_struct(&right_motor, PIN_RIGHT_PWM, PIN_RIGHT_DIR, PIN_ENCODER_RIGHT);
 
     init_motor_pins(PIN_LEFT_PWM,  PIN_LEFT_DIR);
     init_motor_pins(PIN_RIGHT_PWM, PIN_RIGHT_DIR);
