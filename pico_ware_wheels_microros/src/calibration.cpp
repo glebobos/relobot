@@ -34,7 +34,7 @@
 #define PIN_LEFT_DIR                26          // D0
 #define PIN_RIGHT_PWM               28          // D2, Slice 6 Ch A
 #define PIN_RIGHT_DIR               7           // D5
-#define PIN_ENCODER_LEFT            4           // D9
+#define PIN_ENCODER_LEFT            6           // D4
 #define PIN_ENCODER_RIGHT           3           // D10
 #define LED_PIN                     PICO_DEFAULT_LED_PIN
 

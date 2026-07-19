@@ -73,12 +73,12 @@ If you are using WSL2, after attaching the BOOTSEL device using `usbipd`, the st
 2. **Create the mountpoint and mount**:
    Run the following commands (replace `/dev/sdb1` with your actual partition name):
    ```bash
-   sudo mkdir -p /media/admin/RPI-RP2
-   sudo mount -t vfat /dev/sde1 /media/RPI-RP2 -o uid=$(id -u),gid=$(id -g),utf8
+   sudo mkdir -p /media/RPI-RP2
+   sudo mount -t vfat /dev/sdf1 /media/RPI-RP2 -o uid=$(id -u),gid=$(id -g),utf8
    ```
 3. **Copy the firmware**:
    ```bash
-   cp your_firmware.uf2 /media/admin/RPI-RP2/
+   cp your_firmware.uf2 /media/RPI-RP2/
    ```
 
 
