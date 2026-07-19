@@ -4,6 +4,7 @@ import sys
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import JointState
+from rclpy.qos import qos_profile_sensor_data
 
 class WheelCalibrationNode(Node):
     def __init__(self):
@@ -17,7 +18,7 @@ class WheelCalibrationNode(Node):
             JointState, 
             '/robot_joint_states', 
             self.states_callback, 
-            10
+            qos_profile_sensor_data
         )
         
         self.latest_left_vel = 0.0

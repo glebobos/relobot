@@ -20,20 +20,16 @@ Flash the calibration binary output `pico_wheels_calibration.uf2` to the wheels 
 - *Note for WSL2 users: You must attach the USB device to WSL2 using `usbipd-win` before it will be visible. See [FLASHING.md](file:///home/glebobos/projects/relobot/FLASHING.md#5-wsl2-usb-passthrough-usbipd-win) for details.*
 
 
-### 2. Start Robot Stack (micro-ROS Agent)
-Start the robot orchestrator services to initialize the communication agent:
-```bash
-./start_robot.sh up --dev
-```
+### 2. Run the Calibration Node (Non-interfering Mode)
+To calibrate the feedforward constants without interference from the main robot controller (which regularly publishes conflicting `0.0` command signals to hold position), you should run the micro-ROS agent and the calibration script together in a standalone container:
 
-### 3. Run the Calibration Script
-Execute the sweep script inside the `ros2_diff_robot` container:
 ```bash
-docker compose -f ros2_ws/docker-compose.yml exec ros2_diff_robot bash -c "source /ros2_ws/install/setup.bash && python3 /ros2_ws/helpers/wheel_calibration/calibrate.py"
+docker compose -f ros2_ws/docker-compose.yml run --rm ros2_diff_robot bash -c "source /opt/ros/humble/setup.bash && source /uros_ws/install/local_setup.bash && ros2 run micro_ros_agent micro_ros_agent multiserial --devs \"/dev/ttyACM0 /dev/ttyACM1 /dev/ttyACM2 /dev/ttyACM3\" -b 115200 & sleep 5 && python3 /ros2_ws/helpers/wheel_calibration/calibrate.py"
 ```
 
 > [!WARNING]
 > Keep the robot in a safe environment or lift the wheels off the ground, as the wheels will rotate during calibration sweeps.
+
 
 ### 4. Apply the Coefficients
 1. Copy the printed `#define` lines from the calibration script output.
