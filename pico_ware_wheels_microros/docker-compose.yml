@@ -5,3 +5,4 @@ services:
       dockerfile: Dockerfile
     volumes:
       - ./src:/project/src
+    network_mode: host

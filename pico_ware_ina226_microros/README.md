@@ -2,26 +2,22 @@
 
 This package contains the RP2350 (Pico 2) firmware for power monitoring using the INA226 sensor, publishing over micro-ROS.
 
-## Build
-Use the same workflow as the other pico micro-ROS targets:
+## Build & Flashing
+
+Use the unified firmware management script from the repository root:
 
 ```bash
-docker compose run --rm builder
+# Build firmware
+./run_firmware.sh build ina226
+
+# Flash firmware (auto-resets board and uploads via picotool)
+./run_firmware.sh flash ina226
 ```
 
-The generated UF2 is copied into `src/`.
-
-## Flashing
-To upload the generated `.uf2` file to the board:
-
-1. **Put the board in BOOTSEL mode**:
-   ```bash
-   stty -F /dev/ttyACM2 1200
-   ```
-2. **Copy the firmware**:
-   ```bash
-   cp src/pico_micro_ros_ina226.uf2 /media/admin/RPI-RP2/
-   ```
-   *Note: The board will reboot automatically after the copy completes.*
+Alternatively, run `./run.sh` inside this directory:
+```bash
+./run.sh build
+./run.sh flash
+```
 
 For more details, see [FLASHING.md](../../FLASHING.md).

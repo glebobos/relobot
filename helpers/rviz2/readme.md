@@ -7,7 +7,7 @@ docker run -ti     -v /tmp/.X11-unix:/tmp/.X11-unix -v /dev/shm:/dev/shm -e DISP
 Coverage testing in RViz:
 
 1. Start the robot stack and the web frontend.
-2. Launch RViz with the command above or by running `./start_rviz2.sh` from the repo root.
+2. Launch RViz with the command above or by running `./rviz2.sh` from the repo root.
 3. Set `Fixed Frame` to `map`.
 4. Add these displays:
 	- `Path` on `/coverage/preview_path`

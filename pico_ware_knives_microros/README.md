@@ -11,11 +11,22 @@ This package contains the RP2040 firmware for knife spindle control using micro-
 - Voltage telemetry is intentionally removed from this firmware.
 - Legacy line-based serial commands (such as `whoyouare`) are not used.
 
-## Build
-Use the same workflow as the other pico micro-ROS targets:
+## Build & Flashing
+
+Use the unified firmware management script from the repository root:
 
 ```bash
-docker compose run --rm builder
+# Build firmware
+./run_firmware.sh build knives
+
+# Flash firmware (auto-resets board and uploads via picotool)
+./run_firmware.sh flash knives
 ```
 
-The generated UF2 is copied into `src/`.
+Alternatively, run `./run.sh` inside this directory:
+```bash
+./run.sh build
+./run.sh flash
+```
+
+For detailed flashing info, see [FLASHING.md](../../FLASHING.md).

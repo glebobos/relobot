@@ -38,6 +38,7 @@ services:
       dockerfile: DiffDriveHardware.dockerfile
     volumes:
       - .:/ros2_ws/
+      - ../helpers:/ros2_ws/helpers
     devices:
       - /dev/:/dev/
     environment:
