@@ -13,6 +13,7 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     libusb-1.0-0-dev \
     pkg-config \
+    picocom \
     && rm -rf /var/lib/apt/lists/*
 
 ENV PICO_SDK_PATH=/opt/pico-sdk

@@ -63,7 +63,12 @@ The web server frontend (`ros2_frontend` service) serves static files located in
 | **Start All** | `./start_robot.sh up --dev` |
 | **Stop All** | `./start_robot.sh down` |
 | **View Logs** | `docker compose logs -f` |
-| **Find Devices** | `python3 finddevice.py` |
+| **Scan Firmware Devices** | `./run_firmware.sh scan` |
+| **Build All Firmwares** | `./run_firmware.sh build all` |
+| **Flash Firmware** | `./run_firmware.sh flash <wheels|wheels_calibration|knives|imu|ina226>` |
+| **Run Wheel Calibration** | `./start_wheel_calibration.sh` |
+
+
 
 ## Inspecting ROS2 (via Docker)
 All ROS2 tools must be run **inside** the containers via `docker compose exec`. The compose file is at `ros2_ws/docker-compose.yml`.

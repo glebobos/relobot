@@ -1,6 +1,34 @@
-# Flashing Firmware to ReloBot Boards
+## Quickstart: Docker-based Build & Flashing (`run_firmware.sh`)
 
-This guide explains how to identify, reset, and upload firmware to the RP2040 and RP2350 boards used in ReloBot.
+The recommended way to build and flash firmwares is using `./run_firmware.sh`. All build tools and `picotool` run inside Docker containers:
+
+```bash
+# Build all firmwares
+./run_firmware.sh build all
+
+# Scan connected serial devices and inspect running microcontrollers
+./run_firmware.sh scan
+
+# Flash a specific firmware (auto-discovers port, resets board, and uploads via picotool in Docker)
+./run_firmware.sh flash wheels
+./run_firmware.sh flash wheels_calibration
+./run_firmware.sh flash knives
+./run_firmware.sh flash imu
+./run_firmware.sh flash ina226
+
+# Run full wheel calibration (stops robot, flashes calibration firmware, runs calibration node)
+./start_wheel_calibration.sh
+
+# Inspect BOOTSEL devices inside Docker
+./run_firmware.sh info
+
+# Monitor serial output via picocom inside Docker
+./run_firmware.sh monitor wheels
+```
+
+Alternatively, you can run `run.sh` directly inside any firmware subfolder (e.g. `cd pico_ware_wheels_microros && ./run.sh flash`).
+
+---
 
 ## 1. Identify Your Boards
 
