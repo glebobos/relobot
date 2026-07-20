@@ -81,6 +81,58 @@ get_expected_product() {
   esac
 }
 
+# Helper: Ensure Docker image exists for target (or build it once)
+ensure_docker_image() {
+  local target="${1:-wheels}"
+  local pkg_dir
+  pkg_dir=$(get_pkg_dir "$target")
+  if [[ -z "$pkg_dir" ]]; then pkg_dir="pico_ware_wheels_microros"; fi
+
+  local image_name
+  image_name=$(get_image_name "$target")
+
+  if ! docker image inspect "$image_name" >/dev/null 2>&1; then
+    echo "==> Building Docker image ($image_name)..."
+    docker build -t "$image_name" "$pkg_dir"
+  fi
+  echo "$image_name"
+}
+
+# Helper: Extract USB sysfs properties for a given ttyACM sysfs path
+read_tty_info() {
+  local dev_sys="$1"
+  local port="/dev/$(basename "$dev_sys")"
+  local prod
+  prod=$(cat "$dev_sys/device/../product" 2>/dev/null || echo "Unknown Product")
+  local mfr
+  mfr=$(cat "$dev_sys/device/../manufacturer" 2>/dev/null || echo "Unknown Mfr")
+  local vid
+  vid=$(cat "$dev_sys/device/../idVendor" 2>/dev/null || echo "????")
+  local pid
+  pid=$(cat "$dev_sys/device/../idProduct" 2>/dev/null || echo "????")
+  local bus
+  bus=$(readlink -f "$dev_sys/device/.." 2>/dev/null | xargs basename 2>/dev/null || echo "Unknown")
+
+  echo "$port|$prod|$vid:$pid|$bus|$mfr"
+}
+
+# Helper: Find active tty port by USB product name
+find_port_by_product() {
+  local expected_prod="$1"
+  for dev_sys in /sys/class/tty/ttyACM*; do
+    if [[ -e "$dev_sys" ]]; then
+      local info
+      info=$(read_tty_info "$dev_sys")
+      IFS='|' read -r p prod _ _ _ <<< "$info"
+      if [[ "$prod" == "$expected_prod" ]]; then
+        echo "$p"
+        return 0
+      fi
+    fi
+  done
+  echo ""
+}
+
 build_target() {
   local target="$1"
   if [[ "$target" == "all" ]]; then
@@ -98,10 +150,7 @@ build_target() {
   fi
 
   local image_name
-  image_name=$(get_image_name "$target")
-
-  echo "==> Building Docker image ($image_name) for '$target'..."
-  docker build -t "$image_name" "$pkg_dir"
+  image_name=$(ensure_docker_image "$target")
 
   echo "==> Compiling firmware for '$target'..."
   docker run --rm \
@@ -129,20 +178,11 @@ scan_ports() {
   for dev_sys in /sys/class/tty/ttyACM*; do
     if [[ -e "$dev_sys" ]]; then
       found=1
-      local port="/dev/$(basename "$dev_sys")"
-      local product
-      product=$(cat "$dev_sys/device/../product" 2>/dev/null || echo "Unknown Product")
-      local manufacturer
-      manufacturer=$(cat "$dev_sys/device/../manufacturer" 2>/dev/null || echo "Unknown Mfr")
-      local vid
-      vid=$(cat "$dev_sys/device/../idVendor" 2>/dev/null || echo "????")
-      local pid
-      pid=$(cat "$dev_sys/device/../idProduct" 2>/dev/null || echo "????")
-      local bus_path
-      bus_path=$(readlink -f "$dev_sys/device/.." | xargs basename 2>/dev/null || echo "Unknown Bus")
-
-      printf "Port: %-15s | Product: %-25s | VID:PID: %s:%s | Bus: %s\n" \
-        "$port" "$product" "$vid" "$pid" "$bus_path"
+      local info
+      info=$(read_tty_info "$dev_sys")
+      IFS='|' read -r port prod vidpid bus _ <<< "$info"
+      printf "Port: %-15s | Product: %-25s | VID:PID: %s | Bus: %s\n" \
+        "$port" "$prod" "$vidpid" "$bus"
     fi
   done
 
@@ -171,11 +211,7 @@ flash_target() {
   fi
 
   local image_name
-  image_name=$(get_image_name "$target")
-  # Ensure docker image exists
-  if ! docker image inspect "$image_name" >/dev/null 2>&1; then
-    docker build -t "$image_name" "$pkg_dir"
-  fi
+  image_name=$(ensure_docker_image "$target")
 
   local selected_port=""
   local expected_prod
@@ -187,22 +223,16 @@ flash_target() {
   else
     echo "==> Scanning connected serial ports to locate '$target'..."
     local ports=()
-    local products=()
     local matched_index=-1
     local idx=1
 
     for dev_sys in /sys/class/tty/ttyACM*; do
       if [[ -e "$dev_sys" ]]; then
-        local p="/dev/$(basename "$dev_sys")"
-        local prod
-        prod=$(cat "$dev_sys/device/../product" 2>/dev/null || echo "Unknown")
-        local vid
-        vid=$(cat "$dev_sys/device/../idVendor" 2>/dev/null || echo "????")
-        local pid
-        pid=$(cat "$dev_sys/device/../idProduct" 2>/dev/null || echo "????")
+        local info
+        info=$(read_tty_info "$dev_sys")
+        IFS='|' read -r p prod vidpid _ _ <<< "$info"
 
         ports+=("$p")
-        products+=("$prod")
 
         local match_flag=""
         if [[ "$prod" == "$expected_prod" ]]; then
@@ -210,8 +240,8 @@ flash_target() {
           matched_index=$((idx - 1))
         fi
 
-        printf "  [%d] %-15s -> Product: %-25s VID:PID: %s:%s%s\n" \
-          "$idx" "$p" "$prod" "$vid" "$pid" "$match_flag"
+        printf "  [%d] %-15s -> Product: %-25s VID:PID: %s%s\n" \
+          "$idx" "$p" "$prod" "$vidpid" "$match_flag"
         idx=$((idx + 1))
       fi
     done
@@ -263,17 +293,14 @@ flash_target() {
     -v "$SCRIPT_DIR/$pkg_dir/src:/project" \
     -w /project \
     "$image_name" \
-    picotool load -x "$uf2_name"
+    picotool load -f -x "$uf2_name"
 
   echo "✅ Flashing complete! Microcontroller rebooted."
 }
 
 picotool_info() {
-  local image_name="relobot_pico_ware_wheels_microros:latest"
-  if ! docker image inspect "$image_name" >/dev/null 2>&1; then
-    echo "Building base image for picotool..."
-    docker build -t "$image_name" pico_ware_wheels_microros
-  fi
+  local image_name
+  image_name=$(ensure_docker_image "wheels")
 
   echo "==> Running picotool info -a in Docker..."
   docker run --rm --privileged \
@@ -285,21 +312,15 @@ picotool_info() {
 monitor_target() {
   local target="$1"
   local port=""
+
   if [[ "$target" =~ ^/dev/tty ]]; then
     port="$target"
   else
     local expected_prod
     expected_prod=$(get_expected_product "$target")
-    for dev_sys in /sys/class/tty/ttyACM*; do
-      if [[ -e "$dev_sys" ]]; then
-        local prod
-        prod=$(cat "$dev_sys/device/../product" 2>/dev/null || echo "")
-        if [[ "$prod" == "$expected_prod" ]]; then
-          port="/dev/$(basename "$dev_sys")"
-          break
-        fi
-      fi
-    done
+    if [[ -n "$expected_prod" ]]; then
+      port=$(find_port_by_product "$expected_prod")
+    fi
   fi
 
   if [[ -z "$port" ]]; then
@@ -311,10 +332,8 @@ monitor_target() {
     fi
   fi
 
-  local image_name="relobot_pico_ware_wheels_microros:latest"
-  if ! docker image inspect "$image_name" >/dev/null 2>&1; then
-    docker build -t "$image_name" pico_ware_wheels_microros
-  fi
+  local image_name
+  image_name=$(ensure_docker_image "$target")
 
   echo "==> Connecting serial monitor on $port ($BAUD baud) via picocom in Docker..."
   docker run --rm -it \
