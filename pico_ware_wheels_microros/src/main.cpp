@@ -27,15 +27,15 @@
 #define VELOCITY_EMA_ALPHA_TICK     0.4f        // EMA alpha when a new encoder tick arrives
 
 // --- Feedforward: pwm_fraction = K * |omega_rad_s| + C ---
-// Right motor has different K in reverse (empirical, from code.py).
-#define FF_K_LEFT_FWD               0.087294f
-#define FF_C_LEFT_FWD               0.010151f
-#define FF_K_LEFT_REV               0.081871f
-#define FF_C_LEFT_REV               0.021190f
-#define FF_K_RIGHT_FWD              0.151115f
-#define FF_C_RIGHT_FWD              0.030078f
-#define FF_K_RIGHT_REV              0.148510f
-#define FF_C_RIGHT_REV              0.033936f
+// Calibrated 2026-07-19 with position-delta velocity (ground truth).
+#define FF_K_LEFT_FWD               0.164216f
+#define FF_C_LEFT_FWD               -0.058800f
+#define FF_K_LEFT_REV               0.157666f
+#define FF_C_LEFT_REV               -0.052657f
+#define FF_K_RIGHT_FWD              0.155895f
+#define FF_C_RIGHT_FWD              -0.008919f
+#define FF_K_RIGHT_REV              0.149252f
+#define FF_C_RIGHT_REV              0.006912f
 
 // --- PI tuning ---
 // Output is a PWM *fraction* added to feedforward (range 0..1).
