@@ -33,6 +33,11 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ffunction-sections -fdata-sections")
 
 pico_enable_stdio_usb(pico_wheels_microros 1)
 pico_enable_stdio_uart(pico_wheels_microros 0)
+pico_set_program_name(pico_wheels_microros "pico_wheels_microros")
+target_compile_definitions(pico_wheels_microros PRIVATE
+    USBD_PRODUCT="pico_wheels_microros"
+    USBD_MANUFACTURER="ReloBot"
+)
 add_compile_definitions(PICO_UART_ENABLE_CRLF_SUPPORT=0)
 add_compile_definitions(PICO_STDIO_ENABLE_CRLF_SUPPORT=0)
 add_compile_definitions(PICO_STDIO_DEFAULT_CRLF=0)
@@ -59,5 +64,10 @@ target_include_directories(pico_wheels_calibration PUBLIC
 
 pico_enable_stdio_usb(pico_wheels_calibration 1)
 pico_enable_stdio_uart(pico_wheels_calibration 0)
+pico_set_program_name(pico_wheels_calibration "pico_wheels_calibration")
+target_compile_definitions(pico_wheels_calibration PRIVATE
+    USBD_PRODUCT="pico_wheels_calibration"
+    USBD_MANUFACTURER="ReloBot"
+)
 
 pico_add_extra_outputs(pico_wheels_calibration)

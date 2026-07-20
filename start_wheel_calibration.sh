@@ -7,8 +7,8 @@ cd "$SCRIPT_DIR"
 echo "==> 1. Stopping robot containers..."
 ./start_robot.sh down || true
 
-echo "==> 2. Flashing calibration firmware to wheels board..."
-./run_firmware.sh flash wheels_calibration "$@"
+# echo "==> 2. Flashing calibration firmware to wheels board..."
+# ./run_firmware.sh flash wheels_calibration "$@"
 
 echo "==> 3. Starting micro-ROS agent & wheel calibration routine..."
 docker compose -f ros2_ws/docker-compose.yml run --rm ros2_diff_robot bash -c \

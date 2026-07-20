@@ -14,37 +14,52 @@ The calibration routine measures the motor speed constants by running sweeps in 
 
 ## Calibration Steps
 
-### 1. Flash Calibration Firmware
-Flash the calibration binary output `pico_wheels_calibration.uf2` to the wheels RP2040 microcontroller board.
-- The binary is located at: `pico_ware_wheels_microros/src/pico_wheels_calibration.uf2`
-- *Note for WSL2 users: You must attach the USB device to WSL2 using `usbipd-win` before it will be visible. See [FLASHING.md](file:///home/glebobos/projects/relobot/FLASHING.md#5-wsl2-usb-passthrough-usbipd-win) for details.*
-
-
-### 2. Run the Calibration Node (Non-interfering Mode)
-To calibrate the feedforward constants without interference from the main robot controller (which regularly publishes conflicting `0.0` command signals to hold position), you should run the micro-ROS agent and the calibration script together in a standalone container:
-
+### Recommended: Automated One-Command Calibration
+Run the automated launcher script from the root of the repository:
 ```bash
-docker compose -f ros2_ws/docker-compose.yml run --rm ros2_diff_robot bash -c "source /opt/ros/humble/setup.bash && source /uros_ws/install/local_setup.bash && ros2 run micro_ros_agent micro_ros_agent multiserial --devs \"/dev/ttyACM0 /dev/ttyACM1 /dev/ttyACM2 /dev/ttyACM3\" -b 115200 & sleep 5 && python3 /ros2_ws/helpers/wheel_calibration/calibrate.py"
+./start_wheel_calibration.sh
 ```
+This script will automatically:
+1. Stop running robot containers to avoid command interference.
+2. Build and flash `pico_wheels_calibration.uf2` to the wheels board.
+3. Start the micro-ROS agent and execute the PWM sweep calibration routine.
+
+---
+
+### Manual Step-by-Step Procedure
+
+If you prefer to run steps individually:
+
+1. **Flash Calibration Firmware**:
+   ```bash
+   ./run_firmware.sh flash wheels_calibration
+   ```
+
+2. **Run Calibration Sweep**:
+   ```bash
+   docker compose -f ros2_ws/docker-compose.yml run --rm ros2_diff_robot bash -c "source /opt/ros/humble/setup.bash && source /uros_ws/install/local_setup.bash && ros2 run micro_ros_agent micro_ros_agent multiserial --devs \"/dev/ttyACM0 /dev/ttyACM1 /dev/ttyACM2 /dev/ttyACM3\" -b 115200 & sleep 5 && python3 /ros2_ws/helpers/wheel_calibration/calibrate.py"
+   ```
 
 > [!WARNING]
 > Keep the robot in a safe environment or lift the wheels off the ground, as the wheels will rotate during calibration sweeps.
 
-
-### 4. Apply the Coefficients
+### 3. Apply the Coefficients
 1. Copy the printed `#define` lines from the calibration script output.
-2. Replace the old constants in [main.cpp](file:///home/glebobos/projects/relobot/pico_ware_wheels_microros/src/main.cpp#L31-L38):
+2. Replace the old constants in [main.cpp](file:///home/admin/projects/relobot/pico_ware_wheels_microros/src/main.cpp#L31-L38):
    ```cpp
    // --- Feedforward: pwm_fraction = K * |omega_rad_s| + C ---
    #define FF_K_LEFT_FWD               ...
    #define FF_C_LEFT_FWD               ...
    ...
    ```
-3. Rebuild the firmware:
+3. Rebuild standard wheels firmware:
    ```bash
-   docker compose -f pico_ware_wheels_microros/docker-compose.yml run --rm builder
+   ./run_firmware.sh build wheels
    ```
-4. Flash the final standard firmware `pico_wheels_microros.uf2` back onto the microcontroller.
+4. Flash standard firmware back onto the wheels microcontroller:
+   ```bash
+   ./run_firmware.sh flash wheels
+   ```
 
 ---
 

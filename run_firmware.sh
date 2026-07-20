@@ -92,7 +92,7 @@ ensure_docker_image() {
   image_name=$(get_image_name "$target")
 
   if ! docker image inspect "$image_name" >/dev/null 2>&1; then
-    echo "==> Building Docker image ($image_name)..."
+    echo "==> Building Docker image ($image_name)..." >&2
     docker build -t "$image_name" "$pkg_dir"
   fi
   echo "$image_name"

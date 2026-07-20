@@ -31,7 +31,7 @@ Control loop rate: 100 Hz.
 | `PUBLISH_PERIOD_MS` | 33 | ~30 Hz state publish |
 | `MOTOR_DEADBAND_RAD_S` | 0.35 | Below this: coast |
 | `FF_K_RIGHT_FWD / REV` | 0.12681 / 0.11793 | Right motor asymmetry from calibration |
-| `PI_KP / PI_KI` | 0.018 / 0.005 | PI gains in PWM-fraction units |
+| `PI_KP / PI_KI` | 0.10 / 0.30 | PI gains in PWM-fraction units |
 
 ## Build
 

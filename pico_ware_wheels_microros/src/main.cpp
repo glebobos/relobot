@@ -27,21 +27,21 @@
 #define VELOCITY_EMA_ALPHA_TICK     0.4f        // EMA alpha when a new encoder tick arrives
 
 // --- Feedforward: pwm_fraction = K * |omega_rad_s| + C ---
-// Calibrated 2026-07-19 with position-delta velocity (ground truth).
-#define FF_K_LEFT_FWD               0.164216f
-#define FF_C_LEFT_FWD               -0.058800f
-#define FF_K_LEFT_REV               0.157666f
-#define FF_C_LEFT_REV               -0.052657f
-#define FF_K_RIGHT_FWD              0.155895f
-#define FF_C_RIGHT_FWD              -0.008919f
-#define FF_K_RIGHT_REV              0.149252f
-#define FF_C_RIGHT_REV              0.006912f
+// Calibrated 2026-07-20 with position-delta velocity (ground truth).
+#define FF_K_LEFT_FWD               0.135435f
+#define FF_C_LEFT_FWD               0.041088f
+#define FF_K_LEFT_REV               0.160302f
+#define FF_C_LEFT_REV               0.026934f
+#define FF_K_RIGHT_FWD              0.142810f
+#define FF_C_RIGHT_FWD              0.046127f
+#define FF_K_RIGHT_REV              0.153041f
+#define FF_C_RIGHT_REV              0.026962f
 
 // --- PI tuning ---
 // Output is a PWM *fraction* added to feedforward (range 0..1).
 // With period-based velocity measurement the error is in true rad/s.
-#define PI_KP                       0.018f
-#define PI_KI                       0.005f
+#define PI_KP                       0.10f
+#define PI_KI                       0.30f
 #define PI_INTEGRAL_LIMIT           0.15f
 #define PI_UPDATE_INTERVAL_CYCLES   5           // update PI every 50ms (5 × 10ms)
 
