@@ -6,7 +6,7 @@ This directory contains the utility script used to calibrate the feedforward con
 
 The calibration routine measures the motor speed constants by running sweeps in both forward and backward directions for the left and right wheels independently:
 1. **Sweep**: The script applies duty cycle inputs (PWM values: `[0.08, 0.12, 0.16, 0.20, 0.24, 0.28, 0.32]` and negative equivalents) directly to the motors via the ROS2 topic `/robot_joint_commands`.
-2. **Measure**: For each input, it waits for the motor speed to stabilize (1.5 seconds) and then samples the steady-state wheel velocity (from `/robot_joint_states`) for 1.0 second.
+2. **Measure**: For each input, it waits for the motor speed to stabilize (1.5 seconds) and then samples the steady-state wheel velocity (from `/robot_joint_states`) for 2.0 seconds.
 3. **Fit**: It performs a linear regression fit using the equation $|U_{\text{pwm}}| = K \cdot |\omega| + C$ to find the feedforward gain ($K$) and stiction offset ($C$) for both directions of both wheels.
 4. **Output**: It prints the formatted C++ `#define` code containing the empirical constants, ready to copy-paste into `main.cpp`.
 

@@ -108,7 +108,7 @@ class WheelCalibrationNode(Node):
                 pos_start_right = self.latest_right_pos
                 collect_start   = time.time()
                 
-                while time.time() - collect_start < 1.0:
+                while time.time() - collect_start < 2.0:
                     self.publish_pwm(pwm, pwm)
                     rclpy.spin_once(self, timeout_sec=0.05)
                     time.sleep(0.05)
