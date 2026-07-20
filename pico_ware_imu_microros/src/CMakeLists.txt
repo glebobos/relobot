@@ -48,6 +48,11 @@ SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -ffunction-sections -fdata-sections")
 # Configure Pico
 pico_enable_stdio_usb(pico_imu_microros 1)
 pico_enable_stdio_uart(pico_imu_microros 0)
+pico_set_program_name(pico_imu_microros "pico_imu_microros")
+target_compile_definitions(pico_imu_microros PRIVATE
+    USBD_PRODUCT="pico_imu_microros"
+    USBD_MANUFACTURER="ReloBot"
+)
 add_compile_definitions(PICO_UART_ENABLE_CRLF_SUPPORT=0)
 add_compile_definitions(PICO_STDIO_ENABLE_CRLF_SUPPORT=0)
 add_compile_definitions(PICO_STDIO_DEFAULT_CRLF=0)

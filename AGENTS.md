@@ -7,18 +7,28 @@
 ReloBot is a ROS2-based robotics platform running on Raspberry Pi 5.
 **Crucial**: The host system is ONLY for orchestration. ALL ROS2 nodes and build processes run inside Docker containers. The host cannot build or run ROS2 nodes directly.
 
-## File Structure
-- `ros2_ws/`: The main ROS2 workspace.
-    - `src/`: Source code for ROS2 packages.
-    - `docker-compose.yml`: Orchestration for all robot services.
-    - `*.dockerfile`: Docker definitions for various nodes.
-- `helpers/`: Utility scripts (joystick testing, etc.).
-- `pico_ware_*/`: Microcontroller C/C++ firmware using micro-ROS (e.g. wheels, knives, sensors).
-- `wiki/`: Reference guides and architecture details.
-- `FLASHING.md`: Detailed guides for flashing the microcontroller firmware.
-- `start_robot.sh`: Core host script to start/stop the Docker containers (supports development `--dev` mode).
-- `rviz2.sh`: Shell script to run RViz2 container.
-- `start_camera_calibration.sh`: Script to calibrate the camera.
+## File Structure & Documentation Index
+- `AGENTS.md`: Central workspace entry point, rules, and commands reference.
+- `README.md`: High-level repository overview.
+- `FLASHING.md`: Detailed guide for building, flashing, and monitoring micro-ROS firmwares.
+- `pico_ware_*/`: Microcontroller C/C++ micro-ROS firmwares:
+    - [pico_ware_wheels_microros/README.md](file:///home/admin/projects/relobot/pico_ware_wheels_microros/README.md): Differential drive motor control, Cytron MD13S pinout, and PI/feedforward tuning.
+    - [pico_ware_knives_microros/README.md](file:///home/admin/projects/relobot/pico_ware_knives_microros/README.md): Mower blade motor driver micro-ROS node.
+    - [pico_ware_imu_microros/README.md](file:///home/admin/projects/relobot/pico_ware_imu_microros/README.md): IMU sensor micro-ROS node.
+    - [pico_ware_ina226_microros/README.md](file:///home/admin/projects/relobot/pico_ware_ina226_microros/README.md): Power & voltage monitoring micro-ROS node.
+- `helpers/`: Utility tools and calibration procedures:
+    - [helpers/wheel_calibration/README.md](file:///home/admin/projects/relobot/helpers/wheel_calibration/README.md): Wheel velocity calibration sweep & linear regression constants.
+    - [helpers/camera_calibration/README.md](file:///home/admin/projects/relobot/helpers/camera_calibration/README.md): Fisheye camera calibration guide.
+- `ros2_ws/`: The main ROS2 workspace (`src/`, `docker-compose.yml`, Dockerfiles).
+    - [ros2_ws/readme.md](file:///home/admin/projects/relobot/ros2_ws/readme.md): ROS2 nodes architecture.
+    - [ros2_ws/src/web_server/README.md](file:///home/admin/projects/relobot/ros2_ws/src/web_server/README.md): Web frontend server details.
+- `wiki/`: Architecture decisions and benchmark reports (e.g. `composition_performance_report.md`).
+- Core Helper Scripts:
+    - `start_robot.sh`: Core host script to start/stop the Docker containers (supports development `--dev` mode).
+    - `run_firmware.sh`: Firmware management CLI (build, scan, flash, info, monitor).
+    - `start_wheel_calibration.sh`: One-command wheel calibration process launcher.
+    - `start_camera_calibration.sh`: Camera calibration launcher.
+    - `rviz2.sh`: Runs RViz2 container.
 
 ## Setup
 1. **Repository**: `git clone ...` (already done if you are reading this).

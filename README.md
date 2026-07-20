@@ -45,10 +45,16 @@ The differential drive uses `topic_based_ros2_control/TopicBasedSystem` as the h
 
 ```
 ├── start_robot.sh              # Start/stop the full stack
+├── run_firmware.sh             # Unified firmware build, scan, flash, & monitor CLI
+├── start_wheel_calibration.sh  # Automated wheel feedforward calibration launcher
+├── start_camera_calibration.sh # Camera calibration launcher
+├── rviz2.sh                    # RViz2 visualization launcher
 ├── FLASHING.md                 # How to flash all Pico boards
 ├── helpers/
+│   ├── wheel_calibration/      # Wheel velocity calibration & diagnostic scripts
+│   ├── camera_calibration/     # Camera calibration tool
 │   ├── joystic_test/           # Joystick testing utilities
-│   └── rviz2/                  # RViz2 Docker helper
+│   └── rviz2/                  # RViz2 Docker configuration
 ├── pico_ware_wheels_microros/  # RP2040 micro-ROS firmware — wheels
 ├── pico_ware_knives_microros/  # RP2040 micro-ROS firmware — knife spindle
 ├── pico_ware_imu_microros/     # RP2040 micro-ROS firmware — IMU
@@ -203,8 +209,8 @@ To configure ReloBot to automatically start when the Raspberry Pi 5 boots up:
    [Service]
    Type=simple
    User=admin
-   WorkingDirectory=/home/admin/Documents/relobot
-   ExecStart=/home/admin/Documents/relobot/start_app_helper.sh
+   WorkingDirectory=/home/admin/projects/relobot
+   ExecStart=/home/admin/projects/relobot/start_robot.sh up
    Restart=on-failure
    RestartSec=10
 
