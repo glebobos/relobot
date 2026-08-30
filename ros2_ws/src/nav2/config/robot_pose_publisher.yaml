@@ -3,5 +3,5 @@ robot_pose_publisher:
     map_frame: map
     base_frame: base_link
     publish_topic: /robot_pose
-    publish_rate_hz: 30.0
+    publish_rate_hz: 10.0
     max_tf_age_sec: 1.0
