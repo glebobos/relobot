@@ -37,6 +37,7 @@ ReloBot is a ROS2-based robotics platform running on Raspberry Pi 5.
 1. **Repository**: `git clone ...` (already done if you are reading this).
 2. **Devices**: Run `python3 finddevice.py` to auto-detect and map serial devices (TTYs).
 3. **Environment**: Ensure `docker` and `docker compose` are installed.
+4. **Host Kernel Tuning**: Ensure `/etc/sysctl.d/99-ros2-fastdds.conf` is applied (`net.core.rmem_max = 67108864`) to prevent FastDDS UDP buffer overflow storms (see [README.md](README.md#1-fastdds--network-socket-buffer-optimization-critical)).
 
 ## Workflow
 ### Running the Robot
