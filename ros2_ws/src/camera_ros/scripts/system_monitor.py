@@ -6,6 +6,7 @@ from rclpy.node import Node
 from std_msgs.msg import String
 
 def get_wifi_signal():
+    valid_signals = []
     try:
         with open('/proc/net/wireless', 'r') as f:
             lines = f.readlines()
@@ -15,12 +16,18 @@ def get_wifi_signal():
                 iface = parts[0].strip()
                 if iface.startswith('wl'):
                     data_parts = parts[1].split()
-                    if len(data_parts) >= 3:
-                        try:
-                            return int(data_parts[2].rstrip('.'))
-                        except ValueError:
-                            pass
-                    break
+                    if len(data_parts) >= 2:
+                        for idx in (2, 1):
+                            if idx < len(data_parts):
+                                try:
+                                    val = int(data_parts[idx].rstrip('.'))
+                                    if -100 <= val <= -10:
+                                        valid_signals.append(val)
+                                        break
+                                except ValueError:
+                                    pass
+        if valid_signals:
+            return max(valid_signals)
     except Exception:
         pass
     return None

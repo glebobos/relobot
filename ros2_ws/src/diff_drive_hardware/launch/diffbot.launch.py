@@ -57,6 +57,13 @@ def generate_launch_description():
         'ekf.yaml'
     )
 
+    # Robot state publisher configuration
+    robot_state_pub_config = os.path.join(
+        get_package_share_directory('diff_drive_hardware'),
+        'config',
+        'robot_state_publisher.yaml'
+    )
+
     # Micro-ROS agent — multiserial
     serial_devs = [
         v for k, v in os.environ.items()
@@ -86,7 +93,7 @@ def generate_launch_description():
         package="robot_state_publisher",
         executable="robot_state_publisher",
         output="both",
-        parameters=[robot_description],
+        parameters=[robot_description, robot_state_pub_config],
     )
 
     joint_state_broadcaster_spawner = Node(
