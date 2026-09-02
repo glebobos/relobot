@@ -13,8 +13,6 @@ from nav_msgs.msg import OccupancyGrid, Path
 from opennav_coverage_msgs.action import ComputeCoveragePath
 from opennav_coverage_msgs.msg import Coordinate, Coordinates
 import rclpy
-from tf2_ros.buffer import Buffer
-from tf2_ros.transform_listener import TransformListener
 from rclpy.action import ActionClient
 from rclpy.node import Node
 from rclpy.qos import QoSDurabilityPolicy, QoSProfile
@@ -48,7 +46,6 @@ class CoverageManager(Node):
         self.declare_parameter('swath_endpoint_margin', 0.25)
         self.declare_parameter('obstacle_min_area_m2', 0.0004)  # 4 cm²
         self.declare_parameter('obstacle_dilate_m', 0.20)  # safety margin in metres
-        self.declare_parameter('map_update_min_interval_sec', 5.0)
 
         self._default_frame_id = self.get_parameter('default_frame_id').value
         self._headland_width = float(self.get_parameter('headland_width').value)
@@ -59,7 +56,6 @@ class CoverageManager(Node):
         self._allow_execute_without_fresh_preview = bool(
             self.get_parameter('allow_execute_without_fresh_preview').value
         )
-        self._map_update_min_interval_sec = float(self.get_parameter('map_update_min_interval_sec').value)
 
         compute_action_name = self.get_parameter('compute_coverage_action_name').value
         nav_through_poses_action_name = self.get_parameter('navigate_through_poses_action_name').value
@@ -137,10 +133,6 @@ class CoverageManager(Node):
         self._custom_polygon_active: bool = False
         self._custom_zone_points: list[tuple[float, float]] | None = None
 
-        self._last_processed_map_hash = None
-        self._last_processed_map_info = None
-        self._last_map_processing_time = None
-
         self._map_processor = MapProcessor(self.get_logger())
 
         # Republish the last-good polygon and preview path at 1 Hz so that
@@ -150,12 +142,20 @@ class CoverageManager(Node):
         # normally handles this for a single reconnect, but rosbridge may
         # subscribe with VOLATILE QoS and miss the latched sample; the timer
         # acts as a fallback keepalive.
-        self._tf_buffer = Buffer()
-        self._tf_listener = TransformListener(self._tf_buffer, self)
+        self._last_robot_pose: Pose | None = None
+        self.create_subscription(
+            PoseStamped,
+            '/robot_pose',
+            self._on_robot_pose,
+            1,
+        )
 
         self.create_timer(1.0, self._republish_state)
 
         self._publish_status('idle', 'Coverage manager ready.')
+
+    def _on_robot_pose(self, msg: PoseStamped) -> None:
+        self._last_robot_pose = msg.pose
 
     def _on_command(self, msg: String) -> None:
         command = msg.data.strip().lower()
@@ -173,11 +173,7 @@ class CoverageManager(Node):
             return
         if command == 'refresh_map':
             if self._last_map_msg is not None:
-                prev_state = self._state
-                self._state = 'idle'
-                self._on_map(self._last_map_msg, force=True)
-                if self._state == 'idle':
-                    self._state = prev_state
+                self._extract_map_boundary(force=True)
             else:
                 self._publish_status('error', 'No map received yet.')
             return
@@ -233,6 +229,10 @@ class CoverageManager(Node):
         if self._compute_goal_handle or self._nav_goal_handle:
             self._publish_status('busy', 'Coverage manager is already handling a request.')
             return
+        if len(self._polygon_msg.polygon.points) < 4:
+            if not self._extract_map_boundary(force=True):
+                self._publish_status('polygon_invalid', 'No map boundary yet. Wait for SLAM map or click Refresh Map.')
+                return
         if len(self._polygon_msg.polygon.points) < 4:
             self._publish_status('polygon_invalid', 'No map boundary yet. Wait for SLAM map or click Refresh Map.')
             return
@@ -522,13 +522,8 @@ class CoverageManager(Node):
         self._publish_status('idle', 'Coverage state cleared.')
 
     def _republish_state(self) -> None:
-        """1 Hz keepalive: re-publish the last-good polygon and cached path so
-        browsers that connect/reconnect during planning or execution receive the
-        current boundary without waiting for the next map update.
-        The path is republished for up to 10 s after it changes (counter-based)
-        to avoid continuously serialising large Path messages."""
-        if self._polygon_msg.polygon.points:
-            self._polygon_echo_pub.publish(self._polygon_msg)
+        """1 Hz keepalive: re-publish cached path for up to 10 s after it changes
+        (counter-based) so browsers that connect during planning receive it."""
         if self._cached_path.poses and self._path_republish_count > 0:
             self._preview_path_pub.publish(self._cached_path)
             self._path_republish_count -= 1
@@ -558,8 +553,7 @@ class CoverageManager(Node):
 
         # Re-run map extraction immediately if a map is available
         if self._last_map_msg is not None:
-            self._state = 'idle'
-            self._on_map(self._last_map_msg, force=True)
+            self._extract_map_boundary(force=True)
         else:
             poly = PolygonStamped()
             poly.header.stamp = self.get_clock().now().to_msg()
@@ -599,65 +593,35 @@ class CoverageManager(Node):
 
         # Re-run map extraction immediately if a map is available
         if self._last_map_msg is not None:
-            self._state = 'idle'
-            self._on_map(self._last_map_msg, force=True)
-
-        # If map extraction was not successful (or didn't run), publish the empty boundary to clear it from the UI.
-        if not self._polygon_msg.polygon.points:
+            self._extract_map_boundary(force=True)
+        else:
             self._polygon_echo_pub.publish(self._polygon_msg)
             self._obstacles_pub.publish(String(data='[]'))
             self._publish_status('idle', 'Zone cleared. Waiting for SLAM map.')
         self.get_logger().info('Custom coverage zone cleared; reverted to SLAM boundary.')
 
-    def _on_map(self, msg: OccupancyGrid, force: bool = False) -> None:
+    def _on_map(self, msg: OccupancyGrid) -> None:
         h = msg.info.height
         w = msg.info.width
         if h == 0 or w == 0:
             return
         self._last_map_msg = msg
+
+    def _extract_map_boundary(self, force: bool = False) -> bool:
+        if self._last_map_msg is None:
+            self._publish_status('error', 'No map received yet.')
+            return False
+
+        msg = self._last_map_msg
+        h = msg.info.height
+        w = msg.info.width
+        if h == 0 or w == 0:
+            return False
+
         # Only re-extract polygon when idle or ready — don't overwrite state during
         # planning, preview_ready, executing, or completed.
-        if self._state not in ('idle', 'polygon_ready'):
-            return
-
-        # Metadata tuple — cheap to build, used for early-exit guards
-        map_info_tuple = (
-            msg.info.width,
-            msg.info.height,
-            msg.info.resolution,
-            msg.info.origin.position.x,
-            msg.info.origin.position.y
-        )
-
-        map_data_hash = None
-        if not force:
-            # 1. Rate-limit first — cheapest guard, rejects most callbacks
-            current_time = self.get_clock().now()
-            if self._last_map_processing_time is not None:
-                elapsed = (current_time - self._last_map_processing_time).nanoseconds / 1e9
-                if elapsed < self._map_update_min_interval_sec:
-                    return  # Rate limit active
-
-            # 2. Only pay for hashing when metadata matches (skips hash on map resize)
-            if self._last_processed_map_info == map_info_tuple:
-                try:
-                    map_data_hash = hash(bytes(msg.data))
-                except Exception:
-                    map_data_hash = None
-                if self._last_processed_map_hash == map_data_hash:
-                    return  # Map data and metadata are unchanged
-
-        # Hash not yet computed (force=True or metadata changed) — compute now
-        if map_data_hash is None:
-            try:
-                map_data_hash = hash(bytes(msg.data))
-            except Exception:
-                map_data_hash = None
-
-        # Proceed to extract
-        self._last_processed_map_info = map_info_tuple
-        self._last_processed_map_hash = map_data_hash
-        self._last_map_processing_time = self.get_clock().now()
+        if not force and self._state not in ('idle', 'polygon_ready'):
+            return False
 
         map_morph_close_radius = int(self.get_parameter('map_morph_close_radius').value)
         map_erode_m = float(self.get_parameter('map_erode_m').value)
@@ -683,7 +647,12 @@ class CoverageManager(Node):
                     'No free space inside the custom zone. Adjust the rectangle.',
                     zone_mode='custom'
                 )
-            return
+            else:
+                self._publish_status(
+                    'polygon_invalid',
+                    'Could not extract boundary from current map.',
+                )
+            return False
 
         self._polygon_msg = normalized
         self._obstacle_polygons = obstacle_polygons
@@ -696,16 +665,15 @@ class CoverageManager(Node):
             self._last_logged_obstacle_count = n
 
         # Publish obstacle polygons as JSON for the web map viewer.
-        # Format: [[{"x": float, "y": float}, ...], ...]  — one list per obstacle.
+        # Format: [[{"x": float, "y": float}, ...], ...] — one list per obstacle.
         obs_json = json.dumps([
             [{'x': x, 'y': y} for (x, y) in poly]
             for poly in obstacle_polygons
         ])
         self._obstacles_pub.publish(String(data=obs_json))
-
         self._polygon_echo_pub.publish(self._polygon_msg)
         self._last_preview_valid = False
-        
+
         if self._custom_polygon_active:
             self._publish_status(
                 'polygon_ready',
@@ -718,31 +686,18 @@ class CoverageManager(Node):
         else:
             self._publish_status(
                 'polygon_ready',
-                'Map boundary extracted automatically.',
+                'Map boundary extracted.',
                 point_count=len(self._polygon_msg.polygon.points) - 1,
                 frame_id=self._polygon_msg.header.frame_id,
                 obstacle_count=len(self._obstacle_polygons),
             )
+        return True
 
     def _get_robot_pose(self) -> Pose | None:
-        target_frame = self._polygon_msg.header.frame_id or self._default_frame_id
-        try:
-            t = self._tf_buffer.lookup_transform(
-                target_frame,
-                'base_link',
-                rclpy.time.Time()
-            )
-            pose = Pose()
-            pose.position.x = t.transform.translation.x
-            pose.position.y = t.transform.translation.y
-            pose.position.z = t.transform.translation.z
-            pose.orientation = t.transform.rotation
-            return pose
-        except Exception as e:
-            self.get_logger().warn(
-                f'Could not look up transform from {target_frame} to base_link: {e}'
-            )
-            return None
+        if self._last_robot_pose is not None:
+            return self._last_robot_pose
+        self.get_logger().warn('No /robot_pose received yet')
+        return None
 
     def _publish_status(self, state: str, message: str, **extra: Any) -> None:
         self._state = state

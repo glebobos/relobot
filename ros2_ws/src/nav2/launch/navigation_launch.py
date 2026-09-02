@@ -153,15 +153,6 @@ def generate_launch_description():
     )
 
     robot_pose_params = os.path.join(nav2_dir, 'config', 'robot_pose_publisher.yaml')
-    robot_pose_publisher_node = Node(
-        package='nav2',
-        executable='robot_pose_publisher',
-        name='robot_pose_publisher',
-        output='screen',
-        parameters=[robot_pose_params, {'use_sim_time': use_sim_time}],
-        arguments=['--ros-args', '--log-level', log_level],
-        remappings=remappings,
-    )
 
     # Component container for composition mode
     container = Node(
@@ -277,6 +268,17 @@ def generate_launch_description():
                 arguments=['--ros-args', '--log-level', log_level],
                 remappings=remappings,
             ),
+            Node(
+                package='robot_pose_publisher',
+                executable='robot_pose_publisher_node',
+                name='robot_pose_publisher',
+                output='screen',
+                respawn=use_respawn,
+                respawn_delay=2.0,
+                parameters=[robot_pose_params, {'use_sim_time': use_sim_time}],
+                arguments=['--ros-args', '--log-level', log_level],
+                remappings=remappings,
+            ),
         ]
     )
 
@@ -348,6 +350,13 @@ def generate_launch_description():
                 parameters=[{'use_sim_time': use_sim_time,
                              'autostart': autostart,
                              'node_names': lifecycle_nodes}]),
+            ComposableNode(
+                package='robot_pose_publisher',
+                plugin='robot_pose_publisher::RobotPosePublisher',
+                name='robot_pose_publisher',
+                parameters=[robot_pose_params, {'use_sim_time': use_sim_time}],
+                remappings=remappings,
+            ),
         ],
     )
 
@@ -373,6 +382,5 @@ def generate_launch_description():
     ld.add_action(slam_toolbox_node)
     ld.add_action(explore_node)
     ld.add_action(coverage_manager_node)
-    ld.add_action(robot_pose_publisher_node)
 
     return ld
