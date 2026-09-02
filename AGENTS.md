@@ -11,6 +11,7 @@ ReloBot is a ROS2-based robotics platform running on Raspberry Pi 5.
 - `AGENTS.md`: Central workspace entry point, rules, and commands reference.
 - `README.md`: High-level repository overview.
 - `FLASHING.md`: Detailed guide for building, flashing, and monitoring micro-ROS firmwares.
+- `.agents/skills/rust-skills/`: Comprehensive Rust guidelines & best practices ([SKILL.md](file:///home/glebos/projects/relobot/.agents/skills/rust-skills/SKILL.md)) for writing, reviewing, and refactoring Rust components (e.g. `rosbridge_rust`).
 - `pico_ware_*/`: Microcontroller C/C++ micro-ROS firmwares:
     - [pico_ware_wheels_microros/README.md](file:///home/admin/projects/relobot/pico_ware_wheels_microros/README.md): Differential drive motor control, Cytron MD13S pinout, and PI/feedforward tuning.
     - [pico_ware_knives_microros/README.md](file:///home/admin/projects/relobot/pico_ware_knives_microros/README.md): Mower blade motor driver micro-ROS node.
@@ -117,7 +118,8 @@ docker compose -f ros2_ws/docker-compose.yml exec ros2_nav2 bash
 ```
 
 ## Style & Conventions
-- **Language**: Python (preferred for logic) or C++ (for performance).
+- **Language**: Python (preferred for logic), C++ (for performance), or Rust (e.g. `rosbridge_rust`).
+- **Rust Guidelines**: Follow `.agents/skills/rust-skills/` rules and idioms when writing, optimizing, or refactoring Rust code.
 - **ROS2**: Use ROS2 Humble.
 - **Communication**: Use ROS2 topics/services. Do NOT bypass ROS2 unless necessary.
 - **Hardware**: Access hardware via `/dev/` mapped devices in `docker-compose.yml`.

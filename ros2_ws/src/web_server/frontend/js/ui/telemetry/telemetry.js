@@ -25,7 +25,7 @@ export class Telemetry {
 
     init() {
         if (this.vinSpan || this.vinSpanCam) {
-            this.vinSubscription = rosService.subscribeV2(TOPICS.BATTERY, MSG_TYPES.FLOAT32, msg => {
+            this.vinSubscription = rosService.subscribe(TOPICS.BATTERY, MSG_TYPES.FLOAT32, msg => {
                 const v = parseFloat(msg.data);
                 if (Number.isFinite(v)) this.updateVoltage(v);
             }, { throttle_rate: 1000 });
@@ -33,14 +33,14 @@ export class Telemetry {
         }
 
         if (this.chargerSpan) {
-            this.chargerSubscription = rosService.subscribeV2(TOPICS.CHARGER, MSG_TYPES.FLOAT32, msg => {
+            this.chargerSubscription = rosService.subscribe(TOPICS.CHARGER, MSG_TYPES.FLOAT32, msg => {
                 const v = parseFloat(msg.data);
                 if (Number.isFinite(v)) this.updateChargerVoltage(v);
             }, { throttle_rate: 1000 });
             this.subscriptions.push(this.chargerSubscription);
         }
 
-        this.onDockSubscription = rosService.subscribeV2(
+        this.onDockSubscription = rosService.subscribe(
             TOPICS.ON_DOCK,
             MSG_TYPES.BOOL,
             msg => this.updateOnDock(msg.data),
@@ -49,7 +49,7 @@ export class Telemetry {
         this.subscriptions.push(this.onDockSubscription);
 
         if (this.rpmSpan || this.rpmSpanCam) {
-            this.rpmSubscription = rosService.subscribeV2(TOPICS.KNIVES, MSG_TYPES.FLOAT32, msg => {
+            this.rpmSubscription = rosService.subscribe(TOPICS.KNIVES, MSG_TYPES.FLOAT32, msg => {
                 const r = parseFloat(msg.data);
                 if (Number.isFinite(r)) this.updateRpm(r);
             }, { throttle_rate: 1000 });

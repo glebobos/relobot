@@ -119,33 +119,30 @@ export function renderLogsSettings(contentEl, context) {
     // Subscription to system/metrics
     let subscription = null;
     try {
-        subscription = rosService.createTopicV2(TOPICS.SYSTEM_METRICS, MSG_TYPES.STRING);
-        if (subscription) {
-            subscription.subscribe((msg) => {
-                try {
-                    const data = JSON.parse(msg.data);
-                    if (data.cpu !== undefined) {
-                        cpuVal.textContent = data.cpu.toFixed(1) + '%';
-                        cpuFill.style.width = data.cpu + '%';
-                    }
-                    if (data.ram !== undefined) {
-                        ramVal.textContent = data.ram.toFixed(1) + '%';
-                        ramFill.style.width = data.ram + '%';
-                    }
-
-                    if (data.wifi_dbm !== undefined && data.wifi_dbm !== null) {
-                        wifiSignalVal.textContent = data.wifi_dbm + ' dBm';
-                        const percent = dbmToPercent(data.wifi_dbm);
-                        wifiSignalFill.style.width = percent + '%';
-                    } else {
-                        wifiSignalVal.textContent = 'Disconnected';
-                        wifiSignalFill.style.width = '0%';
-                    }
-                } catch (err) {
-                    console.error('[LogsSettings] Failed to parse metrics JSON:', err);
+        subscription = rosService.subscribe(TOPICS.SYSTEM_METRICS, MSG_TYPES.STRING, (msg) => {
+            try {
+                const data = JSON.parse(msg.data);
+                if (data.cpu !== undefined) {
+                    cpuVal.textContent = data.cpu.toFixed(1) + '%';
+                    cpuFill.style.width = data.cpu + '%';
                 }
-            });
-        }
+                if (data.ram !== undefined) {
+                    ramVal.textContent = data.ram.toFixed(1) + '%';
+                    ramFill.style.width = data.ram + '%';
+                }
+
+                if (data.wifi_dbm !== undefined && data.wifi_dbm !== null) {
+                    wifiSignalVal.textContent = data.wifi_dbm + ' dBm';
+                    const percent = dbmToPercent(data.wifi_dbm);
+                    wifiSignalFill.style.width = percent + '%';
+                } else {
+                    wifiSignalVal.textContent = 'Disconnected';
+                    wifiSignalFill.style.width = '0%';
+                }
+            } catch (err) {
+                console.error('[LogsSettings] Failed to parse metrics JSON:', err);
+            }
+        });
     } catch (err) {
         console.warn('[LogsSettings] Could not subscribe to system metrics:', err);
     }

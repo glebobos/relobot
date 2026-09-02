@@ -13,7 +13,7 @@ export class SystemOperationsController {
 
     initialize() {
         this.bindConfirmed('save-map-btn', 'Save current map? This will overwrite the previous save.', () => {
-            const client = rosService.createServiceV2(
+            const client = rosService.createService(
                 SERVICES.SERIALIZE_MAP,
                 MSG_TYPES.SERIALIZE_MAP_SRV,
             );

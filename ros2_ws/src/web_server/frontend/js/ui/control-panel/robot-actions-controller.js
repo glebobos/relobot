@@ -9,12 +9,12 @@ export class RobotActionsController {
         this.dockButton = document.getElementById('dock-btn');
         this.undockButton = document.getElementById('undock-btn');
         this.batteryWidget = document.getElementById('headerBatteryWidget');
-        this.dockAction = rosService.createActionV2(ACTIONS.DOCK_ROBOT, MSG_TYPES.DOCK_ROBOT);
-        this.navigationAction = rosService.createActionV2(
+        this.dockAction = rosService.createAction(ACTIONS.DOCK_ROBOT, MSG_TYPES.DOCK_ROBOT);
+        this.navigationAction = rosService.createAction(
             ACTIONS.NAVIGATE_TO_POSE,
             MSG_TYPES.NAVIGATE_TO_POSE,
         );
-        this.dockStatusSubscription = rosService.subscribeV2(
+        this.dockStatusSubscription = rosService.subscribe(
             TOPICS.DOCK_ACTION_STATUS,
             MSG_TYPES.GOAL_STATUS_ARRAY,
             message => this.setDockingState((message.status_list || []).some(

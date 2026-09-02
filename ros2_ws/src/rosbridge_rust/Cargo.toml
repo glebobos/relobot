@@ -2,11 +2,28 @@
 name = "rosbridge_rust"
 version = "0.1.0"
 edition = "2021"
+description = "High-performance ROS2 rosbridge WebSocket server and Python proxy in Rust"
+license = "MIT"
 
 [dependencies]
 r2r = "0.9.5"
 tokio = { version = "1", features = ["full"] }
+tokio-util = "0.7"
 tokio-tungstenite = "0.20"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 futures-util = "0.3"
+thiserror = "1.0"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = true
+
+[profile.dev]
+opt-level = 0
+debug = true

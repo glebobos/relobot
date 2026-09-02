@@ -38,31 +38,35 @@ export class ControlPanel {
     }
 
     init() {
-        // Initialize ROS publishers/subscribers/action clients (using ESM v2 connection)
-        this.exploreTopic = rosService.createTopicV2(TOPICS.EXPLORE_RESUME, MSG_TYPES.BOOL);
-        this.coverageCommandTopic = rosService.createTopicV2(TOPICS.COVERAGE_COMMAND, MSG_TYPES.STRING);
-        this.systemCommandTopic = rosService.createTopicV2(TOPICS.SYSTEM_COMMAND, MSG_TYPES.STRING);
+        // Initialize ROS publishers/subscribers/action clients
+        this.exploreTopic = rosService.createTopic(TOPICS.EXPLORE_RESUME, MSG_TYPES.BOOL);
+        this.coverageCommandTopic = rosService.createTopic(TOPICS.COVERAGE_COMMAND, MSG_TYPES.STRING);
+        this.systemCommandTopic = rosService.createTopic(TOPICS.SYSTEM_COMMAND, MSG_TYPES.STRING);
 
         // Subscribe to explore status
-        this.exploreStatusTopic = rosService.createTopicV2(TOPICS.EXPLORE_STATUS, MSG_TYPES.EXPLORE_STATUS);
-        this.exploreStatusCallback = (msg) => {
-            const exploring = msg.status === EXPLORE_STATUS.STARTED || msg.status === EXPLORE_STATUS.IN_PROGRESS;
-            this.updateExploreButton(exploring);
-        };
-        this.exploreStatusTopic.subscribe(this.exploreStatusCallback);
+        this.exploreStatusSubscription = rosService.subscribe(
+            TOPICS.EXPLORE_STATUS,
+            MSG_TYPES.EXPLORE_STATUS,
+            (msg) => {
+                const exploring = msg.status === EXPLORE_STATUS.STARTED || msg.status === EXPLORE_STATUS.IN_PROGRESS;
+                this.updateExploreButton(exploring);
+            }
+        );
 
         // Subscribe to coverage status
-        this.coverageStatusTopic = rosService.createTopicV2(TOPICS.COVERAGE_STATUS, MSG_TYPES.STRING);
-        this.coverageStatusCallback = (msg) => {
-            let payload;
-            try {
-                payload = JSON.parse(msg.data);
-            } catch (_error) {
-                payload = { state: 'error', message: msg.data || 'Invalid coverage status payload.' };
+        this.coverageStatusSubscription = rosService.subscribe(
+            TOPICS.COVERAGE_STATUS,
+            MSG_TYPES.STRING,
+            (msg) => {
+                let payload;
+                try {
+                    payload = JSON.parse(msg.data);
+                } catch (_error) {
+                    payload = { state: 'error', message: msg.data || 'Invalid coverage status payload.' };
+                }
+                this.updateCoverageControls(payload);
             }
-            this.updateCoverageControls(payload);
-        };
-        this.coverageStatusTopic.subscribe(this.coverageStatusCallback);
+        );
 
         this.robotActions = new RobotActionsController(this.telemetry);
 
@@ -275,13 +279,13 @@ export class ControlPanel {
         this.headerWidgets?.destroy();
         this.systemOperations?.destroy();
         this.robotActions?.destroy();
-        if (this.exploreStatusTopic && this.exploreStatusCallback) {
-            this.exploreStatusTopic.unsubscribe(this.exploreStatusCallback);
-            this.exploreStatusTopic = null;
+        if (this.exploreStatusSubscription) {
+            this.exploreStatusSubscription.unsubscribe();
+            this.exploreStatusSubscription = null;
         }
-        if (this.coverageStatusTopic && this.coverageStatusCallback) {
-            this.coverageStatusTopic.unsubscribe(this.coverageStatusCallback);
-            this.coverageStatusTopic = null;
+        if (this.coverageStatusSubscription) {
+            this.coverageStatusSubscription.unsubscribe();
+            this.coverageStatusSubscription = null;
         }
         if (this._toastTimer) {
             clearTimeout(this._toastTimer);

@@ -182,23 +182,16 @@ export class SettingsPanel {
 
     subscribeRosout() {
         try {
-            const topic = rosService.createTopicV2(TOPICS.ROSOUT, MSG_TYPES.LOG);
-            if (topic) {
-                this.rosoutCallback = (msg) => {
-                    let levelStr = 'INFO';
-                    if (msg.level === 10) levelStr = 'DEBUG';
-                    else if (msg.level === 30) levelStr = 'WARN';
-                    else if (msg.level === 40) levelStr = 'ERROR';
-                    else if (msg.level === 50) levelStr = 'FATAL';
+            this.rosoutSubscription = rosService.subscribe(TOPICS.ROSOUT, MSG_TYPES.LOG, (msg) => {
+                let levelStr = 'INFO';
+                if (msg.level === 10) levelStr = 'DEBUG';
+                else if (msg.level === 30) levelStr = 'WARN';
+                else if (msg.level === 40) levelStr = 'ERROR';
+                else if (msg.level === 50) levelStr = 'FATAL';
 
-                    const formatted = `[${levelStr}] [${msg.name}]: ${msg.msg}`;
-                    this.addLog(formatted);
-                };
-                topic.subscribe(this.rosoutCallback);
-                this.rosoutSubscription = {
-                    unsubscribe: () => topic.unsubscribe(this.rosoutCallback),
-                };
-            }
+                const formatted = `[${levelStr}] [${msg.name}]: ${msg.msg}`;
+                this.addLog(formatted);
+            });
         } catch (err) {
             console.warn('[SettingsPanel] Could not subscribe to /rosout:', err);
         }
