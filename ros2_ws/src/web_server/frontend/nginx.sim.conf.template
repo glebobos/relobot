@@ -1,0 +1,44 @@
+server {
+    listen 80;
+    server_name localhost ${DOMAIN_NAME};
+
+    include /etc/nginx/mime.types;
+    types {
+        application/javascript mjs;
+    }
+
+    access_log off;
+
+    location / {
+        root /usr/share/nginx/html;
+        index index.html;
+
+        # Never cache JS/HTML so stale control code can't persist in the browser
+        add_header Cache-Control "no-store, no-cache, must-revalidate";
+        expires -1;
+    }
+
+    # Stable asset filenames are edited in place during development. Revalidate
+    # them on refresh so Nginx can return 304 without serving stale content.
+    location ~* \.(?:glb|gltf|png|jpg|jpeg|gif|ico|svg|woff2?|eot|ttf|otf)$ {
+        root /usr/share/nginx/html;
+        add_header Cache-Control "no-cache, must-revalidate";
+        access_log off;
+    }
+
+    # WebSocket Proxy for Rosbridge
+    location /rosbridge/ {
+        proxy_pass http://127.0.0.1:9091/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "Upgrade";
+        proxy_set_header Host $host;
+        proxy_read_timeout 86400;
+    }
+
+    # Camera Stream Proxy
+    location /camera-stream/ {
+        proxy_pass http://127.0.0.1:8080/;
+        proxy_set_header Host $host;
+    }
+}

@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="diffbot">
+
+  <!-- Core robot kinematics and links -->
+  <xacro:include filename="$(find diff_drive_hardware)/config/diffbot_description.xacro" />
+
+  <!-- Gazebo simulation sensors, physics properties, and ros2_control plugin -->
+  <xacro:include filename="$(find relobot_gazebo)/config/diffbot_gazebo_plugins.xacro" />
+
+</robot>

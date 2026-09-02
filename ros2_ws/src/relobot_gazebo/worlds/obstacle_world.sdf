@@ -1,0 +1,115 @@
+<?xml version="1.0" ?>
+<sdf version="1.8">
+  <world name="obstacle_world">
+    <physics name="1ms" type="ignored">
+      <max_step_size>0.002</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+    </physics>
+
+    <!-- World Systems Plugins -->
+    <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics" />
+    <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands" />
+    <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster" />
+    <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+    <plugin filename="gz-sim-imu-system" name="gz::sim::systems::Imu" />
+    <plugin filename="gz-sim-contact-system" name="gz::sim::systems::Contact" />
+
+    <!-- Lighting -->
+    <light type="directional" name="sun">
+      <cast_shadows>true</cast_shadows>
+      <pose>0 0 10 0 0 0</pose>
+      <diffuse>0.8 0.8 0.8 1</diffuse>
+      <specular>0.2 0.2 0.2 1</specular>
+      <direction>-0.5 0.1 -0.9</direction>
+    </light>
+
+    <!-- Ground Plane -->
+    <model name="floor">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry><plane><normal>0 0 1</normal><size>25 25</size></plane></geometry>
+          <surface><friction><ode><mu>1.0</mu><mu2>1.0</mu2></ode></friction></surface>
+        </collision>
+        <visual name="visual">
+          <geometry><plane><normal>0 0 1</normal><size>25 25</size></plane></geometry>
+          <material><ambient>0.7 0.7 0.7 1</ambient><diffuse>0.7 0.7 0.7 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Outer Enclosure (12m x 12m) -->
+    <model name="wall_n"><static>true</static><pose>0 6 0.75 0 0 0</pose><link name="l"><collision name="c"><geometry><box><size>12 0.2 1.5</size></box></geometry></collision><visual name="v"><geometry><box><size>12 0.2 1.5</size></box></geometry><material><ambient>0.4 0.4 0.6 1</ambient><diffuse>0.4 0.4 0.6 1</diffuse></material></visual></link></model>
+    <model name="wall_s"><static>true</static><pose>0 -6 0.75 0 0 0</pose><link name="l"><collision name="c"><geometry><box><size>12 0.2 1.5</size></box></geometry></collision><visual name="v"><geometry><box><size>12 0.2 1.5</size></box></geometry><material><ambient>0.4 0.4 0.6 1</ambient><diffuse>0.4 0.4 0.6 1</diffuse></material></visual></link></model>
+    <model name="wall_e"><static>true</static><pose>6 0 0.75 0 0 0</pose><link name="l"><collision name="c"><geometry><box><size>0.2 12 1.5</size></box></geometry></collision><visual name="v"><geometry><box><size>0.2 12 1.5</size></box></geometry><material><ambient>0.4 0.4 0.6 1</ambient><diffuse>0.4 0.4 0.6 1</diffuse></material></visual></link></model>
+    <model name="wall_w"><static>true</static><pose>-6 0 0.75 0 0 0</pose><link name="l"><collision name="c"><geometry><box><size>0.2 12 1.5</size></box></geometry></collision><visual name="v"><geometry><box><size>0.2 12 1.5</size></box></geometry><material><ambient>0.4 0.4 0.6 1</ambient><diffuse>0.4 0.4 0.6 1</diffuse></material></visual></link></model>
+
+    <!-- Internal Partition Walls -->
+    <model name="inner_wall_1"><static>true</static><pose>-2 2 0.75 0 0 0</pose><link name="l"><collision name="c"><geometry><box><size>4 0.2 1.5</size></box></geometry></collision><visual name="v"><geometry><box><size>4 0.2 1.5</size></box></geometry><material><ambient>0.5 0.5 0.7 1</ambient><diffuse>0.5 0.5 0.7 1</diffuse></material></visual></link></model>
+    <model name="inner_wall_2"><static>true</static><pose>2 -2 0.75 0 0 0</pose><link name="l"><collision name="c"><geometry><box><size>4 0.2 1.5</size></box></geometry></collision><visual name="v"><geometry><box><size>4 0.2 1.5</size></box></geometry><material><ambient>0.5 0.5 0.7 1</ambient><diffuse>0.5 0.5 0.7 1</diffuse></material></visual></link></model>
+    <model name="inner_wall_3"><static>true</static><pose>0 0 0.75 0 0 1.5708</pose><link name="l"><collision name="c"><geometry><box><size>4 0.2 1.5</size></box></geometry></collision><visual name="v"><geometry><box><size>4 0.2 1.5</size></box></geometry><material><ambient>0.5 0.5 0.7 1</ambient><diffuse>0.5 0.5 0.7 1</diffuse></material></visual></link></model>
+
+    <!-- Obstacles (Pillars / Boxes) -->
+    <model name="pillar_1"><static>true</static><pose>3 3 0.75 0 0 0</pose><link name="l"><collision name="c"><geometry><cylinder><radius>0.4</radius><length>1.5</length></cylinder></geometry></collision><visual name="v"><geometry><cylinder><radius>0.4</radius><length>1.5</length></cylinder></geometry><material><ambient>0.8 0.3 0.3 1</ambient><diffuse>0.8 0.3 0.3 1</diffuse></material></visual></link></model>
+    <model name="pillar_2"><static>true</static><pose>-3 -3 0.75 0 0 0</pose><link name="l"><collision name="c"><geometry><cylinder><radius>0.4</radius><length>1.5</length></cylinder></geometry></collision><visual name="v"><geometry><cylinder><radius>0.4</radius><length>1.5</length></cylinder></geometry><material><ambient>0.8 0.3 0.3 1</ambient><diffuse>0.8 0.3 0.3 1</diffuse></material></visual></link></model>
+    <model name="box_1"><static>true</static><pose>3.5 -3.5 0.4 0 0 0.3</pose><link name="l"><collision name="c"><geometry><box><size>1.0 1.0 0.8</size></box></geometry></collision><visual name="v"><geometry><box><size>1.0 1.0 0.8</size></box></geometry><material><ambient>0.8 0.6 0.2 1</ambient><diffuse>0.8 0.6 0.2 1</diffuse></material></visual></link></model>
+    <!-- Charging Station / Base Station Dock (Head-First Docking) -->
+    <model name="docking_station">
+      <static>true</static>
+      <pose>0.0 0.0 0.0 0 0 0</pose>
+      <link name="station_link">
+        <!-- Base Parking Tray (visual on ground) -->
+        <visual name="vis_tray">
+          <pose>0.20 0.0 0.005 0 0 0</pose>
+          <geometry><box><size>0.75 0.55 0.01</size></box></geometry>
+          <material><ambient>0.2 0.2 0.22 1</ambient><diffuse>0.25 0.25 0.28 1</diffuse></material>
+        </visual>
+
+        <!-- Station Tower (in front of robot head) -->
+        <collision name="col_tower">
+          <pose>0.60 0.0 0.22 0 0 0</pose>
+          <geometry><box><size>0.15 0.55 0.44</size></box></geometry>
+        </collision>
+        <visual name="vis_tower">
+          <pose>0.60 0.0 0.22 0 0 0</pose>
+          <geometry><box><size>0.15 0.55 0.44</size></box></geometry>
+          <material><ambient>0.15 0.15 0.18 1</ambient><diffuse>0.2 0.2 0.25 1</diffuse></material>
+        </visual>
+
+        <!-- Canopy / Roof Overhang -->
+        <visual name="vis_roof">
+          <pose>0.45 0.0 0.44 0 0 0</pose>
+          <geometry><box><size>0.25 0.55 0.02</size></box></geometry>
+          <material><ambient>0.12 0.12 0.15 1</ambient><diffuse>0.18 0.18 0.22 1</diffuse></material>
+        </visual>
+
+        <!-- AprilTag / Visual Docking Target Face (facing -X towards front camera) -->
+        <visual name="vis_tag_panel">
+          <pose>0.52 0.0 0.25 0 0 0</pose>
+          <geometry><box><size>0.01 0.18 0.18</size></box></geometry>
+          <material><ambient>0.95 0.95 0.95 1</ambient><diffuse>1.0 1.0 1.0 1</diffuse></material>
+        </visual>
+        <visual name="vis_tag_center">
+          <pose>0.514 0.0 0.25 0 0 0</pose>
+          <geometry><box><size>0.005 0.12 0.12</size></box></geometry>
+          <material><ambient>0.05 0.05 0.05 1</ambient><diffuse>0.05 0.05 0.05 1</diffuse></material>
+        </visual>
+
+        <!-- Charging Contacts (facing robot front bumper) -->
+        <visual name="vis_contact_left">
+          <pose>0.52 0.06 0.12 0 0 0</pose>
+          <geometry><box><size>0.015 0.03 0.06</size></box></geometry>
+          <material><ambient>0.9 0.7 0.1 1</ambient><diffuse>1.0 0.8 0.2 1</diffuse></material>
+        </visual>
+        <visual name="vis_contact_right">
+          <pose>0.52 -0.06 0.12 0 0 0</pose>
+          <geometry><box><size>0.015 0.03 0.06</size></box></geometry>
+          <material><ambient>0.9 0.7 0.1 1</ambient><diffuse>1.0 0.8 0.2 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+  </world>
+</sdf>

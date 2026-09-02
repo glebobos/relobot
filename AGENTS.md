@@ -24,24 +24,39 @@ ReloBot is a ROS2-based robotics platform running on Raspberry Pi 5.
     - [ros2_ws/src/web_server/README.md](file:///home/admin/projects/relobot/ros2_ws/src/web_server/README.md): Web frontend server details.
 - `wiki/`: Architecture decisions and benchmark reports (e.g. `composition_performance_report.md`).
 - Core Helper Scripts:
-    - `start_robot.sh`: Core host script to start/stop the Docker containers (supports development `--dev` mode).
+    - `start_robot.sh`: Core host script to start/stop the Docker containers (supports `--sim` for Gazebo simulation and `--dev` mode).
+    - `start_sim.sh`: Convenience launcher for Gazebo simulation (`./start_sim.sh up [--gui|--headless] [--world garden|obstacles|empty] [--dev]`).
     - `run_firmware.sh`: Firmware management CLI (build, scan, flash, info, monitor).
     - `start_wheel_calibration.sh`: One-command wheel calibration process launcher.
     - `start_camera_calibration.sh`: Camera calibration launcher.
-    - `rviz2.sh`: Runs RViz2 container.
+    - `rviz2.sh`: Runs RViz2 container (supports `--sim` for simulation view).
 
 ## Setup
 1. **Repository**: `git clone ...` (already done if you are reading this).
-2. **Devices**: Run `python3 finddevice.py` to auto-detect and map serial devices (TTYs).
-3. **Environment**: Ensure `docker` and `docker compose` are installed.
+2. **Devices**: Run `python3 finddevice.py` to auto-detect and map serial devices (TTYs) when running on physical hardware.
+3. **Environment**: Ensure `docker` and `docker compose` are installed. For WSL2, WSLg graphics acceleration is automatically detected.
 
 ## Workflow
-### Running the Robot
-To start the entire stack:
+### Running the Robot (Physical Hardware)
+To start the entire physical stack:
 ```bash
 # Recommended launcher (adds --dev to rebuild nodes on startup):
 ./start_robot.sh up [--dev]
+```
 
+### Running the Gazebo Simulation (Local Testing in WSL2/Linux)
+To test locally without hardware:
+```bash
+# Start Gazebo simulation with garden world (default GUI mode):
+./start_robot.sh up --sim [--dev]
+# Or using the convenience script:
+./start_sim.sh up [--world garden|obstacles|empty] [--gui|--headless] [--dev]
+
+# Launch RViz2 connected to simulation:
+./rviz2.sh --sim
+
+# Open web interface in browser:
+# http://localhost/ (or http://127.0.0.1/)
 ```
 
 ### Developing a New Node (Agent)
@@ -50,6 +65,7 @@ To start the entire stack:
     - If it requires special dependencies, create a new `NewAgent.dockerfile`.
     - Otherwise, you may reuse `ros:humble` base or existing images.
 3. **Orchestration**: Add a new service to `ros2_ws/docker-compose.yml`.
+    - Use Docker Compose `profiles: ["hardware"]` for physical devices or `profiles: ["sim"]` for simulation-only services.
     - **Network**: Must use `network_mode: host` and `ipc: host`.
     - **Volumes**: Mount `.:/ros2_ws/` to allow code editing from host.
 4. **Build**:
@@ -63,16 +79,18 @@ The web server frontend (`ros2_frontend` service) serves static files located in
 - **Immediate Effect (No Docker Restart Required)**: Because the static content is served directly by Nginx, editing HTML, CSS, or JavaScript files on the host takes effect **immediately** inside the running container. There is **no need to restart Docker, compose, or any container services** to apply frontend changes. Simply refresh the browser page to see updates.
 
 ### Visualization / Debugging
-- **RViz2**: Run `./rviz2.sh` (or `rviz` alias if configured) from the host. It runs RViz in a Docker container connected to the Discovery Server.
-- **Logs**: `docker compose logs -f <service_name>`.
+- **RViz2**: Run `./rviz2.sh` (physical) or `./rviz2.sh --sim` (simulation) from the host.
+- **Logs**: `docker compose logs -f <service_name>` (or `./start_sim.sh logs <service_name>`).
 - **Shell Access**: `docker compose exec <service_name> bash` to enter a running container.
 
 ## Commands
 | Action | Command |
 | :--- | :--- |
-| **Start All** | `./start_robot.sh up --dev` |
-| **Stop All** | `./start_robot.sh down` |
+| **Start All (Hardware)** | `./start_robot.sh up --dev` |
+| **Start Simulation (Gazebo)** | `./start_sim.sh up --dev` or `./start_robot.sh up --sim --dev` |
+| **Stop All (Hardware & Sim)** | `./start_robot.sh down` |
 | **View Logs** | `docker compose logs -f` |
+| **Run RViz2 (Simulation)** | `./rviz2.sh --sim` |
 | **Scan Firmware Devices** | `./run_firmware.sh scan` |
 | **Build All Firmwares** | `./run_firmware.sh build all` |
 | **Flash Firmware** | `./run_firmware.sh flash <wheels|wheels_calibration|knives|imu|ina226>` |

@@ -56,7 +56,7 @@ if [ "$DEV" = "true" ] || [ ! -f /ros2_ws/install/opennav_coverage_msgs/share/op
   colcon build --base-paths /opt/fields2cover_src /opt/opennav_coverage_src /ros2_ws/src --packages-up-to nav2 explore_lite opennav_coverage opennav_coverage_msgs fields2cover --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF -DBUILD_DOC=OFF -DBUILD_TUTORIALS=OFF\n\
 fi\n\
 source install/setup.bash\n\
-ros2 launch nav2 navigation_launch.py' > /start_dev.sh && \
+ros2 launch nav2 navigation_launch.py use_sim_time:="${USE_SIM_TIME:-false}"' > /start_dev.sh && \
 chmod +x /start_dev.sh
 
 CMD ["/start_dev.sh"]

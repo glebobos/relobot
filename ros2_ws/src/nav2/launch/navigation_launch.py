@@ -30,6 +30,16 @@ def generate_launch_description():
     # Get the launch directory
     nav2_dir = get_package_share_directory('nav2')
 
+    namespace = LaunchConfiguration('namespace')
+    use_sim_time = LaunchConfiguration('use_sim_time')
+    autostart = LaunchConfiguration('autostart')
+    params_file = LaunchConfiguration('params_file')
+    use_composition = LaunchConfiguration('use_composition')
+    container_name = LaunchConfiguration('container_name')
+    container_name_full = (namespace, '/', container_name)
+    use_respawn = LaunchConfiguration('use_respawn')
+    log_level = LaunchConfiguration('log_level')
+
     # --- SLAM Toolbox configuration ---
     slam_config_file = os.path.join(nav2_dir, 'config', 'slam_toolbox_config.yaml')
     map_serialized_path = '/ros2_ws/map_serialized'
@@ -40,6 +50,7 @@ def generate_launch_description():
     slam_params = {
         'mode': 'localization' if map_exists else 'mapping',
         'map_file_name': map_serialized_path if map_exists else '',
+        'use_sim_time': use_sim_time,
     }
     slam_toolbox_node = Node(
         package='slam_toolbox',
@@ -49,16 +60,6 @@ def generate_launch_description():
         parameters=[slam_config_file, slam_params],
     )
     # -----------------------------------
-
-    namespace = LaunchConfiguration('namespace')
-    use_sim_time = LaunchConfiguration('use_sim_time')
-    autostart = LaunchConfiguration('autostart')
-    params_file = LaunchConfiguration('params_file')
-    use_composition = LaunchConfiguration('use_composition')
-    container_name = LaunchConfiguration('container_name')
-    container_name_full = (namespace, '/', container_name)
-    use_respawn = LaunchConfiguration('use_respawn')
-    log_level = LaunchConfiguration('log_level')
 
     lifecycle_nodes = ['controller_server',
                        'smoother_server',
@@ -138,7 +139,7 @@ def generate_launch_description():
         executable='explore',
         name='explore_node',
         output='screen',
-        parameters=[explore_lite_params],
+        parameters=[explore_lite_params, {'use_sim_time': use_sim_time}],
         remappings=[('/tf', 'tf'), ('/tf_static', 'tf_static')],
     )
 
