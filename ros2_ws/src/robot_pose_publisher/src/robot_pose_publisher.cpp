@@ -33,8 +33,11 @@ RobotPosePublisher::RobotPosePublisher(const rclcpp::NodeOptions & options)
   tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_, this, false);
 
   auto period = std::chrono::duration<double>(1.0 / publish_rate_hz_);
-  timer_ = this->create_wall_timer(
-    std::chrono::duration_cast<std::chrono::nanoseconds>(period),
+  timer_ = rclcpp::create_timer(
+    this->get_node_base_interface(),
+    this->get_node_timers_interface(),
+    this->get_clock(),
+    rclcpp::Duration(std::chrono::duration_cast<std::chrono::nanoseconds>(period)),
     std::bind(&RobotPosePublisher::tick, this));
 
   RCLCPP_INFO(
@@ -69,12 +72,12 @@ void RobotPosePublisher::tick()
 
   rclcpp::Time stamp(transform.header.stamp);
   double age_sec = (this->now() - stamp).seconds();
-  if (age_sec > max_tf_age_sec_) {
+  if (age_sec > max_tf_age_sec_ || age_sec < -max_tf_age_sec_) {
     RCLCPP_WARN_THROTTLE(
       get_logger(),
       *get_clock(),
       1000,
-      "Transform from %s to %s is %.2fs old (> %.2fs threshold); skipping publish.",
+      "Transform from %s to %s has invalid age %.2fs (threshold ±%.2fs); skipping publish.",
       map_frame_.c_str(),
       base_frame_.c_str(),
       age_sec,

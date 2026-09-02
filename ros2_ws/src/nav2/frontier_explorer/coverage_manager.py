@@ -46,7 +46,6 @@ class CoverageManager(Node):
         self.declare_parameter('swath_endpoint_margin', 0.25)
         self.declare_parameter('obstacle_min_area_m2', 0.0004)  # 4 cm²
         self.declare_parameter('obstacle_dilate_m', 0.20)  # safety margin in metres
-        self.declare_parameter('map_update_min_interval_sec', 5.0)
 
         self._default_frame_id = self.get_parameter('default_frame_id').value
         self._headland_width = float(self.get_parameter('headland_width').value)
@@ -57,7 +56,6 @@ class CoverageManager(Node):
         self._allow_execute_without_fresh_preview = bool(
             self.get_parameter('allow_execute_without_fresh_preview').value
         )
-        self._map_update_min_interval_sec = float(self.get_parameter('map_update_min_interval_sec').value)
 
         compute_action_name = self.get_parameter('compute_coverage_action_name').value
         nav_through_poses_action_name = self.get_parameter('navigate_through_poses_action_name').value
@@ -134,10 +132,6 @@ class CoverageManager(Node):
         # _polygon_msg until the user explicitly clears the zone.
         self._custom_polygon_active: bool = False
         self._custom_zone_points: list[tuple[float, float]] | None = None
-
-        self._last_processed_map_hash = None
-        self._last_processed_map_info = None
-        self._last_map_processing_time = None
 
         self._map_processor = MapProcessor(self.get_logger())
 
