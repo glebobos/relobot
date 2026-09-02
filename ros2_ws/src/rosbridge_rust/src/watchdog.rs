@@ -4,7 +4,7 @@ use crate::state::{monotonic_ms, SharedState};
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::time::Duration;
-use tracing::{info, warn};
+use tracing::{debug, warn};
 
 /// Runs the periodic health check watchdog.
 ///
@@ -31,7 +31,7 @@ pub async fn run_watchdog(state: Arc<SharedState>) {
         if report_counter >= 15 {
             report_counter = 0;
             let active = state.active_clients.load(Ordering::Relaxed);
-            info!(
+            debug!(
                 active_clients = active,
                 spin_tick_diff_ms = spin_diff_ms,
                 "Watchdog Health Check: bridge operating normally"
