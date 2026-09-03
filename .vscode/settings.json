@@ -1,0 +1,14 @@
+{
+  // Terminal Profiles: ensures WSL Ubuntu is used when launching on Windows,
+  // and native bash is used inside Linux.
+  "terminal.integrated.defaultProfile.windows": "Ubuntu",
+  "terminal.integrated.defaultProfile.linux": "bash",
+  // Shell Integration: enables command detection, start/finish tracking,
+  // and exit signal reporting (OSC 633 sequences) to prevent hung runner tasks.
+  "terminal.integrated.shellIntegration.enabled": true,
+  "terminal.integrated.shellIntegration.decorations": "both",
+  // Prevent stale/zombie persistent terminal processes from being revived.
+  "terminal.integrated.persistentSessionReviveProcess": "never",
+  // Enforce Linux LF line endings across all files to avoid script execution issues in WSL.
+  "files.eol": "\n"
+}
