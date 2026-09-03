@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Copyright 2025 ReloBot Contributors
+# Copyright 2025-2026 ReloBot Contributors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,30 +19,118 @@ set -e
 COMMAND=""
 SERVICE=""
 DEV=false
+SIM=false
+SIM_GUI=true
+SIM_WORLD="garden_world.sdf"
 
-for arg in "$@"; do
-    if [ "$arg" == "--dev" ]; then
-        DEV=true
-    elif [ -z "$COMMAND" ]; then
-        COMMAND=$arg
-    elif [ -z "$SERVICE" ]; then
-        SERVICE=$arg
-    fi
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --dev)
+            DEV=true
+            shift
+            ;;
+        --sim)
+            SIM=true
+            shift
+            ;;
+        --headless)
+            SIM_GUI=false
+            shift
+            ;;
+        --gui)
+            SIM_GUI=true
+            shift
+            ;;
+        --world)
+            if [[ -n "$2" && ! "$2" =~ ^-- ]]; then
+                SIM_WORLD="$2"
+                # If user passed short name like 'garden', append '_world.sdf'
+                if [[ ! "$SIM_WORLD" =~ \.sdf$ ]]; then
+                    if [[ "$SIM_WORLD" =~ _world$ ]]; then
+                        SIM_WORLD="${SIM_WORLD}.sdf"
+                    else
+                        SIM_WORLD="${SIM_WORLD}_world.sdf"
+                    fi
+                fi
+                shift 2
+            else
+                echo "Error: --world requires a world name (e.g. garden, obstacles, empty)"
+                exit 1
+            fi
+            ;;
+        up|down|restart|build|logs|ps)
+            COMMAND="$1"
+            shift
+            ;;
+        *)
+            if [ -z "$COMMAND" ]; then
+                COMMAND="$1"
+            elif [ -z "$SERVICE" ]; then
+                SERVICE="$1"
+            fi
+            shift
+            ;;
+    esac
 done
 
 # Check if command is provided
 if [ -z "$COMMAND" ]; then
-    echo "Usage: $0 {up|down} [service] [--dev]"
-    echo "  up [service]   - Start all services or a specific service"
-    echo "  down           - Stop all services"
-    echo "  --dev          - Enable development mode (rebuilds code)"
+    echo "Usage: $0 {up|down|build|logs|ps} [service] [--sim] [--dev] [--gui|--headless] [--world <name>]"
+    echo ""
+    echo "Commands:"
+    echo "  up [service]   - Start physical robot stack (or simulation with --sim)"
+    echo "  down           - Stop all robot/simulation services"
+    echo "  build [service]- Rebuild container images"
+    echo "  logs [service] - View service logs"
+    echo ""
+    echo "Options:"
+    echo "  --sim          - Run in Gazebo simulation mode (swaps hardware drivers for Gazebo)"
+    echo "  --gui          - Launch Gazebo 3D GUI (default in sim mode)"
+    echo "  --headless     - Run Gazebo in headless mode (no GUI window)"
+    echo "  --world <name> - Specify world: garden (default), obstacles, empty"
+    echo "  --dev          - Enable development mode (rebuilds ROS2 packages on startup)"
     exit 1
 fi
 
-cd /home/admin/projects/relobot/ros2_ws
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROS2_WS_DIR="${SCRIPT_DIR}/ros2_ws"
+cd "${ROS2_WS_DIR}"
 
-export DEV=$DEV
-echo "Starting services with DEV=$DEV"
+export DEV="${DEV}"
+
+if [ "$SIM" = true ]; then
+    export COMPOSE_PROFILES="sim"
+    export USE_SIM_TIME=true
+    export NGINX_TEMPLATE="nginx.sim.conf.template"
+    export SIM_WORLD="${SIM_WORLD}"
+    export SIM_GUI="${SIM_GUI}"
+    
+    # Configure X11 / WSLg display permissions for Docker
+    if [ "$SIM_GUI" = true ]; then
+        if command -v xhost &>/dev/null; then
+            xhost +local:docker 2>/dev/null || true
+            xhost + 2>/dev/null || true
+        fi
+        export DISPLAY="${DISPLAY:-:0}"
+        export WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-wayland-0}"
+    fi
+
+    echo "=========================================================="
+    echo " ReloBot: GAZEBO SIMULATION MODE"
+    echo " World:    ${SIM_WORLD}"
+    echo " GUI:      ${SIM_GUI}"
+    echo " Dev Mode: ${DEV}"
+    echo "=========================================================="
+else
+    export COMPOSE_PROFILES="hardware"
+    export USE_SIM_TIME=false
+    export NGINX_TEMPLATE="nginx.conf.template"
+
+    echo "=========================================================="
+    echo " ReloBot: PHYSICAL HARDWARE MODE"
+    echo " Dev Mode: ${DEV}"
+    echo "=========================================================="
+fi
 
 # Function to clean up stale FastDDS shared memory and semaphore segments
 cleanup_fastdds_shm() {
@@ -68,20 +156,67 @@ if [ "$COMMAND" == "up" ]; then
     cleanup_fastdds_shm
 
     if [ -z "$SERVICE" ]; then
-        docker compose up --remove-orphans
+        if [ "$SIM" = true ]; then
+            echo "=========================================================="
+            echo " [start_robot.sh] Phase 1: Launching simulation core..."
+            echo "=========================================================="
+            docker compose --profile sim up -d ros2_frontend ros2_rosbridge ros2_gazebo_sim
+
+            echo "[start_robot.sh] Waiting for Gazebo simulation & controllers to become active..."
+            WAIT_COUNT=0
+            MAX_WAIT=180
+            until docker compose -f docker-compose.yml exec ros2_gazebo_sim bash -c "source /opt/ros/humble/setup.bash 2>/dev/null && ros2 control list_controllers 2>/dev/null | grep -q 'diff_drive_controller.*active'" 2>/dev/null; do
+                sleep 2
+                WAIT_COUNT=$((WAIT_COUNT + 2))
+                if [ $WAIT_COUNT -ge $MAX_WAIT ]; then
+                    echo -e "\n[start_robot.sh] Warning: Timeout waiting for controllers. Proceeding with Nav2..."
+                    break
+                fi
+                echo -n "."
+            done
+            echo ""
+            echo "=========================================================="
+            echo " [start_robot.sh] Phase 2: Simulation ready! Launching Nav2..."
+            echo "=========================================================="
+            docker compose --profile sim up -d ros2_nav2
+            
+            # Follow logs for all services so output and Ctrl+C work transparently
+            docker compose --profile sim logs -f
+        else
+            docker compose --profile "${COMPOSE_PROFILES}" up --remove-orphans
+        fi
     else
-        docker compose up --remove-orphans $SERVICE
+        docker compose --profile "${COMPOSE_PROFILES}" up --remove-orphans "${SERVICE}"
     fi
-    
+
 elif [ "$COMMAND" == "down" ]; then
     echo "Stopping all services..."
-    docker compose down --remove-orphans
+    docker compose --profile hardware --profile sim down --remove-orphans
     # Clean up FastDDS shared memory segments after stopping containers
     cleanup_fastdds_shm
     echo "Cleaned up FastDDS shared memory segments."
-    
+    echo "All ReloBot services stopped."
+
+elif [ "$COMMAND" == "build" ]; then
+    if [ -z "$SERVICE" ]; then
+        docker compose --profile "${COMPOSE_PROFILES}" build
+    else
+        docker compose --profile "${COMPOSE_PROFILES}" build "${SERVICE}"
+    fi
+
+elif [ "$COMMAND" == "logs" ]; then
+    if [ -z "$SERVICE" ]; then
+        docker compose --profile "${COMPOSE_PROFILES}" logs -f
+    else
+        docker compose --profile "${COMPOSE_PROFILES}" logs -f "${SERVICE}"
+    fi
+
+elif [ "$COMMAND" == "ps" ]; then
+    docker compose --profile "${COMPOSE_PROFILES}" ps
+
 else
     echo "Error: Invalid command '$COMMAND'"
-    echo "Usage: $0 {up|down} [service] [--dev]"
+    echo "Usage: $0 {up|down|build|logs|ps} [service] [--sim] [--dev] [--gui|--headless] [--world <name>]"
     exit 1
 fi
+

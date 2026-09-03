@@ -5,23 +5,62 @@ x-ros-env: &ros-env
   FASTRTPS_DEFAULT_PROFILES_FILE: /ros2_ws/fastdds_localhost.xml
 
 services:
+  # ==========================================================
+  # Core Services (Active in BOTH Hardware and Simulation)
+  # ==========================================================
   ros2_frontend:
     image: nginx:alpine
     container_name: ros2_frontend
     environment:
-      DOMAIN_NAME: ${DOMAIN_NAME}
+      DOMAIN_NAME: ${DOMAIN_NAME:-localhost}
       NGINX_ENVSUBST_FILTER: DOMAIN_NAME
     volumes:
       - ./src/web_server/frontend:/usr/share/nginx/html
-      - ./src/web_server/frontend/nginx.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ./src/web_server/frontend/${NGINX_TEMPLATE:-nginx.conf.template}:/etc/nginx/templates/default.conf.template:ro
       - ./src/web_server/certs:/etc/nginx/certs:ro
     network_mode: host
     restart: unless-stopped
 
+  ros2_rosbridge:
+    build:
+      context: .
+      dockerfile: Rosbridge.dockerfile
+    container_name: ros2_rosbridge
+    ipc: host
+    volumes:
+      - .:/ros2_ws/
+    environment:
+      <<: *ros-env
+      PYTHONDONTWRITEBYTECODE: 1
+    network_mode: host
+    restart: unless-stopped
+
+  ros2_nav2:
+    build:
+      context: .
+      dockerfile: nav2.dockerfile
+    container_name: ros2_nav2
+    ipc: host
+    volumes:
+      - .:/ros2_ws/
+    devices:
+      - /dev/:/dev/
+    environment:
+      <<: *ros-env
+      USE_SIM_TIME: ${USE_SIM_TIME:-false}
+    network_mode: host
+    privileged: true
+    restart: unless-stopped
+
+  # ==========================================================
+  # Physical Hardware Services (Profile: "hardware")
+  # ==========================================================
   ros2_lidar:
+    profiles: ["hardware"]
     build:
       context: .
       dockerfile: lidar.dockerfile
+    container_name: ros2_lidar
     volumes:
       - .:/ros2_ws/
     devices:
@@ -34,9 +73,11 @@ services:
     restart: unless-stopped
 
   ros2_diff_robot:
+    profiles: ["hardware"]
     build:
       context: .
       dockerfile: DiffDriveHardware.dockerfile
+    container_name: ros2_diff_robot
     volumes:
       - .:/ros2_ws/
       - ../helpers:/ros2_ws/helpers
@@ -54,9 +95,11 @@ services:
     restart: unless-stopped
 
   ros2_camera_rp:
+    profiles: ["hardware"]
     build:
       context: .
       dockerfile: CameraRp.dockerfile
+    container_name: ros2_camera_rp
     volumes:
       - .:/ros2_ws/
       - /var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket
@@ -69,39 +112,42 @@ services:
     privileged: true
     restart: unless-stopped
 
-
-  ros2_nav2:
+  # ==========================================================
+  # Gazebo Simulation Services (Profile: "sim")
+  # ==========================================================
+  ros2_gazebo_sim:
+    profiles: ["sim"]
     build:
       context: .
-      dockerfile: nav2.dockerfile
-    ipc: host
+      dockerfile: GazeboSim.dockerfile
+    container_name: ros2_gazebo_sim
     volumes:
       - .:/ros2_ws/
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - /mnt/wslg:/mnt/wslg:ro
+      - /usr/lib/wsl/lib:/usr/lib/wsl/lib:ro
+      - /dev/shm:/dev/shm
+    environment:
+      <<: *ros-env
+      SIM_WORLD: ${SIM_WORLD:-garden_world.sdf}
+      SIM_GUI: ${SIM_GUI:-true}
+      DISPLAY: ${DISPLAY:-:0}
+      WAYLAND_DISPLAY: ${WAYLAND_DISPLAY:-wayland-0}
+      XDG_RUNTIME_DIR: /tmp/runtime-dir
+      LD_LIBRARY_PATH: /usr/lib/wsl/lib
+      QT_X11_NO_MITSHM: 1
     devices:
-      - /dev/:/dev/
-    environment:
-      <<: *ros-env
+      - /dev/dxg:/dev/dxg
     network_mode: host
-    privileged: true
-    depends_on:
-      - ros2_lidar
-      - ros2_diff_robot
-    restart: unless-stopped
-
-  ros2_rosbridge:
-    build:
-      context: .
-      dockerfile: Rosbridge.dockerfile
     ipc: host
-    volumes:
-      - .:/ros2_ws/
-    environment:
-      <<: *ros-env
-      PYTHONDONTWRITEBYTECODE: 1
-    network_mode: host
+    privileged: true
     restart: unless-stopped
 
+  # ==========================================================
+  # Optional Tools / Production Addons
+  # ==========================================================
   ros2_certbot:
+    profiles: ["hardware", "certbot"]
     image: certbot/dns-route53
     volumes:
       - ./src/web_server/certs:/etc/letsencrypt
