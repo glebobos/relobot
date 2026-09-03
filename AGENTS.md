@@ -19,13 +19,15 @@ ReloBot is a ROS2-based robotics platform running on Raspberry Pi 5.
 - `helpers/`: Utility tools and calibration procedures:
     - [helpers/wheel_calibration/README.md](file:///home/admin/projects/relobot/helpers/wheel_calibration/README.md): Wheel velocity calibration sweep & linear regression constants.
     - [helpers/camera_calibration/README.md](file:///home/admin/projects/relobot/helpers/camera_calibration/README.md): Fisheye camera calibration guide.
+    - [helpers/cpu_profiler/README.md](file:///home/admin/projects/relobot/helpers/cpu_profiler/README.md): ROS 2 & Docker container CPU/Memory statistical profiler.
 - `ros2_ws/`: The main ROS2 workspace (`src/`, `docker-compose.yml`, Dockerfiles).
     - [ros2_ws/readme.md](file:///home/admin/projects/relobot/ros2_ws/readme.md): ROS2 nodes architecture.
     - [ros2_ws/src/web_server/README.md](file:///home/admin/projects/relobot/ros2_ws/src/web_server/README.md): Web frontend server details.
-- `wiki/`: Architecture decisions and benchmark reports (e.g. `composition_performance_report.md`).
+- `wiki/`: Architecture decisions and benchmark reports (e.g. `composition_performance_report.md`, `cpu_profiling_and_optimization_report.md`).
 - Core Helper Scripts:
     - `start_robot.sh`: Core host script to start/stop the Docker containers (supports `--sim` for Gazebo simulation and `--dev` mode).
     - `start_sim.sh`: Convenience launcher for Gazebo simulation (`./start_sim.sh up [--gui|--headless] [--world garden|obstacles|empty] [--dev]`).
+    - `profile_cpu.sh`: Measures CPU and RAM consumption across all nodes and containers over time.
     - `run_firmware.sh`: Firmware management CLI (build, scan, flash, info, monitor).
     - `start_wheel_calibration.sh`: One-command wheel calibration process launcher.
     - `start_camera_calibration.sh`: Camera calibration launcher.
@@ -95,6 +97,7 @@ The web server frontend (`ros2_frontend` service) serves static files located in
 | **Build All Firmwares** | `./run_firmware.sh build all` |
 | **Flash Firmware** | `./run_firmware.sh flash <wheels|wheels_calibration|knives|imu|ina226>` |
 | **Run Wheel Calibration** | `./start_wheel_calibration.sh` |
+| **Profile CPU & Memory** | `./profile_cpu.sh [duration_sec]` |
 
 
 

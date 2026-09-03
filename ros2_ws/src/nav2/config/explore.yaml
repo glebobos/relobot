@@ -21,7 +21,7 @@ global_costmap:
       origin_x: -25.0
       origin_y: -25.0
       rolling_window: false
-      always_send_full_costmap: true
+      always_send_full_costmap: false
       plugins: ["static_layer", "obstacle_layer", "inflation_layer"]
 
       static_layer:
@@ -58,8 +58,8 @@ local_costmap:
       use_sim_time: false
       robot_base_frame: base_link
       global_frame: odom
-      update_frequency: 10.0
-      publish_frequency: 5.0
+      update_frequency: 5.0
+      publish_frequency: 3.0
       transform_tolerance: 0.3
       resolution: 0.025  # Match SLAM resolution (2.5 cm cells)
       width: 5
@@ -287,7 +287,7 @@ bt_navigator:
     global_frame: map
     robot_base_frame: base_link
     odom_topic: /odometry/filtered  # Use filtered odometry from EKF
-    bt_loop_duration: 50           # Reduced from 10ms to 50ms (20Hz instead of 100Hz)
+    bt_loop_duration: 100          # Standard 10Hz evaluation
     default_server_timeout: 20
     transform_tolerance: 0.5       # Tolerate SLAM map->odom TF lag (see global_costmap)
     enable_groot_monitoring: false
@@ -351,7 +351,7 @@ bt_navigator:
 waypoint_follower:
   ros__parameters:
     use_sim_time: false
-    loop_rate: 20
+    loop_rate: 2
     stop_on_failure: false
     waypoint_task_executor_plugin: "wait_at_waypoint"
     
@@ -364,7 +364,7 @@ waypoint_follower:
 velocity_smoother:
   ros__parameters:
     use_sim_time: false
-    smoothing_frequency: 15.0        # Reduced from 20.0 to 15.0 Hz for better performance
+    smoothing_frequency: 10.0        # Reduced from 20.0 to 15.0 Hz for better performance
     scale_velocities: false
     feedback: "OPEN_LOOP"
     max_velocity: [0.3, 0.0, 1.0]  # Vx, Vy, Vw — match MPPI wz_max and diff_drive_controller
@@ -392,7 +392,7 @@ velocity_smoother_rclcpp_node:
 docking_server:
   ros__parameters:
     use_sim_time: false
-    controller_frequency: 50.0
+    controller_frequency: 15.0
     initial_perception_timeout: 5.0
     wait_charge_timeout: 5.0
     dock_approach_timeout: 30.0
