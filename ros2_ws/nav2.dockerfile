@@ -57,6 +57,11 @@ if [ "$DEV" = "true" ] || [ ! -f /ros2_ws/install/opennav_coverage_msgs/share/op
   colcon build --base-paths /opt/fields2cover_src /opt/opennav_coverage_src /ros2_ws/src --packages-up-to nav2 robot_pose_publisher explore_lite opennav_coverage opennav_coverage_msgs fields2cover --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF -DBUILD_DOC=OFF -DBUILD_TUTORIALS=OFF\n\
 fi\n\
 source install/setup.bash\n\
+if [ "${USE_SIM_TIME}" = "true" ]; then\n\
+  echo "[ros2_nav2] Simulation mode: waiting for /clock topic..."\n\
+  until ros2 topic echo /clock --once > /dev/null 2>&1; do sleep 1; done\n\
+  echo "[ros2_nav2] Clock received! Starting navigation..."\n\
+fi\n\
 ros2 launch nav2 navigation_launch.py use_sim_time:="${USE_SIM_TIME:-false}"' > /start_dev.sh && \
 chmod +x /start_dev.sh
 

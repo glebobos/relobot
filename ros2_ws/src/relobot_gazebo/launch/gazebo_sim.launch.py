@@ -111,7 +111,7 @@ def generate_launch_description():
 
     robot_description = {'robot_description': ParameterValue(robot_description_content, value_type=str)}
 
-    # Robot State Publisher
+    # Robot State Publisher (must use sim_time in simulation to match TF timestamps)
     robot_state_publisher_node = Node(
         package='robot_state_publisher',
         executable='robot_state_publisher',
@@ -119,14 +119,14 @@ def generate_launch_description():
         parameters=[robot_description, {'use_sim_time': use_sim_time_arg}]
     )
 
-    # Spawn Robot Entity in Gazebo
+    # Spawn Robot Entity in Gazebo (pass URDF string directly to avoid waiting on latched topic)
     spawn_robot = Node(
         package='ros_gz_sim',
         executable='create',
         output='screen',
         arguments=[
             '-name', 'diffbot',
-            '-topic', 'robot_description',
+            '-string', robot_description_content,
             '-x', x_pose_arg,
             '-y', y_pose_arg,
             '-z', z_pose_arg,
@@ -146,33 +146,19 @@ def generate_launch_description():
         }]
     )
 
-    # Controllers Spawners
-    joint_state_broadcaster_spawner = Node(
-        package='controller_manager',
-        executable='spawner',
-        arguments=['joint_state_broadcaster', '--controller-manager', '/controller_manager', '--controller-manager-timeout', '60'],
+    # Controllers Spawner Watchdog (robustly waits for /controller_manager without dying prematurely)
+    controller_spawner = Node(
+        package='relobot_gazebo',
+        executable='controller_spawner.py',
+        output='screen',
         parameters=[{'use_sim_time': use_sim_time_arg}],
     )
 
-    diff_drive_controller_spawner = Node(
-        package='controller_manager',
-        executable='spawner',
-        arguments=['diff_drive_controller', '--controller-manager', '/controller_manager', '--controller-manager-timeout', '60'],
-        parameters=[{'use_sim_time': use_sim_time_arg}],
-    )
-
-    # Delay controller spawning until after robot is spawned in Gazebo
-    delay_joint_state_broadcaster = RegisterEventHandler(
+    # Delay controller spawning until after robot entity is spawned in Gazebo
+    delay_controller_spawner = RegisterEventHandler(
         event_handler=OnProcessExit(
             target_action=spawn_robot,
-            on_exit=[joint_state_broadcaster_spawner],
-        )
-    )
-
-    delay_diff_drive_controller = RegisterEventHandler(
-        event_handler=OnProcessExit(
-            target_action=joint_state_broadcaster_spawner,
-            on_exit=[diff_drive_controller_spawner],
+            on_exit=[controller_spawner],
         )
     )
 
@@ -225,8 +211,7 @@ def generate_launch_description():
         robot_state_publisher_node,
         spawn_robot,
         ros_gz_bridge,
-        delay_joint_state_broadcaster,
-        delay_diff_drive_controller,
+        delay_controller_spawner,
         cmd_vel_relay_node,
         ekf_node,
         web_video_server_node,

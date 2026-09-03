@@ -156,7 +156,35 @@ if [ "$COMMAND" == "up" ]; then
     cleanup_fastdds_shm
 
     if [ -z "$SERVICE" ]; then
-        docker compose --profile "${COMPOSE_PROFILES}" up --remove-orphans
+        if [ "$SIM" = true ]; then
+            echo "=========================================================="
+            echo " [start_robot.sh] Phase 1: Launching simulation core..."
+            echo "=========================================================="
+            docker compose --profile sim up -d ros2_frontend ros2_rosbridge ros2_gazebo_sim
+
+            echo "[start_robot.sh] Waiting for Gazebo simulation & controllers to become active..."
+            WAIT_COUNT=0
+            MAX_WAIT=180
+            until docker compose -f docker-compose.yml exec ros2_gazebo_sim bash -c "source /opt/ros/humble/setup.bash 2>/dev/null && ros2 control list_controllers 2>/dev/null | grep -q 'diff_drive_controller.*active'" 2>/dev/null; do
+                sleep 2
+                WAIT_COUNT=$((WAIT_COUNT + 2))
+                if [ $WAIT_COUNT -ge $MAX_WAIT ]; then
+                    echo -e "\n[start_robot.sh] Warning: Timeout waiting for controllers. Proceeding with Nav2..."
+                    break
+                fi
+                echo -n "."
+            done
+            echo ""
+            echo "=========================================================="
+            echo " [start_robot.sh] Phase 2: Simulation ready! Launching Nav2..."
+            echo "=========================================================="
+            docker compose --profile sim up -d ros2_nav2
+            
+            # Follow logs for all services so output and Ctrl+C work transparently
+            docker compose --profile sim logs -f
+        else
+            docker compose --profile "${COMPOSE_PROFILES}" up --remove-orphans
+        fi
     else
         docker compose --profile "${COMPOSE_PROFILES}" up --remove-orphans "${SERVICE}"
     fi
