@@ -41,7 +41,7 @@ export class MapRosAdapter {
         if (enabled) {
             if (!this.coveragePolygonSubscription) {
                 console.log('[MapRosAdapter] Subscribing to active coverage polygon...');
-                this.coveragePolygonSubscription = rosService.subscribeV2(
+                this.coveragePolygonSubscription = rosService.subscribe(
                     TOPICS.COVERAGE_POLYGON_ACTIVE,
                     MSG_TYPES.POLYGON_STAMPED,
                     this.handlers.mapPolygon,
@@ -63,7 +63,7 @@ export class MapRosAdapter {
 
     add(name, messageType, handler, options = {}) {
         if (typeof handler !== 'function') return;
-        this.subscriptions.push(rosService.subscribeV2(name, messageType, handler, options));
+        this.subscriptions.push(rosService.subscribe(name, messageType, handler, options));
     }
 
     destroy() {

@@ -30,10 +30,11 @@ if [ "$DEV" = "true" ] && [ ! -d "/ros2_ws/install/explore_lite_msgs" ]; then\n\
 fi\n\
 source install/setup.bash\n\
 \n\
-# Build Rust bridge\n\
+# Test & build Rust bridge\n\
 if [ "$DEV" = "true" ]; then\n\
-  echo "Building rosbridge_rust..."\n\
+  echo "Testing & building rosbridge_rust..."\n\
   cd /ros2_ws/src/rosbridge_rust\n\
+  cargo test\n\
   cargo build --release\n\
   cd /ros2_ws\n\
 fi\n\

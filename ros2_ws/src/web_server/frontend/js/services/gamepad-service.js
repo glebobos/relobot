@@ -19,8 +19,8 @@ class GamepadService {
 
     init() {
         // Create topics
-        this.cmdVelTopic = rosService.createTopicV2(TOPICS.CMD_VEL, MSG_TYPES.TWIST);
-        this.knifeRpmTopic = rosService.createTopicV2(TOPICS.CMD_KNIVES, MSG_TYPES.FLOAT32);
+        this.cmdVelTopic = rosService.createTopic(TOPICS.CMD_VEL, MSG_TYPES.TWIST);
+        this.knifeRpmTopic = rosService.createTopic(TOPICS.CMD_KNIVES, MSG_TYPES.FLOAT32);
 
         // Publish knife RPM at a fixed interval (200ms)
         this.rpmPublishInterval = setInterval(() => this.publishRpm(this.knifeCurrentRpm), 200);

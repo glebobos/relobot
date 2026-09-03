@@ -3,9 +3,10 @@
  * ROSLIB Topic.subscribe() returns void, so callers must retain both values.
  */
 export class RosSubscription {
-    constructor(topic, callback) {
+    constructor(topic, callback, onUnsubscribe = null) {
         this.topic = topic;
         this.callback = callback;
+        this.onUnsubscribe = onUnsubscribe;
         this.closed = false;
     }
 
@@ -16,7 +17,17 @@ export class RosSubscription {
     unsubscribe() {
         if (this.closed) return;
         this.closed = true;
-        if (this.topic && this.callback) this.topic.unsubscribe(this.callback);
+        if (this.onUnsubscribe) {
+            try {
+                this.onUnsubscribe();
+            } catch (_) {}
+            this.onUnsubscribe = null;
+        }
+        if (this.topic && this.callback) {
+            try {
+                this.topic.unsubscribe(this.callback);
+            } catch (_) {}
+        }
         this.topic = null;
         this.callback = null;
     }

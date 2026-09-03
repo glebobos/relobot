@@ -28,16 +28,20 @@ echo "Host IP detected: $HOST_IP"
 
 # Run RViz2 in Docker container with all necessary configurations
 echo "Launching RViz2..."
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 docker run -ti \
     --rm \
     --network=host \
     -v /tmp/.X11-unix:/tmp/.X11-unix \
     -v /dev/shm:/dev/shm \
-    -v $PWD/.rviz2:/root/.rviz2 \
+    -v "$SCRIPT_DIR/.rviz2:/root/.rviz2" \
+    -v "$SCRIPT_DIR/ros2_ws/fastdds_localhost.xml:/ros2_ws/fastdds_localhost.xml:ro" \
     -v $HOME/.Xauthority:/root/.Xauthority:ro \
     -e DISPLAY=$DISPLAY \
     -e XAUTHORITY=/root/.Xauthority \
     -e QT_QPA_PLATFORM=xcb \
+    -e FASTDDS_DEFAULT_PROFILES_FILE=/ros2_ws/fastdds_localhost.xml \
+    -e FASTRTPS_DEFAULT_PROFILES_FILE=/ros2_ws/fastdds_localhost.xml \
     rviz2:latest \
     rviz2
 
