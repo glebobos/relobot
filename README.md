@@ -76,12 +76,25 @@ The differential drive uses `topic_based_ros2_control/TopicBasedSystem` as the h
 
 ### Prerequisites
 
-- Raspberry Pi 5 with Raspberry Pi OS
+- Raspberry Pi 5 with Raspberry Pi OS (64-bit)
 - Docker and Docker Compose installed
 - All Pico boards flashed with their respective micro-ROS firmware (see [FLASHING.md](FLASHING.md))
 - USB devices plugged in (see device mapping in [FLASHING.md](FLASHING.md))
 
-### Configuring 5 GHz WiFi (DFS Channels)
+### Host System Configuration
+
+#### 1. FastDDS & Network Socket Buffer Optimization (Critical)
+
+Linux defaults to a small ~212 KB UDP socket buffer (`net.core.rmem_max`). During SLAM mapping, large costmap exploration, or high-load builds, large DDS messages (e.g. occupancy grids, high-rate TF) can instantly overflow this default buffer, causing dropped packets, cascading FastDDS NACK retransmission loops, and high kernel Software Interrupt CPU usage (`si`).
+
+To configure high-throughput 64 MB maximum / 32 MB default socket buffers permanently on the host:
+
+```bash
+echo -e "net.core.rmem_max = 67108864\nnet.core.rmem_default = 33554432\nnet.core.wmem_max = 67108864\nnet.core.wmem_default = 33554432" | sudo tee /etc/sysctl.d/99-ros2-fastdds.conf
+sudo sysctl --system
+```
+
+#### 2. Configuring 5 GHz WiFi (DFS Channels)
 
 By default, the Raspberry Pi's physical WiFi chip operates under a restricted regulatory domain (`country 99: DFS-UNSET`). This prevents the Pi from scanning or connecting to 5 GHz **DFS channels** (like Channel 52). 
 

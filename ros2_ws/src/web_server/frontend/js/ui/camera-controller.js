@@ -34,7 +34,7 @@ export class CameraController {
             const apriltagEnabled = localStorage.getItem('calibration_apriltag_enabled') === 'true';
             this.syncAprilTagParameter(apriltagEnabled);
         };
-        rosService.rosV2.on('connection', this.rosConnectionHandler);
+        rosService.ros.on('connection', this.rosConnectionHandler);
 
         // Initial setup
         this.updateCalibrationViews(this.currentScreenIndex);
@@ -82,7 +82,7 @@ export class CameraController {
         // Sync ROS parameter for AprilTag if state changed
         if (this._lastSyncedAprilTagState !== apriltagEnabled) {
             this._lastSyncedAprilTagState = apriltagEnabled;
-            if (rosService.rosV2.isConnected) {
+            if (rosService.isConnected) {
                 this.syncAprilTagParameter(apriltagEnabled);
             }
         }
@@ -90,7 +90,7 @@ export class CameraController {
 
     syncAprilTagParameter(enabled) {
         console.log('[CameraController] Syncing AprilTag parameter always_on =', enabled);
-        const setParamsClient = rosService.createServiceV2(
+        const setParamsClient = rosService.createService(
             SERVICES.SET_APRILTAG_PARAMETERS,
             MSG_TYPES.SET_PARAMETERS
         );
@@ -127,7 +127,7 @@ export class CameraController {
         const elZ = document.getElementById('hud-z');
         const elYaw = document.getElementById('hud-yaw');
 
-        this.tfTopic = rosService.subscribeV2('/tf', 'tf2_msgs/msg/TFMessage', (message) => {
+        this.tfTopic = rosService.subscribe('/tf', 'tf2_msgs/msg/TFMessage', (message) => {
             if (!message.transforms || message.transforms.length === 0) return;
             
             // Look for a transform starting with tag25h9: or tag36h11: etc
@@ -179,8 +179,8 @@ export class CameraController {
         if (this.calibrationSettingsHandler) {
             window.removeEventListener('calibrationSettingsChanged', this.calibrationSettingsHandler);
         }
-        if (this.rosConnectionHandler && typeof rosService.rosV2.off === 'function') {
-            rosService.rosV2.off('connection', this.rosConnectionHandler);
+        if (this.rosConnectionHandler && typeof rosService.ros.off === 'function') {
+            rosService.ros.off('connection', this.rosConnectionHandler);
         }
         this.mainCameraService.destroy();
         this.pipCameraService.destroy();

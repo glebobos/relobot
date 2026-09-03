@@ -28,6 +28,8 @@ fi
 DISPLAY="${DISPLAY:-:0}"
 WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-wayland-0}"
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # Prepare device / volume mounts
 GPU_OPTS=()
 if [ -e "/dev/dxg" ]; then
@@ -51,7 +53,8 @@ if [ "$SIM_MODE" = true ]; then
     RVIZ_CONFIG_OPTS+=(-d /ros2_ws/src/relobot_gazebo/rviz/sim.rviz)
 fi
 
-# Run RViz2 in Docker container
+# Run RViz2 in Docker container with all necessary configurations
+echo "Launching RViz2..."
 docker run -ti \
     --rm \
     --network=host \
@@ -59,14 +62,15 @@ docker run -ti \
     --privileged \
     -v /tmp/.X11-unix:/tmp/.X11-unix \
     -v /dev/shm:/dev/shm \
-    -v "$PWD/.rviz2:/root/.rviz2" \
-    -v "$PWD/ros2_ws:/ros2_ws" \
+    -v "$SCRIPT_DIR/.rviz2:/root/.rviz2" \
+    -v "$SCRIPT_DIR/ros2_ws:/ros2_ws" \
     "${GPU_OPTS[@]}" \
     "${XAUTH_OPTS[@]}" \
     -e DISPLAY="$DISPLAY" \
     -e WAYLAND_DISPLAY="$WAYLAND_DISPLAY" \
     -e QT_X11_NO_MITSHM=1 \
     -e FASTDDS_DEFAULT_PROFILES_FILE=/ros2_ws/fastdds_localhost.xml \
+    -e FASTRTPS_DEFAULT_PROFILES_FILE=/ros2_ws/fastdds_localhost.xml \
     ros2_ws-ros2_gazebo_sim:latest \
     bash -c "source /opt/ros/humble/setup.bash && source /ros2_ws/install/setup.bash 2>/dev/null || true && rviz2 ${RVIZ_CONFIG_OPTS[*]} ${RVIZ_ARGS[*]}"
 
