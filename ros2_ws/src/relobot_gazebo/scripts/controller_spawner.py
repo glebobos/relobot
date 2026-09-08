@@ -14,39 +14,46 @@ class ControllerSpawnerWatchdog(Node):
         self.get_logger().info('Controller Spawner Watchdog started. Waiting for /controller_manager...')
 
     def wait_and_spawn(self):
-        # 1. Wait indefinitely for controller_manager service to appear
+        # 1. Wait for controller_manager service to appear
         attempt = 0
-        while not self.cli.wait_for_service(timeout_sec=2.0):
+        while not self.cli.wait_for_service(timeout_sec=1.0):
             attempt += 1
-            if attempt % 3 == 0:
+            if attempt % 5 == 0:
                 self.get_logger().info('Waiting for /controller_manager/list_controllers service to become available...')
 
-        self.get_logger().info('/controller_manager is available! Spawning controllers...')
+        self.get_logger().info('/controller_manager is available! Spawning controllers sequentially...')
 
-        # 2. Spawn joint_state_broadcaster and diff_drive_controller with retry loop
+        # 2. Spawn joint_state_broadcaster first, then diff_drive_controller sequentially
         controllers = ['joint_state_broadcaster', 'diff_drive_controller']
-        max_retries = 10
-        
-        for retry in range(1, max_retries + 1):
-            cmd = [
-                'ros2', 'run', 'controller_manager', 'spawner',
-                *controllers,
-                '--controller-manager', '/controller_manager',
-                '--controller-manager-timeout', '30',
-                '--ros-args', '-p', 'use_sim_time:=true'
-            ]
-            self.get_logger().info(f'Running: {" ".join(cmd)} (attempt {retry}/{max_retries})')
-            res = subprocess.run(cmd)
-            
-            if res.returncode == 0:
-                self.get_logger().info('Successfully spawned joint_state_broadcaster and diff_drive_controller!')
-                return 0
-            
-            self.get_logger().warn(f'Spawner returned code {res.returncode}. Retrying in 2 seconds...')
-            time.sleep(2.0)
+        max_retries = 5
 
-        self.get_logger().error(f'Failed to spawn controllers after {max_retries} attempts.')
-        return 1
+        for controller in controllers:
+            spawned = False
+            for retry in range(1, max_retries + 1):
+                cmd = [
+                    'ros2', 'run', 'controller_manager', 'spawner',
+                    controller,
+                    '--controller-manager', '/controller_manager',
+                    '--controller-manager-timeout', '5',
+                    '--ros-args', '-p', 'use_sim_time:=true'
+                ]
+                self.get_logger().info(f'Spawning {controller} (attempt {retry}/{max_retries})...')
+                res = subprocess.run(cmd)
+
+                if res.returncode == 0:
+                    self.get_logger().info(f'Successfully activated {controller}!')
+                    spawned = True
+                    break
+
+                self.get_logger().warn(f'Spawner for {controller} returned code {res.returncode}. Retrying in 1s...')
+                time.sleep(1.0)
+
+            if not spawned:
+                self.get_logger().error(f'Failed to spawn {controller} after {max_retries} attempts.')
+                return 1
+
+        self.get_logger().info('All controllers successfully spawned and active!')
+        return 0
 
 
 def main(args=None):

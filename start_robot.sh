@@ -139,6 +139,8 @@ cleanup_fastdds_shm() {
             sudo rm -f /dev/shm/fastrtps_* /dev/shm/sem.fastrtps_* 2>/dev/null || true
         else
             rm -f /dev/shm/fastrtps_* /dev/shm/sem.fastrtps_* 2>/dev/null || true
+            # Clean up root-owned shared memory files via Docker without requiring sudo password
+            docker run --rm --ipc=host busybox sh -c "rm -f /dev/shm/fastrtps_* /dev/shm/sem.fastrtps_*" 2>/dev/null || true
         fi
     fi
 }
@@ -164,8 +166,8 @@ if [ "$COMMAND" == "up" ]; then
 
             echo "[start_robot.sh] Waiting for Gazebo simulation & controllers to become active..."
             WAIT_COUNT=0
-            MAX_WAIT=180
-            until docker compose -f docker-compose.yml exec ros2_gazebo_sim bash -c "source /opt/ros/humble/setup.bash 2>/dev/null && ros2 control list_controllers 2>/dev/null | grep -q 'diff_drive_controller.*active'" 2>/dev/null; do
+            MAX_WAIT=60
+            until timeout 5 docker compose -f docker-compose.yml exec ros2_gazebo_sim bash -c "source /opt/ros/humble/setup.bash 2>/dev/null && ros2 control list_controllers 2>/dev/null | grep -q 'diff_drive_controller.*active'" 2>/dev/null; do
                 sleep 2
                 WAIT_COUNT=$((WAIT_COUNT + 2))
                 if [ $WAIT_COUNT -ge $MAX_WAIT ]; then

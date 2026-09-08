@@ -30,6 +30,15 @@
                     <transport_id>shm_transport</transport_id>
                     <transport_id>udp_localhost</transport_id>
                 </userTransports>
+                <builtin>
+                    <initialPeersList>
+                        <locator>
+                            <udpv4>
+                                <address>127.0.0.1</address>
+                            </udpv4>
+                        </locator>
+                    </initialPeersList>
+                </builtin>
             </rtps>
         </participant>
 
@@ -41,6 +50,15 @@
                     <transport_id>shm_transport</transport_id>
                     <transport_id>udp_localhost</transport_id>
                 </userTransports>
+                <builtin>
+                    <initialPeersList>
+                        <locator>
+                            <udpv4>
+                                <address>127.0.0.1</address>
+                            </udpv4>
+                        </locator>
+                    </initialPeersList>
+                </builtin>
             </rtps>
         </participant>
     </profiles>

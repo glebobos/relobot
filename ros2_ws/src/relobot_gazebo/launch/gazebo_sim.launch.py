@@ -16,7 +16,7 @@
 import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, SetEnvironmentVariable, RegisterEventHandler
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, SetEnvironmentVariable, RegisterEventHandler, TimerAction
 from launch.event_handlers import OnProcessExit
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
@@ -111,12 +111,12 @@ def generate_launch_description():
 
     robot_description = {'robot_description': ParameterValue(robot_description_content, value_type=str)}
 
-    # Robot State Publisher (must use sim_time in simulation to match TF timestamps)
+    # Robot State Publisher (use wall time so get_parameters service is immediately available before /clock exists)
     robot_state_publisher_node = Node(
         package='robot_state_publisher',
         executable='robot_state_publisher',
         output='screen',
-        parameters=[robot_description, {'use_sim_time': use_sim_time_arg}]
+        parameters=[robot_description, {'use_sim_time': False}]
     )
 
     # Spawn Robot Entity in Gazebo (pass URDF string directly to avoid waiting on latched topic)
@@ -134,7 +134,13 @@ def generate_launch_description():
         ]
     )
 
-    # ROS-Gazebo Parameter Bridge
+    # Delay spawn_robot slightly to ensure robot_state_publisher is fully ready
+    delayed_spawn_robot = TimerAction(
+        period=1.5,
+        actions=[spawn_robot]
+    )
+
+    # ROS-Gazebo Parameter Bridge (must use wall time to bridge /clock from Gazebo to ROS)
     bridge_config_file = os.path.join(pkg_relobot_gazebo, 'config', 'bridge_config.yaml')
     ros_gz_bridge = Node(
         package='ros_gz_bridge',
@@ -142,7 +148,7 @@ def generate_launch_description():
         output='screen',
         parameters=[{
             'config_file': bridge_config_file,
-            'use_sim_time': use_sim_time_arg,
+            'use_sim_time': False,
         }]
     )
 
@@ -209,7 +215,7 @@ def generate_launch_description():
         gz_resource_path,
         gz_sim,
         robot_state_publisher_node,
-        spawn_robot,
+        delayed_spawn_robot,
         ros_gz_bridge,
         delay_controller_spawner,
         cmd_vel_relay_node,
