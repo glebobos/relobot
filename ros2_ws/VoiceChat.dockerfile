@@ -14,11 +14,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY src/voice_chat_server/requirements.txt /tmp/requirements.txt
 RUN pip install --no-cache-dir -r /tmp/requirements.txt && rm /tmp/requirements.txt
 
-# Download Piper Optimus Prime voice model directly during Docker build
+# Download Piper Optimus Prime voice model using the download script as Single Source of Truth
 ENV PIPER_MODELS_DIR=/opt/piper_models
-RUN mkdir -p /opt/piper_models && \
-    curl -sSL "https://github.com/biofects/piper-voice/releases/download/v1.0.0/biofects_prime.onnx" -o /opt/piper_models/biofects_prime.onnx && \
-    curl -sSL "https://github.com/biofects/piper-voice/releases/download/v1.0.0/biofects_prime.onnx.json" -o /opt/piper_models/biofects_prime.onnx.json
+COPY src/voice_chat_server/download_models.py /tmp/download_models.py
+RUN python3 /tmp/download_models.py /opt/piper_models && rm /tmp/download_models.py
 
 # Workspace directory
 WORKDIR /ros2_ws

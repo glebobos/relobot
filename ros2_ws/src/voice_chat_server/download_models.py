@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """
-Downloads the Piper Optimus Prime voice model into ros2_ws/models.
+Downloads the Piper Optimus Prime voice model.
+Single source of truth for voice model URLs and integrity checks.
 """
 
 import os
 import sys
 import urllib.request
 
-MODELS_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "models"))
+DEFAULT_MODELS_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "models"))
 BIOFECTS_MODEL_URL = "https://github.com/biofects/piper-voice/releases/download/v1.0.0/biofects_prime.onnx"
 BIOFECTS_CONFIG_URL = "https://github.com/biofects/piper-voice/releases/download/v1.0.0/biofects_prime.onnx.json"
 
@@ -44,17 +45,23 @@ def download_file(url: str, dest_path: str, desc: str = ""):
         raise RuntimeError(f"Failed to download {desc} from {url}")
 
 
-def setup_models():
-    os.makedirs(MODELS_DIR, exist_ok=True)
-    prime_dest = os.path.join(MODELS_DIR, "biofects_prime.onnx")
-    prime_json_dest = os.path.join(MODELS_DIR, "biofects_prime.onnx.json")
+def setup_models(target_dir: str = None):
+    if not target_dir:
+        if len(sys.argv) > 1:
+            target_dir = sys.argv[1]
+        else:
+            target_dir = os.getenv("PIPER_MODELS_DIR", DEFAULT_MODELS_DIR)
+
+    os.makedirs(target_dir, exist_ok=True)
+    prime_dest = os.path.join(target_dir, "biofects_prime.onnx")
+    prime_json_dest = os.path.join(target_dir, "biofects_prime.onnx.json")
 
     download_file(BIOFECTS_MODEL_URL, prime_dest, "Piper Optimus Prime voice model (.onnx)")
     download_file(BIOFECTS_CONFIG_URL, prime_json_dest, "Piper Optimus Prime voice config (.json)")
 
-    print(f"\nModel ready in {MODELS_DIR}:")
-    for f in sorted(os.listdir(MODELS_DIR)):
-        fp = os.path.join(MODELS_DIR, f)
+    print(f"\n[OptimusTTS] Model ready in {target_dir}:")
+    for f in sorted(os.listdir(target_dir)):
+        fp = os.path.join(target_dir, f)
         if os.path.isfile(fp):
             print(f"  {f}: {os.path.getsize(fp):,} bytes")
 
