@@ -17,13 +17,13 @@
 
 .o-screens-wrapper {
     display: flex;
-    width: 300%;
+    width: 400%;
     height: 100%;
     transition: transform var(--transition-smooth);
 }
 
 .o-screen {
-    width: 33.3333%;
+    width: 25%;
     height: 100%;
     position: relative;
     display: flex;

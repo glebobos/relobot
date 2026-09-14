@@ -35,10 +35,10 @@ export class NavigationManager {
     }
 
     navigateToScreen(index) {
-        if (index < 0 || index > 2) return;
+        if (index < 0 || index > 3) return;
         this.currentScreen = index;
         if (this.screensWrapper) {
-            this.screensWrapper.style.transform = `translateX(-${index * 33.3333}%)`;
+            this.screensWrapper.style.transform = `translateX(-${index * 25}%)`;
         }
         this.tabs.forEach((tab, idx) => {
             tab.classList.toggle('is-active', idx === index);

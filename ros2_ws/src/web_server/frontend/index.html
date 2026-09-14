@@ -34,6 +34,7 @@
     <link rel="stylesheet" href="css/components/camera.css">
     <link rel="stylesheet" href="css/components/telemetry.css">
     <link rel="stylesheet" href="css/components/settings.css">
+    <link rel="stylesheet" href="css/components/chat.css">
     <link rel="stylesheet" href="css/components/modal.css">
     <link rel="stylesheet" href="css/components/joystick.css">
     <link rel="stylesheet" href="css/components/toast.css">
@@ -57,9 +58,10 @@
                 </div>
             </div>
             <nav class="c-app-header__nav c-dots-nav" id="headerNav">
-                <div class="c-dots-nav__dot is-active" data-index="0"></div>
-                <div class="c-dots-nav__dot" data-index="1"></div>
-                <div class="c-dots-nav__dot" data-index="2"></div>
+                <div class="c-dots-nav__dot is-active" data-index="0" title="Map"></div>
+                <div class="c-dots-nav__dot" data-index="1" title="Camera"></div>
+                <div class="c-dots-nav__dot" data-index="2" title="AI Chat"></div>
+                <div class="c-dots-nav__dot" data-index="3" title="Settings"></div>
             </nav>
             <div class="c-app-header__right">
                 <!-- Battery / Charging Status + Dock Dropdown -->
@@ -201,7 +203,80 @@
                         </div>
                     </div>
 
-                    <!-- SCREEN 3: SETTINGS -->
+                    <!-- SCREEN 3: RELOBOT AI LIVE CHAT & VOICE ASSISTANT -->
+                    <div class="o-screen" id="screen-chat">
+                        <div class="c-chat-view">
+                            <!-- Header Toolbar -->
+                            <div class="c-chat-header">
+                                <div class="c-chat-header__bot-info">
+                                    <div class="c-chat-header__avatar">
+                                        <i class="fas fa-robot"></i>
+                                        <div class="c-chat-header__avatar-status" id="chatStatusDot"></div>
+                                    </div>
+                                    <div class="c-chat-header__title-group">
+                                        <span class="c-chat-header__title">ReloBot AI <i class="fas fa-sparkles"></i></span>
+                                        <span class="c-chat-header__subtitle" id="chatStatusBadge">Online</span>
+                                    </div>
+                                </div>
+                                <div class="c-chat-header__controls">
+                                    <button class="c-chat-toggle-btn is-active" id="toggleRobotSpeaker" title="Toggle Robot Hardware Speaker (PulseAudio)">
+                                        <i class="fas fa-bullhorn"></i> Robot
+                                    </button>
+                                    <button class="c-chat-toggle-btn is-active" id="toggleBrowserAudio" title="Toggle Browser Audio Playback">
+                                        <i class="fas fa-volume-high"></i> Web
+                                    </button>
+                                    <button class="c-chat-toggle-btn" id="chatClearBtn" title="Clear Chat History">
+                                        <i class="fas fa-trash-can"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Message Feed -->
+                            <div class="c-chat-feed" id="chatFeed">
+                                <div class="c-chat-welcome">
+                                    <div class="c-chat-welcome__icon"><i class="fas fa-shield-halved"></i></div>
+                                    <div class="c-chat-welcome__title">ReloBot Autonomous Assistant</div>
+                                    <div class="c-chat-welcome__text">Powered by Antigravity (AGY) & Optimus Prime Neural Voice. Tap the mic to speak or select a quick action below.</div>
+                                </div>
+                            </div>
+
+                            <!-- Quick Suggestion Chips -->
+                            <div class="c-chat-chips">
+                                <div class="c-chat-chip" data-prompt="What is your current system and battery status?"><i class="fas fa-battery-half"></i> Battery Status</div>
+                                <div class="c-chat-chip" data-prompt="Mower status and blade RPM calibration"><i class="fas fa-fan"></i> Mower Blades</div>
+                                <div class="c-chat-chip" data-prompt="Navigate back to charging station and dock"><i class="fas fa-charging-station"></i> Dock Robot</div>
+                                <div class="c-chat-chip" data-prompt="Start autonomous frontier exploration and SLAM mapping"><i class="fas fa-rocket"></i> Explore Map</div>
+                                <div class="c-chat-chip" data-prompt="Tell me a heroic Optimus Prime motto"><i class="fas fa-quote-left"></i> Optimus Quote</div>
+                            </div>
+
+                            <!-- Live Voice Transcript & Waveform Box -->
+                            <div class="c-chat-live-box" id="chatLiveBox">
+                                <div class="c-chat-waveform" id="chatWaveform">
+                                    <div class="c-chat-waveform__bar"></div>
+                                    <div class="c-chat-waveform__bar"></div>
+                                    <div class="c-chat-waveform__bar"></div>
+                                    <div class="c-chat-waveform__bar"></div>
+                                    <div class="c-chat-waveform__bar"></div>
+                                </div>
+                                <div class="c-chat-live-text" id="chatLiveText">Listening...</div>
+                            </div>
+
+                            <!-- Input & Microphone Dock -->
+                            <div class="c-chat-dock">
+                                <button class="c-chat-mic-btn" id="chatMicBtn" title="Tap to Speak (Voice Transcript)">
+                                    <i class="fas fa-microphone"></i>
+                                </button>
+                                <div class="c-chat-input-wrapper">
+                                    <textarea id="chatInputText" class="c-chat-textarea" placeholder="Ask ReloBot or tap mic to speak..." rows="1"></textarea>
+                                </div>
+                                <button class="c-chat-send-btn" id="chatSendBtn" title="Send Message">
+                                    <i class="fas fa-paper-plane"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SCREEN 4: SETTINGS -->
                     <div class="o-screen" id="screen-settings">
                         <div class="c-settings-panel">
                             <h2 class="c-settings-panel__title">Settings</h2>

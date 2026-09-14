@@ -18,6 +18,60 @@ services:
     network_mode: host
     restart: unless-stopped
 
+  ros2_rosbridge:
+    build:
+      context: .
+      dockerfile: Rosbridge.dockerfile
+    ipc: host
+    volumes:
+      - .:/ros2_ws/
+    environment:
+      <<: *ros-env
+      PYTHONDONTWRITEBYTECODE: 1
+    network_mode: host
+    restart: unless-stopped
+
+  ros2_nav2:
+    build:
+      context: .
+      dockerfile: nav2.dockerfile
+    ipc: host
+    volumes:
+      - .:/ros2_ws/
+    devices:
+      - /dev/:/dev/
+    environment:
+      <<: *ros-env
+    network_mode: host
+    privileged: true
+    depends_on:
+      - ros2_lidar
+      - ros2_diff_robot
+    restart: unless-stopped
+
+  ros2_voice_chat:
+    build:
+      context: .
+      dockerfile: VoiceChat.dockerfile
+    container_name: ros2_voice_chat
+    ipc: host
+    pid: host
+    volumes:
+      - .:/ros2_ws/
+      - ${HOME}/.gemini:/root/.gemini
+      - /usr/local/bin:/host_usr_local_bin:ro
+      - /snap/bin:/host_snap_bin:ro
+      - /run/user/1000/pulse:/run/user/1000/pulse
+    devices:
+      - /dev/snd:/dev/snd
+    environment:
+      <<: *ros-env
+      PATH: /host_snap_bin:/host_usr_local_bin:/usr/local/bin:/usr/bin:/bin
+      PULSE_SERVER: unix:/run/user/1000/pulse/native
+    network_mode: host
+    privileged: true
+    restart: unless-stopped
+
   ros2_lidar:
     build:
       context: .
@@ -67,38 +121,6 @@ services:
     network_mode: host
     ipc: host 
     privileged: true
-    restart: unless-stopped
-
-
-  ros2_nav2:
-    build:
-      context: .
-      dockerfile: nav2.dockerfile
-    ipc: host
-    volumes:
-      - .:/ros2_ws/
-    devices:
-      - /dev/:/dev/
-    environment:
-      <<: *ros-env
-    network_mode: host
-    privileged: true
-    depends_on:
-      - ros2_lidar
-      - ros2_diff_robot
-    restart: unless-stopped
-
-  ros2_rosbridge:
-    build:
-      context: .
-      dockerfile: Rosbridge.dockerfile
-    ipc: host
-    volumes:
-      - .:/ros2_ws/
-    environment:
-      <<: *ros-env
-      PYTHONDONTWRITEBYTECODE: 1
-    network_mode: host
     restart: unless-stopped
 
   ros2_certbot:

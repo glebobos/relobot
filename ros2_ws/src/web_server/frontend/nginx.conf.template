@@ -41,6 +41,16 @@ server {
         proxy_pass http://127.0.0.1:8080/;
         proxy_set_header Host $host;
     }
+
+    # Voice Chatbot & AGY WebSocket Proxy
+    location /chat-ws/ {
+        proxy_pass http://127.0.0.1:8765/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "Upgrade";
+        proxy_set_header Host $host;
+        proxy_read_timeout 86400;
+    }
 }
 
 server {
@@ -92,5 +102,15 @@ server {
     location /camera-stream/ {
         proxy_pass http://127.0.0.1:8080/;
         proxy_set_header Host $host;
+    }
+
+    # Voice Chatbot & AGY WebSocket Proxy (WSS support)
+    location /chat-ws/ {
+        proxy_pass http://127.0.0.1:8765/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "Upgrade";
+        proxy_set_header Host $host;
+        proxy_read_timeout 86400;
     }
 }

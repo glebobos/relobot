@@ -5,6 +5,7 @@ import { MapView } from './ui/map/map-view.js';
 import { ControlPanel } from './ui/control-panel/control-panel.js';
 import { VirtualJoystick } from './ui/virtual-joystick.js';
 import { SettingsPanel } from './ui/settings/settings-panel.js';
+import { ChatPanel } from './ui/chat/chat-panel.js';
 import { gamepadService } from './services/gamepad-service.js';
 
 window.addEventListener('DOMContentLoaded', () => {
@@ -30,11 +31,14 @@ window.addEventListener('DOMContentLoaded', () => {
     const telemetry = new Telemetry();
     const controlPanel = new ControlPanel(mapView, telemetry);
     const settingsPanel = new SettingsPanel(telemetry);
+    const chatPanel = new ChatPanel();
+    chatPanel.init();
 
     let destroyed = false;
     const destroyApplication = () => {
         if (destroyed) return;
         destroyed = true;
+        chatPanel.destroy();
         settingsPanel.destroy();
         controlPanel.destroy();
         mapView.destroy();
