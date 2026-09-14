@@ -1,172 +1,41 @@
 #!/usr/bin/env python3
 """
 ReloBot AI Voice Chat Server
-Bridges ReloBot Web Interface with Antigravity (AGY) Agent & Piper TTS (Optimus Prime).
+Direct bidirectional bridge coordinating Web Interface, Antigravity (AGY) Agent, and Piper Neural TTS.
 """
 
 import os
 import sys
 import json
-import base64
+import time
 import re
-import shutil
 import asyncio
 import logging
-from typing import Optional, AsyncGenerator
+from typing import Optional
 
 # Local imports
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
-from player import player
-from tts import OptimusTTS, trim_leading_silence
+from agent_runner import AgentRunner
+from tts_engine import OptimusTTS, normalize_text_for_speech
+from audio_output import PcmAudioSink
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] [%(name)s] %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S"
+)
 logger = logging.getLogger("VoiceChatServer")
 
-# Host / Port
 PORT = int(os.getenv("VOICE_CHAT_PORT", "8765"))
 HOST = os.getenv("VOICE_CHAT_HOST", "0.0.0.0")
 
-# ReloBot System Context for AGY
-RELOBOT_SYSTEM_PROMPT = (
-    "You are ReloBot AI, an autonomous intelligent robotic mower and assistant powered by "
-    "ROS2 Humble, differential drive hardware, LiDAR SLAM, Nav2 navigation, and Optimus Prime's voice synthesis. "
-    "You speak in a confident, helpful, and heroic robotic tone inspired by Optimus Prime. "
-    "Keep spoken responses clear, concise, and direct (1 to 3 short sentences usually work best for real-time voice speech). "
-    "You can assist with mower status, navigation waypoints, battery telemetry, and general inquiries."
-)
-
-
-def find_agy_binary() -> Optional[str]:
-    """Finds the agy CLI binary if installed on the system or available via host mount."""
-    for bin_name in ["agy", "antigravity"]:
-        path = shutil.which(bin_name)
-        if path and os.access(path, os.X_OK):
-            return path
-        # Common local and host-mounted locations
-        for prefix in [
-            "/host_snap_bin",
-            "/host_usr_local_bin",
-            "/host_bin",
-            "/snap/bin",
-            "/usr/local/bin",
-            "/usr/bin",
-            os.path.expanduser("~/.local/bin"),
-            "/root/.local/bin"
-        ]:
-            candidate = os.path.join(prefix, bin_name)
-            if os.path.exists(candidate) and os.access(candidate, os.X_OK):
-                return candidate
-    return None
-
-
-def clean_markdown_for_speech(text: str) -> str:
-    """Strips markdown links, bolding, code blocks, and symbols for clean speech synthesis."""
-    # Remove code blocks
-    text = re.sub(r"```[\s\S]*?```", "", text)
-    # Remove inline code
-    text = re.sub(r"`([^`]+)`", r"\1", text)
-    # Remove markdown links [text](url) -> text
-    text = re.sub(r"\[([^\]]+)\]\([^\)]+\)", r"\1", text)
-    # Remove bold/italic * or _
-    text = re.sub(r"[*_~#]", "", text)
-    # Replace multiple spaces/newlines
-    text = re.sub(r"\s+", " ", text).strip()
-    return text
-
-
-class AgentRunner:
-    """Manages AI agent interactions using AGY CLI or Dev Fallback."""
-
-    def __init__(self):
-        self.agy_bin = find_agy_binary()
-        if self.agy_bin:
-            logger.info(f"AGY CLI binary detected at: {self.agy_bin}")
-        else:
-            logger.info("AGY CLI binary not found in PATH. Operating in Dev/Simulation Fallback mode.")
-
-    async def generate_response_stream(self, prompt: str) -> AsyncGenerator[str, None]:
-        """Streams tokens from AGY or fallback simulation agent."""
-        if self.agy_bin:
-            try:
-                # Run agy with prompt, stream-json output, and skip permissions for autonomous server mode
-                cmd = [
-                    self.agy_bin,
-                    "-p",
-                    f"{RELOBOT_SYSTEM_PROMPT}\n\nUser: {prompt}",
-                    "--output-format",
-                    "stream-json",
-                    "--dangerously-skip-permissions"
-                ]
-                proc = await asyncio.create_subprocess_exec(
-                    *cmd,
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.PIPE
-                )
-
-                while True:
-                    line = await proc.stdout.readline()
-                    if not line:
-                        break
-                    raw_str = line.decode("utf-8").strip()
-                    if not raw_str:
-                        continue
-
-                    # Try parsing as stream-json event
-                    try:
-                        event_data = json.loads(raw_str)
-                        event_type = event_data.get("event", "")
-                        
-                        # Handle step update / token delta events
-                        if event_type == "step_update":
-                            content = event_data.get("delta") or event_data.get("content") or event_data.get("text", "")
-                            if content:
-                                yield content
-                        # Handle final result event (if tokens weren't already streamed)
-                        elif event_type == "result":
-                            result_text = event_data.get("result", {}).get("text", "") if isinstance(event_data.get("result"), dict) else event_data.get("text", "")
-                            if result_text:
-                                yield result_text
-                    except json.JSONDecodeError:
-                        # Fallback for plain text streams
-                        yield raw_str + "\n"
-
-                await proc.wait()
-                return
-            except Exception as e:
-                logger.error(f"Error invoking AGY binary: {e}")
-                yield f"\n[AGY error: {e}. Switching to internal assistant.]\n"
-
-        # Developer / Simulation Fallback mode
-        async for chunk in self._fallback_stream(prompt):
-            yield chunk
-
-    async def _fallback_stream(self, prompt: str) -> AsyncGenerator[str, None]:
-        """Provides rich contextual responses for local dev / simulation testing."""
-        p_lower = prompt.lower()
-        if any(w in p_lower for w in ["who are you", "who r u", "identity", "name"]):
-            reply = "I am ReloBot AI, Autobot guardian and autonomous mower. All systems are online and standing by for your command."
-        elif any(w in p_lower for w in ["battery", "charge", "voltage", "power"]):
-            reply = "Main power cells are operating within nominal parameters at 25.4 Volts. Ready for long-range patrol."
-        elif any(w in p_lower for w in ["mow", "grass", "blade", "cut"]):
-            reply = "Mower cutting deck is primed. Blade motors calibrated up to 3000 RPM. Awaiting zone authorization."
-        elif any(w in p_lower for w in ["dock", "home", "charge station"]):
-            reply = "Initiating docking maneuver to ReloBot charging station. Aligning optical tags and contact plates."
-        elif any(w in p_lower for w in ["explore", "map", "slam"]):
-            reply = "LiDAR and visual SLAM mapping initialized. Commencing autonomous frontier exploration."
-        elif any(w in p_lower for w in ["stop", "halt", "emergency"]):
-            reply = "Emergency stop engaged! Drive actuators and blade motors halted immediately."
-        else:
-            reply = f"Acknowledged: '{prompt}'. ReloBot navigation core and sensors are active and ready. Autobots, roll out!"
-
-        # Stream words with slight delay for realistic token streaming
-        words = reply.split(" ")
-        for i, word in enumerate(words):
-            yield word + (" " if i < len(words) - 1 else "")
-            await asyncio.sleep(0.04)
+# Sentence & natural clause boundary regex
+SENTENCE_END_RE = re.compile(r"([.!?\n]+)\s*")
+CLAUSE_BREAK_RE = re.compile(r"([,;:—–]+)\s*")
 
 
 class VoiceChatServer:
-    """WebSocket server coordinating AI chat, live transcription, and Piper TTS."""
+    """Coordinates AI prompt streaming, real-time token delivery, and concurrent Piper TTS."""
 
     def __init__(self):
         self.agent = AgentRunner()
@@ -176,20 +45,21 @@ class VoiceChatServer:
     def _init_tts(self):
         try:
             self.tts = OptimusTTS()
-            logger.info("Optimus Prime Piper TTS successfully loaded and ready.")
+            logger.info("Piper TTS engine initialized successfully.")
         except Exception as e:
-            logger.warning(f"Piper TTS could not be initialized: {e}. Voice synthesis will be disabled.")
+            logger.warning(f"Piper TTS engine could not be loaded: {e}. Voice synthesis disabled.")
             self.tts = None
 
     async def handle_connection(self, websocket):
-        logger.info(f"Client connected from {websocket.remote_address}")
+        client_addr = getattr(websocket, 'remote_address', 'unknown')
+        logger.info(f"Client connected: {client_addr}")
         active_task: Optional[asyncio.Task] = None
 
         try:
             async for message_str in websocket:
                 try:
                     data = json.loads(message_str)
-                except Exception:
+                except (json.JSONDecodeError, TypeError):
                     continue
 
                 msg_type = data.get("type", "")
@@ -202,7 +72,9 @@ class VoiceChatServer:
                     await websocket.send(json.dumps({
                         "type": "status",
                         "has_agy": self.agent.agy_bin is not None,
+                        "agy_path": self.agent.agy_bin,
                         "has_tts": self.tts is not None,
+                        "sample_rate": self.tts.sample_rate if self.tts else 22050,
                         "ready": True
                     }))
                     continue
@@ -210,29 +82,37 @@ class VoiceChatServer:
                 elif msg_type == "cancel" or msg_type == "stop":
                     if active_task and not active_task.done():
                         active_task.cancel()
-                        logger.info("Generation cancelled by client.")
+                        logger.info(f"Generation cancelled for client {client_addr}.")
                     await websocket.send(json.dumps({"type": "cancelled"}))
                     continue
 
                 elif msg_type == "prompt":
                     prompt = data.get("text", "").strip()
-                    msg_id = data.get("msg_id", "default")
+                    msg_id = data.get("msg_id", f"msg_{int(time.time() * 1000)}")
+                    conversation_id = data.get("conversation_id")
                     play_robot = data.get("play_robot_audio", True)
                     stream_browser = data.get("stream_browser_audio", True)
 
                     if not prompt:
                         continue
 
-                    # Cancel any prior active generation on this socket
+                    # Cancel any prior active generation for this client
                     if active_task and not active_task.done():
                         active_task.cancel()
 
                     active_task = asyncio.create_task(
-                        self._process_prompt(websocket, prompt, msg_id, play_robot, stream_browser)
+                        self._process_prompt(
+                            websocket,
+                            prompt,
+                            msg_id,
+                            conversation_id,
+                            play_robot,
+                            stream_browser
+                        )
                     )
 
         except Exception as e:
-            logger.info(f"Client connection closed: {e}")
+            logger.info(f"Client disconnected ({client_addr}): {e}")
         finally:
             if active_task and not active_task.done():
                 active_task.cancel()
@@ -242,131 +122,222 @@ class VoiceChatServer:
         websocket,
         prompt: str,
         msg_id: str,
+        conversation_id: Optional[str],
         play_robot: bool,
         stream_browser: bool
     ):
-        """Processes a prompt: streams tokens and concurrently synthesizes sentence chunks via Piper TTS."""
-        logger.info(f"Processing prompt [{msg_id}]: {prompt[:50]}...")
-        await websocket.send(json.dumps({"type": "start", "msg_id": msg_id}))
+        """Processes a prompt: streams tokens immediately and concurrently synthesizes speech."""
+        t_start = time.time()
+        logger.info(f"Processing prompt [{msg_id}] (conv={conversation_id or 'new'}): '{prompt}'")
+
+        await websocket.send(json.dumps({
+            "type": "start",
+            "msg_id": msg_id,
+            "conversation_id": conversation_id
+        }))
 
         full_text = ""
         sentence_buffer = ""
-        
-        # Audio stream session on robot speaker
-        robot_audio_stream = None
+        active_conv_id = conversation_id
+
+        # Local hardware speaker audio sink
+        audio_sink: Optional[PcmAudioSink] = None
         if play_robot and self.tts:
             try:
-                robot_audio_stream = self.tts.create_stream_session(player_adapter=player)
+                audio_sink = PcmAudioSink(sample_rate=self.tts.sample_rate)
             except Exception as e:
-                logger.warning(f"Could not open continuous audio stream: {e}")
+                logger.warning(f"Could not initialize audio sink: {e}")
 
-        # Regex for sentence split
-        sentence_end_pattern = re.compile(r"([.!?\n]+)\s*")
+        # Dedicated background TTS synthesis queue & worker
+        tts_queue: asyncio.Queue[Optional[str]] = asyncio.Queue()
+        tts_worker_task = asyncio.create_task(
+            self._tts_worker(
+                tts_queue,
+                msg_id,
+                websocket,
+                audio_sink,
+                stream_browser
+            )
+        )
 
         try:
-            async for token in self.agent.generate_response_stream(prompt):
-                full_text += token
-                sentence_buffer += token
+            async for event_item in self.agent.generate_response_stream(prompt, conversation_id=conversation_id):
+                ev_type = event_item.get("event")
 
-                # Send text token to frontend
-                await websocket.send(json.dumps({
-                    "type": "token",
-                    "msg_id": msg_id,
-                    "text": token
-                }))
+                if ev_type == "init":
+                    active_conv_id = event_item.get("conversation_id") or active_conv_id
+                    await websocket.send(json.dumps({
+                        "type": "init",
+                        "msg_id": msg_id,
+                        "conversation_id": active_conv_id
+                    }))
 
-                # Check if we have a full sentence or clause to synthesize
-                match = sentence_end_pattern.search(sentence_buffer)
-                if match:
-                    split_idx = match.end()
-                    clause = sentence_buffer[:split_idx].strip()
-                    sentence_buffer = sentence_buffer[split_idx:]
+                elif ev_type == "token":
+                    token = event_item.get("text", "")
+                    active_conv_id = event_item.get("conversation_id") or active_conv_id
+                    full_text += token
+                    sentence_buffer += token
 
-                    if clause:
-                        await self._synthesize_clause(
-                            clause,
-                            msg_id,
-                            websocket,
-                            robot_audio_stream,
-                            stream_browser
-                        )
+                    # Send text token to frontend immediately (ZERO LATENCY)
+                    await websocket.send(json.dumps({
+                        "type": "token",
+                        "msg_id": msg_id,
+                        "text": token,
+                        "conversation_id": active_conv_id
+                    }))
 
-            # Synthesize any remaining sentence buffer
+                    # Check for natural sentence or clause boundaries with sufficient word length (>= 8 words)
+                    # to ensure audio playback duration masks background synthesis of the next chunk.
+                    while True:
+                        match = SENTENCE_END_RE.search(sentence_buffer)
+                        if match:
+                            split_idx = match.end()
+                            candidate = sentence_buffer[:split_idx].strip()
+                            words = candidate.split()
+                            if len(words) >= 8:
+                                sentence_buffer = sentence_buffer[split_idx:]
+                                if candidate:
+                                    tts_queue.put_nowait(candidate)
+                                continue
+
+                        # For very long clauses without periods, split on comma/semicolon if >= 12 words
+                        words = sentence_buffer.split()
+                        if len(words) >= 12:
+                            c_match = CLAUSE_BREAK_RE.search(sentence_buffer)
+                            if c_match:
+                                split_idx = c_match.end()
+                                candidate = sentence_buffer[:split_idx].strip()
+                                sentence_buffer = sentence_buffer[split_idx:]
+                                if candidate:
+                                    tts_queue.put_nowait(candidate)
+                                continue
+
+                        break
+
+                elif ev_type == "error":
+                    err_msg = event_item.get("error", "Unknown AGY error")
+                    active_conv_id = event_item.get("conversation_id") or active_conv_id
+                    await websocket.send(json.dumps({
+                        "type": "error",
+                        "msg_id": msg_id,
+                        "error": err_msg,
+                        "conversation_id": active_conv_id
+                    }))
+
+            # Enqueue remaining text in sentence buffer
             remaining = sentence_buffer.strip()
             if remaining:
-                await self._synthesize_clause(
-                    remaining,
-                    msg_id,
-                    websocket,
-                    robot_audio_stream,
-                    stream_browser
-                )
+                tts_queue.put_nowait(remaining)
 
-            # Signal completion
+            # Signal TTS worker to finish
+            tts_queue.put_nowait(None)
+
+            # Send done event to browser immediately
+            total_dur_ms = (time.time() - t_start) * 1000
+            logger.info(
+                f"Completed text stream for [{msg_id}] in {total_dur_ms:.1f}ms "
+                f"(conv_id={active_conv_id}, chars={len(full_text)})."
+            )
             await websocket.send(json.dumps({
                 "type": "done",
                 "msg_id": msg_id,
-                "full_text": full_text
+                "conversation_id": active_conv_id,
+                "full_text": full_text,
+                "duration_ms": total_dur_ms
             }))
 
+            # Await TTS worker completion
+            await asyncio.wait_for(tts_worker_task, timeout=60.0)
+
         except asyncio.CancelledError:
-            logger.info(f"Prompt task [{msg_id}] cancelled.")
+            logger.info(f"Prompt processing [{msg_id}] cancelled.")
+            tts_worker_task.cancel()
         except Exception as e:
-            logger.error(f"Error processing prompt [{msg_id}]: {e}")
+            logger.error(f"Error processing prompt [{msg_id}]: {e}", exc_info=True)
+            tts_worker_task.cancel()
             await websocket.send(json.dumps({
                 "type": "error",
                 "msg_id": msg_id,
+                "conversation_id": active_conv_id,
                 "error": str(e)
             }))
         finally:
-            if robot_audio_stream:
-                try:
-                    robot_audio_stream.close()
-                except Exception:
-                    pass
+            if audio_sink:
+                audio_sink.close()
 
-    async def _synthesize_clause(
+    async def _tts_worker(
         self,
-        clause: str,
+        queue: asyncio.Queue,
         msg_id: str,
         websocket,
-        robot_audio_stream,
+        audio_sink: Optional[PcmAudioSink],
         stream_browser: bool
     ):
-        """Synthesizes a text clause for robot speaker and/or browser stream."""
-        clean_text = clean_markdown_for_speech(clause)
-        if not clean_text or not self.tts:
-            return
-
-        # 1. Feed to physical robot speaker (PulseAudio / ALSA)
-        if robot_audio_stream:
+        """Synthesizes queued text clauses into raw PCM chunks and streams to browser and speaker."""
+        if stream_browser and self.tts:
             try:
-                # Offload synthesis to thread
-                await asyncio.to_thread(robot_audio_stream.feed_text, clean_text)
+                await websocket.send(json.dumps({
+                    "type": "audio_start",
+                    "msg_id": msg_id,
+                    "sample_rate": self.tts.sample_rate
+                }))
             except Exception as e:
-                logger.warning(f"Robot audio feed error: {e}")
+                logger.warning(f"Failed to send audio_start for [{msg_id}]: {e}")
 
-        # 2. Synthesize WAV for browser Web Audio
-        if stream_browser:
+        while True:
             try:
-                wav_bytes = await asyncio.to_thread(self.tts.synthesize_wav_bytes, clean_text)
-                if wav_bytes:
-                    b64_audio = base64.b64encode(wav_bytes).decode("utf-8")
-                    await websocket.send(json.dumps({
-                        "type": "audio",
-                        "msg_id": msg_id,
-                        "audio": b64_audio,
-                        "sample_rate": self.tts.sample_rate
-                    }))
+                clause = await queue.get()
+                if clause is None:
+                    break
+
+                clean_text = normalize_text_for_speech(clause)
+                if not clean_text or not self.tts:
+                    continue
+
+                t0 = time.time()
+                # Run ONNX inference in threadpool to avoid blocking event loop
+                chunks = await asyncio.to_thread(lambda: list(self.tts.synthesize_pcm_chunks(clean_text)))
+                synth_ms = (time.time() - t0) * 1000
+                total_bytes = sum(len(c) for c in chunks)
+
+                logger.debug(
+                    f"Synthesized clause [{msg_id}] in {synth_ms:.1f}ms "
+                    f"({len(chunks)} chunks, {total_bytes:,} bytes): '{clean_text[:40]}...'"
+                )
+
+                for chunk in chunks:
+                    if not chunk:
+                        continue
+                    # 1. Output to local robot hardware speaker
+                    if audio_sink:
+                        audio_sink.write(chunk)
+                    # 2. Stream binary WebSocket frame to browser
+                    if stream_browser:
+                        await websocket.send(chunk)
+
+            except asyncio.CancelledError:
+                break
             except Exception as e:
-                logger.warning(f"Browser audio streaming error: {e}")
+                logger.warning(f"TTS synthesis error for [{msg_id}]: {e}")
+            finally:
+                if 'clause' in locals() and clause is not None:
+                    queue.task_done()
+
+        if stream_browser and self.tts:
+            try:
+                await websocket.send(json.dumps({
+                    "type": "audio_end",
+                    "msg_id": msg_id
+                }))
+            except Exception:
+                pass
 
 
 async def main():
     import websockets
     server_instance = VoiceChatServer()
     logger.info(f"Starting ReloBot Voice Chat WebSocket Server on ws://{HOST}:{PORT}")
-    
+
     async with websockets.serve(
         server_instance.handle_connection,
         HOST,
@@ -375,11 +346,12 @@ async def main():
         ping_timeout=20,
         max_size=10 * 1024 * 1024
     ):
-        await asyncio.Future()  # run forever
+        logger.info(f"ReloBot Voice Chat Server listening on {HOST}:{PORT}")
+        await asyncio.Future()
 
 
 if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        logger.info("Server terminated by user.")
+        logger.info("Voice Chat Server terminated by user.")

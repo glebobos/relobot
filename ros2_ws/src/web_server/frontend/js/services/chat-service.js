@@ -1,7 +1,7 @@
 /**
  * ReloBot AI Chat & WebSocket Service
- * Handles bidirectional WebSocket connection with the voice chat server,
- * streaming tokens, status updates, and browser-side Web Audio playback.
+ * Handles bidirectional WebSocket communication with the Voice Chat Server,
+ * real-time token streaming, and browser-side Web Audio PCM playback.
  */
 
 export class ChatService {
@@ -11,23 +11,28 @@ export class ChatService {
         this.isReconnecting = false;
         this.reconnectTimer = null;
 
-        // Web Audio for browser-side speech playback
+        // Web Audio PCM playback
         this.audioContext = null;
-        this.audioQueue = [];
+        this.activeAudioSources = [];
+        this.nextPlayTime = 0;
+        this.serverSampleRate = 22050;
+        this.audioStreamEnded = true;
         this.isPlayingAudio = false;
 
-        // Settings (persisted in localStorage)
+        // Settings & Session (persisted in localStorage)
         this.playRobotAudio = localStorage.getItem('relobot_chat_robot_audio') !== 'false';
         this.playBrowserAudio = localStorage.getItem('relobot_chat_browser_audio') !== 'false';
+        this.conversationId = localStorage.getItem('relobot_chat_conv_id') || null;
 
         // Event callbacks
-        this.onToken = null;         // (token, msgId)
-        this.onStart = null;         // (msgId)
-        this.onDone = null;          // (fullText, msgId)
-        this.onError = null;         // (errorMsg, msgId)
-        this.onStatus = null;        // (statusObj)
+        this.onToken = null;            // (token, msgId, convId)
+        this.onStart = null;            // (msgId, convId)
+        this.onInit = null;             // (convId, msgId)
+        this.onDone = null;             // (fullText, msgId, convId)
+        this.onError = null;            // (errorMsg, msgId, convId)
+        this.onStatus = null;           // (statusObj)
         this.onConnectionChange = null; // (isConnected)
-        this.onAudioPlaying = null;  // (isPlaying)
+        this.onAudioPlaying = null;     // (isPlaying)
     }
 
     init() {
@@ -49,6 +54,7 @@ export class ChatService {
 
         try {
             this.ws = new WebSocket(url);
+            this.ws.binaryType = 'arraybuffer';
 
             this.ws.onopen = () => {
                 console.log('[ChatService] WebSocket connected successfully.');
@@ -63,11 +69,15 @@ export class ChatService {
             };
 
             this.ws.onmessage = (event) => {
-                try {
-                    const data = JSON.parse(event.data);
-                    this._handleMessage(data);
-                } catch (e) {
-                    console.warn('[ChatService] Failed to parse incoming message:', e);
+                if (event.data instanceof ArrayBuffer) {
+                    this._handleBinaryAudio(event.data);
+                } else {
+                    try {
+                        const data = JSON.parse(event.data);
+                        this._handleMessage(data);
+                    } catch (e) {
+                        console.warn('[ChatService] Failed to parse message:', e);
+                    }
                 }
             };
 
@@ -76,13 +86,13 @@ export class ChatService {
             };
 
             this.ws.onclose = () => {
-                console.log('[ChatService] WebSocket connection closed.');
+                console.log('[ChatService] WebSocket closed.');
                 this.isConnected = false;
                 if (this.onConnectionChange) this.onConnectionChange(false);
                 this._scheduleReconnect();
             };
         } catch (e) {
-            console.error('[ChatService] Error initiating WebSocket:', e);
+            console.error('[ChatService] WebSocket initiation error:', e);
             this._scheduleReconnect();
         }
     }
@@ -99,32 +109,45 @@ export class ChatService {
     _handleMessage(data) {
         const type = data.type;
         const msgId = data.msg_id;
+        const convId = data.conversation_id;
+
+        if (convId) {
+            this._setPinnedConversationId(convId);
+        }
 
         switch (type) {
             case 'start':
-                if (this.onStart) this.onStart(msgId);
+                if (this.onStart) this.onStart(msgId, convId || this.conversationId);
+                break;
+
+            case 'init':
+                if (this.onInit) this.onInit(convId, msgId);
                 break;
 
             case 'token':
-                if (this.onToken) this.onToken(data.text, msgId);
+                if (this.onToken) this.onToken(data.text, msgId, convId || this.conversationId);
                 break;
 
             case 'done':
-                if (this.onDone) this.onDone(data.full_text, msgId);
+                if (this.onDone) this.onDone(data.full_text, msgId, convId || this.conversationId);
                 break;
 
             case 'error':
-                if (this.onError) this.onError(data.error, msgId);
+                console.error(`[ChatService] AGY server error for [${msgId}]:`, data.error);
+                if (this.onError) this.onError(data.error, msgId, convId || this.conversationId);
                 break;
 
             case 'status':
                 if (this.onStatus) this.onStatus(data);
                 break;
 
-            case 'audio':
-                if (this.playBrowserAudio && data.audio) {
-                    this._queueAudioChunk(data.audio);
-                }
+            case 'audio_start':
+                this.serverSampleRate = data.sample_rate || 22050;
+                this._initAudioStream();
+                break;
+
+            case 'audio_end':
+                this._endAudioStream();
                 break;
 
             default:
@@ -132,14 +155,22 @@ export class ChatService {
         }
     }
 
+    _setPinnedConversationId(convId) {
+        if (!convId || convId === this.conversationId) return;
+        this.conversationId = convId;
+        try {
+            localStorage.setItem('relobot_chat_conv_id', convId);
+        } catch (e) {
+            console.warn('[ChatService] Could not persist conversationId:', e);
+        }
+    }
+
     send(msgObj) {
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
             this.ws.send(JSON.stringify(msgObj));
             return true;
-        } else {
-            console.warn('[ChatService] Cannot send message, WebSocket not connected.');
-            return false;
         }
+        return false;
     }
 
     sendPrompt(text, msgId = `msg_${Date.now()}`) {
@@ -147,6 +178,7 @@ export class ChatService {
             type: 'prompt',
             text: text,
             msg_id: msgId,
+            conversation_id: this.conversationId,
             play_robot_audio: this.playRobotAudio,
             stream_browser_audio: this.playBrowserAudio
         };
@@ -155,6 +187,17 @@ export class ChatService {
 
     cancelPrompt() {
         this.send({ type: 'cancel' });
+        this._stopAudioPlayback();
+    }
+
+    flushConversation() {
+        this.conversationId = null;
+        try {
+            localStorage.removeItem('relobot_chat_conv_id');
+            localStorage.removeItem('relobot_chat_messages');
+        } catch (e) {
+            console.warn('[ChatService] Failed to clear localStorage:', e);
+        }
         this._stopAudioPlayback();
     }
 
@@ -171,7 +214,7 @@ export class ChatService {
         }
     }
 
-    // --- Web Audio Playback Queue ---
+    // --- Web Audio PCM Streaming ---
 
     _ensureAudioContext() {
         if (!this.audioContext) {
@@ -183,51 +226,77 @@ export class ChatService {
         }
     }
 
-    async _queueAudioChunk(base64Wav) {
-        try {
-            this._ensureAudioContext();
-            const binaryStr = atob(base64Wav);
-            const len = binaryStr.length;
-            const bytes = new Uint8Array(len);
-            for (let i = 0; i < len; i++) {
-                bytes[i] = binaryStr.charCodeAt(i);
-            }
+    _initAudioStream() {
+        this._ensureAudioContext();
+        this.audioStreamEnded = false;
+        this.nextPlayTime = 0;
+    }
 
-            const audioBuffer = await this.audioContext.decodeAudioData(bytes.buffer.slice(0));
-            this.audioQueue.push(audioBuffer);
-
-            if (!this.isPlayingAudio) {
-                this._playNextAudioChunk();
-            }
-        } catch (e) {
-            console.warn('[ChatService] Failed to decode audio chunk:', e);
+    _endAudioStream() {
+        this.audioStreamEnded = true;
+        if (this.activeAudioSources.length === 0) {
+            this.isPlayingAudio = false;
+            if (this.onAudioPlaying) this.onAudioPlaying(false);
         }
     }
 
-    _playNextAudioChunk() {
-        if (this.audioQueue.length === 0) {
-            this.isPlayingAudio = false;
-            if (this.onAudioPlaying) this.onAudioPlaying(false);
-            return;
+    _handleBinaryAudio(arrayBuffer) {
+        if (!this.playBrowserAudio || !arrayBuffer || arrayBuffer.byteLength === 0) return;
+        try {
+            this._ensureAudioContext();
+            const int16Array = new Int16Array(arrayBuffer);
+            const numSamples = int16Array.length;
+            if (numSamples === 0) return;
+
+            const sampleRate = this.serverSampleRate || 22050;
+            const audioBuffer = this.audioContext.createBuffer(1, numSamples, sampleRate);
+            const channelData = audioBuffer.getChannelData(0);
+
+            // Normalize Int16 [-32768, 32767] to Float32 [-1.0, 1.0]
+            for (let i = 0; i < numSamples; i++) {
+                channelData[i] = int16Array[i] / 32768.0;
+            }
+
+            const currentTime = this.audioContext.currentTime;
+            if (!this.nextPlayTime || this.nextPlayTime < currentTime) {
+                this.nextPlayTime = currentTime + 0.025; // 25ms lead-in to prevent underrun
+            }
+
+            const source = this.audioContext.createBufferSource();
+            source.buffer = audioBuffer;
+            source.connect(this.audioContext.destination);
+            source.start(this.nextPlayTime);
+            this.nextPlayTime += audioBuffer.duration;
+
+            this.activeAudioSources.push(source);
+            if (!this.isPlayingAudio) {
+                this.isPlayingAudio = true;
+                if (this.onAudioPlaying) this.onAudioPlaying(true);
+            }
+
+            source.onended = () => {
+                const idx = this.activeAudioSources.indexOf(source);
+                if (idx !== -1) this.activeAudioSources.splice(idx, 1);
+                if (this.activeAudioSources.length === 0 && this.audioStreamEnded) {
+                    this.isPlayingAudio = false;
+                    if (this.onAudioPlaying) this.onAudioPlaying(false);
+                }
+            };
+        } catch (e) {
+            console.warn('[ChatService] Error playing binary PCM frame:', e);
         }
-
-        this.isPlayingAudio = true;
-        if (this.onAudioPlaying) this.onAudioPlaying(true);
-
-        const audioBuffer = this.audioQueue.shift();
-        const source = this.audioContext.createBufferSource();
-        source.buffer = audioBuffer;
-        source.connect(this.audioContext.destination);
-
-        source.onended = () => {
-            this._playNextAudioChunk();
-        };
-
-        source.start(0);
     }
 
     _stopAudioPlayback() {
-        this.audioQueue = [];
+        for (const src of this.activeAudioSources) {
+            try {
+                src.stop();
+                src.disconnect();
+            } catch (e) {}
+        }
+        this.activeAudioSources = [];
+        this.nextPlayTime = 0;
+        this.audioStreamEnded = true;
         this.isPlayingAudio = false;
         if (this.onAudioPlaying) this.onAudioPlaying(false);
     }

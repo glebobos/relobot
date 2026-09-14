@@ -214,19 +214,27 @@
                                         <div class="c-chat-header__avatar-status" id="chatStatusDot"></div>
                                     </div>
                                     <div class="c-chat-header__title-group">
-                                        <span class="c-chat-header__title">ReloBot AI <i class="fas fa-sparkles"></i></span>
+                                        <div class="c-chat-header__title-row">
+                                            <span class="c-chat-header__title">ReloBot AI <i class="fas fa-sparkles"></i></span>
+                                            <span class="c-chat-session-chip" id="chatSessionChip" title="Active AGY session. Click to copy full ID.">
+                                                <i class="fas fa-fingerprint"></i> <span id="chatSessionId">New Session</span>
+                                            </span>
+                                        </div>
                                         <span class="c-chat-header__subtitle" id="chatStatusBadge">Online</span>
                                     </div>
                                 </div>
                                 <div class="c-chat-header__controls">
+                                    <button class="c-chat-toggle-btn c-chat-lang-btn" id="toggleChatLang" title="Toggle Voice Recognition Language (English / Russian)">
+                                        <i class="fas fa-language"></i> <span class="c-chat-toggle-label" id="chatLangLabel">EN</span>
+                                    </button>
                                     <button class="c-chat-toggle-btn is-active" id="toggleRobotSpeaker" title="Toggle Robot Hardware Speaker (PulseAudio)">
-                                        <i class="fas fa-bullhorn"></i> Robot
+                                        <i class="fas fa-bullhorn"></i> <span class="c-chat-toggle-label">Robot</span>
                                     </button>
                                     <button class="c-chat-toggle-btn is-active" id="toggleBrowserAudio" title="Toggle Browser Audio Playback">
-                                        <i class="fas fa-volume-high"></i> Web
+                                        <i class="fas fa-volume-high"></i> <span class="c-chat-toggle-label">Web</span>
                                     </button>
-                                    <button class="c-chat-toggle-btn" id="chatClearBtn" title="Clear Chat History">
-                                        <i class="fas fa-trash-can"></i>
+                                    <button class="c-chat-toggle-btn c-chat-flush-btn" id="chatFlushBtn" title="Flush conversation & start new AGY session">
+                                        <i class="fas fa-rotate-left"></i> <span class="c-chat-toggle-label">Flush</span>
                                     </button>
                                 </div>
                             </div>
@@ -234,19 +242,10 @@
                             <!-- Message Feed -->
                             <div class="c-chat-feed" id="chatFeed">
                                 <div class="c-chat-welcome">
-                                    <div class="c-chat-welcome__icon"><i class="fas fa-shield-halved"></i></div>
-                                    <div class="c-chat-welcome__title">ReloBot Autonomous Assistant</div>
-                                    <div class="c-chat-welcome__text">Powered by Antigravity (AGY) & Optimus Prime Neural Voice. Tap the mic to speak or select a quick action below.</div>
+                                    <div class="c-chat-welcome__icon"><i class="fas fa-robot"></i></div>
+                                    <div class="c-chat-welcome__title">ReloBot AI Assistant</div>
+                                    <div class="c-chat-welcome__text">Direct conversational interface powered by Antigravity (AGY) & Piper Neural Voice. Type a message or click the microphone to speak.</div>
                                 </div>
-                            </div>
-
-                            <!-- Quick Suggestion Chips -->
-                            <div class="c-chat-chips">
-                                <div class="c-chat-chip" data-prompt="What is your current system and battery status?"><i class="fas fa-battery-half"></i> Battery Status</div>
-                                <div class="c-chat-chip" data-prompt="Mower status and blade RPM calibration"><i class="fas fa-fan"></i> Mower Blades</div>
-                                <div class="c-chat-chip" data-prompt="Navigate back to charging station and dock"><i class="fas fa-charging-station"></i> Dock Robot</div>
-                                <div class="c-chat-chip" data-prompt="Start autonomous frontier exploration and SLAM mapping"><i class="fas fa-rocket"></i> Explore Map</div>
-                                <div class="c-chat-chip" data-prompt="Tell me a heroic Optimus Prime motto"><i class="fas fa-quote-left"></i> Optimus Quote</div>
                             </div>
 
                             <!-- Live Voice Transcript & Waveform Box -->

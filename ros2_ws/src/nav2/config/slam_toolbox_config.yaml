@@ -11,7 +11,7 @@ slam_toolbox:
     # use_map_saver: true
     start_at_dock: true
     map_start_at_dock: true
-    scan_queue_size: 1
+    scan_queue_size: 10
     # Plugin params
     solver_plugin: solver_plugins::CeresSolver
     ceres_linear_solver: SPARSE_NORMAL_CHOLESKY

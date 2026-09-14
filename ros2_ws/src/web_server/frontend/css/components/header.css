@@ -217,8 +217,34 @@
 }
 
 
+@media (max-width: 600px) {
+    .c-app-header {
+        height: 54px;
+        padding: 0 10px;
+    }
+    .c-app-header__right {
+        gap: 8px;
+    }
+    .c-rpm-widget {
+        padding: 4px 8px;
+        font-size: 12px;
+        gap: 4px;
+    }
+    .c-battery-widget {
+        padding: 4px 8px;
+        font-size: 12px;
+        gap: 4px;
+    }
+    .c-app-header__nav {
+        padding: 6px 12px;
+        gap: 8px;
+    }
+}
+
 @media (orientation: landscape) {
     .c-app-header {
+        height: 52px;
+        padding: 0 16px;
         position: absolute;
         top: 0;
         left: 0;

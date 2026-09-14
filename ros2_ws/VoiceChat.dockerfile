@@ -14,10 +14,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY src/voice_chat_server/requirements.txt /tmp/requirements.txt
 RUN pip install --no-cache-dir -r /tmp/requirements.txt && rm /tmp/requirements.txt
 
-# Download Piper Optimus Prime voice model using the download script as Single Source of Truth
+# Download Piper Optimus Prime voice model using model_manager.py as Single Source of Truth
 ENV PIPER_MODELS_DIR=/opt/piper_models
-COPY src/voice_chat_server/download_models.py /tmp/download_models.py
-RUN python3 /tmp/download_models.py /opt/piper_models && rm /tmp/download_models.py
+COPY src/voice_chat_server/model_manager.py /tmp/model_manager.py
+RUN python3 /tmp/model_manager.py /opt/piper_models && rm /tmp/model_manager.py
 
 # Workspace directory
 WORKDIR /ros2_ws
