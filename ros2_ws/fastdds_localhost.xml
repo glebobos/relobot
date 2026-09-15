@@ -22,7 +22,7 @@
         <!-- Default participant profile for all standard ROS2 nodes -->
         <participant profile_name="default_profile" is_default_profile="true">
             <rtps>
-                <useBuiltinTransports>false</useBuiltinTransports>
+                <useBuiltinTransports>true</useBuiltinTransports>
                 <userTransports>
                     <transport_id>shm_transport</transport_id>
                     <transport_id>udp_transport</transport_id>
@@ -33,7 +33,7 @@
         <!-- Specific profile matching the micro-ROS Agent participant name -->
         <participant profile_name="default_xrce_participant">
             <rtps>
-                <useBuiltinTransports>false</useBuiltinTransports>
+                <useBuiltinTransports>true</useBuiltinTransports>
                 <userTransports>
                     <transport_id>shm_transport</transport_id>
                     <transport_id>udp_transport</transport_id>

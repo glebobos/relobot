@@ -45,8 +45,10 @@ class KnivesMock(Node):
         self.get_logger().info('Knives simulation mock node initialized.')
 
     def set_rpm_callback(self, msg: Float32):
-        self.current_rpm = float(msg.data)
-        self.get_logger().info(f'Received set_rpm: {self.current_rpm}')
+        new_rpm = float(msg.data)
+        if abs(new_rpm - self.current_rpm) > 1e-3:
+            self.get_logger().debug(f'Set RPM changed: {self.current_rpm} -> {new_rpm}')
+            self.current_rpm = new_rpm
 
     def timer_callback(self):
         msg = Float32()

@@ -16,7 +16,7 @@
 import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, SetEnvironmentVariable, RegisterEventHandler
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, SetEnvironmentVariable, RegisterEventHandler, TimerAction
 from launch.event_handlers import OnProcessExit
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
@@ -201,15 +201,6 @@ def generate_launch_description():
         }]
     )
 
-    # Command velocity relay (/cmd_vel -> /diff_drive_controller/cmd_vel_unstamped)
-    cmd_vel_relay_node = Node(
-        package='relobot_gazebo',
-        executable='cmd_vel_relay.py',
-        name='cmd_vel_relay',
-        output='screen',
-        parameters=[{'use_sim_time': use_sim_time_arg}],
-    )
-
     # Knives RPM mock node (/knives/set_rpm -> /knives/current_rpm)
     knives_mock_node = Node(
         package='relobot_gazebo',
@@ -217,6 +208,12 @@ def generate_launch_description():
         name='knives_mock',
         output='screen',
         parameters=[{'use_sim_time': use_sim_time_arg}],
+    )
+
+    # Delayed spawn to ensure robot_state_publisher is fully initialized
+    delayed_spawn_robot = TimerAction(
+        period=3.0,
+        actions=[spawn_robot],
     )
 
     return LaunchDescription([
@@ -231,11 +228,10 @@ def generate_launch_description():
         gz_resource_path,
         gz_sim,
         robot_state_publisher_node,
-        spawn_robot,
+        delayed_spawn_robot,
         ros_gz_bridge,
         delay_joint_state_broadcaster,
         delay_diff_drive_controller,
-        cmd_vel_relay_node,
         knives_mock_node,
         ekf_node,
         web_video_server_node,
