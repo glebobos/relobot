@@ -14,7 +14,7 @@ services:
       NGINX_ENVSUBST_FILTER: DOMAIN_NAME
     volumes:
       - ./src/web_server/frontend:/usr/share/nginx/html
-      - ./src/web_server/frontend/${NGINX_TEMPLATE:-nginx.conf.template}:/etc/nginx/templates/default.conf.template:ro
+      - ./src/web_server/frontend/${NGINX_TEMPLATE:-nginx.sim.conf.template}:/etc/nginx/templates/default.conf.template:ro
       - ./src/web_server/certs:/etc/nginx/certs:ro
     network_mode: host
     restart: unless-stopped
