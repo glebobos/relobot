@@ -15,7 +15,6 @@ install(
 install(
   PROGRAMS
     scripts/cmd_vel_relay.py
-    scripts/controller_spawner.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

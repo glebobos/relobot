@@ -10,15 +10,12 @@
                 <maxMessageSize>33554432</maxMessageSize>
             </transport_descriptor>
 
-            <!-- UDPv4 transport with large 32MB socket buffers restricted to loopback -->
+            <!-- High-throughput UDPv4 transport with large 32MB socket buffers and multicast support -->
             <transport_descriptor>
-                <transport_id>udp_localhost</transport_id>
+                <transport_id>udp_transport</transport_id>
                 <type>UDPv4</type>
                 <sendBufferSize>33554432</sendBufferSize>
                 <receiveBufferSize>33554432</receiveBufferSize>
-                <interfaceWhiteList>
-                    <address>127.0.0.1</address>
-                </interfaceWhiteList>
             </transport_descriptor>
         </transport_descriptors>
 
@@ -28,17 +25,8 @@
                 <useBuiltinTransports>false</useBuiltinTransports>
                 <userTransports>
                     <transport_id>shm_transport</transport_id>
-                    <transport_id>udp_localhost</transport_id>
+                    <transport_id>udp_transport</transport_id>
                 </userTransports>
-                <builtin>
-                    <initialPeersList>
-                        <locator>
-                            <udpv4>
-                                <address>127.0.0.1</address>
-                            </udpv4>
-                        </locator>
-                    </initialPeersList>
-                </builtin>
             </rtps>
         </participant>
 
@@ -48,17 +36,8 @@
                 <useBuiltinTransports>false</useBuiltinTransports>
                 <userTransports>
                     <transport_id>shm_transport</transport_id>
-                    <transport_id>udp_localhost</transport_id>
+                    <transport_id>udp_transport</transport_id>
                 </userTransports>
-                <builtin>
-                    <initialPeersList>
-                        <locator>
-                            <udpv4>
-                                <address>127.0.0.1</address>
-                            </udpv4>
-                        </locator>
-                    </initialPeersList>
-                </builtin>
             </rtps>
         </participant>
     </profiles>

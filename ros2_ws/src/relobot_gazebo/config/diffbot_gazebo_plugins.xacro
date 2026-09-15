@@ -127,7 +127,7 @@
       <ray>
         <scan>
           <horizontal>
-            <samples>2160</samples>
+            <samples>720</samples>
             <resolution>1</resolution>
             <min_angle>-3.14159265</min_angle>
             <max_angle>3.14159265</max_angle>
@@ -206,8 +206,8 @@
   <gazebo>
     <plugin filename="gz_ros2_control-system" name="gz_ros2_control::GazeboSimROS2ControlPlugin">
       <parameters>$(find relobot_gazebo)/config/gazebo_controllers.yaml</parameters>
+      <robot_param_node>/robot_state_publisher</robot_param_node>
       <robot_param>robot_description</robot_param>
-      <robot_param_node>robot_state_publisher</robot_param_node>
     </plugin>
   </gazebo>
 

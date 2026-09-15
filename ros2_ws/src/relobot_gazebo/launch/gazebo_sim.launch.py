@@ -16,14 +16,13 @@
 import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, SetEnvironmentVariable, RegisterEventHandler, TimerAction
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, SetEnvironmentVariable, RegisterEventHandler
 from launch.event_handlers import OnProcessExit
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import Command, FindExecutable, LaunchConfiguration, PathJoinSubstitution, PythonExpression
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
-from launch_ros.substitutions import FindPackageShare
 
 
 def generate_launch_description():
@@ -111,15 +110,15 @@ def generate_launch_description():
 
     robot_description = {'robot_description': ParameterValue(robot_description_content, value_type=str)}
 
-    # Robot State Publisher (use wall time so get_parameters service is immediately available before /clock exists)
+    # Robot State Publisher (publishes /tf and robot_description topic/parameter on sim time)
     robot_state_publisher_node = Node(
         package='robot_state_publisher',
         executable='robot_state_publisher',
         output='screen',
-        parameters=[robot_description, {'use_sim_time': False}]
+        parameters=[robot_description, {'use_sim_time': use_sim_time_arg}]
     )
 
-    # Spawn Robot Entity in Gazebo (pass URDF string directly to avoid waiting on latched topic)
+    # Spawn Robot Entity in Gazebo (pass URDF string directly)
     spawn_robot = Node(
         package='ros_gz_sim',
         executable='create',
@@ -134,13 +133,7 @@ def generate_launch_description():
         ]
     )
 
-    # Delay spawn_robot slightly to ensure robot_state_publisher is fully ready
-    delayed_spawn_robot = TimerAction(
-        period=1.5,
-        actions=[spawn_robot]
-    )
-
-    # ROS-Gazebo Parameter Bridge (must use wall time to bridge /clock from Gazebo to ROS)
+    # ROS-Gazebo Parameter Bridge (uses wall time to bridge /clock from Gazebo to ROS)
     bridge_config_file = os.path.join(pkg_relobot_gazebo, 'config', 'bridge_config.yaml')
     ros_gz_bridge = Node(
         package='ros_gz_bridge',
@@ -152,19 +145,33 @@ def generate_launch_description():
         }]
     )
 
-    # Controllers Spawner Watchdog (robustly waits for /controller_manager without dying prematurely)
-    controller_spawner = Node(
-        package='relobot_gazebo',
-        executable='controller_spawner.py',
-        output='screen',
+    # Standard ROS 2 Controller Spawners
+    joint_state_broadcaster_spawner = Node(
+        package='controller_manager',
+        executable='spawner',
+        arguments=['joint_state_broadcaster', '--controller-manager', '/controller_manager', '--controller-manager-timeout', '30'],
         parameters=[{'use_sim_time': use_sim_time_arg}],
     )
 
-    # Delay controller spawning until after robot entity is spawned in Gazebo
-    delay_controller_spawner = RegisterEventHandler(
+    diff_drive_controller_spawner = Node(
+        package='controller_manager',
+        executable='spawner',
+        arguments=['diff_drive_controller', '--controller-manager', '/controller_manager', '--controller-manager-timeout', '30'],
+        parameters=[{'use_sim_time': use_sim_time_arg}],
+    )
+
+    # Chain controller spawners cleanly after entity creation
+    delay_joint_state_broadcaster = RegisterEventHandler(
         event_handler=OnProcessExit(
             target_action=spawn_robot,
-            on_exit=[controller_spawner],
+            on_exit=[joint_state_broadcaster_spawner],
+        )
+    )
+
+    delay_diff_drive_controller = RegisterEventHandler(
+        event_handler=OnProcessExit(
+            target_action=joint_state_broadcaster_spawner,
+            on_exit=[diff_drive_controller_spawner],
         )
     )
 
@@ -215,9 +222,10 @@ def generate_launch_description():
         gz_resource_path,
         gz_sim,
         robot_state_publisher_node,
-        delayed_spawn_robot,
+        spawn_robot,
         ros_gz_bridge,
-        delay_controller_spawner,
+        delay_joint_state_broadcaster,
+        delay_diff_drive_controller,
         cmd_vel_relay_node,
         ekf_node,
         web_video_server_node,
