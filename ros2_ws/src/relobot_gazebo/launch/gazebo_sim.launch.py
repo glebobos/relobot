@@ -70,13 +70,26 @@ def generate_launch_description():
     )
 
     # Set GZ resource path for models/worlds
+    worlds_path = os.path.join(pkg_relobot_gazebo, 'worlds')
+    opt_models_path = '/opt/gazebo_apriltag/models'
+    resource_paths = [worlds_path, opt_models_path]
+    for env_var in ('GZ_SIM_RESOURCE_PATH', 'IGN_GAZEBO_RESOURCE_PATH', 'GAZEBO_MODEL_PATH'):
+        val = os.environ.get(env_var, '')
+        if val:
+            resource_paths.append(val)
+    combined_resource_path = ':'.join(resource_paths)
+
     gz_resource_path = SetEnvironmentVariable(
         name='GZ_SIM_RESOURCE_PATH',
-        value=[
-            os.path.join(pkg_relobot_gazebo, 'worlds'), ':',
-            os.path.join(pkg_relobot_gazebo, 'models'), ':',
-            os.environ.get('GZ_SIM_RESOURCE_PATH', '')
-        ]
+        value=combined_resource_path
+    )
+    ign_resource_path = SetEnvironmentVariable(
+        name='IGN_GAZEBO_RESOURCE_PATH',
+        value=combined_resource_path
+    )
+    gazebo_model_path = SetEnvironmentVariable(
+        name='GAZEBO_MODEL_PATH',
+        value=combined_resource_path
     )
 
     # World path substitution
@@ -226,6 +239,8 @@ def generate_launch_description():
         declare_yaw_cmd,
         declare_web_video_cmd,
         gz_resource_path,
+        ign_resource_path,
+        gazebo_model_path,
         gz_sim,
         robot_state_publisher_node,
         delayed_spawn_robot,
