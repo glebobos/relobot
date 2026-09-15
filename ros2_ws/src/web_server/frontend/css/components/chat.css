@@ -1,0 +1,524 @@
+/* ==========================================================================
+   ReloBot Live AI Voice Chat & AGY Interface Styles
+   ========================================================================== */
+
+.c-chat-view {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+    background: radial-gradient(circle at 50% 0%, rgba(0, 255, 136, 0.04) 0%, transparent 60%), var(--bg-app);
+    position: relative;
+    overflow: hidden;
+}
+
+/* --------------------------------------------------------------------------
+   Chat Header Toolbar
+   -------------------------------------------------------------------------- */
+.c-chat-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    background: var(--bg-panel);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border-glass);
+    z-index: 10;
+}
+
+.c-chat-header__bot-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.c-chat-header__avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, hsl(210, 100%, 50%), hsl(142, 70%, 45%));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 16px;
+    box-shadow: 0 0 12px var(--color-green-glow);
+    position: relative;
+}
+
+.c-chat-header__avatar-status {
+    position: absolute;
+    bottom: -1px;
+    right: -1px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: var(--color-green);
+    border: 2px solid var(--bg-dark);
+    box-shadow: 0 0 6px var(--color-green-glow);
+}
+
+.c-chat-header__title-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.c-chat-header__title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--color-text);
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.c-chat-header__title i {
+    color: var(--color-green);
+}
+
+.c-chat-header__subtitle {
+    font-size: 11px;
+    color: var(--color-text-muted);
+}
+
+.c-chat-header__controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.c-chat-toggle-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-glass);
+    color: var(--color-text-muted);
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: all var(--transition-snappy);
+}
+
+.c-chat-toggle-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--color-text);
+}
+
+.c-chat-toggle-btn.is-active {
+    background: rgba(0, 255, 136, 0.15);
+    border-color: var(--color-green);
+    color: var(--color-green);
+    box-shadow: 0 0 8px var(--color-green-glow);
+}
+
+/* --------------------------------------------------------------------------
+   Messages Feed Area
+   -------------------------------------------------------------------------- */
+.c-chat-feed {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+}
+
+.c-chat-feed::-webkit-scrollbar {
+    width: 5px;
+}
+.c-chat-feed::-webkit-scrollbar-track {
+    background: transparent;
+}
+.c-chat-feed::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 4px;
+}
+
+/* Welcome Card */
+.c-chat-welcome {
+    background: var(--bg-panel);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--border-glass);
+    border-radius: 14px;
+    padding: 16px;
+    text-align: center;
+    margin-bottom: 8px;
+    box-shadow: var(--shadow-premium);
+}
+
+.c-chat-welcome__icon {
+    font-size: 28px;
+    color: var(--color-green);
+    margin-bottom: 8px;
+    text-shadow: 0 0 16px var(--color-green-glow);
+}
+
+.c-chat-welcome__title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--color-text);
+    margin-bottom: 4px;
+}
+
+.c-chat-welcome__text {
+    font-size: 12px;
+    color: var(--color-text-muted);
+    line-height: 1.4;
+}
+
+/* Message Rows */
+.c-chat-msg {
+    display: flex;
+    gap: 10px;
+    max-width: 88%;
+    animation: fadeInMsg 0.25s ease-out;
+}
+
+@keyframes fadeInMsg {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.c-chat-msg--user {
+    align-self: flex-end;
+    flex-direction: row-reverse;
+}
+
+.c-chat-msg--bot {
+    align-self: flex-start;
+}
+
+.c-chat-msg__avatar {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.c-chat-msg--user .c-chat-msg__avatar {
+    background: hsl(210, 100%, 50%);
+    color: #fff;
+    box-shadow: 0 0 8px rgba(0, 150, 255, 0.4);
+}
+
+.c-chat-msg--bot .c-chat-msg__avatar {
+    background: linear-gradient(135deg, hsl(142, 70%, 45%), hsl(180, 80%, 40%));
+    color: #0b0e13;
+    font-weight: 700;
+    box-shadow: 0 0 8px var(--color-green-glow);
+}
+
+.c-chat-msg__bubble {
+    padding: 10px 14px;
+    border-radius: 14px;
+    font-size: 13px;
+    line-height: 1.5;
+    position: relative;
+    word-break: break-word;
+}
+
+.c-chat-msg--user .c-chat-msg__bubble {
+    background: linear-gradient(135deg, rgba(30, 60, 100, 0.8), rgba(20, 45, 80, 0.9));
+    border: 1px solid rgba(0, 180, 255, 0.3);
+    color: #fff;
+    border-bottom-right-radius: 3px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.c-chat-msg--bot .c-chat-msg__bubble {
+    background: var(--bg-panel);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid var(--border-glass);
+    border-left: 3px solid var(--color-green);
+    color: var(--color-text);
+    border-bottom-left-radius: 3px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+}
+
+.c-chat-msg__time {
+    font-size: 10px;
+    color: var(--color-text-muted);
+    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.c-chat-msg--user .c-chat-msg__time {
+    justify-content: flex-end;
+}
+
+.c-chat-msg__replay-btn {
+    background: none;
+    border: none;
+    color: var(--color-green);
+    cursor: pointer;
+    font-size: 11px;
+    padding: 2px 4px;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    opacity: 0.8;
+    transition: opacity var(--transition-snappy);
+}
+
+.c-chat-msg__replay-btn:hover {
+    opacity: 1;
+}
+
+/* Streaming Blinking Cursor */
+.c-chat-cursor {
+    display: inline-block;
+    width: 6px;
+    height: 13px;
+    background-color: var(--color-green);
+    margin-left: 3px;
+    vertical-align: middle;
+    animation: blinkCursor 0.8s infinite;
+    box-shadow: 0 0 6px var(--color-green-glow);
+}
+
+@keyframes blinkCursor {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+}
+
+/* --------------------------------------------------------------------------
+   Suggestions Chips Row
+   -------------------------------------------------------------------------- */
+.c-chat-chips {
+    display: flex;
+    gap: 8px;
+    padding: 6px 16px;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+}
+
+.c-chat-chips::-webkit-scrollbar {
+    display: none;
+}
+
+.c-chat-chip {
+    background: var(--bg-panel);
+    border: 1px solid var(--border-glass);
+    border-radius: 20px;
+    padding: 6px 12px;
+    font-size: 12px;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all var(--transition-snappy);
+    flex-shrink: 0;
+}
+
+.c-chat-chip i {
+    color: var(--color-green);
+}
+
+.c-chat-chip:hover {
+    background: rgba(0, 255, 136, 0.12);
+    border-color: var(--color-green);
+    color: var(--color-text);
+    transform: translateY(-1px);
+}
+
+/* --------------------------------------------------------------------------
+   Live Voice Transcript & Audio Visualizer Dock
+   -------------------------------------------------------------------------- */
+.c-chat-live-box {
+    display: none;
+    margin: 0 16px 8px 16px;
+    padding: 8px 14px;
+    background: rgba(0, 255, 136, 0.08);
+    border: 1px solid var(--color-green);
+    border-radius: 10px;
+    font-size: 12px;
+    color: var(--color-text);
+    animation: pulseBorder 1.5s infinite;
+}
+
+.c-chat-live-box.is-visible {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+@keyframes pulseBorder {
+    0%, 100% { box-shadow: 0 0 6px rgba(0, 255, 136, 0.3); }
+    50% { box-shadow: 0 0 16px rgba(0, 255, 136, 0.6); }
+}
+
+.c-chat-waveform {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    height: 16px;
+}
+
+.c-chat-waveform__bar {
+    width: 3px;
+    height: 6px;
+    background-color: var(--color-green);
+    border-radius: 2px;
+    transition: height 0.08s ease;
+}
+
+.c-chat-waveform.is-animating .c-chat-waveform__bar:nth-child(1) { animation: waveBar 0.5s ease-in-out infinite alternate 0.1s; }
+.c-chat-waveform.is-animating .c-chat-waveform__bar:nth-child(2) { animation: waveBar 0.5s ease-in-out infinite alternate 0.2s; }
+.c-chat-waveform.is-animating .c-chat-waveform__bar:nth-child(3) { animation: waveBar 0.5s ease-in-out infinite alternate 0.3s; }
+.c-chat-waveform.is-animating .c-chat-waveform__bar:nth-child(4) { animation: waveBar 0.5s ease-in-out infinite alternate 0.4s; }
+.c-chat-waveform.is-animating .c-chat-waveform__bar:nth-child(5) { animation: waveBar 0.5s ease-in-out infinite alternate 0.5s; }
+
+@keyframes waveBar {
+    from { height: 4px; }
+    to { height: 16px; }
+}
+
+.c-chat-live-text {
+    flex: 1;
+    font-style: italic;
+    color: var(--color-text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* --------------------------------------------------------------------------
+   Input Dock Controls
+   -------------------------------------------------------------------------- */
+.c-chat-dock {
+    padding: 10px 16px;
+    background: var(--bg-panel);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-top: 1px solid var(--border-glass);
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+    z-index: 10;
+}
+
+.c-chat-input-wrapper {
+    flex: 1;
+    position: relative;
+    display: flex;
+    align-items: center;
+    background: var(--bg-dark);
+    border: 1px solid var(--border-glass);
+    border-radius: 22px;
+    padding: 6px 14px;
+    transition: border-color var(--transition-snappy);
+}
+
+.c-chat-input-wrapper:focus-within {
+    border-color: var(--color-green);
+    box-shadow: 0 0 10px var(--color-green-glow);
+}
+
+.c-chat-textarea {
+    width: 100%;
+    max-height: 100px;
+    min-height: 24px;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--color-text);
+    font-size: 13px;
+    font-family: inherit;
+    resize: none;
+    line-height: 1.4;
+}
+
+.c-chat-textarea::placeholder {
+    color: var(--color-text-muted);
+}
+
+/* Glowing Interactive Mic Button */
+.c-chat-mic-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: none;
+    background: linear-gradient(135deg, hsl(142, 70%, 45%), hsl(160, 80%, 40%));
+    color: #0b0e13;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    position: relative;
+    box-shadow: 0 0 14px var(--color-green-glow);
+    transition: transform var(--transition-snappy), background var(--transition-snappy);
+    flex-shrink: 0;
+}
+
+.c-chat-mic-btn:hover {
+    transform: scale(1.05);
+}
+
+.c-chat-mic-btn:active {
+    transform: scale(0.95);
+}
+
+.c-chat-mic-btn.is-recording {
+    background: linear-gradient(135deg, var(--color-red), hsl(340, 90%, 50%));
+    color: #fff;
+    box-shadow: 0 0 20px var(--color-red-glow);
+    animation: micPulse 1.2s infinite;
+}
+
+@keyframes micPulse {
+    0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+    70% { transform: scale(1.08); box-shadow: 0 0 0 14px rgba(239, 68, 68, 0); }
+    100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+/* Send Button */
+.c-chat-send-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--color-text-muted);
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all var(--transition-snappy);
+    flex-shrink: 0;
+}
+
+.c-chat-send-btn.is-ready {
+    background: var(--color-green);
+    color: #0b0e13;
+    box-shadow: 0 0 10px var(--color-green-glow);
+}
+
+.c-chat-send-btn:hover {
+    transform: scale(1.05);
+}

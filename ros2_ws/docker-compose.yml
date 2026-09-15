@@ -52,6 +52,29 @@ services:
     privileged: true
     restart: unless-stopped
 
+  ros2_voice_chat:
+    build:
+      context: .
+      dockerfile: VoiceChat.dockerfile
+    container_name: ros2_voice_chat
+    ipc: host
+    pid: host
+    volumes:
+      - .:/ros2_ws/
+      - ${HOME}/.gemini:/root/.gemini
+      - /usr/local/bin:/host_usr_local_bin:ro
+      - /snap/bin:/host_snap_bin:ro
+      - /run/user/1000/pulse:/run/user/1000/pulse
+    devices:
+      - /dev/snd:/dev/snd
+    environment:
+      <<: *ros-env
+      PATH: /host_snap_bin:/host_usr_local_bin:/usr/local/bin:/usr/bin:/bin
+      PULSE_SERVER: unix:/run/user/1000/pulse/native
+    network_mode: host
+    privileged: true
+    restart: unless-stopped
+
   # ==========================================================
   # Physical Hardware Services (Profile: "hardware")
   # ==========================================================
@@ -133,7 +156,7 @@ services:
       SIM_GUI: ${SIM_GUI:-true}
       DISPLAY: ${DISPLAY:-:0}
       WAYLAND_DISPLAY: ${WAYLAND_DISPLAY:-wayland-0}
-      XDG_RUNTIME_DIR: /tmp/runtime-dir
+      XDG_RUNTIME_DIR: ${XDG_RUNTIME_DIR:-/mnt/wslg/runtime-dir}
       LD_LIBRARY_PATH: /usr/lib/wsl/lib
       QT_X11_NO_MITSHM: 1
     devices:
