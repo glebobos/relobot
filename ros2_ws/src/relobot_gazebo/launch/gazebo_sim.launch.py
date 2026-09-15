@@ -210,6 +210,15 @@ def generate_launch_description():
         parameters=[{'use_sim_time': use_sim_time_arg}],
     )
 
+    # Knives RPM mock node (/knives/set_rpm -> /knives/current_rpm)
+    knives_mock_node = Node(
+        package='relobot_gazebo',
+        executable='knives_mock.py',
+        name='knives_mock',
+        output='screen',
+        parameters=[{'use_sim_time': use_sim_time_arg}],
+    )
+
     return LaunchDescription([
         declare_world_cmd,
         declare_gui_cmd,
@@ -227,6 +236,7 @@ def generate_launch_description():
         delay_joint_state_broadcaster,
         delay_diff_drive_controller,
         cmd_vel_relay_node,
+        knives_mock_node,
         ekf_node,
         web_video_server_node,
     ])

@@ -15,6 +15,7 @@ install(
 install(
   PROGRAMS
     scripts/cmd_vel_relay.py
+    scripts/knives_mock.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

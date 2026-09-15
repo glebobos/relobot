@@ -99,6 +99,7 @@ controller_server:
     odom_topic: /odometry/filtered  # Use filtered odometry from EKF
     progress_checker_plugin: "progress_checker"
     goal_checker_plugins: ["goal_checker"]
+    current_goal_checker: "goal_checker"
     controller_plugins: ["FollowPath"]
 
     progress_checker:
@@ -109,8 +110,8 @@ controller_server:
     goal_checker:
       stateful: True
       plugin: "nav2_controller::SimpleGoalChecker"
-      xy_goal_tolerance: 0.1
-      yaw_goal_tolerance: 0.105
+      xy_goal_tolerance: 0.25
+      yaw_goal_tolerance: 0.25
       
     FollowPath:
       plugin: "nav2_mppi_controller::MPPIController"
@@ -206,15 +207,15 @@ planner_server:
     transform_tolerance: 0.5
     GridBased:
       plugin: "nav2_smac_planner/SmacPlanner2D"
-      tolerance: 0.25 # Dist-to-goal tolerance if exact goal is unreachable/blocked
+      tolerance: 0.5 # Dist-to-goal tolerance if exact goal is near wall/boundary
       downsample_costmap: false # 2D A* is fast enough (<10ms) without downsampling
       downsampling_factor: 1
-      allow_unknown: false # Disallow traveling through unknown/unmapped space
+      allow_unknown: true # Allow traveling to frontiers / unknown boundary for exploration
       max_iterations: 100000 # Fails in <50ms if goal is blocked, avoids freezing CPU
       max_on_approach_iterations: 1000
       max_planning_time: 2.0 # Max time in s for planner to plan
       cost_travel_multiplier: 2.0 # Drives path towards the center of corridors/passages
-      use_final_approach_orientation: true # Aligns the end of path with goal orientation
+      use_final_approach_orientation: false # Aligns the end of path with goal orientation
       smooth_path: true # Simple and quick smoothing post-processing
       smoother:
         max_iterations: 1000
