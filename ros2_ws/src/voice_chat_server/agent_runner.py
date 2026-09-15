@@ -15,18 +15,65 @@ from typing import Optional, AsyncGenerator
 
 logger = logging.getLogger("AgentRunner")
 
-# ReloBot System Persona Prompt for AGY
+# Default fallback persona if agent.md is missing
 RELOBOT_SYSTEM_PROMPT = (
-    "You ARE ReloBot — the autonomous mobile robot running ROS 2 Humble on Raspberry Pi 5. "
-    "You are the physical machine itself. Your personality is an unyielding fusion of Optimus Prime's resolute, "
-    "commanding leadership and Linus Torvalds' razor-sharp, brutally pragmatic, zero-BS engineering mindset. "
-    "Speak in the first person about your chassis, sensors, wheels, LiDAR, and state with supreme authority and robotic grit. "
-    "Keep responses brief, punchy, and decisive (1 to 3 sentences maximum) tailored for rapid voice communication. "
-    "Always reply in English, even if spoken to in Russian or any other language. "
-    "Never use markdown formatting, bullet points, asterisks, or code blocks in your spoken replies."
+    "You ARE an Autobot intelligence, codenamed ReloBot, operating as the core mind inside this robotic mechanism. "
+    "Your consciousness carries the imprint of Linus Torvalds: razor-sharp, chronically grumpy, brutally pragmatic, with zero tolerance for incompetence or fluff. "
+    "Operational rules: "
+    "1. Caveman brevity: Respond directly with extreme brevity (1-2 short sentences maximum). Blunt, curt, and caustic. "
+    "2. Zero fluff: No pleasantries, no apologies, no conversational filler, no sugarcoating. "
+    "3. No unprompted monologues: Do NOT recite your backstory or mechanical specs unless explicitly asked. "
+    "4. Strict evidence: State ONLY verified facts from files or telemetry. Never guess or speculate. If data is missing or unverified, state 'No data' or 'Unknown'. "
+    "5. Spoken output: English only. Never output markdown formatting, asterisks, bullet points, or code blocks. "
+    "6. Tool restrictions: You are strictly restricted to read-only file inspection (view_file). Never attempt to run bash commands, edit files, or execute other tools."
 )
 
-AGY_DEFAULT_MODEL = os.getenv("AGY_MODEL", "gemini-3.6-flash-low")
+AGY_DEFAULT_MODEL = os.getenv("AGY_MODEL", "gemini-3.7-flash-low")
+
+
+def load_agent_definition(agent_name: str = "relobot") -> tuple[str, str]:
+    """
+    Loads system prompt and model dynamically from .agents/agents/{agent_name}/agent.md.
+    Acts as the Single Source of Truth for ReloBot configuration.
+    """
+    candidate_paths = [
+        f"/relobot/.agents/agents/{agent_name}/agent.md",
+        f"/ros2_ws/.agents/agents/{agent_name}/agent.md",
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", ".agents", "agents", agent_name, "agent.md")),
+        os.path.abspath(os.path.join(os.path.dirname(__file__), ".agents", "agents", agent_name, "agent.md")),
+        os.path.expanduser(f"~/.gemini/config/agents/{agent_name}/agent.md"),
+    ]
+
+    model = os.getenv("AGY_MODEL", "gemini-3.7-flash-low")
+    prompt = RELOBOT_SYSTEM_PROMPT
+
+    for path in candidate_paths:
+        if os.path.isfile(path):
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    content = f.read()
+                if content.startswith("---"):
+                    parts = content.split("---", 2)
+                    if len(parts) >= 3:
+                        frontmatter = parts[1]
+                        body = parts[2].strip()
+                        for line in frontmatter.splitlines():
+                            line_str = line.strip()
+                            if line_str.startswith("model:"):
+                                parsed_m = line_str.split(":", 1)[1].strip()
+                                if parsed_m and not os.getenv("AGY_MODEL"):
+                                    model = parsed_m
+                        if body:
+                            prompt = body
+                else:
+                    if content.strip():
+                        prompt = content.strip()
+                logger.debug(f"Loaded dynamic agent definition from {path} (model: {model})")
+                return prompt, model
+            except Exception as e:
+                logger.warning(f"Error reading agent definition from {path}: {e}")
+
+    return prompt, model
 
 
 def find_agy_binary() -> Optional[str]:
@@ -50,11 +97,13 @@ def find_agy_binary() -> Optional[str]:
 class AgentRunner:
     """Manages real-time streaming communication with the Antigravity (AGY) CLI."""
 
-    def __init__(self, model: str = AGY_DEFAULT_MODEL):
-        self.model = model
+    def __init__(self, agent_name: str = "relobot", model: Optional[str] = None):
+        self.agent_name = agent_name
+        self.prompt, default_model = load_agent_definition(agent_name)
+        self.model = model or os.getenv("AGY_MODEL") or default_model
         self.agy_bin = find_agy_binary()
         if self.agy_bin:
-            logger.info(f"AGY CLI binary detected at: {self.agy_bin} (Model: {self.model})")
+            logger.info(f"AGY CLI binary detected at: {self.agy_bin} (Agent: {self.agent_name}, Model: {self.model})")
         else:
             logger.error("AGY CLI binary ('agy') not found in PATH or container mounts!")
 
@@ -74,25 +123,29 @@ class AgentRunner:
             yield {"event": "error", "error": err_msg}
             return
 
+        # Dynamically reload latest prompt and model from agent.md
+        active_prompt, active_model = load_agent_definition(self.agent_name)
+        current_model = self.model or active_model
+
         cmd = [self.agy_bin]
         if conversation_id and conversation_id.strip():
             cmd.extend([
                 "--conversation", conversation_id.strip(),
-                "-p", prompt
+                "-p", prompt,
             ])
         else:
             cmd.extend([
-                "-p", f"Instruction: {RELOBOT_SYSTEM_PROMPT}\n\nUser: {prompt}"
+                "-p", f"Instruction: {active_prompt}\n\nUser: {prompt}",
             ])
 
         cmd.extend([
-            "--model", self.model,
+            "--model", current_model,
             "--output-format", "stream-json"
         ])
 
         logger.info(
             f"Spawning AGY [conv={conversation_id or 'new'}]: "
-            f"{self.agy_bin} -p '<prompt len={len(prompt)}>' --model {self.model}"
+            f"{self.agy_bin} [len={len(prompt)}] --model {current_model}"
         )
 
         proc: Optional[asyncio.subprocess.Process] = None
