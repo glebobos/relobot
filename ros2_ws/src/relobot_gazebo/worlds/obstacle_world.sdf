@@ -85,16 +85,30 @@
           <material><ambient>0.12 0.12 0.15 1</ambient><diffuse>0.18 0.18 0.22 1</diffuse></material>
         </visual>
 
-        <!-- AprilTag / Visual Docking Target Face (facing -X towards front camera) -->
-        <visual name="vis_tag_panel">
-          <pose>0.52 0.0 0.25 0 0 0</pose>
-          <geometry><box><size>0.01 0.18 0.18</size></box></geometry>
-          <material><ambient>0.95 0.95 0.95 1</ambient><diffuse>1.0 1.0 1.0 1</diffuse></material>
-        </visual>
-        <visual name="vis_tag_center">
-          <pose>0.514 0.0 0.25 0 0 0</pose>
-          <geometry><box><size>0.005 0.12 0.12</size></box></geometry>
-          <material><ambient>0.05 0.05 0.05 1</ambient><diffuse>0.05 0.05 0.05 1</diffuse></material>
+        <!-- AprilTag Visual Target (exact 0.141m / 141mm matching physical tag) -->
+        <visual name="vis_apriltag">
+          <pose>0.523 0.0 0.26 0 0 0</pose>
+          <geometry>
+            <box>
+              <size>0.002 0.141 0.141</size>
+            </box>
+          </geometry>
+          <material>
+            <ambient>1 1 1 1</ambient>
+            <diffuse>1 1 1 1</diffuse>
+            <pbr>
+              <metal>
+                <albedo_map>model://Apriltag36_11_00000/materials/textures/tag36_11_00000.png</albedo_map>
+                <roughness>0.9</roughness>
+                <metalness>0.0</metalness>
+              </metal>
+            </pbr>
+            <script>
+              <uri>model://Apriltag36_11_00000/materials/scripts</uri>
+              <uri>model://Apriltag36_11_00000/materials/textures</uri>
+              <name>Apriltag36_11_00000</name>
+            </script>
+          </material>
         </visual>
 
         <!-- Charging Contacts (facing robot front bumper) -->
