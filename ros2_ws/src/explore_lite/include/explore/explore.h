@@ -128,7 +128,9 @@ private:
   void resumeCallback(const std_msgs::msg::Bool::SharedPtr msg);
 
   std::vector<geometry_msgs::msg::Point> frontier_blacklist_;
-  geometry_msgs::msg::Point prev_goal_;
+  geometry_msgs::msg::Point current_target_;
+  bool is_navigating_ = false;
+  int no_frontier_retry_count_ = 0;
   double prev_distance_;
   rclcpp::Time last_progress_;
   size_t last_markers_count_;
@@ -139,7 +141,7 @@ private:
   double progress_timeout_;
   bool visualize_;
   std::string robot_base_frame_;
-  bool resuming_ = false;
+
 };
 }  // namespace explore
 

@@ -5,9 +5,9 @@
     costmap_topic: map
     costmap_updates_topic: map_updates
     visualize: false
-    planner_frequency: 1.0
+    planner_frequency: 0.33
     progress_timeout: 30.0
-    potential_scale: 3.0
+    potential_scale: 1.0
     orientation_scale: 0.0
     gain_scale: 1.0
-    min_frontier_size: 0.65  # Finer resolution (2 cm cells) allows reliable detection of smaller frontiers
+    min_frontier_size: 0.40
