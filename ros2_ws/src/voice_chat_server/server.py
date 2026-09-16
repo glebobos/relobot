@@ -30,7 +30,8 @@ PORT = int(os.getenv("VOICE_CHAT_PORT", "8765"))
 HOST = os.getenv("VOICE_CHAT_HOST", "0.0.0.0")
 
 # Sentence & natural clause boundary regex
-SENTENCE_END_RE = re.compile(r"([.!?\n]+)\s*")
+# Matches .!? or \n while ignoring decimal numbers (e.g. 12.4V) and single initials
+SENTENCE_END_RE = re.compile(r"(\n+|(?:(?<!\d)(?<!\b[A-Za-z])[.!?]+)(?:\s+(?=[A-ZА-Я0-9])|\s*$))")
 CLAUSE_BREAK_RE = re.compile(r"([,;:—–]+)\s*")
 
 

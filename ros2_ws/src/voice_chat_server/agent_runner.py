@@ -37,10 +37,8 @@ def load_agent_definition(agent_name: str = "relobot") -> tuple[str, str]:
     Acts as the Single Source of Truth for ReloBot configuration.
     """
     candidate_paths = [
-        f"/relobot/.agents/agents/{agent_name}/agent.md",
         f"/ros2_ws/.agents/agents/{agent_name}/agent.md",
         os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", ".agents", "agents", agent_name, "agent.md")),
-        os.path.abspath(os.path.join(os.path.dirname(__file__), ".agents", "agents", agent_name, "agent.md")),
         os.path.expanduser(f"~/.gemini/config/agents/{agent_name}/agent.md"),
     ]
 

@@ -61,8 +61,7 @@ services:
     pid: host
     volumes:
       - .:/ros2_ws/
-      - ..:/relobot/
-      - ../.agents:/ros2_ws/.agents
+      - ../.agents:/ros2_ws/.agents:ro
       - ${HOME}/.gemini:/root/.gemini
       - ${HOME}/.local/bin:/host_local_bin:ro
       - /usr/local/bin:/host_usr_local_bin:ro
