@@ -296,9 +296,13 @@
 
 @media (orientation: landscape) {
     .c-settings-panel {
-        padding-top: 80px; /* Offset below absolute transparent header */
+        padding-top: calc(52px + 16px); /* Offset below absolute transparent header */
+        padding-left: max(24px, env(safe-area-inset-left));
+        padding-right: max(24px, env(safe-area-inset-right));
     }
     .c-settings-drawer {
-        padding-top: 80px; /* Offset below absolute transparent header */
+        padding-top: calc(52px + 16px); /* Offset below absolute transparent header */
+        padding-left: max(24px, env(safe-area-inset-left));
+        padding-right: max(24px, env(safe-area-inset-right));
     }
 }

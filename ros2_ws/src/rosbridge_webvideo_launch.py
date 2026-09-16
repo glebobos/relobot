@@ -1,7 +1,7 @@
 """
 Launch file to start the rosbridge_server.
 This provides WebSocket access to ROS topics via rosbridge (port 9090).
-Note: web_video_server was moved to camera_with_apriltag.launch.py for zero-copy.
+Note: web_video_server was moved to camera.launch.py for zero-copy.
 """
 
 from launch import LaunchDescription

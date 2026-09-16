@@ -133,6 +133,10 @@ def generate_launch_description():
         'log_level', default_value='info',
         description='log level')
 
+    declare_apriltag_always_on_cmd = DeclareLaunchArgument(
+        'apriltag_always_on', default_value='False',
+        description='Keep AprilTag detection always on')
+
     explore_lite_params = os.path.join(nav2_dir, 'config', 'explore_lite_params.yaml')
     explore_node = Node(
         package='explore_lite',
@@ -361,6 +365,24 @@ def generate_launch_description():
         ],
     )
 
+    # AprilTag & Dock Pose Manager (on-demand loader for docking / frontend HUD)
+    apriltag_manager_node = Node(
+        package='nav2',
+        executable='apriltag_manager',
+        name='apriltag_manager',
+        output='screen',
+        respawn=use_respawn,
+        respawn_delay=2.0,
+        parameters=[{
+            'container': container_name_full,
+            'dock_action': '/dock_robot',
+            'dock_tag_frame': 'tag25h9:0',
+            'base_frame': 'odom',
+            'always_on': LaunchConfiguration('apriltag_always_on'),
+            'use_sim_time': use_sim_time,
+        }],
+    )
+
     # Create the launch description and populate
     ld = LaunchDescription()
 
@@ -376,6 +398,7 @@ def generate_launch_description():
     ld.add_action(declare_container_name_cmd)
     ld.add_action(declare_use_respawn_cmd)
     ld.add_action(declare_log_level_cmd)
+    ld.add_action(declare_apriltag_always_on_cmd)
     # Add the actions to launch all of the navigation nodes
     ld.add_action(container)
     ld.add_action(load_nodes)
@@ -383,5 +406,6 @@ def generate_launch_description():
     ld.add_action(slam_toolbox_node)
     ld.add_action(explore_node)
     ld.add_action(coverage_manager_node)
+    ld.add_action(apriltag_manager_node)
 
     return ld

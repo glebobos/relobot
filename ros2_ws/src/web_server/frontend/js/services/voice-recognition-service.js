@@ -1,92 +1,170 @@
 /**
- * ReloBot Voice Recognition & Audio Analyser Service
- * Uses Web Speech API for real-time live transcription and Web Audio API for audio visualizer waveforms.
+ * ReloBot Voice Recognition Service
+ * Direct Web Speech API integration supporting bilingual voice control (English / Russian).
+ * Optimized for mobile and desktop browsers with clean permission and error handling.
  */
 
 export class VoiceRecognitionService {
     constructor() {
         const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
         this.hasSpeechRec = Boolean(SpeechRec);
-        this.recognition = SpeechRec ? new SpeechRec() : null;
-        
-        if (this.recognition) {
-            this.recognition.continuous = false;
-            this.recognition.interimResults = true;
-            this.recognition.lang = navigator.language || 'en-US';
+        this.isSecure = window.isSecureContext || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+        // Language setting ('en-US' or 'ru-RU')
+        const storedLang = localStorage.getItem('relobot_chat_voice_lang');
+        if (storedLang) {
+            this.lang = storedLang;
+        } else {
+            this.lang = navigator.language && navigator.language.startsWith('ru') ? 'ru-RU' : 'en-US';
         }
 
+        this.recognition = null;
         this.isRecording = false;
-        this.audioContext = null;
-        this.analyser = null;
-        this.mediaStream = null;
-        this.animationFrameId = null;
 
         // Callbacks
-        this.onInterimResult = null;
-        this.onFinalResult = null;
-        this.onAudioVolume = null;
-        this.onStart = null;
-        this.onEnd = null;
-        this.onError = null;
-
-        this._setupRecognitionEvents();
+        this.onInterimResult = null; // (transcript)
+        this.onFinalResult = null;   // (transcript)
+        this.onStart = null;         // ()
+        this.onEnd = null;           // ()
+        this.onError = null;         // (errorMessage)
+        this.onLanguageChange = null;// (lang)
     }
 
-    _setupRecognitionEvents() {
-        if (!this.recognition) return;
+    setLanguage(lang) {
+        if (lang === 'ru' || lang === 'ru-RU') {
+            this.lang = 'ru-RU';
+        } else {
+            this.lang = 'en-US';
+        }
+        try {
+            localStorage.setItem('relobot_chat_voice_lang', this.lang);
+        } catch (e) {}
+        if (this.onLanguageChange) this.onLanguageChange(this.lang);
+        return this.lang;
+    }
 
-        this.recognition.onstart = () => {
-            this.isRecording = true;
-            if (this.onStart) this.onStart();
-        };
+    getLanguage() {
+        return this.lang;
+    }
 
-        this.recognition.onresult = (event) => {
-            let interimTranscript = '';
-            let finalTranscript = '';
+    getLanguageShort() {
+        return this.lang.startsWith('ru') ? 'RU' : 'EN';
+    }
 
-            for (let i = event.resultIndex; i < event.results.length; ++i) {
-                const transcript = event.results[i][0].transcript;
-                if (event.results[i].isFinal) {
-                    finalTranscript += transcript;
-                } else {
-                    interimTranscript += transcript;
+    toggleLanguage() {
+        const nextLang = this.lang.startsWith('ru') ? 'en-US' : 'ru-RU';
+        return this.setLanguage(nextLang);
+    }
+
+    _createRecognition() {
+        const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRec) return null;
+
+        try {
+            const rec = new SpeechRec();
+            rec.continuous = false;
+            rec.interimResults = true;
+            rec.maxAlternatives = 1;
+            rec.lang = this.lang;
+
+            rec.onstart = () => {
+                this.isRecording = true;
+                if (this.onStart) this.onStart();
+            };
+
+            rec.onresult = (event) => {
+                let interimTranscript = '';
+                let finalTranscript = '';
+
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    const transcript = event.results[i][0].transcript;
+                    if (event.results[i].isFinal) {
+                        finalTranscript += transcript;
+                    } else {
+                        interimTranscript += transcript;
+                    }
                 }
-            }
 
-            if (interimTranscript && this.onInterimResult) {
-                this.onInterimResult(interimTranscript);
-            }
-            if (finalTranscript && this.onFinalResult) {
-                this.onFinalResult(finalTranscript);
-            }
-        };
+                if (interimTranscript && this.onInterimResult) {
+                    this.onInterimResult(interimTranscript);
+                }
+                if (finalTranscript && this.onFinalResult) {
+                    this.onFinalResult(finalTranscript);
+                }
+            };
 
-        this.recognition.onerror = (event) => {
-            console.warn('[VoiceRec] Error:', event.error);
-            if (this.onError) this.onError(event.error);
-        };
+            rec.onerror = (event) => {
+                console.warn('[VoiceRec] SpeechRecognition error:', event.error);
+                const friendlyMsg = this._formatErrorMessage(event.error);
+                if (this.onError) this.onError(friendlyMsg);
+            };
 
-        this.recognition.onend = () => {
-            this.isRecording = false;
-            this._stopAudioAnalyser();
-            if (this.onEnd) this.onEnd();
-        };
+            rec.onend = () => {
+                this.isRecording = false;
+                if (this.onEnd) this.onEnd();
+            };
+
+            return rec;
+        } catch (e) {
+            console.error('[VoiceRec] Failed to construct SpeechRecognition:', e);
+            return null;
+        }
     }
 
-    async startRecording() {
+    _formatErrorMessage(error) {
+        if (typeof error === 'string') {
+            switch (error) {
+                case 'not-allowed':
+                case 'permission-denied':
+                    return 'Microphone access denied. Please allow microphone permissions in your browser.';
+                case 'no-speech':
+                    return 'No speech detected. Tap the mic and speak.';
+                case 'audio-capture':
+                    return 'Microphone unavailable or in use by another application.';
+                case 'network':
+                    return 'Voice network error. Speech recognition requires HTTPS or internet connectivity.';
+                case 'service-not-allowed':
+                    return 'Speech recognition not permitted. Please access via HTTPS.';
+                case 'aborted':
+                    return 'Voice recognition stopped.';
+                default:
+                    return `Voice error: ${error}`;
+            }
+        }
+        return error.message || 'Microphone error occurred.';
+    }
+
+    startRecording() {
         if (this.isRecording) return;
-        if (!this.recognition) {
-            console.warn('[VoiceRec] Speech recognition not supported in this browser.');
+
+        if (!this.hasSpeechRec) {
+            const msg = !this.isSecure
+                ? 'Speech recognition requires a secure HTTPS connection.'
+                : 'Speech recognition is not supported in this browser.';
+            console.warn('[VoiceRec]', msg);
+            if (this.onError) this.onError(msg);
             return;
         }
 
         try {
-            // Start Web Audio analyser for volume waveform visualization
-            await this._startAudioAnalyser();
+            if (this.recognition) {
+                try {
+                    this.recognition.abort();
+                } catch (e) {}
+                this.recognition = null;
+            }
+
+            this.recognition = this._createRecognition();
+            if (!this.recognition) {
+                if (this.onError) this.onError('Failed to initialize speech recognition.');
+                return;
+            }
+
             this.recognition.start();
         } catch (e) {
-            console.error('[VoiceRec] Failed to start speech recognition:', e);
-            if (this.onError) this.onError(e);
+            console.error('[VoiceRec] Exception in startRecording:', e);
+            const msg = this._formatErrorMessage(e);
+            if (this.onError) this.onError(msg);
         }
     }
 
@@ -100,64 +178,15 @@ export class VoiceRecognitionService {
             console.warn('[VoiceRec] Stop error:', e);
         }
         this.isRecording = false;
-        this._stopAudioAnalyser();
-    }
-
-    async _startAudioAnalyser() {
-        try {
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
-            this.mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            
-            const AudioCtx = window.AudioContext || window.webkitAudioContext;
-            this.audioContext = new AudioCtx();
-            const source = this.audioContext.createMediaStreamSource(this.mediaStream);
-            this.analyser = this.audioContext.createAnalyser();
-            this.analyser.fftSize = 64;
-            source.connect(this.analyser);
-
-            const dataArray = new Uint8Array(this.analyser.frequencyBinCount);
-
-            const checkVolume = () => {
-                if (!this.isRecording || !this.analyser) return;
-                this.analyser.getByteFrequencyData(dataArray);
-                let sum = 0;
-                for (let i = 0; i < dataArray.length; i++) {
-                    sum += dataArray[i];
-                }
-                const average = sum / dataArray.length;
-                const volumeNormalized = Math.min(1.0, average / 128.0);
-                if (this.onAudioVolume) {
-                    this.onAudioVolume(volumeNormalized);
-                }
-                this.animationFrameId = requestAnimationFrame(checkVolume);
-            };
-            this.animationFrameId = requestAnimationFrame(checkVolume);
-        } catch (e) {
-            console.warn('[VoiceRec] Audio analyser mic access error:', e);
-        }
-    }
-
-    _stopAudioAnalyser() {
-        if (this.animationFrameId) {
-            cancelAnimationFrame(this.animationFrameId);
-            this.animationFrameId = null;
-        }
-        if (this.mediaStream) {
-            this.mediaStream.getTracks().forEach(t => t.stop());
-            this.mediaStream = null;
-        }
-        if (this.audioContext) {
-            this.audioContext.close().catch(() => {});
-            this.audioContext = null;
-        }
-        this.analyser = null;
-        if (this.onAudioVolume) {
-            this.onAudioVolume(0);
-        }
     }
 
     destroy() {
         this.stopRecording();
-        this._stopAudioAnalyser();
+        if (this.recognition) {
+            try {
+                this.recognition.abort();
+            } catch (e) {}
+            this.recognition = null;
+        }
     }
 }

@@ -61,7 +61,9 @@ services:
     pid: host
     volumes:
       - .:/ros2_ws/
+      - ../.agents:/ros2_ws/.agents:ro
       - ${HOME}/.gemini:/root/.gemini
+      - ${HOME}/.local/bin:/host_local_bin:ro
       - /usr/local/bin:/host_usr_local_bin:ro
       - /snap/bin:/host_snap_bin:ro
       - /run/user/1000/pulse:/run/user/1000/pulse
@@ -69,7 +71,8 @@ services:
       - /dev/snd:/dev/snd
     environment:
       <<: *ros-env
-      PATH: /host_snap_bin:/host_usr_local_bin:/usr/local/bin:/usr/bin:/bin
+      PATH: /host_local_bin:/host_snap_bin:/host_usr_local_bin:/usr/local/bin:/usr/bin:/bin
+      HOME: /root
       PULSE_SERVER: unix:/run/user/1000/pulse/native
     network_mode: host
     privileged: true
@@ -87,7 +90,7 @@ services:
     volumes:
       - .:/ros2_ws/
     devices:
-      - /dev/ttyUSB0:/dev/ttyUSB0
+      - /dev/:/dev/
     environment:
       <<: *ros-env
     network_mode: host

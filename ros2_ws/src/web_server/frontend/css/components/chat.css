@@ -1,5 +1,5 @@
 /* ==========================================================================
-   ReloBot Live AI Voice Chat & AGY Interface Styles
+   ReloBot AI Voice Chat Component Styles (ITCSS: Components)
    ========================================================================== */
 
 .c-chat-view {
@@ -7,6 +7,8 @@
     flex-direction: column;
     height: 100%;
     width: 100%;
+    min-height: 0;
+    min-width: 0;
     background: radial-gradient(circle at 50% 0%, rgba(0, 255, 136, 0.04) 0%, transparent 60%), var(--bg-app);
     position: relative;
     overflow: hidden;
@@ -25,6 +27,7 @@
     -webkit-backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--border-glass);
     z-index: 10;
+    flex-shrink: 0;
 }
 
 .c-chat-header__bot-info {
@@ -64,6 +67,12 @@
     flex-direction: column;
 }
 
+.c-chat-header__title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
 .c-chat-header__title {
     font-size: 14px;
     font-weight: 700;
@@ -76,6 +85,40 @@
 
 .c-chat-header__title i {
     color: var(--color-green);
+}
+
+.c-chat-session-chip {
+    font-size: 10px;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace, sans-serif;
+    color: var(--color-green);
+    background: rgba(0, 255, 136, 0.08);
+    border: 1px solid rgba(0, 255, 136, 0.25);
+    padding: 1px 7px;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    transition: all var(--transition-snappy);
+    user-select: none;
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.c-chat-session-chip:hover {
+    background: rgba(0, 255, 136, 0.18);
+    border-color: var(--color-green);
+    box-shadow: 0 0 8px var(--color-green-glow);
+    transform: translateY(-1px);
+}
+
+.c-chat-session-chip.is-copied {
+    background: rgba(0, 200, 255, 0.2);
+    border-color: #00c8ff;
+    color: #00c8ff;
+    box-shadow: 0 0 8px rgba(0, 200, 255, 0.5);
 }
 
 .c-chat-header__subtitle {
@@ -115,11 +158,36 @@
     box-shadow: 0 0 8px var(--color-green-glow);
 }
 
+.c-chat-lang-btn {
+    font-weight: 600;
+    color: var(--color-green);
+    background: rgba(0, 255, 136, 0.08);
+    border-color: rgba(0, 255, 136, 0.3);
+}
+
+.c-chat-lang-btn:hover {
+    background: rgba(0, 255, 136, 0.2);
+    border-color: var(--color-green);
+    box-shadow: 0 0 8px var(--color-green-glow);
+}
+
+.c-chat-flush-btn {
+    color: var(--color-text-muted);
+}
+
+.c-chat-flush-btn:hover {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: var(--color-red);
+    color: var(--color-red);
+    box-shadow: 0 0 8px var(--color-red-glow);
+}
+
 /* --------------------------------------------------------------------------
    Messages Feed Area
    -------------------------------------------------------------------------- */
 .c-chat-feed {
-    flex: 1;
+    flex: 1 1 0%;
+    min-height: 0;
     overflow-y: auto;
     padding: 16px;
     display: flex;
@@ -254,6 +322,15 @@
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
 }
 
+.c-chat-code {
+    background: rgba(0, 0, 0, 0.35);
+    padding: 2px 5px;
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--color-green);
+}
+
 .c-chat-msg__time {
     font-size: 10px;
     color: var(--color-text-muted);
@@ -265,25 +342,6 @@
 
 .c-chat-msg--user .c-chat-msg__time {
     justify-content: flex-end;
-}
-
-.c-chat-msg__replay-btn {
-    background: none;
-    border: none;
-    color: var(--color-green);
-    cursor: pointer;
-    font-size: 11px;
-    padding: 2px 4px;
-    border-radius: 4px;
-    display: inline-flex;
-    align-items: center;
-    gap: 3px;
-    opacity: 0.8;
-    transition: opacity var(--transition-snappy);
-}
-
-.c-chat-msg__replay-btn:hover {
-    opacity: 1;
 }
 
 /* Streaming Blinking Cursor */
@@ -304,49 +362,7 @@
 }
 
 /* --------------------------------------------------------------------------
-   Suggestions Chips Row
-   -------------------------------------------------------------------------- */
-.c-chat-chips {
-    display: flex;
-    gap: 8px;
-    padding: 6px 16px;
-    overflow-x: auto;
-    white-space: nowrap;
-    -webkit-overflow-scrolling: touch;
-}
-
-.c-chat-chips::-webkit-scrollbar {
-    display: none;
-}
-
-.c-chat-chip {
-    background: var(--bg-panel);
-    border: 1px solid var(--border-glass);
-    border-radius: 20px;
-    padding: 6px 12px;
-    font-size: 12px;
-    color: var(--color-text-muted);
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    transition: all var(--transition-snappy);
-    flex-shrink: 0;
-}
-
-.c-chat-chip i {
-    color: var(--color-green);
-}
-
-.c-chat-chip:hover {
-    background: rgba(0, 255, 136, 0.12);
-    border-color: var(--color-green);
-    color: var(--color-text);
-    transform: translateY(-1px);
-}
-
-/* --------------------------------------------------------------------------
-   Live Voice Transcript & Audio Visualizer Dock
+   Live Voice Transcript & Waveform Dock
    -------------------------------------------------------------------------- */
 .c-chat-live-box {
     display: none;
@@ -358,6 +374,7 @@
     font-size: 12px;
     color: var(--color-text);
     animation: pulseBorder 1.5s infinite;
+    flex-shrink: 0;
 }
 
 .c-chat-live-box.is-visible {
@@ -401,16 +418,16 @@
     flex: 1;
     font-style: italic;
     color: var(--color-text);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    word-break: break-word;
+    line-height: 1.3;
 }
 
 /* --------------------------------------------------------------------------
    Input Dock Controls
    -------------------------------------------------------------------------- */
 .c-chat-dock {
-    padding: 10px 16px;
+    padding: 12px 16px;
+    padding-bottom: max(16px, calc(env(safe-area-inset-bottom) + 12px));
     background: var(--bg-panel);
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
@@ -419,6 +436,7 @@
     align-items: flex-end;
     gap: 10px;
     z-index: 10;
+    flex-shrink: 0;
 }
 
 .c-chat-input-wrapper {
@@ -446,7 +464,7 @@
     border: none;
     outline: none;
     color: var(--color-text);
-    font-size: 13px;
+    font-size: 14px;
     font-family: inherit;
     resize: none;
     line-height: 1.4;
@@ -521,4 +539,237 @@
 
 .c-chat-send-btn:hover {
     transform: scale(1.05);
+}
+
+/* --------------------------------------------------------------------------
+   Responsive Mobile Adjustments
+   -------------------------------------------------------------------------- */
+@media (max-width: 600px) {
+    .c-chat-header {
+        padding: 8px 10px;
+    }
+
+    .c-chat-header__bot-info {
+        gap: 8px;
+    }
+
+    .c-chat-header__avatar {
+        width: 32px;
+        height: 32px;
+        font-size: 14px;
+    }
+
+    .c-chat-header__title {
+        font-size: 13px;
+        gap: 4px;
+    }
+
+    .c-chat-header__subtitle {
+        font-size: 10px;
+    }
+
+    .c-chat-header__controls {
+        gap: 6px;
+    }
+
+    .c-chat-toggle-label {
+        display: none;
+    }
+
+    .c-chat-lang-btn .c-chat-toggle-label {
+        display: inline-block;
+        font-size: 11px;
+        font-weight: 700;
+        margin-left: 2px;
+    }
+
+    .c-chat-toggle-btn {
+        padding: 6px 8px;
+        font-size: 13px;
+        min-width: 32px;
+        height: 32px;
+        justify-content: center;
+    }
+
+    .c-chat-feed {
+        padding: 10px 12px;
+        gap: 10px;
+    }
+
+    .c-chat-welcome {
+        padding: 12px;
+        border-radius: 12px;
+        margin-bottom: 4px;
+    }
+
+    .c-chat-welcome__icon {
+        font-size: 22px;
+        margin-bottom: 4px;
+    }
+
+    .c-chat-welcome__title {
+        font-size: 13px;
+    }
+
+    .c-chat-welcome__text {
+        font-size: 11px;
+    }
+
+    .c-chat-msg {
+        max-width: 92%;
+        gap: 8px;
+    }
+
+    .c-chat-msg__avatar {
+        width: 26px;
+        height: 26px;
+        font-size: 11px;
+    }
+
+    .c-chat-msg__bubble {
+        padding: 8px 12px;
+        font-size: 13px;
+        border-radius: 12px;
+    }
+
+    .c-chat-live-box {
+        margin: 0 10px 6px 10px;
+        padding: 6px 10px;
+        font-size: 11px;
+    }
+
+    .c-chat-dock {
+        padding: 10px 12px;
+        padding-bottom: max(22px, calc(env(safe-area-inset-bottom) + 16px));
+        gap: 8px;
+    }
+
+    .c-chat-mic-btn {
+        width: 40px;
+        height: 40px;
+        font-size: 16px;
+    }
+
+    .c-chat-send-btn {
+        width: 36px;
+        height: 36px;
+        font-size: 14px;
+    }
+
+    .c-chat-input-wrapper {
+        padding: 6px 12px;
+        border-radius: 20px;
+    }
+
+    .c-chat-textarea {
+        font-size: 16px; /* Prevents auto-zoom on iOS Safari */
+        max-height: 80px;
+        min-height: 24px;
+    }
+}
+
+/* --------------------------------------------------------------------------
+   Responsive Landscape Adjustments
+   -------------------------------------------------------------------------- */
+@media (orientation: landscape) {
+    .c-chat-header {
+        padding-top: calc(52px + 6px);
+        padding-bottom: 6px;
+        padding-left: max(14px, env(safe-area-inset-left));
+        padding-right: max(14px, env(safe-area-inset-right));
+    }
+
+    .c-chat-header__bot-info {
+        gap: 8px;
+    }
+
+    .c-chat-header__avatar {
+        width: 28px;
+        height: 28px;
+        font-size: 12px;
+    }
+
+    .c-chat-header__title {
+        font-size: 13px;
+    }
+
+    .c-chat-header__subtitle {
+        font-size: 10px;
+    }
+
+    .c-chat-header__controls {
+        gap: 6px;
+    }
+
+    .c-chat-toggle-label {
+        display: none;
+    }
+
+    .c-chat-toggle-btn {
+        padding: 4px 8px;
+        font-size: 12px;
+        height: 28px;
+        min-width: 28px;
+        justify-content: center;
+    }
+
+    .c-chat-feed {
+        padding: 8px 14px;
+        gap: 8px;
+    }
+
+    .c-chat-welcome {
+        padding: 8px 12px;
+        margin-bottom: 2px;
+    }
+
+    .c-chat-welcome__icon {
+        font-size: 18px;
+        margin-bottom: 2px;
+    }
+
+    .c-chat-welcome__title {
+        font-size: 12px;
+    }
+
+    .c-chat-welcome__text {
+        font-size: 10.5px;
+    }
+
+    .c-chat-live-box {
+        margin: 0 14px 4px 14px;
+        padding: 4px 8px;
+        font-size: 10.5px;
+    }
+
+    .c-chat-dock {
+        padding: 8px 14px;
+        padding-bottom: max(14px, calc(env(safe-area-inset-bottom) + 8px));
+        padding-left: max(14px, env(safe-area-inset-left));
+        padding-right: max(14px, env(safe-area-inset-right));
+        gap: 8px;
+    }
+
+    .c-chat-mic-btn {
+        width: 36px;
+        height: 36px;
+        font-size: 15px;
+    }
+
+    .c-chat-send-btn {
+        width: 32px;
+        height: 32px;
+        font-size: 13px;
+    }
+
+    .c-chat-input-wrapper {
+        padding: 4px 12px;
+        border-radius: 18px;
+    }
+
+    .c-chat-textarea {
+        max-height: 60px;
+        min-height: 22px;
+        font-size: 13px;
+    }
 }

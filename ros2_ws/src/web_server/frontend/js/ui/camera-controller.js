@@ -32,7 +32,11 @@ export class CameraController {
         // Sync ROS parameter when ROS connects
         this.rosConnectionHandler = () => {
             const apriltagEnabled = localStorage.getItem('calibration_apriltag_enabled') === 'true';
-            this.syncAprilTagParameter(apriltagEnabled);
+            if (apriltagEnabled) {
+                this.syncAprilTagParameter(true);
+            } else {
+                this._lastSyncedAprilTagState = false;
+            }
         };
         rosService.ros.on('connection', this.rosConnectionHandler);
 
@@ -89,6 +93,11 @@ export class CameraController {
     }
 
     syncAprilTagParameter(enabled) {
+        if (!enabled && this._lastSyncedAprilTagState === undefined) {
+            this._lastSyncedAprilTagState = false;
+            return;
+        }
+
         console.log('[CameraController] Syncing AprilTag parameter always_on =', enabled);
         const setParamsClient = rosService.createService(
             SERVICES.SET_APRILTAG_PARAMETERS,
@@ -109,13 +118,23 @@ export class CameraController {
                 },
                 (result) => {
                     console.log('[CameraController] AprilTag always_on set successful:', result);
+                    this._lastSyncedAprilTagState = enabled;
                 },
                 (error) => {
-                    console.error('[CameraController] Failed to set AprilTag always_on:', error);
+                    console.warn('[CameraController] Failed to set AprilTag always_on:', error);
+                    this._lastSyncedAprilTagState = null;
+                    if (enabled) {
+                        setTimeout(() => {
+                            if (localStorage.getItem('calibration_apriltag_enabled') === 'true' && rosService.isConnected) {
+                                this.syncAprilTagParameter(true);
+                            }
+                        }, 3000);
+                    }
                 }
             );
         } else {
             console.warn('[CameraController] set_parameters service client not ready');
+            this._lastSyncedAprilTagState = null;
         }
     }
 

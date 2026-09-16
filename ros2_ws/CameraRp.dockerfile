@@ -1,6 +1,6 @@
 FROM ros:humble
 
-# Install build dependencies for libcamera + camera_ros + apriltag_ros
+# Install build dependencies for libcamera + camera_ros
 RUN apt-get update && apt-get install -y \
     python3-pip \
     git \
@@ -20,7 +20,8 @@ RUN apt-get update && apt-get install -y \
     ros-humble-sensor-msgs \
     ros-humble-image-view \
     ros-humble-web-video-server \
-    ros-humble-image-proc
+    ros-humble-image-proc \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install newer meson via pip (required for libcamera build)
 RUN pip3 install --upgrade meson
@@ -41,10 +42,9 @@ RUN git clone https://github.com/raspberrypi/libcamera.git && \
     ninja -C build install && \
     cd .. && rm -rf libcamera
 
-# Build camera_ros and apriltag_ros in a colcon workspace
+# Build camera_ros in a colcon workspace
 WORKDIR /opt/camera_ws/src
-RUN git clone https://github.com/christianrauch/camera_ros.git && \
-    git clone https://github.com/christianrauch/apriltag_ros.git
+RUN git clone https://github.com/christianrauch/camera_ros.git
 
 WORKDIR /opt/camera_ws
 RUN . /opt/ros/humble/setup.sh && \
@@ -52,6 +52,7 @@ RUN . /opt/ros/humble/setup.sh && \
     rosdep update && \
     rosdep install -y --from-paths src --ignore-src --rosdistro humble --skip-keys=libcamera && \
     colcon build --event-handlers=console_direct+ --cmake-args -DCMAKE_BUILD_TYPE=Release && \
+    rm -rf /var/lib/apt/lists/* && \
     echo "source /opt/camera_ws/install/setup.bash" >> /root/.bashrc
 
 # Create workspace
@@ -70,7 +71,7 @@ if [ "$DEV" = "true" ]; then\n\
   colcon build --packages-select camera_ros --cmake-clean-cache\n\
 fi\n\
 source install/setup.bash\n\
-ros2 launch camera_ros camera_with_apriltag.launch.py' > /start_dev.sh && \
+ros2 launch camera_ros camera.launch.py' > /start_dev.sh && \
 chmod +x /start_dev.sh
 
 CMD ["/start_dev.sh"]

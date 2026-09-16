@@ -135,7 +135,7 @@ controller_server:
       # Turn-in-place & heading alignment (Committed rotation to overcome grass resistance)
       use_rotate_to_heading: true
       rotate_to_heading_min_angle: 0.785  # 45 deg: pivot on spot for turns > 45 deg
-      rotate_to_heading_angular_vel: 0.80 # High rotational speed to whip front caster through grass without stalling
+      rotate_to_heading_angular_vel: 1.50 # Aligned with diff_drive_controller max angular velocity (1.5 rad/s)
       max_angular_accel: 3.5              # Quick torque delivery for pivot turns
 
       # Obstacle Proximity & Curvature Regulation (High floor to preserve momentum on turf)
@@ -214,7 +214,7 @@ behavior_server:
     robot_base_frame: base_link
     transform_tolerance: 0.2
     simulate_ahead_time: 2.0
-    max_rotational_vel: 1.0  # Match diff_drive_controller and MPPI wz_max
+    max_rotational_vel: 1.5  # Match diff_drive_controller
     min_rotational_vel: 0.22  # Above hardware angular floor: 0.35 rad/s × (0.095/0.16) ≈ 0.208 rad/s
     rotational_acc_lim: 4.5  # Match diff drive limits
 
@@ -305,8 +305,8 @@ velocity_smoother:
     smoothing_frequency: 10.0        # Reduced from 20.0 to 15.0 Hz for better performance
     scale_velocities: false
     feedback: "OPEN_LOOP"
-    max_velocity: [0.3, 0.0, 1.0]  # Vx, Vy, Vw — match MPPI wz_max and diff_drive_controller
-    min_velocity: [-0.3, 0.0, -1.0]
+    max_velocity: [0.3, 0.0, 1.5]  # Vx, Vy, Vw — match diff_drive_controller
+    min_velocity: [0.0, 0.0, -1.5] # Pin Vx >= 0.0 (forward-only path tracking), angular symmetric ±1.5 rad/s
     max_accel: [1.2, 0.0, 4.5]  # Match diff drive acceleration limits
     max_decel: [-1.2, 0.0, -4.5]
     odom_topic: "/odometry/filtered"  # Use filtered odometry /odometry/filtered if something
