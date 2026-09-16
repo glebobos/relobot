@@ -210,15 +210,15 @@
             <diffuse>1 1 1 1</diffuse>
             <pbr>
               <metal>
-                <albedo_map>model://Apriltag36_11_00000/materials/textures/tag36_11_00000.png</albedo_map>
+                <albedo_map>model://Apriltag25_09_00000/materials/textures/tag25_09_00000.png</albedo_map>
                 <roughness>0.9</roughness>
                 <metalness>0.0</metalness>
               </metal>
             </pbr>
             <script>
-              <uri>model://Apriltag36_11_00000/materials/scripts</uri>
-              <uri>model://Apriltag36_11_00000/materials/textures</uri>
-              <name>Apriltag36_11_00000</name>
+              <uri>model://Apriltag25_09_00000/materials/scripts</uri>
+              <uri>model://Apriltag25_09_00000/materials/textures</uri>
+              <name>Apriltag25_09_00000</name>
             </script>
           </material>
         </visual>

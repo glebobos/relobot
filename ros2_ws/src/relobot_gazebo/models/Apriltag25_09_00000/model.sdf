@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<sdf version="1.6">
+  <model name="Apriltag25_09_00000">
+    <static>true</static>
+    <link name="main">
+      <visual name="main_Visual">
+        <geometry>
+          <box>
+            <size>0.141 0.141 0.002</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+          <diffuse>1 1 1 1</diffuse>
+          <pbr>
+            <metal>
+              <albedo_map>model://Apriltag25_09_00000/materials/textures/tag25_09_00000.png</albedo_map>
+              <roughness>0.9</roughness>
+              <metalness>0.0</metalness>
+            </metal>
+          </pbr>
+          <script>
+            <uri>model://Apriltag25_09_00000/materials/scripts</uri>
+            <uri>model://Apriltag25_09_00000/materials/textures</uri>
+            <name>Apriltag25_09_00000</name>
+          </script>
+        </material>
+      </visual>
+    </link>
+  </model>
+</sdf>

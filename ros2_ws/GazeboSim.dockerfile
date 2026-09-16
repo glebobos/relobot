@@ -37,16 +37,13 @@ RUN apt-get update && apt-get install -y \
     ros-humble-rviz2 \
     && rm -rf /var/lib/apt/lists/*
 
-# Install AprilTag Gazebo models
-RUN git clone --depth 1 https://github.com/koide3/gazebo_apriltag.git /opt/gazebo_apriltag
-
 # Set up environment for WSLg / GPU / X11 / Gazebo Models
 ENV QT_X11_NO_MITSHM=1
 ENV NVIDIA_VISIBLE_DEVICES=all
 ENV NVIDIA_DRIVER_CAPABILITIES=all
-ENV GZ_SIM_RESOURCE_PATH=/opt/gazebo_apriltag/models:${GZ_SIM_RESOURCE_PATH}
-ENV IGN_GAZEBO_RESOURCE_PATH=/opt/gazebo_apriltag/models:${IGN_GAZEBO_RESOURCE_PATH}
-ENV GAZEBO_MODEL_PATH=/opt/gazebo_apriltag/models:${GAZEBO_MODEL_PATH}
+ENV GZ_SIM_RESOURCE_PATH=/ros2_ws/src/relobot_gazebo/models:${GZ_SIM_RESOURCE_PATH}
+ENV IGN_GAZEBO_RESOURCE_PATH=/ros2_ws/src/relobot_gazebo/models:${IGN_GAZEBO_RESOURCE_PATH}
+ENV GAZEBO_MODEL_PATH=/ros2_ws/src/relobot_gazebo/models:${GAZEBO_MODEL_PATH}
 
 # Workspace setup
 WORKDIR /ros2_ws
@@ -69,6 +66,10 @@ fi\n\
 if [ ! -e "/dev/dxg" ] && [ ! -e "/dev/dri" ] && [ -z "$NVIDIA_VISIBLE_DEVICES" ]; then\n\
     export LIBGL_ALWAYS_SOFTWARE=1\n\
 fi\n\
+\n\
+export GZ_SIM_RESOURCE_PATH="/ros2_ws/src/relobot_gazebo/models:${GZ_SIM_RESOURCE_PATH}"\n\
+export IGN_GAZEBO_RESOURCE_PATH="/ros2_ws/src/relobot_gazebo/models:${IGN_GAZEBO_RESOURCE_PATH}"\n\
+export GAZEBO_MODEL_PATH="/ros2_ws/src/relobot_gazebo/models:${GAZEBO_MODEL_PATH}"\n\
 \n\
 if [ "$DEV" = "true" ] || [ ! -f /ros2_ws/install/relobot_gazebo/share/relobot_gazebo/package.xml ]; then\n\
     colcon build --packages-select diff_drive_hardware relobot_gazebo --symlink-install\n\

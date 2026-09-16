@@ -8,12 +8,8 @@ from ament_index_python.packages import get_package_share_directory
 
 def generate_launch_description():
     """
-    Generate a launch description for the camera node with AprilTag detection
-    and dock pose publisher bridge.
-
-    AprilTag is NOT loaded at startup — the apriltag_manager node will
-    dynamically load it into camera_container only when a dock goal is active,
-    saving ~30 % CPU when idle.
+    Generate a launch description for the camera node with image rectification
+    and web video server streaming.
 
     Returns
     -------
@@ -63,7 +59,6 @@ def generate_launch_description():
                 ],
                 extra_arguments=[{'use_intra_process_comms': True}],
             ),
-            # AprilTag is loaded on-demand by apriltag_manager
             # Web Video Server for HTTP streaming (port 8080)
             ComposableNode(
                 package='web_video_server',
@@ -82,16 +77,6 @@ def generate_launch_description():
         on_exit=Shutdown(),
     )
 
-    # AprilTag manager: dynamically loads/unloads AprilTag + dock_pose_publisher
-    # when the /dock_robot action becomes active/inactive.
-    apriltag_manager = Node(
-        package='camera_ros',
-        executable='apriltag_manager',
-        name='apriltag_manager',
-        output='screen',
-        on_exit=Shutdown(),
-    )
-
     # System monitor node: monitors and publishes CPU and RAM stats
     system_monitor = Node(
         package='camera_ros',
@@ -104,7 +89,6 @@ def generate_launch_description():
     return LaunchDescription([
         camera_launch_arg,
         container,
-        apriltag_manager,
         system_monitor,
     ])
 

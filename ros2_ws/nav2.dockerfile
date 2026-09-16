@@ -16,6 +16,9 @@ RUN apt-get update && apt-get install -y \
     ros-humble-opennav-docking \
     ros-humble-opennav-docking-core \
     ros-humble-opennav-docking-bt \
+    ros-humble-tf2-geometry-msgs \
+    ros-humble-apriltag \
+    ros-humble-apriltag-ros \
     && rm -rf /var/lib/apt/lists/*
 
 # Install coverage build prerequisites in a separate layer so Docker can reuse

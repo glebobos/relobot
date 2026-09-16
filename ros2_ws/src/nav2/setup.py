@@ -19,6 +19,7 @@ setup(
             'config/slam_toolbox_config.yaml',
             'config/explore_lite_params.yaml',
             'config/robot_pose_publisher.yaml',
+            'config/apriltag.yaml',
         ]),
         ('share/' + package_name + '/behavior_trees', glob('behavior_trees/*.xml')),
     ],
@@ -33,6 +34,7 @@ setup(
         'console_scripts': [
             'coverage_manager = frontier_explorer.coverage_manager:main',
             'coverage_preview_test = frontier_explorer.coverage_preview_test:main',
+            'apriltag_manager = docking.apriltag_manager:main',
         ],
     },
 )

@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
-"""On-demand AprilTag loader for dock actions."""
+"""On-demand AprilTag and Dock Pose Publisher manager for Nav2 docking."""
 
 import os
-import subprocess
 import threading
 
 import yaml
 import rclpy
 from rclpy.node import Node
-from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
+from rclpy.parameter import Parameter
+from rclpy.callback_groups import ReentrantCallbackGroup
+from rclpy.executors import MultiThreadedExecutor
+from geometry_msgs.msg import PoseStamped
+import tf2_ros
 from action_msgs.msg import GoalStatusArray, GoalStatus
 from composition_interfaces.srv import LoadNode, UnloadNode
 from rcl_interfaces.msg import (
@@ -27,7 +30,7 @@ ACTIVE_STATUSES = frozenset({
 
 
 # ------------------------------------------------------------------
-# Pure helpers (module-level, stateless)
+# Helpers for converting YAML parameters to ROS2 Parameter messages
 # ------------------------------------------------------------------
 def _flatten_dict(d: dict, prefix: str = '', sep: str = '.') -> dict:
     items: dict = {}
@@ -72,62 +75,76 @@ class AprilTagManager(Node):
     def __init__(self):
         super().__init__('apriltag_manager')
 
-        # --- ROS parameters (replaces env-var) ---
-        self.declare_parameter('container', '/camera_container')
+        # --- ROS parameters ---
+        self.declare_parameter('container', 'nav2_container')
         self.declare_parameter('dock_action', '/dock_robot')
         self.declare_parameter('dock_tag_frame', 'tag25h9:0')
+        self.declare_parameter('base_frame', 'odom')
+        self.declare_parameter('publish_rate', 10.0)
         self.declare_parameter('always_on', False)
 
-        container = self.get_parameter('container').value
+        container_param = str(self.get_parameter('container').value).strip('/')
         dock_action = self.get_parameter('dock_action').value
         self._tag_frame = self.get_parameter('dock_tag_frame').value
-        self._always_on = self.get_parameter('always_on').value
+        self._base_frame = self.get_parameter('base_frame').value
+        self._publish_rate = float(self.get_parameter('publish_rate').value)
+        self._always_on = bool(self.get_parameter('always_on').value)
+        self._use_sim_time = bool(self.get_parameter_or(
+            'use_sim_time', Parameter('use_sim_time', Parameter.Type.BOOL, False)).value)
 
-        # --- state ---
+        # --- State ---
         self._lock = threading.Lock()
         self._apriltag_uid: int | None = None
-        self._dock_pose_proc: subprocess.Popen | None = None
         self._loading = False
         self._active_goals: set[tuple] = set()
-        
         self._retry_timer = None
 
-        # --- load YAML once at startup ---
+        # --- In-Process Dock Pose Publishing (Zero subprocess) ---
+        self._tf_buffer = tf2_ros.Buffer()
+        self._tf_listener = tf2_ros.TransformListener(self._tf_buffer, self)
+        self._dock_pub = self.create_publisher(PoseStamped, '/detected_dock_pose', 10)
+        self._dock_timer = None
+        self._last_pose: PoseStamped | None = None
+        self._last_detected_time: rclpy.time.Time | None = None
+
+        # --- Load YAML once at startup ---
         try:
             self._apriltag_params = _load_yaml_params(
-                'camera_ros', 'config/apriltag.yaml', 'apriltag')
+                'nav2', 'config/apriltag.yaml', 'apriltag')
+            if self._use_sim_time:
+                self._apriltag_params.append(_make_param('use_sim_time', True))
         except Exception as e:
             self.get_logger().fatal(f'Cannot load apriltag.yaml: {e}')
             raise
 
-        # --- composition clients ---
-        cb = MutuallyExclusiveCallbackGroup()
+        # --- Composition clients ---
+        cb = ReentrantCallbackGroup()
         self._load_cli = self.create_client(
-            LoadNode, f'{container}/_container/load_node', callback_group=cb)
+            LoadNode, f'/{container_param}/_container/load_node', callback_group=cb)
         self._unload_cli = self.create_client(
-            UnloadNode, f'{container}/_container/unload_node', callback_group=cb)
+            UnloadNode, f'/{container_param}/_container/unload_node', callback_group=cb)
 
-        # --- Always subscribe to status ---
+        # --- Subscribe to dock action status ---
         self.create_subscription(
             GoalStatusArray, f'{dock_action}/_action/status',
             self._on_dock_status, 10)
 
-        # --- Register parameter callback ---
+        # --- Register dynamic parameter callback ---
         self.add_on_set_parameters_callback(self._on_set_parameters)
 
-        # --- kick-off ---
+        # --- Kick off if always_on requested ---
         if self._always_on:
-            self.get_logger().info('always_on — will load AprilTag permanently')
+            self.get_logger().info('always_on is enabled — will load AprilTag permanently')
             self._retry_timer = self.create_timer(1.0, self._try_load)
         else:
-            self.get_logger().info('Waiting for dock goals')
+            self.get_logger().info(f'AprilTag manager initialized. Listening for dock goals on {dock_action}...')
 
     # ------------------------------------------------------------------
     def _on_set_parameters(self, params):
         result = SetParametersResult(successful=True)
         for param in params:
             if param.name == 'always_on':
-                new_val = param.value
+                new_val = bool(param.value)
                 self.get_logger().info(f'always_on parameter set dynamically to {new_val}')
                 if new_val != self._always_on:
                     self._always_on = new_val
@@ -172,14 +189,13 @@ class AprilTagManager(Node):
             if self._apriltag_uid is not None or self._loading:
                 return
             if not self._load_cli.service_is_ready():
-                self.get_logger().warn('LoadNode not ready — retrying in 1 s')
-                # Start a timer only if one is not already running
+                self.get_logger().warn('LoadNode service not ready yet — retrying in 1 s')
                 if self._retry_timer is None:
                     self._retry_timer = self.create_timer(1.0, self._try_load)
                 return
             self._loading = True
 
-        self.get_logger().info('Loading AprilTag …')
+        self.get_logger().info('Loading AprilTag into composition container...')
         req = LoadNode.Request()
         req.package_name = 'apriltag_ros'
         req.plugin_name = 'AprilTagNode'
@@ -191,7 +207,7 @@ class AprilTagManager(Node):
         req.parameters = self._apriltag_params
         req.extra_arguments = [
             rclpy.parameter.Parameter(
-                'use_intra_process_comms', value=True,
+                'use_intra_process_comms', value=False,
             ).to_parameter_msg(),
         ]
         self._load_cli.call_async(req).add_done_callback(self._on_load_done)
@@ -199,24 +215,24 @@ class AprilTagManager(Node):
     def _on_load_done(self, future):
         with self._lock:
             self._loading = False
-            
+
         try:
             res = future.result()
         except Exception as e:
             self.get_logger().error(f'LoadNode call failed: {e}')
             return
-            
+
         if not res.success:
             self.get_logger().error(f'LoadNode rejected: {res.error_message}')
             return
-            
+
         with self._lock:
             self._apriltag_uid = res.unique_id
-            
-        self.get_logger().info(f'AprilTag loaded (uid={res.unique_id})')
+
+        self.get_logger().info(f'AprilTag loaded successfully (uid={res.unique_id})')
         self._start_dock_pose_publisher()
-        
-        # [CRITICAL FIX] Handle race condition: goal ended while we were busy loading
+
+        # Handle race condition: goal ended while loading
         if not self._always_on and not self._active_goals:
             self.get_logger().info('Dock goal finished during load; unloading immediately.')
             self._unload_apriltag()
@@ -224,19 +240,19 @@ class AprilTagManager(Node):
     # ------------------------------------------------------------------
     def _unload_apriltag(self):
         self._stop_dock_pose_publisher()
-        
+
         with self._lock:
             uid = self._apriltag_uid
             self._apriltag_uid = None
-            
+
         if uid is None:
             return
-            
+
         if not self._unload_cli.service_is_ready():
             self.get_logger().error('UnloadNode service unavailable')
             return
-            
-        self.get_logger().info('Unloading AprilTag …')
+
+        self.get_logger().info('Unloading AprilTag from container...')
         self._unload_cli.call_async(
             UnloadNode.Request(unique_id=uid),
         ).add_done_callback(self._on_unload_done)
@@ -245,7 +261,7 @@ class AprilTagManager(Node):
         try:
             res = future.result()
             if res.success:
-                self.get_logger().info('AprilTag unloaded')
+                self.get_logger().info('AprilTag unloaded successfully')
             else:
                 self.get_logger().error(f'Unload failed: {res.error_message}')
         except Exception as e:
@@ -253,43 +269,66 @@ class AprilTagManager(Node):
 
     # ------------------------------------------------------------------
     def _start_dock_pose_publisher(self):
-        if self._dock_pose_proc is not None:
-            return
-        self.get_logger().info('Starting dock_pose_publisher')
-        try:
-            self._dock_pose_proc = subprocess.Popen(
-                ['ros2', 'run', 'camera_ros', 'dock_pose_publisher',
-                 '--ros-args',
-                 '-p', f'dock_tag_frame:={self._tag_frame}',
-                 '-p', 'base_frame:=odom'],
-                start_new_session=True,
-            )
-        except Exception as e:
-            self.get_logger().error(f'dock_pose_publisher start failed: {e}')
+        with self._lock:
+            if self._dock_timer is not None:
+                return
+            rate = max(self._publish_rate, 1.0)
+            self.get_logger().info(
+                f'Activating in-process dock pose publisher: {self._base_frame} -> {self._tag_frame} @ {rate:.1f} Hz')
+            self._dock_timer = self.create_timer(1.0 / rate, self._publish_dock_pose)
 
     def _stop_dock_pose_publisher(self):
-        proc = self._dock_pose_proc
-        if proc is None:
-            return
-        self._dock_pose_proc = None
-        proc.terminate()
+        with self._lock:
+            if self._dock_timer is None:
+                return
+            self.get_logger().info('Deactivating dock pose publisher...')
+            self._dock_timer.cancel()
+            self._dock_timer = None
+            self._last_pose = None
+            self._last_detected_time = None
+
+    def _publish_dock_pose(self):
+        now = self.get_clock().now()
         try:
-            proc.wait(timeout=5.0)
-        except subprocess.TimeoutExpired:
-            proc.kill()
-        self.get_logger().info('dock_pose_publisher stopped')
+            t = self._tf_buffer.lookup_transform(
+                self._base_frame, self._tag_frame, rclpy.time.Time())
+            msg = PoseStamped()
+            msg.header.frame_id = t.header.frame_id
+            msg.header.stamp = now.to_msg()
+            msg.pose.position.x = t.transform.translation.x
+            msg.pose.position.y = t.transform.translation.y
+            msg.pose.position.z = t.transform.translation.z
+            msg.pose.orientation = t.transform.rotation
+            self._last_pose = msg
+            self._last_detected_time = now
+            self._dock_pub.publish(msg)
+        except (tf2_ros.LookupException,
+                tf2_ros.ConnectivityException,
+                tf2_ros.ExtrapolationException):
+            # Only republish last known pose if seen recently (< 0.8 s)
+            # to smooth momentary frame drops during close approach
+            if self._last_pose is not None and self._last_detected_time is not None:
+                age_sec = (now - self._last_detected_time).nanoseconds / 1e9
+                if age_sec < 0.8:
+                    self._last_pose.header.stamp = now.to_msg()
+                    self._dock_pub.publish(self._last_pose)
+                else:
+                    self._last_pose = None
 
 
 def main(args=None):
     rclpy.init(args=args)
     node = AprilTagManager()
+    executor = MultiThreadedExecutor()
+    executor.add_node(node)
     try:
-        rclpy.spin(node)
+        executor.spin()
     except KeyboardInterrupt:
         pass
     finally:
         node._unload_apriltag()
         node._stop_dock_pose_publisher()
+        executor.shutdown()
         node.destroy_node()
         rclpy.shutdown()
 

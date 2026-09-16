@@ -71,13 +71,19 @@ def generate_launch_description():
 
     # Set GZ resource path for models/worlds
     worlds_path = os.path.join(pkg_relobot_gazebo, 'worlds')
-    opt_models_path = '/opt/gazebo_apriltag/models'
-    resource_paths = [worlds_path, opt_models_path]
+    pkg_models_path = os.path.join(pkg_relobot_gazebo, 'models')
+    src_models_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'models'))
+    resource_paths = [src_models_path, pkg_models_path, worlds_path]
     for env_var in ('GZ_SIM_RESOURCE_PATH', 'IGN_GAZEBO_RESOURCE_PATH', 'GAZEBO_MODEL_PATH'):
         val = os.environ.get(env_var, '')
         if val:
             resource_paths.append(val)
     combined_resource_path = ':'.join(resource_paths)
+
+    # Export directly to process environment so all spawned children inherit it
+    os.environ['GZ_SIM_RESOURCE_PATH'] = combined_resource_path
+    os.environ['IGN_GAZEBO_RESOURCE_PATH'] = combined_resource_path
+    os.environ['GAZEBO_MODEL_PATH'] = combined_resource_path
 
     gz_resource_path = SetEnvironmentVariable(
         name='GZ_SIM_RESOURCE_PATH',
@@ -251,3 +257,5 @@ def generate_launch_description():
         ekf_node,
         web_video_server_node,
     ])
+
+
