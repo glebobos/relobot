@@ -141,6 +141,10 @@ export class ChatService {
                 if (this.onStatus) this.onStatus(data);
                 break;
 
+            case 'status_update':
+                if (this.onStatusUpdate) this.onStatusUpdate(data.status, msgId, convId);
+                break;
+
             case 'audio_start':
                 this.serverSampleRate = data.sample_rate || 22050;
                 this._initAudioStream();

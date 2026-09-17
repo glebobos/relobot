@@ -22,4 +22,10 @@ def generate_launch_description():
                 'send_action_goals_in_new_thread': True,
             }]
         ),
+        Node(
+            package='rosapi',
+            executable='rosapi_node',
+            name='rosapi',
+            output='screen',
+        ),
     ])

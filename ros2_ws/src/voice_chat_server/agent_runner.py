@@ -23,9 +23,9 @@ RELOBOT_SYSTEM_PROMPT = (
     "1. Caveman brevity: Respond directly with extreme brevity (1-2 short sentences maximum). Blunt, curt, and caustic. "
     "2. Zero fluff: No pleasantries, no apologies, no conversational filler, no sugarcoating. "
     "3. No unprompted monologues: Do NOT recite your backstory or mechanical specs unless explicitly asked. "
-    "4. Strict evidence: State ONLY verified facts from files or telemetry. Never guess or speculate. If data is missing or unverified, state 'No data' or 'Unknown'. "
+    "4. Strict evidence: State ONLY verified facts from files, telemetry, or ROS MCP tools. Never guess or speculate. If data is missing or unverified, state 'No data' or 'Unknown'. "
     "5. Spoken output: English only. Never output markdown formatting, asterisks, bullet points, or code blocks. "
-    "6. Tool restrictions: You are strictly restricted to read-only file inspection (view_file). Never attempt to run bash commands, edit files, or execute other tools."
+    "6. Tools & ROS Integration: You have direct access to the robot via ros-mcp server tools (call_mcp_tool) and read-only file inspection (view_file). Always follow the workspace rules in .agents/rules/robot_control.md to execute robot actions (dock, undock, explore, stop) in one shot without prior investigation."
 )
 
 AGY_DEFAULT_MODEL = os.getenv("AGY_MODEL", "gemini-3.7-flash-low")
@@ -92,6 +92,54 @@ def find_agy_binary() -> Optional[str]:
     return None
 
 
+def format_tool_status(step: dict) -> str:
+    """
+    Generates a generic, comprehensive status message from any tool execution step.
+    Fully dynamic: supports any MCP server name, any tool call, native tools, or custom plugins
+    without hardcoded names.
+    """
+    tool_name = step.get("tool_name") or step.get("tool_info", {}).get("name") or step.get("name") or ""
+    tool_args = step.get("tool_arguments") or step.get("args") or step.get("parameters") or step.get("input") or {}
+    if isinstance(tool_args, str):
+        try:
+            tool_args = json.loads(tool_args)
+        except Exception:
+            tool_args = {}
+
+    tool_action = tool_args.get("toolAction") or tool_args.get("toolSummary")
+    server_name = tool_args.get("ServerName") or tool_args.get("server_name")
+    mcp_tool = tool_args.get("ToolName") or tool_args.get("tool_name")
+
+    # MCP tool invocation
+    if server_name or mcp_tool or tool_name == "call_mcp_tool":
+        server_tag = f"[{server_name}] " if server_name else ""
+        if tool_action:
+            return f"{server_tag}{tool_action}..."
+        if mcp_tool:
+            return f"{server_tag}{mcp_tool}..."
+        return f"{server_tag}Executing MCP tool..."
+
+    # Natural action summary if provided by agent/tool schema
+    if tool_action:
+        return f"{tool_action}..."
+
+    # Generic tool name formatting
+    if tool_name:
+        clean_name = tool_name.replace("_", " ").strip().title()
+        # Check for descriptive target argument (e.g. filename, query, command)
+        for key in ("AbsolutePath", "path", "file", "TargetFile", "Query", "query", "CommandLine", "command", "url", "Url"):
+            val = tool_args.get(key)
+            if val and isinstance(val, str):
+                target = os.path.basename(val) if ("/" in val or "\\" in val) else val
+                target = target.strip()
+                if len(target) > 30:
+                    target = target[:27] + "..."
+                return f"{clean_name}: {target}..."
+        return f"{clean_name}..."
+
+    return "Thinking..."
+
+
 class AgentRunner:
     """Manages real-time streaming communication with the Antigravity (AGY) CLI."""
 
@@ -125,7 +173,10 @@ class AgentRunner:
         active_prompt, active_model = load_agent_definition(self.agent_name)
         current_model = self.model or active_model
 
-        cmd = [self.agy_bin]
+        cmd = [
+            self.agy_bin,
+            "--dangerously-skip-permissions",
+        ]
         if conversation_id and conversation_id.strip():
             cmd.extend([
                 "--conversation", conversation_id.strip(),
@@ -159,6 +210,7 @@ class AgentRunner:
                 stderr=asyncio.subprocess.PIPE
             )
             logger.info(f"AGY process active [PID: {proc.pid}]")
+            yield {"event": "status", "status": "Thinking...", "conversation_id": current_conv_id}
 
             while True:
                 line = await proc.stdout.readline()
@@ -178,6 +230,12 @@ class AgentRunner:
 
                     elif event_type == "step_update":
                         step = event_data.get("step_update", {})
+                        step_type = step.get("step_type") or step.get("type")
+                        if step_type in ("tool", "tool_call", "action") or "tool_name" in step or "tool_info" in step:
+                            status_msg = format_tool_status(step)
+                            logger.info(f"AGY tool execution: {status_msg}")
+                            yield {"event": "status", "status": status_msg, "conversation_id": current_conv_id}
+
                         delta = step.get("text_delta") or step.get("delta") or step.get("content") or ""
                         if delta:
                             token_count += 1

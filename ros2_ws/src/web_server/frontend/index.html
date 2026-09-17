@@ -220,10 +220,12 @@
                                                 <i class="fas fa-fingerprint"></i> <span id="chatSessionId">New Session</span>
                                             </span>
                                         </div>
-                                        <span class="c-chat-header__subtitle" id="chatStatusBadge">Online</span>
                                     </div>
                                 </div>
                                 <div class="c-chat-header__controls">
+                                    <button class="c-chat-toggle-btn c-chat-advanced-btn" id="toggleChatAdvanced" title="Toggle Advanced Interactive AGY Terminal">
+                                        <i class="fas fa-terminal"></i> <span class="c-chat-toggle-label">Advanced</span>
+                                    </button>
                                     <button class="c-chat-toggle-btn c-chat-lang-btn" id="toggleChatLang" title="Toggle Voice Recognition Language (English / Russian)">
                                         <i class="fas fa-language"></i> <span class="c-chat-toggle-label" id="chatLangLabel">EN</span>
                                     </button>
@@ -261,7 +263,7 @@
                             </div>
 
                             <!-- Input & Microphone Dock -->
-                            <div class="c-chat-dock">
+                            <div class="c-chat-dock" id="chatDock">
                                 <button class="c-chat-mic-btn" id="chatMicBtn" title="Tap to Speak (Voice Transcript)">
                                     <i class="fas fa-microphone"></i>
                                 </button>
@@ -271,6 +273,11 @@
                                 <button class="c-chat-send-btn" id="chatSendBtn" title="Send Message">
                                     <i class="fas fa-paper-plane"></i>
                                 </button>
+                            </div>
+
+                            <!-- Advanced AGY Interactive Terminal View -->
+                            <div class="c-chat-terminal-view" id="chatTerminalView">
+                                <iframe class="c-chat-terminal-frame" id="chatTerminalFrame" src="" allow="clipboard-read; clipboard-write"></iframe>
                             </div>
                         </div>
                     </div>

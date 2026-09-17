@@ -18,6 +18,7 @@ sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 from agent_runner import AgentRunner
 from tts_engine import OptimusTTS, normalize_text_for_speech
 from audio_output import PcmAudioSink
+from terminal_manager import TerminalManager
 
 logging.basicConfig(
     level=logging.INFO,
@@ -40,6 +41,11 @@ class VoiceChatServer:
 
     def __init__(self):
         self.agent = AgentRunner()
+        self.terminal: Optional[TerminalManager] = None
+        try:
+            self.terminal = TerminalManager()
+        except Exception as e:
+            logger.warning("Could not initialize TerminalManager: %s", e)
         self.tts: Optional[OptimusTTS] = None
         self._init_tts()
 
@@ -74,6 +80,8 @@ class VoiceChatServer:
                         "type": "status",
                         "has_agy": self.agent.agy_bin is not None,
                         "agy_path": self.agent.agy_bin,
+                        "has_terminal": self.terminal.is_running if self.terminal else False,
+                        "terminal_url": "/agy-terminal/",
                         "has_tts": self.tts is not None,
                         "sample_rate": self.tts.sample_rate if self.tts else 22050,
                         "ready": True
@@ -169,6 +177,15 @@ class VoiceChatServer:
                     active_conv_id = event_item.get("conversation_id") or active_conv_id
                     await websocket.send(json.dumps({
                         "type": "init",
+                        "msg_id": msg_id,
+                        "conversation_id": active_conv_id
+                    }))
+
+                elif ev_type == "status":
+                    status_text = event_item.get("status", "")
+                    await websocket.send(json.dumps({
+                        "type": "status_update",
+                        "status": status_text,
                         "msg_id": msg_id,
                         "conversation_id": active_conv_id
                     }))
@@ -337,18 +354,24 @@ class VoiceChatServer:
 async def main():
     import websockets
     server_instance = VoiceChatServer()
-    logger.info(f"Starting ReloBot Voice Chat WebSocket Server on ws://{HOST}:{PORT}")
+    if server_instance.terminal:
+        await server_instance.terminal.start()
+    logger.info("Starting ReloBot Voice Chat WebSocket Server on ws://%s:%s", HOST, PORT)
 
-    async with websockets.serve(
-        server_instance.handle_connection,
-        HOST,
-        PORT,
-        ping_interval=20,
-        ping_timeout=20,
-        max_size=10 * 1024 * 1024
-    ):
-        logger.info(f"ReloBot Voice Chat Server listening on {HOST}:{PORT}")
-        await asyncio.Future()
+    try:
+        async with websockets.serve(
+            server_instance.handle_connection,
+            HOST,
+            PORT,
+            ping_interval=20,
+            ping_timeout=20,
+            max_size=10 * 1024 * 1024
+        ):
+            logger.info("ReloBot Voice Chat Server listening on %s:%s", HOST, PORT)
+            await asyncio.Future()
+    finally:
+        if server_instance.terminal:
+            await server_instance.terminal.stop()
 
 
 if __name__ == "__main__":
