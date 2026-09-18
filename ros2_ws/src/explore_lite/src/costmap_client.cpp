@@ -68,12 +68,9 @@ Costmap2DClient::Costmap2DClient(rclcpp::Node& node, const tf2_ros::Buffer* tf)
   node_.get_parameter("robot_base_frame", robot_base_frame_);
   node_.get_parameter("transform_tolerance", transform_tolerance_);
 
-  /* initialize costmap with transient local QoS for SLAM map compatibility */
-  rclcpp::QoS map_qos(10);
-  map_qos.transient_local();
-  map_qos.reliable();
+  /* initialize costmap */
   costmap_sub_ = node_.create_subscription<nav_msgs::msg::OccupancyGrid>(
-      costmap_topic, map_qos,
+      costmap_topic, 1000,
       [this](const nav_msgs::msg::OccupancyGrid::SharedPtr msg) {
         costmap_received_ = true;
         updateFullMap(msg);

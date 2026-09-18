@@ -16,7 +16,7 @@ namespace frontier_exploration
  * @param costmap Reference to map data
  * @return neighbour cell indexes
  */
-inline std::vector<unsigned int> nhood4(unsigned int idx,
+std::vector<unsigned int> nhood4(unsigned int idx,
                                  const nav2_costmap_2d::Costmap2D& costmap)
 {
   // get 4-connected neighbourhood indexes, check for edge of map
@@ -53,7 +53,7 @@ inline std::vector<unsigned int> nhood4(unsigned int idx,
  * @param costmap Reference to map data
  * @return neighbour cell indexes
  */
-inline std::vector<unsigned int> nhood8(unsigned int idx,
+std::vector<unsigned int> nhood8(unsigned int idx,
                                  const nav2_costmap_2d::Costmap2D& costmap)
 {
   // get 8-connected neighbourhood indexes, check for edge of map
@@ -90,7 +90,7 @@ inline std::vector<unsigned int> nhood8(unsigned int idx,
  * @param costmap Reference to map data
  * @return True if a cell with the requested value was found
  */
-inline bool nearestCell(unsigned int& result, unsigned int start, unsigned char val,
+bool nearestCell(unsigned int& result, unsigned int start, unsigned char val,
                  const nav2_costmap_2d::Costmap2D& costmap)
 {
   const unsigned char* map = costmap.getCharMap();

@@ -10,7 +10,6 @@
   gz_type_name: "gz.msgs.LaserScan"
   direction: GZ_TO_ROS
   frame_id: "base_laser"
-  lazy: true
 
 - ros_topic_name: "/imu"
   gz_topic_name: "/imu"

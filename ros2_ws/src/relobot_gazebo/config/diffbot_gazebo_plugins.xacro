@@ -62,7 +62,6 @@
     <kp>1000000.0</kp>
     <kd>10.0</kd>
     <minDepth>0.001</minDepth>
-    <maxContacts>2</maxContacts>
     <material>Gazebo/Black</material>
   </gazebo>
 
@@ -72,7 +71,6 @@
     <kp>1000000.0</kp>
     <kd>10.0</kd>
     <minDepth>0.001</minDepth>
-    <maxContacts>2</maxContacts>
     <material>Gazebo/Black</material>
   </gazebo>
 
@@ -81,7 +79,6 @@
     <mu2>0.001</mu2>
     <kp>1000000.0</kp>
     <kd>10.0</kd>
-    <maxContacts>2</maxContacts>
     <surface>
       <friction>
         <ode>
@@ -100,7 +97,6 @@
     <mu2>0.001</mu2>
     <kp>1000000.0</kp>
     <kd>10.0</kd>
-    <maxContacts>2</maxContacts>
     <surface>
       <friction>
         <ode>

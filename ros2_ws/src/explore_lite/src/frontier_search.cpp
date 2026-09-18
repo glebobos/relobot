@@ -66,8 +66,9 @@ FrontierSearch::searchFrom(geometry_msgs::msg::Point position)
 
     // iterate over 4-connected neighbourhood
     for (unsigned nbr : nhood4(idx, *costmap_)) {
-      // add to queue all traversable, unvisited cells
-      if (map_[nbr] < LETHAL_OBSTACLE && map_[nbr] != NO_INFORMATION && !visited_flag[nbr]) {
+      // add to queue all free, unvisited cells, use descending search in case
+      // initialized on non-free cell
+      if (map_[nbr] <= map_[idx] && !visited_flag[nbr]) {
         visited_flag[nbr] = true;
         bfs.push(nbr);
         // check if cell is new frontier cell (unvisited, NO_INFORMATION, free
@@ -100,35 +101,25 @@ Frontier FrontierSearch::buildNewFrontier(unsigned int initial_cell,
 {
   // initialize frontier structure
   Frontier output;
+  output.centroid.x = 0;
+  output.centroid.y = 0;
   output.size = 1;
+  output.min_distance = std::numeric_limits<double>::infinity();
 
   // record initial contact point for frontier
   unsigned int ix, iy;
   costmap_->indexToCells(initial_cell, ix, iy);
   costmap_->mapToWorld(ix, iy, output.initial.x, output.initial.y);
 
+  // push initial gridcell onto queue
+  std::queue<unsigned int> bfs;
+  bfs.push(initial_cell);
+
   // cache reference position in world coords
   unsigned int rx, ry;
   double reference_x, reference_y;
   costmap_->indexToCells(reference, rx, ry);
   costmap_->mapToWorld(rx, ry, reference_x, reference_y);
-
-  // initialize output with the initial contact cell
-  output.points.push_back(output.initial);
-  output.centroid.x = output.initial.x;
-  output.centroid.y = output.initial.y;
-  output.middle = output.initial;
-  output.min_distance = std::hypot(reference_x - output.initial.x,
-                                   reference_y - output.initial.y);
-
-  // push initial gridcell onto queue
-  std::queue<unsigned int> bfs;
-  bfs.push(initial_cell);
-
-  // Maximum size of a single frontier segment before splitting (~1.5m)
-  // At 0.05m resolution, 30 cells ≈ 1.5m. This prevents a circular clearing
-  // from collapsing into 1 giant frontier with a centroid at the robot.
-  const size_t max_frontier_cells = static_cast<size_t>(1.5 / std::max(costmap_->getResolution(), 0.01));
 
   while (!bfs.empty()) {
     unsigned int idx = bfs.front();
@@ -159,17 +150,16 @@ Frontier FrontierSearch::buildNewFrontier(unsigned int initial_cell,
 
         // determine frontier's distance from robot, going by closest gridcell
         // to robot
-        double distance = std::hypot(reference_x - wx, reference_y - wy);
+        double distance = sqrt(pow((double(reference_x) - double(wx)), 2.0) +
+                               pow((double(reference_y) - double(wy)), 2.0));
         if (distance < output.min_distance) {
           output.min_distance = distance;
           output.middle.x = wx;
           output.middle.y = wy;
         }
 
-        // Only continue expanding this cluster if it hasn't reached max segment length
-        if (output.size < max_frontier_cells) {
-          bfs.push(nbr);
-        }
+        // add to queue for breadth first search
+        bfs.push(nbr);
       }
     }
   }
@@ -189,9 +179,9 @@ bool FrontierSearch::isNewFrontierCell(unsigned int idx,
   }
 
   // frontier cells should have at least one cell in 4-connected neighbourhood
-  // that is traversable free space
+  // that is free
   for (unsigned int nbr : nhood4(idx, *costmap_)) {
-    if (map_[nbr] < LETHAL_OBSTACLE && map_[nbr] != NO_INFORMATION) {
+    if (map_[nbr] == FREE_SPACE) {
       return true;
     }
   }
