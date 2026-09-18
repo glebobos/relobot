@@ -3,14 +3,14 @@
  * Coordinates UI message rendering, session persistence, voice transcription, and token streaming.
  */
 
-import { ChatService } from '../../services/chat-service.js';
+import { ChatService, chatService } from '../../services/chat-service.js';
 import { VoiceRecognitionService } from '../../services/voice-recognition-service.js';
 
 const STORAGE_CHAT_MESSAGES_KEY = 'relobot_chat_messages';
 
 export class ChatPanel {
-    constructor() {
-        this.chatService = new ChatService();
+    constructor(chatServiceInstance = chatService) {
+        this.chatService = chatServiceInstance;
         this.voiceService = new VoiceRecognitionService();
 
         // DOM elements
@@ -41,6 +41,7 @@ export class ChatPanel {
         this.isGenerating = false;
         this.savedMessages = [];
         this.isAdvancedMode = localStorage.getItem('relobot_chat_advanced_mode') === 'true';
+        this.unsubscribers = [];
     }
 
     init() {
@@ -56,87 +57,99 @@ export class ChatPanel {
     }
 
     _setupChatServiceEvents() {
-        this.chatService.onConnectionChange = (connected) => {
-            if (this.isAdvancedMode) {
-                this._updateStatusDot(connected ? 'advanced' : 'disconnected');
-                return;
-            }
-            this._updateStatusDot(connected ? 'connected' : 'disconnected');
-        };
-
-        this.chatService.onStatus = (status) => {
-            if (this.isAdvancedMode) return;
-            if (!status.has_agy) {
-                this._updateStatusDot('warning');
-            }
-        };
-
-        this.chatService.onInit = (convId) => {
-            this._updateSessionBadge(convId);
-        };
-
-        this.chatService.onStart = (msgId, convId) => {
-            this.isGenerating = true;
-            this.activeMsgId = msgId;
-            if (convId) this._updateSessionBadge(convId);
-            this._createBotMessageBubble(msgId);
-        };
-
-        this.chatService.onStatusUpdate = (statusText, msgId) => {
-            // Update inline status inside the bot bubble if still waiting for text
-            const targetId = msgId || this.activeMsgId;
-            const statusElem = targetId ? document.getElementById(`status_${targetId}`) : null;
-            if (statusElem && !this.currentBotMsgText) {
-                const textSpan = statusElem.querySelector('.c-chat-msg__status-text');
-                if (textSpan) {
-                    textSpan.textContent = statusText;
+        this.unsubscribers.push(
+            this.chatService.on('connectionChange', (connected) => {
+                if (this.isAdvancedMode) {
+                    this._updateStatusDot(connected ? 'advanced' : 'disconnected');
+                    return;
                 }
-            }
-        };
+                this._updateStatusDot(connected ? 'connected' : 'disconnected');
+            }),
 
-        this.chatService.onToken = (token, msgId, convId) => {
-            if (this.currentBotMsgBubble && this.activeMsgId === msgId) {
+            this.chatService.on('status', (status) => {
+                if (this.isAdvancedMode) return;
+                if (!status.has_agy) {
+                    this._updateStatusDot('warning');
+                }
+            }),
+
+            this.chatService.on('init', (convId) => {
+                this._updateSessionBadge(convId);
+            }),
+
+            this.chatService.on('start', (msgId, convId) => {
+                this.isGenerating = true;
+                this.activeMsgId = msgId;
                 if (convId) this._updateSessionBadge(convId);
-                this.currentBotMsgText += token;
-                this._updateBotMessageBubble(this.currentBotMsgText, false);
-                this._scrollToBottom();
-            }
-        };
+                this._createBotMessageBubble(msgId);
+            }),
 
-        this.chatService.onDone = (fullText, msgId, convId) => {
-            this.isGenerating = false;
-            if (convId) this._updateSessionBadge(convId);
+            this.chatService.on('statusUpdate', (statusText, msgId) => {
+                // Update inline status inside the bot bubble if still waiting for text
+                const targetId = msgId || this.activeMsgId;
+                const statusElem = targetId ? document.getElementById(`status_${targetId}`) : null;
+                if (statusElem && !this.currentBotMsgText) {
+                    const textSpan = statusElem.querySelector('.c-chat-msg__status-text');
+                    if (textSpan) {
+                        textSpan.textContent = statusText;
+                    }
+                }
+            }),
 
-            const finalText = fullText || this.currentBotMsgText;
-            if (this.currentBotMsgBubble && this.activeMsgId === msgId) {
-                this.currentBotMsgText = finalText;
-                this._updateBotMessageBubble(this.currentBotMsgText, true);
-                this._scrollToBottom();
-            }
+            this.chatService.on('token', (token, msgId, convId) => {
+                if (this.currentBotMsgBubble && this.activeMsgId === msgId) {
+                    if (convId) this._updateSessionBadge(convId);
+                    this.currentBotMsgText += token;
+                    this._updateBotMessageBubble(this.currentBotMsgText, false);
+                    this._scrollToBottom();
+                }
+            }),
 
-            if (finalText) {
-                this._saveMessageToHistory({
-                    role: 'bot',
-                    text: finalText,
-                    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                    msgId: msgId
-                });
-            }
+            this.chatService.on('done', (fullText, msgId, convId) => {
+                this.isGenerating = false;
+                if (convId) this._updateSessionBadge(convId);
 
-            this.currentBotMsgBubble = null;
-            this.currentBotMsgText = '';
-            this.activeMsgId = null;
-        };
+                const finalText = fullText || this.currentBotMsgText;
+                if (this.currentBotMsgBubble && this.activeMsgId === msgId) {
+                    this.currentBotMsgText = finalText;
+                    this._updateBotMessageBubble(this.currentBotMsgText, true);
+                    this._scrollToBottom();
+                }
 
-        this.chatService.onError = (errorMsg, msgId, convId) => {
-            this.isGenerating = false;
-            if (convId) this._updateSessionBadge(convId);
-            if (this.currentBotMsgBubble) {
-                this._updateBotMessageBubble(`${this.currentBotMsgText}\n\n*[Error: ${errorMsg}]*`, true);
-            }
-            this.currentBotMsgBubble = null;
-            this.activeMsgId = null;
-        };
+                if (finalText) {
+                    this._saveMessageToHistory({
+                        role: 'bot',
+                        text: finalText,
+                        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                        msgId: msgId
+                    });
+                }
+
+                this.currentBotMsgBubble = null;
+                this.currentBotMsgText = '';
+                this.activeMsgId = null;
+            }),
+
+            this.chatService.onError = (errorMsg, msgId, convId) => {
+                this.isGenerating = false;
+                if (convId) this._updateSessionBadge(convId);
+                if (this.currentBotMsgBubble) {
+                    this._updateBotMessageBubble(`${this.currentBotMsgText}\n\n*[Error: ${errorMsg}]*`, true);
+                }
+                this.currentBotMsgBubble = null;
+                this.activeMsgId = null;
+            },
+
+            this.chatService.on('error', (errorMsg, msgId, convId) => {
+                this.isGenerating = false;
+                if (convId) this._updateSessionBadge(convId);
+                if (this.currentBotMsgBubble) {
+                    this._updateBotMessageBubble(`${this.currentBotMsgText}\n\n*[Error: ${errorMsg}]*`, true);
+                }
+                this.currentBotMsgBubble = null;
+                this.activeMsgId = null;
+            })
+        );
     }
 
     _setupVoiceEvents() {
@@ -521,7 +534,12 @@ export class ChatPanel {
     }
 
     destroy() {
+        if (this.unsubscribers) {
+            this.unsubscribers.forEach(unsub => {
+                if (typeof unsub === 'function') unsub();
+            });
+            this.unsubscribers = [];
+        }
         this.voiceService.destroy();
-        this.chatService.destroy();
     }
 }

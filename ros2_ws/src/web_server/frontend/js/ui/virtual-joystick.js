@@ -20,7 +20,9 @@ export class VirtualJoystick {
             '.c-rpm-widget__slider-dropdown',
             '.c-camera-view__slider-container',
             '#camera-stop-btn',
-            '#pipMap'
+            '#pipMap',
+            '#camera-chat-toggle-btn',
+            '#floatingChatWidget'
         ];
         guards.forEach(selector => {
             const el = document.querySelector(selector);

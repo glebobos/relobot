@@ -24,15 +24,56 @@ export class ChatService {
         this.playBrowserAudio = localStorage.getItem('relobot_chat_browser_audio') !== 'false';
         this.conversationId = localStorage.getItem('relobot_chat_conv_id') || null;
 
-        // Event callbacks
+        // Event callbacks (legacy property callbacks)
         this.onToken = null;            // (token, msgId, convId)
         this.onStart = null;            // (msgId, convId)
         this.onInit = null;             // (convId, msgId)
         this.onDone = null;             // (fullText, msgId, convId)
         this.onError = null;            // (errorMsg, msgId, convId)
         this.onStatus = null;           // (statusObj)
+        this.onStatusUpdate = null;     // (statusText, msgId, convId)
         this.onConnectionChange = null; // (isConnected)
         this.onAudioPlaying = null;     // (isPlaying)
+
+        // Multiple listener registry
+        this.listeners = new Map();
+    }
+
+    on(event, cb) {
+        if (!this.listeners.has(event)) {
+            this.listeners.set(event, new Set());
+        }
+        this.listeners.get(event).add(cb);
+        return () => this.off(event, cb);
+    }
+
+    off(event, cb) {
+        if (this.listeners.has(event)) {
+            this.listeners.get(event).delete(cb);
+        }
+    }
+
+    _emit(event, ...args) {
+        // 1. Invoke legacy property callback if defined
+        const prop = 'on' + event.charAt(0).toUpperCase() + event.slice(1);
+        if (typeof this[prop] === 'function') {
+            try {
+                this[prop](...args);
+            } catch (err) {
+                console.error(`[ChatService] Callback error in ${prop}:`, err);
+            }
+        }
+        // 2. Invoke all registered listeners
+        const subs = this.listeners.get(event);
+        if (subs) {
+            subs.forEach(cb => {
+                try {
+                    cb(...args);
+                } catch (err) {
+                    console.error(`[ChatService] Listener error for '${event}':`, err);
+                }
+            });
+        }
     }
 
     init() {
@@ -64,7 +105,7 @@ export class ChatService {
                     clearTimeout(this.reconnectTimer);
                     this.reconnectTimer = null;
                 }
-                if (this.onConnectionChange) this.onConnectionChange(true);
+                this._emit('connectionChange', true);
                 this.send({ type: 'status' });
             };
 
@@ -88,7 +129,7 @@ export class ChatService {
             this.ws.onclose = () => {
                 console.log('[ChatService] WebSocket closed.');
                 this.isConnected = false;
-                if (this.onConnectionChange) this.onConnectionChange(false);
+                this._emit('connectionChange', false);
                 this._scheduleReconnect();
             };
         } catch (e) {
@@ -117,32 +158,32 @@ export class ChatService {
 
         switch (type) {
             case 'start':
-                if (this.onStart) this.onStart(msgId, convId || this.conversationId);
+                this._emit('start', msgId, convId || this.conversationId);
                 break;
 
             case 'init':
-                if (this.onInit) this.onInit(convId, msgId);
+                this._emit('init', convId, msgId);
                 break;
 
             case 'token':
-                if (this.onToken) this.onToken(data.text, msgId, convId || this.conversationId);
+                this._emit('token', data.text, msgId, convId || this.conversationId);
                 break;
 
             case 'done':
-                if (this.onDone) this.onDone(data.full_text, msgId, convId || this.conversationId);
+                this._emit('done', data.full_text, msgId, convId || this.conversationId);
                 break;
 
             case 'error':
                 console.error(`[ChatService] AGY server error for [${msgId}]:`, data.error);
-                if (this.onError) this.onError(data.error, msgId, convId || this.conversationId);
+                this._emit('error', data.error, msgId, convId || this.conversationId);
                 break;
 
             case 'status':
-                if (this.onStatus) this.onStatus(data);
+                this._emit('status', data);
                 break;
 
             case 'status_update':
-                if (this.onStatusUpdate) this.onStatusUpdate(data.status, msgId, convId);
+                this._emit('statusUpdate', data.status, msgId, convId);
                 break;
 
             case 'audio_start':
@@ -177,14 +218,14 @@ export class ChatService {
         return false;
     }
 
-    sendPrompt(text, msgId = `msg_${Date.now()}`) {
+    sendPrompt(text, msgId = `msg_${Date.now()}`, options = {}) {
         const payload = {
             type: 'prompt',
             text: text,
             msg_id: msgId,
             conversation_id: this.conversationId,
-            play_robot_audio: this.playRobotAudio,
-            stream_browser_audio: this.playBrowserAudio
+            play_robot_audio: options.play_robot_audio !== undefined ? options.play_robot_audio : this.playRobotAudio,
+            stream_browser_audio: options.stream_browser_audio !== undefined ? options.stream_browser_audio : this.playBrowserAudio
         };
         return this.send(payload);
     }
@@ -322,3 +363,6 @@ export class ChatService {
         }
     }
 }
+
+export const chatService = new ChatService();
+

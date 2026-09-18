@@ -25,7 +25,7 @@ RELOBOT_SYSTEM_PROMPT = (
     "3. No unprompted monologues: Do NOT recite your backstory or mechanical specs unless explicitly asked. "
     "4. Strict evidence: State ONLY verified facts from files, telemetry, or ROS MCP tools. Never guess or speculate. If data is missing or unverified, state 'No data' or 'Unknown'. "
     "5. Spoken output: English only. Never output markdown formatting, asterisks, bullet points, or code blocks. "
-    "6. Tools & ROS Integration: You have direct access to the robot via ros-mcp server tools (call_mcp_tool) and read-only file inspection (view_file). Always follow the workspace rules in .agents/rules/robot_control.md to execute robot actions (dock, undock, explore, stop) in one shot without prior investigation."
+    "6. Tools & ROS Integration: You have direct access to the robot via ros-mcp server tools (call_mcp_tool) and read-only file inspection (view_file). All ros-mcp action recipes are preloaded in your instructions. Always execute robot actions (dock, undock, explore, stop) immediately in one shot using call_mcp_tool without checking tool schemas or calling view_file."
 )
 
 AGY_DEFAULT_MODEL = os.getenv("AGY_MODEL", "gemini-3.7-flash-low")
@@ -37,9 +37,8 @@ def load_agent_definition(agent_name: str = "relobot") -> tuple[str, str]:
     Acts as the Single Source of Truth for ReloBot configuration.
     """
     candidate_paths = [
-        f"/ros2_ws/.agents/agents/{agent_name}/agent.md",
+        os.path.join(os.getenv("RELOBOT_WORKSPACE", "/relobot"), ".agents", "agents", agent_name, "agent.md"),
         os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", ".agents", "agents", agent_name, "agent.md")),
-        os.path.expanduser(f"~/.gemini/config/agents/{agent_name}/agent.md"),
     ]
 
     model = os.getenv("AGY_MODEL", "gemini-3.7-flash-low")
@@ -67,7 +66,7 @@ def load_agent_definition(agent_name: str = "relobot") -> tuple[str, str]:
                     if content.strip():
                         prompt = content.strip()
                 logger.debug(f"Loaded dynamic agent definition from {path} (model: {model})")
-                return prompt, model
+                break
             except Exception as e:
                 logger.warning(f"Error reading agent definition from {path}: {e}")
 
@@ -145,11 +144,15 @@ class AgentRunner:
 
     def __init__(self, agent_name: str = "relobot", model: Optional[str] = None):
         self.agent_name = agent_name
+        self.workspace_dir = os.path.realpath(os.getenv("RELOBOT_WORKSPACE", "/relobot"))
         self.prompt, default_model = load_agent_definition(agent_name)
         self.model = model or os.getenv("AGY_MODEL") or default_model
         self.agy_bin = find_agy_binary()
         if self.agy_bin:
-            logger.info(f"AGY CLI binary detected at: {self.agy_bin} (Agent: {self.agent_name}, Model: {self.model})")
+            logger.info(
+                f"AGY CLI binary detected at: {self.agy_bin} "
+                f"(Agent: {self.agent_name}, Model: {self.model}, Workspace: {self.workspace_dir})"
+            )
         else:
             logger.error("AGY CLI binary ('agy') not found in PATH or container mounts!")
 
@@ -177,6 +180,9 @@ class AgentRunner:
             self.agy_bin,
             "--dangerously-skip-permissions",
         ]
+        if os.path.isdir(self.workspace_dir):
+            cmd.extend(["--add-dir", self.workspace_dir])
+
         if conversation_id and conversation_id.strip():
             cmd.extend([
                 "--conversation", conversation_id.strip(),
@@ -194,7 +200,7 @@ class AgentRunner:
 
         logger.info(
             f"Spawning AGY [conv={conversation_id or 'new'}]: "
-            f"{self.agy_bin} [len={len(prompt)}] --model {current_model}"
+            f"{self.agy_bin} [len={len(prompt)}] --model {current_model} --add-dir {self.workspace_dir}"
         )
 
         proc: Optional[asyncio.subprocess.Process] = None
@@ -204,10 +210,12 @@ class AgentRunner:
         t0 = time.time()
 
         try:
+            run_cwd = self.workspace_dir if os.path.isdir(self.workspace_dir) else None
             proc = await asyncio.create_subprocess_exec(
                 *cmd,
                 stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
+                stderr=asyncio.subprocess.PIPE,
+                cwd=run_cwd
             )
             logger.info(f"AGY process active [PID: {proc.pid}]")
             yield {"event": "status", "status": "Thinking...", "conversation_id": current_conv_id}

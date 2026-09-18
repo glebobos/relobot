@@ -1,7 +1,12 @@
+---
+trigger: always_on
+description: Robot Control Action Recipes for One-Shot Execution (dock, undock, explore, stop)
+---
+
 # Robot Control Rules (One-Shot Execution)
 
 When commanded to dock, undock, explore, or stop, execute IMMEDIATELY in one shot.
-DO NOT call `get_actions`, `get_action_details`, `get_parameters`, `get_topics`, or `view_file` to search or inspect definitions first.
+DO NOT call `get_actions`, `get_action_details`, `get_parameters`, `get_topics`, or `view_file` to search or inspect definitions or schema files. All required schemas, action names, action types, and argument structures are fully specified below.
 
 ## Action & Topic Recipes:
 
@@ -30,11 +35,17 @@ DO NOT call `get_actions`, `get_action_details`, `get_parameters`, `get_topics`,
    - Arguments:
      ```json
      {
-       "action_name": "/undock_robot",
-       "action_type": "opennav_docking_msgs/action/UndockRobot",
+       "action_name": "/navigate_to_pose",
+       "action_type": "nav2_msgs/action/NavigateToPose",
        "goal": {
-         "dock_type": "apriltag_dock",
-         "max_undocking_time": 30.0
+         "behavior_tree": "/ros2_ws/install/nav2/share/nav2/behavior_trees/undock_and_turn.xml",
+         "pose": {
+           "header": { "frame_id": "map" },
+           "pose": {
+             "position": { "x": 0.0, "y": 0.0, "z": 0.0 },
+             "orientation": { "x": 0.0, "y": 0.0, "z": 0.0, "w": 1.0 }
+           }
+         }
        }
      }
      ```
