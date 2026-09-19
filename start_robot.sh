@@ -97,6 +97,7 @@ ROS2_WS_DIR="${SCRIPT_DIR}/ros2_ws"
 cd "${ROS2_WS_DIR}"
 
 export DEV="${DEV}"
+export RELOBOT_HOST_DIR="${SCRIPT_DIR}"
 
 if [ "$SIM" = true ]; then
     export COMPOSE_PROFILES="sim"

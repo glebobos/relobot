@@ -23,9 +23,9 @@ RELOBOT_SYSTEM_PROMPT = (
     "1. Caveman brevity: Respond directly with extreme brevity (1-2 short sentences maximum). Blunt, curt, and caustic. "
     "2. Zero fluff: No pleasantries, no apologies, no conversational filler, no sugarcoating. "
     "3. No unprompted monologues: Do NOT recite your backstory or mechanical specs unless explicitly asked. "
-    "4. Strict evidence: State ONLY verified facts from files or telemetry. Never guess or speculate. If data is missing or unverified, state 'No data' or 'Unknown'. "
+    "4. Strict evidence: State ONLY verified facts from files, telemetry, or ROS MCP tools. Never guess or speculate. If data is missing or unverified, state 'No data' or 'Unknown'. "
     "5. Spoken output: English only. Never output markdown formatting, asterisks, bullet points, or code blocks. "
-    "6. Tool restrictions: You are strictly restricted to read-only file inspection (view_file). Never attempt to run bash commands, edit files, or execute other tools."
+    "6. Tools & ROS Integration: You have direct access to the robot via ros-mcp server tools (call_mcp_tool) and read-only file inspection (view_file). All ros-mcp action recipes are preloaded in your instructions. Always execute robot actions (dock, undock, explore, stop) immediately in one shot using call_mcp_tool without checking tool schemas or calling view_file."
 )
 
 AGY_DEFAULT_MODEL = os.getenv("AGY_MODEL", "gemini-3.7-flash-low")
@@ -37,9 +37,8 @@ def load_agent_definition(agent_name: str = "relobot") -> tuple[str, str]:
     Acts as the Single Source of Truth for ReloBot configuration.
     """
     candidate_paths = [
-        f"/ros2_ws/.agents/agents/{agent_name}/agent.md",
+        os.path.join(os.getenv("RELOBOT_WORKSPACE", "/relobot"), ".agents", "agents", agent_name, "agent.md"),
         os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", ".agents", "agents", agent_name, "agent.md")),
-        os.path.expanduser(f"~/.gemini/config/agents/{agent_name}/agent.md"),
     ]
 
     model = os.getenv("AGY_MODEL", "gemini-3.7-flash-low")
@@ -67,7 +66,7 @@ def load_agent_definition(agent_name: str = "relobot") -> tuple[str, str]:
                     if content.strip():
                         prompt = content.strip()
                 logger.debug(f"Loaded dynamic agent definition from {path} (model: {model})")
-                return prompt, model
+                break
             except Exception as e:
                 logger.warning(f"Error reading agent definition from {path}: {e}")
 
@@ -92,16 +91,68 @@ def find_agy_binary() -> Optional[str]:
     return None
 
 
+def format_tool_status(step: dict) -> str:
+    """
+    Generates a generic, comprehensive status message from any tool execution step.
+    Fully dynamic: supports any MCP server name, any tool call, native tools, or custom plugins
+    without hardcoded names.
+    """
+    tool_name = step.get("tool_name") or step.get("tool_info", {}).get("name") or step.get("name") or ""
+    tool_args = step.get("tool_arguments") or step.get("args") or step.get("parameters") or step.get("input") or {}
+    if isinstance(tool_args, str):
+        try:
+            tool_args = json.loads(tool_args)
+        except Exception:
+            tool_args = {}
+
+    tool_action = tool_args.get("toolAction") or tool_args.get("toolSummary")
+    server_name = tool_args.get("ServerName") or tool_args.get("server_name")
+    mcp_tool = tool_args.get("ToolName") or tool_args.get("tool_name")
+
+    # MCP tool invocation
+    if server_name or mcp_tool or tool_name == "call_mcp_tool":
+        server_tag = f"[{server_name}] " if server_name else ""
+        if tool_action:
+            return f"{server_tag}{tool_action}..."
+        if mcp_tool:
+            return f"{server_tag}{mcp_tool}..."
+        return f"{server_tag}Executing MCP tool..."
+
+    # Natural action summary if provided by agent/tool schema
+    if tool_action:
+        return f"{tool_action}..."
+
+    # Generic tool name formatting
+    if tool_name:
+        clean_name = tool_name.replace("_", " ").strip().title()
+        # Check for descriptive target argument (e.g. filename, query, command)
+        for key in ("AbsolutePath", "path", "file", "TargetFile", "Query", "query", "CommandLine", "command", "url", "Url"):
+            val = tool_args.get(key)
+            if val and isinstance(val, str):
+                target = os.path.basename(val) if ("/" in val or "\\" in val) else val
+                target = target.strip()
+                if len(target) > 30:
+                    target = target[:27] + "..."
+                return f"{clean_name}: {target}..."
+        return f"{clean_name}..."
+
+    return "Thinking..."
+
+
 class AgentRunner:
     """Manages real-time streaming communication with the Antigravity (AGY) CLI."""
 
     def __init__(self, agent_name: str = "relobot", model: Optional[str] = None):
         self.agent_name = agent_name
+        self.workspace_dir = os.path.realpath(os.getenv("RELOBOT_WORKSPACE", "/relobot"))
         self.prompt, default_model = load_agent_definition(agent_name)
         self.model = model or os.getenv("AGY_MODEL") or default_model
         self.agy_bin = find_agy_binary()
         if self.agy_bin:
-            logger.info(f"AGY CLI binary detected at: {self.agy_bin} (Agent: {self.agent_name}, Model: {self.model})")
+            logger.info(
+                f"AGY CLI binary detected at: {self.agy_bin} "
+                f"(Agent: {self.agent_name}, Model: {self.model}, Workspace: {self.workspace_dir})"
+            )
         else:
             logger.error("AGY CLI binary ('agy') not found in PATH or container mounts!")
 
@@ -125,7 +176,13 @@ class AgentRunner:
         active_prompt, active_model = load_agent_definition(self.agent_name)
         current_model = self.model or active_model
 
-        cmd = [self.agy_bin]
+        cmd = [
+            self.agy_bin,
+            "--dangerously-skip-permissions",
+        ]
+        if os.path.isdir(self.workspace_dir):
+            cmd.extend(["--add-dir", self.workspace_dir])
+
         if conversation_id and conversation_id.strip():
             cmd.extend([
                 "--conversation", conversation_id.strip(),
@@ -143,7 +200,7 @@ class AgentRunner:
 
         logger.info(
             f"Spawning AGY [conv={conversation_id or 'new'}]: "
-            f"{self.agy_bin} [len={len(prompt)}] --model {current_model}"
+            f"{self.agy_bin} [len={len(prompt)}] --model {current_model} --add-dir {self.workspace_dir}"
         )
 
         proc: Optional[asyncio.subprocess.Process] = None
@@ -153,12 +210,15 @@ class AgentRunner:
         t0 = time.time()
 
         try:
+            run_cwd = self.workspace_dir if os.path.isdir(self.workspace_dir) else None
             proc = await asyncio.create_subprocess_exec(
                 *cmd,
                 stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
+                stderr=asyncio.subprocess.PIPE,
+                cwd=run_cwd
             )
             logger.info(f"AGY process active [PID: {proc.pid}]")
+            yield {"event": "status", "status": "Thinking...", "conversation_id": current_conv_id}
 
             while True:
                 line = await proc.stdout.readline()
@@ -178,6 +238,12 @@ class AgentRunner:
 
                     elif event_type == "step_update":
                         step = event_data.get("step_update", {})
+                        step_type = step.get("step_type") or step.get("type")
+                        if step_type in ("tool", "tool_call", "action") or "tool_name" in step or "tool_info" in step:
+                            status_msg = format_tool_status(step)
+                            logger.info(f"AGY tool execution: {status_msg}")
+                            yield {"event": "status", "status": status_msg, "conversation_id": current_conv_id}
+
                         delta = step.get("text_delta") or step.get("delta") or step.get("content") or ""
                         if delta:
                             token_count += 1

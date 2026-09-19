@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "ros-mcp": {
+      "command": "uvx",
+      "args": [
+        "--with",
+        "fastmcp<3.0",
+        "ros-mcp",
+        "--transport=stdio"
+      ],
+      "disabled": false
+    }
+  }
+}
