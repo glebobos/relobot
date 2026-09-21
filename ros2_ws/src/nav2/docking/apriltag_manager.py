@@ -305,11 +305,11 @@ class AprilTagManager(Node):
         except (tf2_ros.LookupException,
                 tf2_ros.ConnectivityException,
                 tf2_ros.ExtrapolationException):
-            # Only republish last known pose if seen recently (< 0.8 s)
+            # Only republish last known pose if seen recently (< 1.5 s)
             # to smooth momentary frame drops during close approach
             if self._last_pose is not None and self._last_detected_time is not None:
                 age_sec = (now - self._last_detected_time).nanoseconds / 1e9
-                if age_sec < 0.8:
+                if age_sec < 1.5:
                     self._last_pose.header.stamp = now.to_msg()
                     self._dock_pub.publish(self._last_pose)
                 else:

@@ -7,10 +7,10 @@ apriltag:
     profile: false        # print profiling information to stdout
 
     # tuning of detection (defaults)
-    max_hamming: 0        # maximum allowed hamming distance (corrected bits)
+    max_hamming: 1        # allow 1-bit error correction to prevent flickering drops
     detector:
       threads: 2          # number of threads
-      decimate: 2.0       # decimate resolution for quad detection
+      decimate: 1.0       # full resolution (no downsampling) for reliable quad detection
       blur: 0.0           # sigma of Gaussian blur for quad detection
       refine: true        # snap to strong gradients
       sharpening: 0.25    # sharpening of decoded images
