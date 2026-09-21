@@ -6,7 +6,9 @@ import { ControlPanel } from './ui/control-panel/control-panel.js';
 import { VirtualJoystick } from './ui/virtual-joystick.js';
 import { SettingsPanel } from './ui/settings/settings-panel.js';
 import { ChatPanel } from './ui/chat/chat-panel.js';
+import { FloatingChatWidget } from './ui/floating-chat-widget.js';
 import { gamepadService } from './services/gamepad-service.js';
+import { chatService } from './services/chat-service.js';
 
 window.addEventListener('DOMContentLoaded', () => {
     // 1. Initialize Camera Services and Controller
@@ -33,12 +35,16 @@ window.addEventListener('DOMContentLoaded', () => {
     const settingsPanel = new SettingsPanel(telemetry);
     const chatPanel = new ChatPanel();
     chatPanel.init();
+    const floatingChatWidget = new FloatingChatWidget();
+    floatingChatWidget.init();
 
     let destroyed = false;
     const destroyApplication = () => {
         if (destroyed) return;
         destroyed = true;
+        floatingChatWidget.destroy();
         chatPanel.destroy();
+        chatService.destroy();
         settingsPanel.destroy();
         controlPanel.destroy();
         mapView.destroy();

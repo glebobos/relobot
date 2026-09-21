@@ -18,6 +18,7 @@ sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 from agent_runner import AgentRunner
 from tts_engine import OptimusTTS, normalize_text_for_speech
 from audio_output import PcmAudioSink
+from terminal_manager import TerminalManager
 
 logging.basicConfig(
     level=logging.INFO,
@@ -40,6 +41,11 @@ class VoiceChatServer:
 
     def __init__(self):
         self.agent = AgentRunner()
+        self.terminal: Optional[TerminalManager] = None
+        try:
+            self.terminal = TerminalManager()
+        except Exception as e:
+            logger.warning("Could not initialize TerminalManager: %s", e)
         self.tts: Optional[OptimusTTS] = None
         self._init_tts()
 
@@ -74,6 +80,8 @@ class VoiceChatServer:
                         "type": "status",
                         "has_agy": self.agent.agy_bin is not None,
                         "agy_path": self.agent.agy_bin,
+                        "has_terminal": self.terminal.is_running if self.terminal else False,
+                        "terminal_url": "/agy-terminal/",
                         "has_tts": self.tts is not None,
                         "sample_rate": self.tts.sample_rate if self.tts else 22050,
                         "ready": True
@@ -141,6 +149,8 @@ class VoiceChatServer:
         sentence_buffer = ""
         active_conv_id = conversation_id
 
+        enable_tts = bool((play_robot or stream_browser) and self.tts)
+
         # Local hardware speaker audio sink
         audio_sink: Optional[PcmAudioSink] = None
         if play_robot and self.tts:
@@ -149,17 +159,20 @@ class VoiceChatServer:
             except Exception as e:
                 logger.warning(f"Could not initialize audio sink: {e}")
 
-        # Dedicated background TTS synthesis queue & worker
-        tts_queue: asyncio.Queue[Optional[str]] = asyncio.Queue()
-        tts_worker_task = asyncio.create_task(
-            self._tts_worker(
-                tts_queue,
-                msg_id,
-                websocket,
-                audio_sink,
-                stream_browser
+        # Dedicated background TTS synthesis queue & worker (only if audio output requested)
+        tts_queue: Optional[asyncio.Queue[Optional[str]]] = None
+        tts_worker_task: Optional[asyncio.Task] = None
+        if enable_tts:
+            tts_queue = asyncio.Queue()
+            tts_worker_task = asyncio.create_task(
+                self._tts_worker(
+                    tts_queue,
+                    msg_id,
+                    websocket,
+                    audio_sink,
+                    stream_browser
+                )
             )
-        )
 
         try:
             async for event_item in self.agent.generate_response_stream(prompt, conversation_id=conversation_id):
@@ -173,11 +186,19 @@ class VoiceChatServer:
                         "conversation_id": active_conv_id
                     }))
 
+                elif ev_type == "status":
+                    status_text = event_item.get("status", "")
+                    await websocket.send(json.dumps({
+                        "type": "status_update",
+                        "status": status_text,
+                        "msg_id": msg_id,
+                        "conversation_id": active_conv_id
+                    }))
+
                 elif ev_type == "token":
                     token = event_item.get("text", "")
                     active_conv_id = event_item.get("conversation_id") or active_conv_id
                     full_text += token
-                    sentence_buffer += token
 
                     # Send text token to frontend immediately (ZERO LATENCY)
                     await websocket.send(json.dumps({
@@ -187,33 +208,34 @@ class VoiceChatServer:
                         "conversation_id": active_conv_id
                     }))
 
-                    # Check for natural sentence or clause boundaries with sufficient word length (>= 8 words)
-                    # to ensure audio playback duration masks background synthesis of the next chunk.
-                    while True:
-                        match = SENTENCE_END_RE.search(sentence_buffer)
-                        if match:
-                            split_idx = match.end()
-                            candidate = sentence_buffer[:split_idx].strip()
-                            words = candidate.split()
-                            if len(words) >= 8:
-                                sentence_buffer = sentence_buffer[split_idx:]
-                                if candidate:
-                                    tts_queue.put_nowait(candidate)
-                                continue
-
-                        # For very long clauses without periods, split on comma/semicolon if >= 12 words
-                        words = sentence_buffer.split()
-                        if len(words) >= 12:
-                            c_match = CLAUSE_BREAK_RE.search(sentence_buffer)
-                            if c_match:
-                                split_idx = c_match.end()
+                    # Only buffer and queue for speech synthesis if TTS is active
+                    if enable_tts and tts_queue:
+                        sentence_buffer += token
+                        while True:
+                            match = SENTENCE_END_RE.search(sentence_buffer)
+                            if match:
+                                split_idx = match.end()
                                 candidate = sentence_buffer[:split_idx].strip()
-                                sentence_buffer = sentence_buffer[split_idx:]
-                                if candidate:
-                                    tts_queue.put_nowait(candidate)
-                                continue
+                                words = candidate.split()
+                                if len(words) >= 8:
+                                    sentence_buffer = sentence_buffer[split_idx:]
+                                    if candidate:
+                                        tts_queue.put_nowait(candidate)
+                                    continue
 
-                        break
+                            # For very long clauses without periods, split on comma/semicolon if >= 12 words
+                            words = sentence_buffer.split()
+                            if len(words) >= 12:
+                                c_match = CLAUSE_BREAK_RE.search(sentence_buffer)
+                                if c_match:
+                                    split_idx = c_match.end()
+                                    candidate = sentence_buffer[:split_idx].strip()
+                                    sentence_buffer = sentence_buffer[split_idx:]
+                                    if candidate:
+                                        tts_queue.put_nowait(candidate)
+                                    continue
+
+                            break
 
                 elif ev_type == "error":
                     err_msg = event_item.get("error", "Unknown AGY error")
@@ -225,13 +247,13 @@ class VoiceChatServer:
                         "conversation_id": active_conv_id
                     }))
 
-            # Enqueue remaining text in sentence buffer
-            remaining = sentence_buffer.strip()
-            if remaining:
-                tts_queue.put_nowait(remaining)
-
-            # Signal TTS worker to finish
-            tts_queue.put_nowait(None)
+            # Enqueue remaining text in sentence buffer if TTS is active
+            if enable_tts and tts_queue:
+                remaining = sentence_buffer.strip()
+                if remaining:
+                    tts_queue.put_nowait(remaining)
+                # Signal TTS worker to finish
+                tts_queue.put_nowait(None)
 
             # Send done event to browser immediately
             total_dur_ms = (time.time() - t_start) * 1000
@@ -247,15 +269,18 @@ class VoiceChatServer:
                 "duration_ms": total_dur_ms
             }))
 
-            # Await TTS worker completion
-            await asyncio.wait_for(tts_worker_task, timeout=60.0)
+            # Await TTS worker completion if TTS was running
+            if tts_worker_task:
+                await asyncio.wait_for(tts_worker_task, timeout=60.0)
 
         except asyncio.CancelledError:
             logger.info(f"Prompt processing [{msg_id}] cancelled.")
-            tts_worker_task.cancel()
+            if tts_worker_task:
+                tts_worker_task.cancel()
         except Exception as e:
             logger.error(f"Error processing prompt [{msg_id}]: {e}", exc_info=True)
-            tts_worker_task.cancel()
+            if tts_worker_task:
+                tts_worker_task.cancel()
             await websocket.send(json.dumps({
                 "type": "error",
                 "msg_id": msg_id,
@@ -337,18 +362,24 @@ class VoiceChatServer:
 async def main():
     import websockets
     server_instance = VoiceChatServer()
-    logger.info(f"Starting ReloBot Voice Chat WebSocket Server on ws://{HOST}:{PORT}")
+    if server_instance.terminal:
+        await server_instance.terminal.start()
+    logger.info("Starting ReloBot Voice Chat WebSocket Server on ws://%s:%s", HOST, PORT)
 
-    async with websockets.serve(
-        server_instance.handle_connection,
-        HOST,
-        PORT,
-        ping_interval=20,
-        ping_timeout=20,
-        max_size=10 * 1024 * 1024
-    ):
-        logger.info(f"ReloBot Voice Chat Server listening on {HOST}:{PORT}")
-        await asyncio.Future()
+    try:
+        async with websockets.serve(
+            server_instance.handle_connection,
+            HOST,
+            PORT,
+            ping_interval=20,
+            ping_timeout=20,
+            max_size=10 * 1024 * 1024
+        ):
+            logger.info("ReloBot Voice Chat Server listening on %s:%s", HOST, PORT)
+            await asyncio.Future()
+    finally:
+        if server_instance.terminal:
+            await server_instance.terminal.stop()
 
 
 if __name__ == "__main__":
