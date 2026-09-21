@@ -3,12 +3,12 @@
   <div class="slide-top-row">
     <div class="slide-title-group">
       <div class="slide-eyebrow">FIELD ENGINEERING / LESSONS LEARNED</div>
-      <h1 class="slide-title">Hard Problems Solved in Hardware & Software</h1>
-      <p class="slide-subtitle">Concrete engineering hurdles and battle-tested solutions from field deployment.</p>
+      <h1 class="slide-title">Hard Problems Solved in the Field</h1>
+      <p class="slide-subtitle">Concrete engineering hurdles and battle-tested solutions from actual lawn deployments.</p>
     </div>
     <div class="callout-why">
-      <div class="callout-why-title">Field Reliability</div>
-      <div class="callout-why-text">Robotics is the art of fighting real-world physics. Theory guarantees nothing until hardware survives the elements and edge-case network loads.</div>
+      <div class="callout-why-title">Learning by Doing</div>
+      <div class="callout-why-text">Real robotics is learned on the bench and in the grass. Theory guarantees nothing until code survives physical friction, socket buffers, and real-world edge cases.</div>
     </div>
   </div>
 
@@ -23,10 +23,10 @@
         <span class="problem-meta">KERNEL SYSCTL</span>
       </div>
       <div class="problem-body">
-        <strong>Problem:</strong> Linux default 212 KB UDP socket buffer choked under high-frequency SLAM map exchanges. Cascading retransmissions caused 100% CPU lockup.
+        <strong>Hurdle:</strong> Default Linux 212 KB socket buffer choked under high-rate SLAM maps, triggering retransmission storms and 100% CPU lockup.
       </div>
       <div class="problem-fix">
-        Fix: <code>net.core.rmem_max = 67108864</code> (64 MB socket buffer) in <code>/etc/sysctl.d/99-ros2-fastdds.conf</code>.
+        Fix: <code>net.core.rmem_max = 67108864</code> (64 MB buffer) in sysctl.
       </div>
     </div>
 
@@ -35,15 +35,15 @@
       <div class="problem-header">
         <div class="problem-title">
           <svg class="icon" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-          Wheel Velocity & Stiction Calibration
+          Motor Stiction Non-Linearity
         </div>
-        <span class="problem-meta">MICRO-ROS REGRESSION</span>
+        <span class="problem-meta">FIRMWARE REGRESSION</span>
       </div>
       <div class="problem-body">
-        <strong>Problem:</strong> DC gearmotors exhibit non-linear friction deadbands; left and right motors had different starting torque thresholds.
+        <strong>Hurdle:</strong> DC gearmotors had asymmetrical starting friction deadbands, causing low-speed angular drift.
       </div>
       <div class="problem-fix">
-        Fix: Automated velocity sweep ($PWM = k \cdot v + b$) in <code>helpers/wheel_calibration</code> embedded into firmware.
+        Fix: Automated linear sweep ($PWM = k \cdot v + b$) in RP2040 firmware.
       </div>
     </div>
 
@@ -52,15 +52,15 @@
       <div class="problem-header">
         <div class="problem-title">
           <svg class="icon" viewBox="0 0 24 24"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
-          5 GHz Wi-Fi Region Lockdown on Pi 5
+          5 GHz Wi-Fi Region Lockdown
         </div>
         <span class="problem-meta">HOST WIRELESS</span>
       </div>
       <div class="problem-body">
-        <strong>Problem:</strong> Raspberry Pi 5 kernel defaulted to <code>country 99 (DFS-UNSET)</code>, disabling 5 GHz bands and throttling camera stream.
+        <strong>Hurdle:</strong> Pi 5 kernel defaulted to DFS-UNSET, blocking 5 GHz channels and throttling camera streams.
       </div>
       <div class="problem-fix">
-        Fix: Configured persistent regulatory domain unlocking Channel 52 for low-latency RTSP camera streams.
+        Fix: Configured persistent regulatory domain unlocking Channel 52 for RTSP.
       </div>
     </div>
 
@@ -69,15 +69,15 @@
       <div class="problem-header">
         <div class="problem-title">
           <svg class="icon" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-          AI Agent Context & Reasoning Latency
+          AI Agent Context & Reasoning
         </div>
         <span class="problem-meta">SESSION LIFECYCLE</span>
       </div>
       <div class="problem-body">
-        <strong>Problem:</strong> Expired chat session IDs crashed CLI; raw <code>&lt;think&gt;</code> tokens introduced 10–20s delays before speech playback.
+        <strong>Hurdle:</strong> Raw thinking tokens introduced 10–20s delays before voice speech started.
       </div>
       <div class="problem-fix">
-        Fix: Dynamic session renewal, reasoning token suppression (&lt;50ms TTFT), and RAM model pre-warming.
+        Fix: Suppressed reasoning tokens (&lt;50ms TTFT) and pre-warmed model graph in RAM.
       </div>
     </div>
   </div>
@@ -85,9 +85,9 @@
   <div class="pipeline-bar">
     <div class="pipeline-step">
       <span>Field Hardening:</span>
-      <span class="pipeline-tag">64MB FastDDS Buffers</span>
+      <span class="pipeline-tag">64MB Socket Buffers</span>
       <span class="pipeline-sep">·</span>
-      <span class="pipeline-tag">Firmware Stiction PI</span>
+      <span class="pipeline-tag">Stiction Linearization</span>
       <span class="pipeline-sep">·</span>
       <span class="pipeline-tag">5 GHz Wi-Fi Unlock</span>
       <span class="pipeline-sep">·</span>

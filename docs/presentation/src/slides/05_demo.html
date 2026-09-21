@@ -13,38 +13,36 @@
   </div>
 
   <div class="grid-2">
+    <!-- Left: 4-Step Walkthrough -->
     <div class="card">
       <div class="card-header">
         <div class="card-title">
           <svg class="icon" viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-          Operator Dashboard Walkthrough
+          Demonstration Protocol
         </div>
-        <span class="card-tag">SEQUENCE</span>
+        <span class="card-tag">4 CHECKS</span>
       </div>
       <ol class="demo-step-list">
         <li class="demo-step-item">
           <div class="demo-step-num">1</div>
-          <div><strong>Live Telemetry:</strong> INA226 bus voltage (12.4V) and 9-DOF IMU pitch/roll sensor feeds.</div>
+          <div><strong>Live Telemetry:</strong> INA226 bus voltage (12.4V) and 9-DOF IMU pitch & roll attitude.</div>
         </li>
         <li class="demo-step-item">
           <div class="demo-step-num">2</div>
-          <div><strong>Manual Drive:</strong> Virtual joystick steering via <code>diff_drive_controller</code>.</div>
+          <div><strong>Manual Drive & Spindle:</strong> Virtual joystick teleop and 3000 RPM governor control.</div>
         </li>
         <li class="demo-step-item">
           <div class="demo-step-num">3</div>
-          <div><strong>Cutter Spindle:</strong> Closed-loop RPM governor with safety watchdog kill.</div>
+          <div><strong>Voice Status Query:</strong> Ask <em>"ReloBot, report system status and battery voltage"</em>.</div>
         </li>
         <li class="demo-step-item">
           <div class="demo-step-num">4</div>
-          <div><strong>AI Voice Query:</strong> Ask <em>"ReloBot, report system status and battery voltage"</em>.</div>
-        </li>
-        <li class="demo-step-item">
-          <div class="demo-step-num">5</div>
-          <div><strong>Neural Speech:</strong> Sub-second spoken response streamed via local Piper TTS.</div>
+          <div><strong>Local Neural Speech:</strong> Sub-second spoken response synthesized on Pi 5 CPU.</div>
         </li>
       </ol>
     </div>
 
+    <!-- Right: Launch Box -->
     <div class="demo-launch-box">
       <div class="demo-status-pill">
         <div class="demo-status-dot"></div>
@@ -52,8 +50,8 @@
       </div>
 
       <div>
-        <div style="font-size: 16px; font-weight: 600; color: var(--text-primary); margin-bottom: 2px;">ReloBot Operator Dashboard</div>
-        <div style="font-size: 12px; color: var(--text-muted); font-family: var(--font-mono);">http://localhost/ (or http://raspberrypi.local/)</div>
+        <div style="font-size: 17px; font-weight: 600; color: var(--text-primary); margin-bottom: 2px;">ReloBot Operator Dashboard</div>
+        <div style="font-size: 13px; color: var(--text-muted); font-family: var(--font-mono);">http://localhost/ (or http://raspberrypi.local/)</div>
       </div>
 
       <a href="http://localhost/" target="_blank" class="btn-launch">
@@ -61,11 +59,11 @@
         Launch Operator Dashboard
       </a>
 
-      <div style="font-size: 12px; color: var(--text-secondary); max-width: 300px; line-height: 1.4;">
-        Tip: Use <strong>Alt + Tab</strong> during presentation to switch between slides and live dashboard.
+      <div style="font-size: 12.5px; color: var(--text-secondary); max-width: 320px; line-height: 1.45;">
+        Tip: Press <strong>Alt + Tab</strong> to switch between slides and the live dashboard during presentation.
       </div>
 
-      <div style="margin-top: 4px;">
+      <div style="margin-top: 2px;">
         <span class="handwritten-note">Voice synthesized 100% on Pi 5 CPU.</span>
       </div>
     </div>
@@ -79,7 +77,7 @@
       <span class="pipeline-sep">➔</span>
       <strong class="pipeline-tag">Spindle Governor</strong>
       <span class="pipeline-sep">➔</span>
-      <span>Voice Inquiry</span>
+      <span>Voice Query</span>
       <span class="pipeline-sep">➔</span>
       <strong>Local Speech Output</strong>
     </div>

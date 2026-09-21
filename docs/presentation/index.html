@@ -586,40 +586,92 @@ footer {
    ========================================================================== */
 .hero-grid {
   display: grid;
-  grid-template-columns: 1.15fr 0.85fr;
-  gap: 20px;
+  grid-template-columns: 1.18fr 0.82fr;
+  gap: 22px;
   align-items: center;
 }
 
 .hero-left {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-}
-
-.hero-specs-list {
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
-  font-size: 15px;
-  color: var(--text-secondary);
-  line-height: 1.45;
-}
-
-.hero-specs-list li {
-  display: flex;
-  align-items: baseline;
   gap: 12px;
 }
 
-.hero-specs-list li strong {
-  color: var(--text-primary);
-  min-width: 150px;
+.hero-pillars {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pillar-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  transition: all 0.15s ease;
+}
+
+.pillar-card:hover {
+  border-color: var(--border-medium);
+  background: var(--bg-card-hover);
+}
+
+.pillar-icon-box {
+  width: 42px;
+  height: 42px;
+  border-radius: 6px;
+  background: var(--accent-dim);
+  border: 1px solid rgba(46, 189, 133, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
   flex-shrink: 0;
+}
+
+.pillar-icon-box .icon {
+  width: 22px;
+  height: 22px;
+}
+
+.pillar-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pillar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pillar-title {
+  font-size: 16.5px;
   font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: 0.2px;
+}
+
+.pillar-tag {
   font-family: var(--font-mono);
-  font-size: 13.5px;
+  font-size: 11.5px;
+  color: var(--accent);
+  background: var(--accent-dim);
+  padding: 2px 7px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.pillar-desc {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.45;
 }
 
 .hero-img-box {
@@ -633,13 +685,13 @@ footer {
 
 .hero-img-box img {
   width: 100%;
-  height: 250px;
+  height: 270px;
   object-fit: cover;
   display: block;
 }
 
 .hero-img-meta {
-  padding: 10px 16px;
+  padding: 11px 18px;
   background: var(--bg-panel);
   border-top: 1px solid var(--border-subtle);
   display: flex;
@@ -1005,86 +1057,86 @@ footer {
 
   <!-- Main Slide Canvas -->
   <main id="slideCanvas">
-        <!-- SLIDE 1: OVERVIEW & SYSTEM INTRODUCTION -->
+        <!-- SLIDE 1: OVERVIEW & ARCHITECTURAL PILLARS -->
 <div class="slide active" data-index="1">
   <div class="slide-top-row">
     <div class="slide-title-group">
-      <div class="slide-eyebrow">ROBOFACTORY / PROJECT OVERVIEW</div>
+      <div class="slide-eyebrow">RELOBOT / SYSTEM OVERVIEW</div>
       <h1 class="slide-title">ReloBot Platform Architecture</h1>
-      <p class="slide-subtitle">A distributed micro-ROS and containerized ROS 2 system with an onboard AI agent running on Raspberry Pi 5.</p>
+      <p class="slide-subtitle">An end-to-end robotics platform born from learning real-world robotics from scratch — combining micro-ROS, containerized ROS 2, and edge AI.</p>
     </div>
     <div class="callout-why">
-      <div class="callout-why-title">Design Philosophy</div>
-      <div class="callout-why-text">Commercial robotic platforms are closed black boxes with high cloud latency. We built a hardware-first, distributed architecture with sub-millisecond control loops and complete local autonomy.</div>
+      <div class="callout-why-title">Engineering Journey</div>
+      <div class="callout-why-text">Started as a hands-on journey to learn real robotics from first principles — motor physics, microcontrollers, and ROS 2. It naturally evolved into a full-scale autonomous platform with on-device AI.</div>
     </div>
   </div>
 
   <div class="hero-grid">
-    <div class="hero-left">
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">
-            <svg class="icon" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="15" x2="23" y2="15"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="15" x2="4" y2="15"/></svg>
-            Core System Specifications
-          </div>
-          <span class="card-tag">REV-C 2026</span>
+    <!-- LEFT: 3 CORE STATEMENTS / PILLARS -->
+    <div class="hero-pillars">
+      <!-- Pillar 1: Hardware -->
+      <div class="pillar-card">
+        <div class="pillar-icon-box">
+          <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         </div>
-        <ul class="hero-specs-list">
-          <li>
-            <strong>Real-Time MCUs</strong>
-            <span>4x dedicated RP2040 micro-ROS agents over isolated USB CDC channels</span>
-          </li>
-          <li>
-            <strong>Central Compute</strong>
-            <span>Raspberry Pi 5 (8GB RAM), PCIe NVMe, multi-container Docker runtime</span>
-          </li>
-          <li>
-            <strong>State & SLAM</strong>
-            <span>9-DOF IMU + 60 CPR optical encoders fused via EKF; 360° 2D LiDAR costmaps</span>
-          </li>
-          <li>
-            <strong>Autonomous Agent</strong>
-            <span>On-device Google Antigravity (AGY) core with local Piper neural TTS</span>
-          </li>
-        </ul>
+        <div class="pillar-content">
+          <div class="pillar-header">
+            <div class="pillar-title">Hardware-Isolated Real-Time Core</div>
+            <span class="pillar-tag">MICRO-ROS</span>
+          </div>
+          <div class="pillar-desc">Real-time motor control, safety watchdogs, and sensor loops run on dedicated microcontrollers — fully decoupled from high-level software crashes.</div>
+        </div>
       </div>
 
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">
-            <svg class="icon" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-            Key Engineering Tenets
-          </div>
+      <!-- Pillar 2: Software -->
+      <div class="pillar-card">
+        <div class="pillar-icon-box">
+          <svg class="icon" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
         </div>
-        <ul class="bullet-list">
-          <li><strong>Physical loop isolation:</strong> Real-time motor PWM & watchdogs survive high-level container restarts.</li>
-          <li><strong>Zero cloud reliance:</strong> Telemetry, path planning, vision, and voice synthesis run 100% on the machine.</li>
-        </ul>
+        <div class="pillar-content">
+          <div class="pillar-header">
+            <div class="pillar-title">Containerized ROS 2 & Digital Twin</div>
+            <span class="pillar-tag">DOCKER · GAZEBO</span>
+          </div>
+          <div class="pillar-desc">Zero host pollution with shared-memory IPC, paired with 100% topic, TF, and physics parity inside Gazebo simulation for risk-free testing.</div>
+        </div>
+      </div>
+
+      <!-- Pillar 3: AI -->
+      <div class="pillar-card">
+        <div class="pillar-icon-box">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M12 2a8 8 0 0 0-8 8c0 3.36 2.08 6.24 5 7.42V20a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2v-2.58c2.92-1.18 5-4.06 5-7.42a8 8 0 0 0-8-8z"/><line x1="9" y1="22" x2="15" y2="22"/></svg>
+        </div>
+        <div class="pillar-content">
+          <div class="pillar-header">
+            <div class="pillar-title">100% On-Device AI Autonomy</div>
+            <span class="pillar-tag">AGY · PIPER TTS</span>
+          </div>
+          <div class="pillar-desc">Onboard agent platform (AGY) and sub-100ms local neural voice synthesis (Piper) running entirely on Raspberry Pi 5 without cloud reliance.</div>
+        </div>
       </div>
     </div>
 
+    <!-- RIGHT: HERO IMAGE -->
     <div class="hero-img-box">
       <img src="images/robot_start.jpg" alt="DarkSelmash ReloBot MOW-X7 Cyber-Trim">
       <div class="hero-img-meta">
         <span>RELOBOT MOW-X7</span>
-        <span class="handwritten-note">Built for field reliability first.</span>
+        <span class="handwritten-note">Built for education & deep learning first.</span>
       </div>
     </div>
   </div>
 
   <div class="pipeline-bar">
     <div class="pipeline-step">
-      <span>RP2040 Micro-ROS</span>
+      <span>Foundation:</span>
+      <span class="pipeline-tag">Hardware Isolation</span>
       <span class="pipeline-sep">➔</span>
-      <span class="pipeline-tag">Isolated USB CDC</span>
+      <span>Containerized ROS 2</span>
       <span class="pipeline-sep">➔</span>
-      <strong>Raspberry Pi 5 (ROS 2)</strong>
-      <span class="pipeline-sep">➔</span>
-      <span>Nav2 & EKF</span>
-      <span class="pipeline-sep">➔</span>
-      <strong class="pipeline-tag">RoboFactory AGY + Piper</strong>
+      <strong class="pipeline-tag">On-Device AI Autonomy</strong>
     </div>
-    <div>LATENCY: &lt;100ms</div>
+    <div>LEARNING BY BUILDING</div>
   </div>
 </div>
 
@@ -1092,13 +1144,13 @@ footer {
 <div class="slide" data-index="2">
   <div class="slide-top-row">
     <div class="slide-title-group">
-      <div class="slide-eyebrow">ROBOFACTORY / CENTRAL HUB</div>
-      <h1 class="slide-title">RoboFactory Central Hub</h1>
-      <p class="slide-subtitle">Physical separation of real-time control loops and high-level autonomous intelligence via isolated USB CDC channels.</p>
+      <div class="slide-eyebrow">HARDWARE ARCHITECTURE / HUB & SPOKE</div>
+      <h1 class="slide-title">Hub & Spoke Micro-Agent Network</h1>
+      <p class="slide-subtitle">Physical separation of real-time control loops and central compute via dedicated USB CDC channels.</p>
     </div>
     <div class="callout-why">
-      <div class="callout-why-title">Why this setup?</div>
-      <div class="callout-why-text">Keeps real-time motor control and sensor loops isolated from higher-level AI. If the AI crashes, wheels and safety loops keep running.</div>
+      <div class="callout-why-title">Why Hardware Isolation?</div>
+      <div class="callout-why-text">Keeps real-time motor PWM and sensor acquisition isolated on dedicated MCUs. If higher-level software restarts, safety watchdogs and wheel loops never miss a cycle.</div>
     </div>
   </div>
 
@@ -1110,15 +1162,15 @@ footer {
         <div class="card-header">
           <div class="card-title">
             <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-.33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-            Drive Subsystem
+            Differential Drive
           </div>
-          <span class="card-tag">XIAO RP2040 · 50 Hz</span>
+          <span class="card-tag">RP2040 · 50 Hz</span>
         </div>
-        <div class="card-desc">Dual Cytron MD13S 13A drivers + 60 CPR optical encoders.</div>
+        <div class="card-desc">Dual Cytron MD13S (13A) drivers with 60 CPR optical encoder feedback.</div>
         <div class="card-specs">
           <span class="spec-item highlight">Closed-loop PI</span>
           <span class="spec-sep">·</span>
-          <span class="spec-item">TopicBasedSystem</span>
+          <span class="spec-item">Stiction Linearized</span>
         </div>
       </div>
 
@@ -1129,11 +1181,11 @@ footer {
             <svg class="icon" viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>
             Cutting Spindle
           </div>
-          <span class="card-tag">XIAO RP2040 · 100 Hz</span>
+          <span class="card-tag">RP2040 · 100 Hz</span>
         </div>
-        <div class="card-desc">High-power brushless driver + 3000 RPM balanced tri-blade cutter.</div>
+        <div class="card-desc">High-power brushless spindle driver + 3000 RPM balanced tri-blade cutter.</div>
         <div class="card-specs">
-          <span class="spec-item highlight">Closed-loop RPM Governor</span>
+          <span class="spec-item highlight">RPM Governor</span>
           <span class="spec-sep">·</span>
           <span class="spec-item">Hardware Watchdog Kill</span>
         </div>
@@ -1146,24 +1198,22 @@ footer {
             <svg class="icon" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/></svg>
             9-DOF IMU Subsystem
           </div>
-          <span class="card-tag">RPI PICO · 100 Hz</span>
+          <span class="card-tag">RP2040 · 100 Hz</span>
         </div>
-        <div class="card-desc">TDK InvenSense ICM-20948 (3-axis Gyro + Accel + Magnetometer).</div>
+        <div class="card-desc">TDK InvenSense ICM-20948 (Gyroscope + Accelerometer + Magnetometer).</div>
         <div class="card-specs">
           <span class="spec-item">I2C Fast Mode</span>
-          <span class="spec-sep">·</span>
-          <span class="spec-item">/imu/data_raw</span>
           <span class="spec-sep">·</span>
           <span class="spec-item highlight">EKF State Source</span>
         </div>
       </div>
     </div>
 
-    <!-- CENTER COLUMN: CENTRAL HUB (PROMINENT & CENTERED) -->
+    <!-- CENTER COLUMN: CENTRAL HUB -->
     <div class="hub-center-card">
       <div class="hub-header">
         <div class="hub-title">RoboFactory Central Hub</div>
-        <div class="hub-sub">Raspberry Pi 5 (8GB) + Industrial case</div>
+        <div class="hub-sub">Raspberry Pi 5 (8GB) + Industrial Enclosure</div>
       </div>
 
       <div class="hub-img-wrapper">
@@ -1173,41 +1223,37 @@ footer {
       <div class="hub-bullet-grid">
         <div class="hub-bullet-item">
           <span class="hub-bullet-dot">•</span>
-          <span>Multi-container orchestration</span>
+          <span>Quad-core ARM Cortex-A76</span>
         </div>
         <div class="hub-bullet-item">
           <span class="hub-bullet-dot">•</span>
-          <span>Google Antigravity & AGV agent</span>
+          <span>High-Speed PCIe NVMe Storage</span>
         </div>
         <div class="hub-bullet-item">
           <span class="hub-bullet-dot">•</span>
-          <span>ROS 2 Humble + Stack</span>
+          <span>4x Dedicated USB CDC Channels</span>
         </div>
         <div class="hub-bullet-item">
           <span class="hub-bullet-dot">•</span>
-          <span>Sandboxed Docker services</span>
+          <span>Hardware Watchdog Heartbeats</span>
         </div>
         <div class="hub-bullet-item">
           <span class="hub-bullet-dot">•</span>
-          <span>On-device AGV core</span>
+          <span>Central Power Bus Distribution</span>
         </div>
         <div class="hub-bullet-item">
           <span class="hub-bullet-dot">•</span>
-          <span>FastDDS shared memory IPC</span>
-        </div>
-        <div class="hub-bullet-item" style="grid-column: span 2;">
-          <span class="hub-bullet-dot">•</span>
-          <span>Piper neural TTS engine</span>
+          <span>FastDDS Shared-Memory IPC</span>
         </div>
       </div>
 
       <div class="hub-bus-footer">
-        <span>|</span>
-        <span>Isolated USB CDC micro-ROS serial buses ↔</span>
+        <span>↔</span>
+        <span>4x Isolated USB CDC micro-ROS Serial Buses</span>
       </div>
     </div>
 
-    <!-- RIGHT COLUMN: BATTERY, PERCEPTION, AUDIO & NOTES -->
+    <!-- RIGHT COLUMN: BATTERY, PERCEPTION, AUDIO -->
     <div class="spoke-col">
       <!-- Card: Battery -->
       <div class="card">
@@ -1216,15 +1262,13 @@ footer {
             <svg class="icon" viewBox="0 0 24 24"><rect x="2" y="7" width="16" height="10" rx="2"/><line x1="22" y1="11" x2="22" y2="13"/></svg>
             Battery & Power
           </div>
-          <span class="card-tag">PICO 2 RP2350 · 10 Hz</span>
+          <span class="card-tag">RP2350 · 10 Hz</span>
         </div>
-        <div class="card-desc">Texas Instruments INA226 high-side current & bus monitor.</div>
+        <div class="card-desc">Texas Instruments INA226 high-side current & bus voltage monitor.</div>
         <div class="card-specs">
           <span class="spec-item highlight">0–36V Bus</span>
           <span class="spec-sep">·</span>
-          <span class="spec-item">Real-Time Amps/Watts</span>
-          <span class="spec-sep">·</span>
-          <span class="spec-item">Li-Ion SoC</span>
+          <span class="spec-item">Real-Time Current / SoC</span>
         </div>
       </div>
 
@@ -1241,7 +1285,7 @@ footer {
         <div class="card-specs">
           <span class="spec-item highlight">Obstacle Pointclouds</span>
           <span class="spec-sep">·</span>
-          <span class="spec-item">SLAM Costmaps</span>
+          <span class="spec-item">Costmaps</span>
         </div>
       </div>
 
@@ -1250,31 +1294,15 @@ footer {
         <div class="card-header">
           <div class="card-title">
             <svg class="icon" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
-            Neural Audio Output
+            Chassis Audio Output
           </div>
-          <span class="card-tag">ALSA / PULSE AUDIO</span>
+          <span class="card-tag">ALSA / HW AMP</span>
         </div>
-        <div class="card-desc">High-efficiency audio amplifier + weatherproof onboard speaker.</div>
+        <div class="card-desc">High-efficiency audio amplifier + weatherproof chassis speaker.</div>
         <div class="card-specs">
-          <span class="spec-item highlight">Local Piper TTS</span>
+          <span class="spec-item highlight">Local Audio Out</span>
           <span class="spec-sep">·</span>
-          <span class="spec-item">Sub-100ms Speech</span>
-        </div>
-      </div>
-
-      <!-- Shortened Notes Card -->
-      <div class="notes-card">
-        <div class="notes-title">
-          <svg class="icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-          Notes
-        </div>
-        <ul class="notes-list">
-          <li>Kept real-time loops on separate MCUs to avoid AI jitter.</li>
-          <li>USB CDC gives clean, isolated channels per node.</li>
-          <li>Slightly over-engineered, but field-reliable.</li>
-        </ul>
-        <div style="text-align: right; margin-top: 1px;">
-          <span class="handwritten-note">It's not perfect, but it works.</span>
+          <span class="spec-item">Sub-100ms Playback</span>
         </div>
       </div>
     </div>
@@ -1282,17 +1310,14 @@ footer {
 
   <div class="pipeline-bar">
     <div class="pipeline-step">
-      <span class="pipeline-tag">Hardware</span>
+      <span class="pipeline-tag">Microcontrollers</span>
+      <span>(PWM, Encoders, Safety Watchdogs)</span>
       <span class="pipeline-sep">➔</span>
-      <span>Microcontrollers (PWM, Encoders, Watchdogs)</span>
+      <span class="pipeline-tag">4x USB CDC</span>
       <span class="pipeline-sep">➔</span>
-      <span class="pipeline-tag">USB CDC (4x isolated)</span>
-      <span class="pipeline-sep">➔</span>
-      <strong>Raspberry Pi 5 (Orchestration + AI)</strong>
-      <span class="pipeline-sep">➔</span>
-      <span>Central Hub: Milliseconds (RoboFactory, Docker, AGV)</span>
+      <strong>Raspberry Pi 5 Central Hub</strong>
     </div>
-    <div>BUILD / TEST / IMPROVE</div>
+    <div>DETERMINISTIC & ISOLATED</div>
   </div>
 </div>
 
@@ -1305,25 +1330,26 @@ footer {
       <p class="slide-subtitle">Zero host pollution with shared-memory IPC, paired with 100% API parity in the virtual digital twin.</p>
     </div>
     <div class="callout-why">
-      <div class="callout-why-title">Why Docker on Host?</div>
-      <div class="callout-why-text">Robotics stacks are notoriously brittle with OS dependencies. Containerizing every service ensures reproducible builds, while host-mode IPC preserves microsecond transport speeds.</div>
+      <div class="callout-why-title">Why Docker & Simulation?</div>
+      <div class="callout-why-text">Fast iteration without breaking the host OS. Docker and Gazebo simulation enabled safe, rapid learning of ROS 2 navigation before running physical hardware.</div>
     </div>
   </div>
 
   <div class="grid-2">
+    <!-- Left Card: Docker Runtime -->
     <div class="card">
       <div class="card-header">
         <div class="card-title">
           <svg class="icon" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
-          Multi-Container Orchestration Architecture
+          Multi-Container ROS 2 Architecture
         </div>
-        <span class="card-tag">HOST RUNTIME</span>
+        <span class="card-tag">DOCKER RUNTIME</span>
       </div>
       <ul class="bullet-list">
-        <li><strong>Host Purity:</strong> Host OS only runs Docker and serial device mounts. No ROS dependencies installed on host.</li>
+        <li><strong>Host Purity:</strong> Host OS only runs Docker and serial device mounts. No ROS packages installed on host.</li>
         <li><strong>Zero Latency Transport:</strong> <code>network_mode: host</code> and <code>ipc: host</code> enable FastDDS shared memory communication.</li>
-        <li><strong>Volume Hot-Reloading:</strong> Code in <code>ros2_ws/src/</code> is mounted directly; rebuilds and web changes take effect immediately.</li>
-        <li><strong>Standard ROS 2 Interfaces:</strong> Uses <code>topic_based_ros2_control</code>, <code>robot_localization</code> EKF, and standard Nav2 behavior trees.</li>
+        <li><strong>Volume Hot-Reloading:</strong> Workspace source mounted directly; node rebuilds and web changes take effect immediately.</li>
+        <li><strong>Standard ROS 2 Interfaces:</strong> Uses <code>ros2_control</code>, <code>robot_localization</code> EKF, and standard Nav2 behavior trees.</li>
       </ul>
       <div class="card-specs" style="margin-top: 6px;">
         <span class="spec-item">ros2_nav2</span>
@@ -1336,6 +1362,7 @@ footer {
       </div>
     </div>
 
+    <!-- Right Card: Gazebo Digital Twin -->
     <div class="card">
       <div class="card-header">
         <div class="card-title">
@@ -1345,10 +1372,10 @@ footer {
         <span class="card-tag">SIMULATION</span>
       </div>
       <ul class="bullet-list">
-        <li><strong>100% API Parity:</strong> Identical topic names (<code>/cmd_vel</code>, <code>/scan</code>), TF frame hierarchy (<code>map</code> → <code>odom</code> → <code>base_link</code>), and action servers.</li>
+        <li><strong>100% API Parity:</strong> Identical topic names (<code>/cmd_vel</code>, <code>/scan</code>), TF frames, and Nav2 action servers.</li>
         <li><strong>Physics & Friction Models:</strong> <code>garden.sdf</code> includes real lawn friction parameters, perimeter obstacles, and rough terrain.</li>
         <li><strong>Emulated Sensors:</strong> Simulated 360° laser scans, synthetic camera feeds, and blade motor speed feedbacks.</li>
-        <li><strong>Instant Launch Command:</strong> <code>./start_sim.sh up --gui --dev</code> tests the entire autonomy pipeline on a laptop.</li>
+        <li><strong>Instant Laptop Launch:</strong> <code>./start_sim.sh up --gui --dev</code> tests the entire autonomy pipeline on a laptop.</li>
       </ul>
       <div style="margin-top: 6px; text-align: right;">
         <span class="handwritten-note">Saved ~3 weeks of bench testing before running physical blades.</span>
@@ -1364,7 +1391,7 @@ footer {
       <span class="pipeline-sep">➔</span>
       <strong>FastDDS Shared Memory IPC</strong>
       <span class="pipeline-sep">➔</span>
-      <span>Nav2 / Gazebo Sim</span>
+      <span>100% Gazebo Sim Parity</span>
     </div>
     <div>PARITY: 100%</div>
   </div>
@@ -1376,7 +1403,7 @@ footer {
     <div class="slide-title-group">
       <div class="slide-eyebrow">ON-DEVICE AI / AGENT PLATFORM</div>
       <h1 class="slide-title">The Self-Aware Robot: AGY Core</h1>
-      <p class="slide-subtitle">Natural language chat is just the operator interface — AGY is an extensible on-device agent platform.</p>
+      <p class="slide-subtitle">Autonomous onboard reasoning engine with native ROS 2 introspection and sub-100ms neural voice.</p>
     </div>
     <div class="callout-why">
       <div class="callout-why-title">Why Run Locally on Pi 5?</div>
@@ -1385,6 +1412,7 @@ footer {
   </div>
 
   <div class="grid-2">
+    <!-- Left Card: AGY Platform -->
     <div class="card">
       <div class="card-header">
         <div class="card-title">
@@ -1394,13 +1422,14 @@ footer {
         <span class="card-tag">AGY RUNTIME</span>
       </div>
       <ul class="bullet-list">
-        <li><strong>Onboard Runtime:</strong> Google Antigravity & AGY agent executed inside the <code>ros2_voice_chat</code> container.</li>
-        <li><strong>Full Introspection:</strong> Direct programmatic access to FastDDS telemetry, ROS 2 parameters, topic streams, and container logs.</li>
-        <li><strong>Beyond Chat:</strong> Natural language is just the operator UI; AGY's primary role is proactive system oversight and automated fault detection.</li>
-        <li><strong>Extensible Hooks:</strong> Evolving toward automated node restarts, PID parameter tuning, and multi-robot swarm task allocation.</li>
+        <li><strong>Onboard Runtime:</strong> Google Antigravity & AGY agent executed directly inside the <code>ros2_voice_chat</code> container.</li>
+        <li><strong>Full Introspection:</strong> Programmatic access to FastDDS telemetry, ROS 2 parameters, topic streams, and container logs.</li>
+        <li><strong>Proactive Oversight:</strong> Automated system diagnostics, runtime health monitoring, and proactive fault detection.</li>
+        <li><strong>Extensible Brain:</strong> AGY acts as the robot's autonomous decision layer and self-healing supervisor.</li>
       </ul>
     </div>
 
+    <!-- Right Card: Neural Voice -->
     <div class="card">
       <div class="card-header">
         <div class="card-title">
@@ -1411,9 +1440,9 @@ footer {
       </div>
       <ul class="bullet-list">
         <li><strong>Sub-100ms Latency:</strong> Local neural speech synthesis running purely on Raspberry Pi 5 CPU cores with zero cloud dependencies.</li>
-        <li><strong>Pipelined Token Streaming:</strong> Regex punctuation chunking allows audio playback to start while the LLM is still generating tokens.</li>
-        <li><strong>Concurrent Audio Out:</strong> Simultaneous broadcast to physical robot chassis speaker and operator browser Web Audio.</li>
-        <li><strong>Engineering Persona:</strong> Tuned for concise, razor-sharp technical diagnostics and status reports.</li>
+        <li><strong>Pipelined Token Streaming:</strong> Regex punctuation chunking allows audio playback to start while tokens are still streaming.</li>
+        <li><strong>Concurrent Audio Out:</strong> Simultaneous broadcast to physical chassis speaker and browser Web Audio.</li>
+        <li><strong>Diagnostic Persona:</strong> Tuned for concise, razor-sharp technical diagnostics and operational alerts.</li>
       </ul>
       <div style="margin-top: 6px; text-align: right;">
         <span class="handwritten-note">Regex chunking cut voice delay from 3.2s down to 240ms.</span>
@@ -1423,17 +1452,17 @@ footer {
 
   <div class="pipeline-bar">
     <div class="pipeline-step">
-      <span>Operator UI / Voice</span>
+      <span>Operator Voice / UI</span>
       <span class="pipeline-sep">➔</span>
-      <span>WebSocket Bridge (:8765)</span>
+      <span>WebSocket (:8765)</span>
       <span class="pipeline-sep">➔</span>
       <strong class="pipeline-tag">RoboFactory AGY Core</strong>
       <span class="pipeline-sep">➔</span>
-      <span>System Actions & Piper TTS</span>
+      <span>Piper TTS</span>
       <span class="pipeline-sep">➔</span>
-      <strong>Hardware Execution</strong>
+      <strong>Sub-100ms Speech</strong>
     </div>
-    <div>ON-DEVICE LOCAL</div>
+    <div>100% LOCAL AI</div>
   </div>
 </div>
 
@@ -1452,38 +1481,36 @@ footer {
   </div>
 
   <div class="grid-2">
+    <!-- Left: 4-Step Walkthrough -->
     <div class="card">
       <div class="card-header">
         <div class="card-title">
           <svg class="icon" viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-          Operator Dashboard Walkthrough
+          Demonstration Protocol
         </div>
-        <span class="card-tag">SEQUENCE</span>
+        <span class="card-tag">4 CHECKS</span>
       </div>
       <ol class="demo-step-list">
         <li class="demo-step-item">
           <div class="demo-step-num">1</div>
-          <div><strong>Live Telemetry:</strong> INA226 bus voltage (12.4V) and 9-DOF IMU pitch/roll sensor feeds.</div>
+          <div><strong>Live Telemetry:</strong> INA226 bus voltage (12.4V) and 9-DOF IMU pitch & roll attitude.</div>
         </li>
         <li class="demo-step-item">
           <div class="demo-step-num">2</div>
-          <div><strong>Manual Drive:</strong> Virtual joystick steering via <code>diff_drive_controller</code>.</div>
+          <div><strong>Manual Drive & Spindle:</strong> Virtual joystick teleop and 3000 RPM governor control.</div>
         </li>
         <li class="demo-step-item">
           <div class="demo-step-num">3</div>
-          <div><strong>Cutter Spindle:</strong> Closed-loop RPM governor with safety watchdog kill.</div>
+          <div><strong>Voice Status Query:</strong> Ask <em>"ReloBot, report system status and battery voltage"</em>.</div>
         </li>
         <li class="demo-step-item">
           <div class="demo-step-num">4</div>
-          <div><strong>AI Voice Query:</strong> Ask <em>"ReloBot, report system status and battery voltage"</em>.</div>
-        </li>
-        <li class="demo-step-item">
-          <div class="demo-step-num">5</div>
-          <div><strong>Neural Speech:</strong> Sub-second spoken response streamed via local Piper TTS.</div>
+          <div><strong>Local Neural Speech:</strong> Sub-second spoken response synthesized on Pi 5 CPU.</div>
         </li>
       </ol>
     </div>
 
+    <!-- Right: Launch Box -->
     <div class="demo-launch-box">
       <div class="demo-status-pill">
         <div class="demo-status-dot"></div>
@@ -1491,8 +1518,8 @@ footer {
       </div>
 
       <div>
-        <div style="font-size: 16px; font-weight: 600; color: var(--text-primary); margin-bottom: 2px;">ReloBot Operator Dashboard</div>
-        <div style="font-size: 12px; color: var(--text-muted); font-family: var(--font-mono);">http://localhost/ (or http://raspberrypi.local/)</div>
+        <div style="font-size: 17px; font-weight: 600; color: var(--text-primary); margin-bottom: 2px;">ReloBot Operator Dashboard</div>
+        <div style="font-size: 13px; color: var(--text-muted); font-family: var(--font-mono);">http://localhost/ (or http://raspberrypi.local/)</div>
       </div>
 
       <a href="http://localhost/" target="_blank" class="btn-launch">
@@ -1500,11 +1527,11 @@ footer {
         Launch Operator Dashboard
       </a>
 
-      <div style="font-size: 12px; color: var(--text-secondary); max-width: 300px; line-height: 1.4;">
-        Tip: Use <strong>Alt + Tab</strong> during presentation to switch between slides and live dashboard.
+      <div style="font-size: 12.5px; color: var(--text-secondary); max-width: 320px; line-height: 1.45;">
+        Tip: Press <strong>Alt + Tab</strong> to switch between slides and the live dashboard during presentation.
       </div>
 
-      <div style="margin-top: 4px;">
+      <div style="margin-top: 2px;">
         <span class="handwritten-note">Voice synthesized 100% on Pi 5 CPU.</span>
       </div>
     </div>
@@ -1518,7 +1545,7 @@ footer {
       <span class="pipeline-sep">➔</span>
       <strong class="pipeline-tag">Spindle Governor</strong>
       <span class="pipeline-sep">➔</span>
-      <span>Voice Inquiry</span>
+      <span>Voice Query</span>
       <span class="pipeline-sep">➔</span>
       <strong>Local Speech Output</strong>
     </div>
@@ -1531,12 +1558,12 @@ footer {
   <div class="slide-top-row">
     <div class="slide-title-group">
       <div class="slide-eyebrow">FIELD ENGINEERING / LESSONS LEARNED</div>
-      <h1 class="slide-title">Hard Problems Solved in Hardware & Software</h1>
-      <p class="slide-subtitle">Concrete engineering hurdles and battle-tested solutions from field deployment.</p>
+      <h1 class="slide-title">Hard Problems Solved in the Field</h1>
+      <p class="slide-subtitle">Concrete engineering hurdles and battle-tested solutions from actual lawn deployments.</p>
     </div>
     <div class="callout-why">
-      <div class="callout-why-title">Field Reliability</div>
-      <div class="callout-why-text">Robotics is the art of fighting real-world physics. Theory guarantees nothing until hardware survives the elements and edge-case network loads.</div>
+      <div class="callout-why-title">Learning by Doing</div>
+      <div class="callout-why-text">Real robotics is learned on the bench and in the grass. Theory guarantees nothing until code survives physical friction, socket buffers, and real-world edge cases.</div>
     </div>
   </div>
 
@@ -1551,10 +1578,10 @@ footer {
         <span class="problem-meta">KERNEL SYSCTL</span>
       </div>
       <div class="problem-body">
-        <strong>Problem:</strong> Linux default 212 KB UDP socket buffer choked under high-frequency SLAM map exchanges. Cascading retransmissions caused 100% CPU lockup.
+        <strong>Hurdle:</strong> Default Linux 212 KB socket buffer choked under high-rate SLAM maps, triggering retransmission storms and 100% CPU lockup.
       </div>
       <div class="problem-fix">
-        Fix: <code>net.core.rmem_max = 67108864</code> (64 MB socket buffer) in <code>/etc/sysctl.d/99-ros2-fastdds.conf</code>.
+        Fix: <code>net.core.rmem_max = 67108864</code> (64 MB buffer) in sysctl.
       </div>
     </div>
 
@@ -1563,15 +1590,15 @@ footer {
       <div class="problem-header">
         <div class="problem-title">
           <svg class="icon" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-          Wheel Velocity & Stiction Calibration
+          Motor Stiction Non-Linearity
         </div>
-        <span class="problem-meta">MICRO-ROS REGRESSION</span>
+        <span class="problem-meta">FIRMWARE REGRESSION</span>
       </div>
       <div class="problem-body">
-        <strong>Problem:</strong> DC gearmotors exhibit non-linear friction deadbands; left and right motors had different starting torque thresholds.
+        <strong>Hurdle:</strong> DC gearmotors had asymmetrical starting friction deadbands, causing low-speed angular drift.
       </div>
       <div class="problem-fix">
-        Fix: Automated velocity sweep ($PWM = k \cdot v + b$) in <code>helpers/wheel_calibration</code> embedded into firmware.
+        Fix: Automated linear sweep ($PWM = k \cdot v + b$) in RP2040 firmware.
       </div>
     </div>
 
@@ -1580,15 +1607,15 @@ footer {
       <div class="problem-header">
         <div class="problem-title">
           <svg class="icon" viewBox="0 0 24 24"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
-          5 GHz Wi-Fi Region Lockdown on Pi 5
+          5 GHz Wi-Fi Region Lockdown
         </div>
         <span class="problem-meta">HOST WIRELESS</span>
       </div>
       <div class="problem-body">
-        <strong>Problem:</strong> Raspberry Pi 5 kernel defaulted to <code>country 99 (DFS-UNSET)</code>, disabling 5 GHz bands and throttling camera stream.
+        <strong>Hurdle:</strong> Pi 5 kernel defaulted to DFS-UNSET, blocking 5 GHz channels and throttling camera streams.
       </div>
       <div class="problem-fix">
-        Fix: Configured persistent regulatory domain unlocking Channel 52 for low-latency RTSP camera streams.
+        Fix: Configured persistent regulatory domain unlocking Channel 52 for RTSP.
       </div>
     </div>
 
@@ -1597,15 +1624,15 @@ footer {
       <div class="problem-header">
         <div class="problem-title">
           <svg class="icon" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-          AI Agent Context & Reasoning Latency
+          AI Agent Context & Reasoning
         </div>
         <span class="problem-meta">SESSION LIFECYCLE</span>
       </div>
       <div class="problem-body">
-        <strong>Problem:</strong> Expired chat session IDs crashed CLI; raw <code>&lt;think&gt;</code> tokens introduced 10–20s delays before speech playback.
+        <strong>Hurdle:</strong> Raw thinking tokens introduced 10–20s delays before voice speech started.
       </div>
       <div class="problem-fix">
-        Fix: Dynamic session renewal, reasoning token suppression (&lt;50ms TTFT), and RAM model pre-warming.
+        Fix: Suppressed reasoning tokens (&lt;50ms TTFT) and pre-warmed model graph in RAM.
       </div>
     </div>
   </div>
@@ -1613,9 +1640,9 @@ footer {
   <div class="pipeline-bar">
     <div class="pipeline-step">
       <span>Field Hardening:</span>
-      <span class="pipeline-tag">64MB FastDDS Buffers</span>
+      <span class="pipeline-tag">64MB Socket Buffers</span>
       <span class="pipeline-sep">·</span>
-      <span class="pipeline-tag">Firmware Stiction PI</span>
+      <span class="pipeline-tag">Stiction Linearization</span>
       <span class="pipeline-sep">·</span>
       <span class="pipeline-tag">5 GHz Wi-Fi Unlock</span>
       <span class="pipeline-sep">·</span>
@@ -1625,13 +1652,13 @@ footer {
   </div>
 </div>
 
-    <!-- SLIDE 7: ROADMAP, SUMMARY & QA -->
+    <!-- SLIDE 7: ROADMAP & TECHNICAL DISCUSSION -->
 <div class="slide" data-index="7">
   <div class="slide-top-row">
     <div class="slide-title-group">
       <div class="slide-eyebrow">FUTURE MILESTONES / ROADMAP</div>
       <h1 class="slide-title">Toward Autonomous Swarm Factory</h1>
-      <p class="slide-subtitle">Next phases of development for the DarkSelmash AI Factory platform.</p>
+      <p class="slide-subtitle">Next phases of development for the DarkSelmash AI Factory robotics platform.</p>
     </div>
     <div class="callout-why">
       <div class="callout-why-title">Long-Term Vision</div>
@@ -1640,37 +1667,38 @@ footer {
   </div>
 
   <div class="grid-2">
+    <!-- Left Card: Development Roadmap -->
     <div class="card">
       <div class="card-header">
         <div class="card-title">
           <svg class="icon" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-          Development Roadmap
+          Next Milestones
         </div>
-        <span class="card-tag">NEXT STAGES</span>
+        <span class="card-tag">ROADMAP</span>
       </div>
       <ul class="bullet-list">
         <li><strong>Precision Optical Docking:</strong> Sub-centimeter outdoor docking using AprilTag fiducial markers (<code>opennav_docking</code>).</li>
-        <li><strong>Systematic Coverage Patterns:</strong> Boustrophedon and spiral sweep path generation via <code>opennav_coverage</code>.</li>
-        <li><strong>Multi-Robot Fleet Coordination:</strong> Distributed spatial maps and cooperative task dispatch across multiple ReloBots.</li>
-        <li><strong>Supervised Self-Healing:</strong> Autonomous AGY agent that can restart crashed ROS nodes, recalibrate sensors, and diagnose wiring faults.</li>
+        <li><strong>Systematic Coverage:</strong> Boustrophedon and spiral sweep path planning algorithms via <code>opennav_coverage</code>.</li>
+        <li><strong>Multi-Robot Fleet Swarm:</strong> Distributed spatial maps and cooperative task dispatch across multiple ReloBots.</li>
+        <li><strong>Supervised Self-Healing:</strong> Autonomous AGY agent that can restart crashed ROS nodes and recalibrate sensors.</li>
       </ul>
     </div>
 
+    <!-- Right Card: Technical Discussion & QA -->
     <div class="card">
       <div class="card-header">
         <div class="card-title">
           <svg class="icon" viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
-          Platform Summary & Technical Discussion
+          Key Discussion Topics
         </div>
-        <span class="card-tag">SUMMARY & Q&A</span>
+        <span class="card-tag">Q&A</span>
       </div>
       <ul class="bullet-list">
-        <li><strong>Deterministic Hardware:</strong> micro-ROS Hub & Spoke network isolating real-time loops.</li>
-        <li><strong>100% Docker & Simulation:</strong> Zero host pollution and 1:1 Gazebo digital twin parity.</li>
-        <li><strong>On-Device Intelligence:</strong> Antigravity AGY core with local Piper neural TTS.</li>
-        <li><strong>Web Dashboard:</strong> Zero-dependency operator interface at <code>http://localhost/</code>.</li>
+        <li><strong>Physical Loop Isolation:</strong> Tradeoffs of dedicated micro-ROS MCUs vs monolithic single-board controllers.</li>
+        <li><strong>Edge AI Integration:</strong> Practicalities of running autonomous LLM agents and neural TTS directly on embedded SBCs.</li>
+        <li><strong>Simulation-First Workflow:</strong> Achieving 100% digital twin fidelity and Gazebo-to-hardware transition.</li>
       </ul>
-      <div style="margin-top: 8px; text-align: right;">
+      <div style="margin-top: 14px; text-align: right;">
         <span class="handwritten-note">Ready for your questions and technical discussion!</span>
       </div>
     </div>
@@ -1678,13 +1706,13 @@ footer {
 
   <div class="pipeline-bar">
     <div class="pipeline-step">
-      <span>ReloBot Architecture</span>
+      <span>ReloBot Platform</span>
       <span class="pipeline-sep">·</span>
       <span>DarkSelmash AI Factory</span>
       <span class="pipeline-sep">·</span>
       <span>ROS 2 Humble</span>
       <span class="pipeline-sep">·</span>
-      <span class="pipeline-tag">Google Antigravity AGY</span>
+      <strong class="pipeline-tag">Google Antigravity AGY</strong>
     </div>
     <div>OPEN FOR Q&A</div>
   </div>
@@ -1733,11 +1761,11 @@ footer {
  * Corresponds directly to SPEAKER_NOTES_RU.md cue sheet.
  */
 const speakerNotes = {
-  1: "Всем привет! Рады приветствовать вас на DarkSelmash AI Factory. Сегодня мы представляем проект ReloBot. Это не просто радиоуправляемая тележка или самодельная косилка, а полноценная автономная робототехническая платформа. Наш ключевой фокус — объединение классической надежной робототехники на ROS 2 с концепцией AI Factory: когда искусственный интеллект встроен непосредственно в рантайм робота, способен общаться живым голосом и диагностировать систему изнутри.",
-  2: "В основе аппаратной архитектуры ReloBot лежит концепция Hub and Spoke. Центральным хабом выступает Raspberry Pi 5 с 8 гигабайтами оперативной памяти. Важнейшая деталь: прямо внутри хаба развернута среда RoboFactory, запускающая Google Antigravity и агентский рантайм AGY. Чат для оператора — это лишь маленькая входная фича, а само ядро AGY мы активно расширяем для автономной работы и диагностики. От хаба, как спицы колеса, расходятся изолированные каналы к микро-агентам: два модуля XIAO RP2040 для привода и ножей на 3000 оборотов, Pico с 9-осевым IMU, Pico 2 на RP2350 с чипом INA226 для батареи, круговой лидар и динамик голосового вывода.",
+  1: "Всем привет! Сегодня я представляю проект ReloBot. Изначально моей главной целью было глубоко изучить робототехнику с самых азов — от микроконтроллеров, физики моторов и фильтров Калмана до ROS 2 и навигации. Постепенно это практическое обучение переросло в полноценную автономную платформу: с аппаратной изоляцией на micro-ROS, цифровым двойником в Gazebo и встроенным локальным ИИ-агентом. Сегодня я поделюсь этой архитектурой и главными уроками, полученными на этом пути.",
+  2: "В основе аппаратной архитектуры ReloBot лежит концепция Hub and Spoke. Центральным хабом выступает Raspberry Pi 5 с 8 гигабайтами оперативной памяти. Прямо внутри хаба развернута среда RoboFactory, запускающая Google Antigravity и агентский рантайм AGY для глубокой автономной работы и диагностики. От хаба, как спицы колеса, расходятся изолированные аппаратные каналы к микро-агентам: два модуля XIAO RP2040 для привода и ножей на 3000 оборотов со стабилизацией скорости и вочдогом безопасности, Pico с 9-осевым IMU для фильтра Калмана, Pico 2 на RP2350 с чипом INA226 для батареи, круговой лидар и динамик голосового вывода. Микросекунды отданы микроконтроллерам, миллисекунды — центральному процессору.",
   3: "Программный стек и симуляция образуют единый конвейер с нулевым загрязнением хост-системы. Все ноды ROS 2 Humble работают в мультиконтейнерной системе Docker с общей памятью IPC. При этом мы создали цифровой двойник ReloBot в симуляторе Gazebo с абсолютным, стопроцентным паритетом API. Топики, TF-дерево и алгоритмы навигации Nav2 работают в симуляторе точно так же, как на реальном газоне, позволяя отладить весь софт на ноутбуке до раскрутки металлических ножей.",
-  4: "Ядро концепции DarkSelmash AI Factory — среда RoboFactory и агент AGY на базе Google Antigravity, запущенные прямо на борту робота. Хочу подчеркнуть: чат в браузере — это лишь маленькая входная фича для человека. Настоящая сила в том, что Antigravity работает как расширяемый агентский движок с доступом к топикам, логам, файлам и состоянию всех нод. Мы расширяем AGY дальше: агент учится самостоятельно перезапускать сбойные процессы, диагностировать аппаратные ошибки и в будущем координировать роевые миссии. А локальный нейросетевой движок Piper TTS озвучивает мысли робота с задержкой менее 100 миллисекунд.",
-  5: "ДЕМО В ЭФИРЕ: Переключаемся на браузер с дашбордом оператора (Alt+Tab). В правом верхнем углу — живая телеметрия с INA226 и наклоны робота. Касаемся джойстика — дифференциальный привод откликается мгновенно. Задаем обороты шпинделя ножей. А теперь обращаемся к бортовому ИИ: 'ReloBot, report system status and battery voltage'. Слушаем локальный голос робота через Piper TTS: 'All subsystems nominal. Battery at 12.4 volts. Ready for autonomous operation.' Голос сгенерирован полностью на борту!",
+  4: "Ядро концепции DarkSelmash AI Factory — среда RoboFactory и агент AGY на базе Google Antigravity, запущенные прямо на борту робота. Важно подчеркнуть: Antigravity работает как полноценный агентский движок с прямым доступом к топикам, логам, файлам и состоянию всех нод. Агент способен выполнять глубокую диагностику, самостоятельно перезапускать сбойные ноды, находить аппаратные ошибки и в будущем координировать роевые миссии. А локальный нейросетевой движок Piper TTS озвучивает статус и мысли робота с задержкой менее 100 миллисекунд прямо на динамик корпуса.",
+  5: "ДЕМО В ЭФИРЕ: Переключаемся на браузер с дашбордом оператора (Alt+Tab). В правом верхнем углу — живая телеметрия с INA226 и наклоны робота. Касаемся джойстика — дифференциальный привод откликается мгновенно. Задаем обороты шпинделя ножей. А теперь обращаемся к бортовому ИИ голосовым запросом: 'ReloBot, report system status and battery voltage'. Слушаем локальный голос робота через Piper TTS: 'All subsystems nominal. Battery at 12.4 volts. Ready for autonomous operation.' Голос сгенерирован полностью на борту!",
   6: "Робототехника — это искусство борьбы с физикой и граблями. Мы решили шторм буфера FastDDS, когда тяжелые карты SLAM забивали 200-килобайтный буфер Linux и вешали ядро — помог тюнинг сокетов до 64 МБ. Мы победили трение покоя моторов через калибровочную регрессию прямо на RP2040. Разблокировали 5 ГГц Wi-Fi на Pi 5 для видеопотока. И оптимизировали работу агента Antigravity: подавили задержку reasoning-токенов с 20 секунд до 50 миллисекунд и прогрели граф нейросети в RAM.",
   7: "Куда мы движемся дальше? Наш ближайший шаг — автономная док-станция с оптической стыковкой по меткам AprilTag, алгоритмы сплошного покоса и объединение роботов в координированный рой под управлением диспетчера AI Factory. Большое спасибо за внимание! Мы открыты к вопросам и технической дискуссии."
 };

@@ -2,13 +2,13 @@
 <div class="slide" data-index="2">
   <div class="slide-top-row">
     <div class="slide-title-group">
-      <div class="slide-eyebrow">ROBOFACTORY / CENTRAL HUB</div>
-      <h1 class="slide-title">RoboFactory Central Hub</h1>
-      <p class="slide-subtitle">Physical separation of real-time control loops and high-level autonomous intelligence via isolated USB CDC channels.</p>
+      <div class="slide-eyebrow">HARDWARE ARCHITECTURE / HUB & SPOKE</div>
+      <h1 class="slide-title">Hub & Spoke Micro-Agent Network</h1>
+      <p class="slide-subtitle">Physical separation of real-time control loops and central compute via dedicated USB CDC channels.</p>
     </div>
     <div class="callout-why">
-      <div class="callout-why-title">Why this setup?</div>
-      <div class="callout-why-text">Keeps real-time motor control and sensor loops isolated from higher-level AI. If the AI crashes, wheels and safety loops keep running.</div>
+      <div class="callout-why-title">Why Hardware Isolation?</div>
+      <div class="callout-why-text">Keeps real-time motor PWM and sensor acquisition isolated on dedicated MCUs. If higher-level software restarts, safety watchdogs and wheel loops never miss a cycle.</div>
     </div>
   </div>
 
@@ -20,15 +20,15 @@
         <div class="card-header">
           <div class="card-title">
             <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-.33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-            Drive Subsystem
+            Differential Drive
           </div>
-          <span class="card-tag">XIAO RP2040 · 50 Hz</span>
+          <span class="card-tag">RP2040 · 50 Hz</span>
         </div>
-        <div class="card-desc">Dual Cytron MD13S 13A drivers + 60 CPR optical encoders.</div>
+        <div class="card-desc">Dual Cytron MD13S (13A) drivers with 60 CPR optical encoder feedback.</div>
         <div class="card-specs">
           <span class="spec-item highlight">Closed-loop PI</span>
           <span class="spec-sep">·</span>
-          <span class="spec-item">TopicBasedSystem</span>
+          <span class="spec-item">Stiction Linearized</span>
         </div>
       </div>
 
@@ -39,11 +39,11 @@
             <svg class="icon" viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>
             Cutting Spindle
           </div>
-          <span class="card-tag">XIAO RP2040 · 100 Hz</span>
+          <span class="card-tag">RP2040 · 100 Hz</span>
         </div>
-        <div class="card-desc">High-power brushless driver + 3000 RPM balanced tri-blade cutter.</div>
+        <div class="card-desc">High-power brushless spindle driver + 3000 RPM balanced tri-blade cutter.</div>
         <div class="card-specs">
-          <span class="spec-item highlight">Closed-loop RPM Governor</span>
+          <span class="spec-item highlight">RPM Governor</span>
           <span class="spec-sep">·</span>
           <span class="spec-item">Hardware Watchdog Kill</span>
         </div>
@@ -56,24 +56,22 @@
             <svg class="icon" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/></svg>
             9-DOF IMU Subsystem
           </div>
-          <span class="card-tag">RPI PICO · 100 Hz</span>
+          <span class="card-tag">RP2040 · 100 Hz</span>
         </div>
-        <div class="card-desc">TDK InvenSense ICM-20948 (3-axis Gyro + Accel + Magnetometer).</div>
+        <div class="card-desc">TDK InvenSense ICM-20948 (Gyroscope + Accelerometer + Magnetometer).</div>
         <div class="card-specs">
           <span class="spec-item">I2C Fast Mode</span>
-          <span class="spec-sep">·</span>
-          <span class="spec-item">/imu/data_raw</span>
           <span class="spec-sep">·</span>
           <span class="spec-item highlight">EKF State Source</span>
         </div>
       </div>
     </div>
 
-    <!-- CENTER COLUMN: CENTRAL HUB (PROMINENT & CENTERED) -->
+    <!-- CENTER COLUMN: CENTRAL HUB -->
     <div class="hub-center-card">
       <div class="hub-header">
         <div class="hub-title">RoboFactory Central Hub</div>
-        <div class="hub-sub">Raspberry Pi 5 (8GB) + Industrial case</div>
+        <div class="hub-sub">Raspberry Pi 5 (8GB) + Industrial Enclosure</div>
       </div>
 
       <div class="hub-img-wrapper">
@@ -83,41 +81,37 @@
       <div class="hub-bullet-grid">
         <div class="hub-bullet-item">
           <span class="hub-bullet-dot">•</span>
-          <span>Multi-container orchestration</span>
+          <span>Quad-core ARM Cortex-A76</span>
         </div>
         <div class="hub-bullet-item">
           <span class="hub-bullet-dot">•</span>
-          <span>Google Antigravity & AGV agent</span>
+          <span>High-Speed PCIe NVMe Storage</span>
         </div>
         <div class="hub-bullet-item">
           <span class="hub-bullet-dot">•</span>
-          <span>ROS 2 Humble + Stack</span>
+          <span>4x Dedicated USB CDC Channels</span>
         </div>
         <div class="hub-bullet-item">
           <span class="hub-bullet-dot">•</span>
-          <span>Sandboxed Docker services</span>
+          <span>Hardware Watchdog Heartbeats</span>
         </div>
         <div class="hub-bullet-item">
           <span class="hub-bullet-dot">•</span>
-          <span>On-device AGV core</span>
+          <span>Central Power Bus Distribution</span>
         </div>
         <div class="hub-bullet-item">
           <span class="hub-bullet-dot">•</span>
-          <span>FastDDS shared memory IPC</span>
-        </div>
-        <div class="hub-bullet-item" style="grid-column: span 2;">
-          <span class="hub-bullet-dot">•</span>
-          <span>Piper neural TTS engine</span>
+          <span>FastDDS Shared-Memory IPC</span>
         </div>
       </div>
 
       <div class="hub-bus-footer">
-        <span>|</span>
-        <span>Isolated USB CDC micro-ROS serial buses ↔</span>
+        <span>↔</span>
+        <span>4x Isolated USB CDC micro-ROS Serial Buses</span>
       </div>
     </div>
 
-    <!-- RIGHT COLUMN: BATTERY, PERCEPTION, AUDIO & NOTES -->
+    <!-- RIGHT COLUMN: BATTERY, PERCEPTION, AUDIO -->
     <div class="spoke-col">
       <!-- Card: Battery -->
       <div class="card">
@@ -126,15 +120,13 @@
             <svg class="icon" viewBox="0 0 24 24"><rect x="2" y="7" width="16" height="10" rx="2"/><line x1="22" y1="11" x2="22" y2="13"/></svg>
             Battery & Power
           </div>
-          <span class="card-tag">PICO 2 RP2350 · 10 Hz</span>
+          <span class="card-tag">RP2350 · 10 Hz</span>
         </div>
-        <div class="card-desc">Texas Instruments INA226 high-side current & bus monitor.</div>
+        <div class="card-desc">Texas Instruments INA226 high-side current & bus voltage monitor.</div>
         <div class="card-specs">
           <span class="spec-item highlight">0–36V Bus</span>
           <span class="spec-sep">·</span>
-          <span class="spec-item">Real-Time Amps/Watts</span>
-          <span class="spec-sep">·</span>
-          <span class="spec-item">Li-Ion SoC</span>
+          <span class="spec-item">Real-Time Current / SoC</span>
         </div>
       </div>
 
@@ -151,7 +143,7 @@
         <div class="card-specs">
           <span class="spec-item highlight">Obstacle Pointclouds</span>
           <span class="spec-sep">·</span>
-          <span class="spec-item">SLAM Costmaps</span>
+          <span class="spec-item">Costmaps</span>
         </div>
       </div>
 
@@ -160,31 +152,15 @@
         <div class="card-header">
           <div class="card-title">
             <svg class="icon" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
-            Neural Audio Output
+            Chassis Audio Output
           </div>
-          <span class="card-tag">ALSA / PULSE AUDIO</span>
+          <span class="card-tag">ALSA / HW AMP</span>
         </div>
-        <div class="card-desc">High-efficiency audio amplifier + weatherproof onboard speaker.</div>
+        <div class="card-desc">High-efficiency audio amplifier + weatherproof chassis speaker.</div>
         <div class="card-specs">
-          <span class="spec-item highlight">Local Piper TTS</span>
+          <span class="spec-item highlight">Local Audio Out</span>
           <span class="spec-sep">·</span>
-          <span class="spec-item">Sub-100ms Speech</span>
-        </div>
-      </div>
-
-      <!-- Shortened Notes Card -->
-      <div class="notes-card">
-        <div class="notes-title">
-          <svg class="icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-          Notes
-        </div>
-        <ul class="notes-list">
-          <li>Kept real-time loops on separate MCUs to avoid AI jitter.</li>
-          <li>USB CDC gives clean, isolated channels per node.</li>
-          <li>Slightly over-engineered, but field-reliable.</li>
-        </ul>
-        <div style="text-align: right; margin-top: 1px;">
-          <span class="handwritten-note">It's not perfect, but it works.</span>
+          <span class="spec-item">Sub-100ms Playback</span>
         </div>
       </div>
     </div>
@@ -192,16 +168,13 @@
 
   <div class="pipeline-bar">
     <div class="pipeline-step">
-      <span class="pipeline-tag">Hardware</span>
+      <span class="pipeline-tag">Microcontrollers</span>
+      <span>(PWM, Encoders, Safety Watchdogs)</span>
       <span class="pipeline-sep">➔</span>
-      <span>Microcontrollers (PWM, Encoders, Watchdogs)</span>
+      <span class="pipeline-tag">4x USB CDC</span>
       <span class="pipeline-sep">➔</span>
-      <span class="pipeline-tag">USB CDC (4x isolated)</span>
-      <span class="pipeline-sep">➔</span>
-      <strong>Raspberry Pi 5 (Orchestration + AI)</strong>
-      <span class="pipeline-sep">➔</span>
-      <span>Central Hub: Milliseconds (RoboFactory, Docker, AGV)</span>
+      <strong>Raspberry Pi 5 Central Hub</strong>
     </div>
-    <div>BUILD / TEST / IMPROVE</div>
+    <div>DETERMINISTIC & ISOLATED</div>
   </div>
 </div>

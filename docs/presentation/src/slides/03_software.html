@@ -7,25 +7,26 @@
       <p class="slide-subtitle">Zero host pollution with shared-memory IPC, paired with 100% API parity in the virtual digital twin.</p>
     </div>
     <div class="callout-why">
-      <div class="callout-why-title">Why Docker on Host?</div>
-      <div class="callout-why-text">Robotics stacks are notoriously brittle with OS dependencies. Containerizing every service ensures reproducible builds, while host-mode IPC preserves microsecond transport speeds.</div>
+      <div class="callout-why-title">Why Docker & Simulation?</div>
+      <div class="callout-why-text">Fast iteration without breaking the host OS. Docker and Gazebo simulation enabled safe, rapid learning of ROS 2 navigation before running physical hardware.</div>
     </div>
   </div>
 
   <div class="grid-2">
+    <!-- Left Card: Docker Runtime -->
     <div class="card">
       <div class="card-header">
         <div class="card-title">
           <svg class="icon" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
-          Multi-Container Orchestration Architecture
+          Multi-Container ROS 2 Architecture
         </div>
-        <span class="card-tag">HOST RUNTIME</span>
+        <span class="card-tag">DOCKER RUNTIME</span>
       </div>
       <ul class="bullet-list">
-        <li><strong>Host Purity:</strong> Host OS only runs Docker and serial device mounts. No ROS dependencies installed on host.</li>
+        <li><strong>Host Purity:</strong> Host OS only runs Docker and serial device mounts. No ROS packages installed on host.</li>
         <li><strong>Zero Latency Transport:</strong> <code>network_mode: host</code> and <code>ipc: host</code> enable FastDDS shared memory communication.</li>
-        <li><strong>Volume Hot-Reloading:</strong> Code in <code>ros2_ws/src/</code> is mounted directly; rebuilds and web changes take effect immediately.</li>
-        <li><strong>Standard ROS 2 Interfaces:</strong> Uses <code>topic_based_ros2_control</code>, <code>robot_localization</code> EKF, and standard Nav2 behavior trees.</li>
+        <li><strong>Volume Hot-Reloading:</strong> Workspace source mounted directly; node rebuilds and web changes take effect immediately.</li>
+        <li><strong>Standard ROS 2 Interfaces:</strong> Uses <code>ros2_control</code>, <code>robot_localization</code> EKF, and standard Nav2 behavior trees.</li>
       </ul>
       <div class="card-specs" style="margin-top: 6px;">
         <span class="spec-item">ros2_nav2</span>
@@ -38,6 +39,7 @@
       </div>
     </div>
 
+    <!-- Right Card: Gazebo Digital Twin -->
     <div class="card">
       <div class="card-header">
         <div class="card-title">
@@ -47,10 +49,10 @@
         <span class="card-tag">SIMULATION</span>
       </div>
       <ul class="bullet-list">
-        <li><strong>100% API Parity:</strong> Identical topic names (<code>/cmd_vel</code>, <code>/scan</code>), TF frame hierarchy (<code>map</code> → <code>odom</code> → <code>base_link</code>), and action servers.</li>
+        <li><strong>100% API Parity:</strong> Identical topic names (<code>/cmd_vel</code>, <code>/scan</code>), TF frames, and Nav2 action servers.</li>
         <li><strong>Physics & Friction Models:</strong> <code>garden.sdf</code> includes real lawn friction parameters, perimeter obstacles, and rough terrain.</li>
         <li><strong>Emulated Sensors:</strong> Simulated 360° laser scans, synthetic camera feeds, and blade motor speed feedbacks.</li>
-        <li><strong>Instant Launch Command:</strong> <code>./start_sim.sh up --gui --dev</code> tests the entire autonomy pipeline on a laptop.</li>
+        <li><strong>Instant Laptop Launch:</strong> <code>./start_sim.sh up --gui --dev</code> tests the entire autonomy pipeline on a laptop.</li>
       </ul>
       <div style="margin-top: 6px; text-align: right;">
         <span class="handwritten-note">Saved ~3 weeks of bench testing before running physical blades.</span>
@@ -66,7 +68,7 @@
       <span class="pipeline-sep">➔</span>
       <strong>FastDDS Shared Memory IPC</strong>
       <span class="pipeline-sep">➔</span>
-      <span>Nav2 / Gazebo Sim</span>
+      <span>100% Gazebo Sim Parity</span>
     </div>
     <div>PARITY: 100%</div>
   </div>

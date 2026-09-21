@@ -24,7 +24,6 @@
   gz_type_name: "gz.msgs.Image"
   direction: GZ_TO_ROS
   frame_id: "camera"
-  lazy: true
 
 - ros_topic_name: "/camera/camera_info"
   gz_topic_name: "/camera/camera_info"
@@ -32,4 +31,3 @@
   gz_type_name: "gz.msgs.CameraInfo"
   direction: GZ_TO_ROS
   frame_id: "camera"
-  lazy: true

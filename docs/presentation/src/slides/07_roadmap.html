@@ -1,10 +1,10 @@
-<!-- SLIDE 7: ROADMAP, SUMMARY & QA -->
+<!-- SLIDE 7: ROADMAP & TECHNICAL DISCUSSION -->
 <div class="slide" data-index="7">
   <div class="slide-top-row">
     <div class="slide-title-group">
       <div class="slide-eyebrow">FUTURE MILESTONES / ROADMAP</div>
       <h1 class="slide-title">Toward Autonomous Swarm Factory</h1>
-      <p class="slide-subtitle">Next phases of development for the DarkSelmash AI Factory platform.</p>
+      <p class="slide-subtitle">Next phases of development for the DarkSelmash AI Factory robotics platform.</p>
     </div>
     <div class="callout-why">
       <div class="callout-why-title">Long-Term Vision</div>
@@ -13,37 +13,38 @@
   </div>
 
   <div class="grid-2">
+    <!-- Left Card: Development Roadmap -->
     <div class="card">
       <div class="card-header">
         <div class="card-title">
           <svg class="icon" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-          Development Roadmap
+          Next Milestones
         </div>
-        <span class="card-tag">NEXT STAGES</span>
+        <span class="card-tag">ROADMAP</span>
       </div>
       <ul class="bullet-list">
         <li><strong>Precision Optical Docking:</strong> Sub-centimeter outdoor docking using AprilTag fiducial markers (<code>opennav_docking</code>).</li>
-        <li><strong>Systematic Coverage Patterns:</strong> Boustrophedon and spiral sweep path generation via <code>opennav_coverage</code>.</li>
-        <li><strong>Multi-Robot Fleet Coordination:</strong> Distributed spatial maps and cooperative task dispatch across multiple ReloBots.</li>
-        <li><strong>Supervised Self-Healing:</strong> Autonomous AGY agent that can restart crashed ROS nodes, recalibrate sensors, and diagnose wiring faults.</li>
+        <li><strong>Systematic Coverage:</strong> Boustrophedon and spiral sweep path planning algorithms via <code>opennav_coverage</code>.</li>
+        <li><strong>Multi-Robot Fleet Swarm:</strong> Distributed spatial maps and cooperative task dispatch across multiple ReloBots.</li>
+        <li><strong>Supervised Self-Healing:</strong> Autonomous AGY agent that can restart crashed ROS nodes and recalibrate sensors.</li>
       </ul>
     </div>
 
+    <!-- Right Card: Technical Discussion & QA -->
     <div class="card">
       <div class="card-header">
         <div class="card-title">
           <svg class="icon" viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
-          Platform Summary & Technical Discussion
+          Key Discussion Topics
         </div>
-        <span class="card-tag">SUMMARY & Q&A</span>
+        <span class="card-tag">Q&A</span>
       </div>
       <ul class="bullet-list">
-        <li><strong>Deterministic Hardware:</strong> micro-ROS Hub & Spoke network isolating real-time loops.</li>
-        <li><strong>100% Docker & Simulation:</strong> Zero host pollution and 1:1 Gazebo digital twin parity.</li>
-        <li><strong>On-Device Intelligence:</strong> Antigravity AGY core with local Piper neural TTS.</li>
-        <li><strong>Web Dashboard:</strong> Zero-dependency operator interface at <code>http://localhost/</code>.</li>
+        <li><strong>Physical Loop Isolation:</strong> Tradeoffs of dedicated micro-ROS MCUs vs monolithic single-board controllers.</li>
+        <li><strong>Edge AI Integration:</strong> Practicalities of running autonomous LLM agents and neural TTS directly on embedded SBCs.</li>
+        <li><strong>Simulation-First Workflow:</strong> Achieving 100% digital twin fidelity and Gazebo-to-hardware transition.</li>
       </ul>
-      <div style="margin-top: 8px; text-align: right;">
+      <div style="margin-top: 14px; text-align: right;">
         <span class="handwritten-note">Ready for your questions and technical discussion!</span>
       </div>
     </div>
@@ -51,13 +52,13 @@
 
   <div class="pipeline-bar">
     <div class="pipeline-step">
-      <span>ReloBot Architecture</span>
+      <span>ReloBot Platform</span>
       <span class="pipeline-sep">·</span>
       <span>DarkSelmash AI Factory</span>
       <span class="pipeline-sep">·</span>
       <span>ROS 2 Humble</span>
       <span class="pipeline-sep">·</span>
-      <span class="pipeline-tag">Google Antigravity AGY</span>
+      <strong class="pipeline-tag">Google Antigravity AGY</strong>
     </div>
     <div>OPEN FOR Q&A</div>
   </div>
