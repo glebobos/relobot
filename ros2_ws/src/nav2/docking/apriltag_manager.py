@@ -100,9 +100,9 @@ class AprilTagManager(Node):
         self._retry_timer = None
 
         # --- In-Process Dock Pose Publishing (Zero subprocess) ---
-        self._tf_buffer = tf2_ros.Buffer()
+        self._tf_buffer = tf2_ros.Buffer(cache_time=rclpy.duration.Duration(seconds=5.0))
         self._tf_listener = tf2_ros.TransformListener(self._tf_buffer, self)
-        self._dock_pub = self.create_publisher(PoseStamped, '/detected_dock_pose', 10)
+        self._dock_pub = self.create_publisher(PoseStamped, '/detected_dock_pose', 1)
         self._dock_timer = None
         self._last_pose: PoseStamped | None = None
         self._last_detected_time: rclpy.time.Time | None = None
@@ -299,21 +299,29 @@ class AprilTagManager(Node):
             msg.pose.position.y = t.transform.translation.y
             msg.pose.position.z = t.transform.translation.z
             msg.pose.orientation = t.transform.rotation
+
+            if self._last_detected_time is None:
+                self.get_logger().info(
+                    f'[AprilTag] Tag {self._tag_frame} ACQUIRED at ({msg.pose.position.x:.3f}, {msg.pose.position.y:.3f}, {msg.pose.position.z:.3f})')
+
             self._last_pose = msg
             self._last_detected_time = now
             self._dock_pub.publish(msg)
         except (tf2_ros.LookupException,
                 tf2_ros.ConnectivityException,
                 tf2_ros.ExtrapolationException):
-            # Only republish last known pose if seen recently (< 0.8 s)
+            # Only republish last known pose if seen recently (< 5.0 s)
             # to smooth momentary frame drops during close approach
             if self._last_pose is not None and self._last_detected_time is not None:
                 age_sec = (now - self._last_detected_time).nanoseconds / 1e9
-                if age_sec < 0.8:
+                if age_sec < 5.0:
                     self._last_pose.header.stamp = now.to_msg()
                     self._dock_pub.publish(self._last_pose)
                 else:
+                    self.get_logger().warn(
+                        f'[AprilTag] Tag {self._tag_frame} LOST (>5.0s without detection).')
                     self._last_pose = None
+                    self._last_detected_time = None
 
 
 def main(args=None):
