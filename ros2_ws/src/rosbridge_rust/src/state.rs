@@ -96,15 +96,19 @@ impl RateLimiter {
 pub struct SharedState {
     /// Most recent TF message cache.
     pub tf_cache: RwLock<Option<CachedMessage>>,
-    /// Most recent OccupancyGrid map cache.
+    /// Most recent OccupancyGrid map cache (JSON).
     pub map_cache: RwLock<Option<CachedMessage>>,
+    /// Most recent binary compressed OccupancyGrid frame.
+    pub binary_map_cache: RwLock<Option<Arc<[u8]>>>,
     /// Most recent RobotPose stamped cache.
     pub pose_cache: RwLock<Option<CachedMessage>>,
 
     /// Multi-producer broadcast channel for `/tf`.
     pub tf_tx: broadcast::Sender<Arc<str>>,
-    /// Multi-producer broadcast channel for `/map`.
+    /// Multi-producer broadcast channel for `/map` (JSON).
     pub map_tx: broadcast::Sender<Arc<str>>,
+    /// Multi-producer broadcast channel for `/map` (binary compressed).
+    pub binary_map_tx: broadcast::Sender<Arc<[u8]>>,
     /// Multi-producer broadcast channel for `/robot_pose`.
     pub pose_tx: broadcast::Sender<Arc<str>>,
 
@@ -127,14 +131,17 @@ impl SharedState {
     pub fn new(
         tf_tx: broadcast::Sender<Arc<str>>,
         map_tx: broadcast::Sender<Arc<str>>,
+        binary_map_tx: broadcast::Sender<Arc<[u8]>>,
         pose_tx: broadcast::Sender<Arc<str>>,
     ) -> Arc<Self> {
         Arc::new(Self {
             tf_cache: RwLock::new(None),
             map_cache: RwLock::new(None),
+            binary_map_cache: RwLock::new(None),
             pose_cache: RwLock::new(None),
             tf_tx,
             map_tx,
+            binary_map_tx,
             pose_tx,
             spin_heartbeat_ms: AtomicU64::new(monotonic_ms()),
             active_clients: AtomicU64::new(0),
