@@ -43,7 +43,17 @@ def generate_launch_description():
                     "format": "RGB888",
                     "FrameDurationLimits": [100000, 100000],
                     "camera_info_url": "file:///ros2_ws/src/camera_ros/calibration/camera.yaml",
-                    "ExposureValue": 0.0
+                    "ExposureValue": 0.0,
+                    # PR #155 publisher QoS overrides: keep_last 1, best_effort reliability
+                    "qos_overrides./camera/image_raw.publisher.reliability": "best_effort",
+                    "qos_overrides./camera/image_raw.publisher.depth": 1,
+                    "qos_overrides./camera/image_raw.publisher.history": "keep_last",
+                    "qos_overrides./camera/image_raw/compressed.publisher.reliability": "best_effort",
+                    "qos_overrides./camera/image_raw/compressed.publisher.depth": 1,
+                    "qos_overrides./camera/image_raw/compressed.publisher.history": "keep_last",
+                    "qos_overrides./camera/camera_info.publisher.reliability": "best_effort",
+                    "qos_overrides./camera/camera_info.publisher.depth": 1,
+                    "qos_overrides./camera/camera_info.publisher.history": "keep_last",
                 }],
                 extra_arguments=[{'use_intra_process_comms': True}],
             ),
@@ -52,6 +62,9 @@ def generate_launch_description():
                 package='image_proc',
                 plugin='image_proc::RectifyNode',
                 name='rectify_node',
+                parameters=[{
+                    'queue_size': 1,
+                }],
                 remappings=[
                     ('image', '/camera/image_raw'),
                     ('camera_info', '/camera/camera_info'),
@@ -66,9 +79,10 @@ def generate_launch_description():
                 name='web_video_server',
                 parameters=[{
                     'port': 8080,
-                    'server_threads': 1,
+                    'server_threads': 2,
                     'ros_threads': 2,
-                    'default_stream_type': 'mjpeg',
+                    'default_stream_type': 'ros_compressed',
+                    'default_qos_profile': 'sensor_data',
                 }],
                 extra_arguments=[{'use_intra_process_comms': False}],
             ),
