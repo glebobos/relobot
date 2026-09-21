@@ -5,7 +5,7 @@ export class CameraService {
         this.cameraStream = document.getElementById(imgElementId);
         this.clientId = 'web-ui-' + Math.random().toString(36).substring(2, 9);
         this.type = options.type || 'ros_compressed';
-        this.topic = options.topic || (this.type === 'ros_compressed' ? TOPICS.CAMERA_RAW : TOPICS.CAMERA_IMAGE);
+        this.topic = options.topic || (this.type === 'ros_compressed' ? (TOPICS.CAMERA_RAW || '/camera/image_raw') : (TOPICS.CAMERA_IMAGE || '/camera/image_rect'));
         this.quality = options.quality !== undefined ? options.quality : 50;
         this.width = options.width;
         this.height = options.height;
@@ -119,7 +119,7 @@ export class CameraService {
                     }
 
                     // Complete JPEG frame found
-                    latestFrame = buffer.subarray(soi, eoi + 2);
+                    latestFrame = buffer.slice(soi, eoi + 2);
                     latestFrameEnd = eoi + 2;
                     searchIdx = eoi + 2;
                 }
@@ -160,7 +160,7 @@ export class CameraService {
         this._currentBlobUrl = newUrl;
         this.cameraStream.src = newUrl;
         if (prevUrl) {
-            requestAnimationFrame(() => URL.revokeObjectURL(prevUrl));
+            setTimeout(() => URL.revokeObjectURL(prevUrl), 100);
         }
     }
 

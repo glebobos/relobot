@@ -29,6 +29,7 @@ export const TOPICS = {
 
     // Camera
     CAMERA_IMAGE: '/camera/image_rect',
+    CAMERA_RAW: '/camera/image_raw',
 
     // Control / Drive
     CMD_VEL: '/cmd_vel',
