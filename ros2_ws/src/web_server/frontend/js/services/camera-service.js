@@ -1,16 +1,29 @@
 import { TOPICS } from '../shared/constants.js';
 
 export class CameraService {
-    constructor(imgElementId) {
+    constructor(imgElementId, options = {}) {
         this.cameraStream = document.getElementById(imgElementId);
         this.clientId = 'web-ui-' + Math.random().toString(36).substring(2, 9);
-        const isHttps = window.location.protocol === 'https:';
-        const protocol = isHttps ? 'https:' : 'http:';
-        const port = isHttps ? '' : ':8080';
-        const path = isHttps ? '/camera-stream' : '';
-        this.baseUrl = `${protocol}//${window.location.hostname}${port}${path}/stream?topic=${TOPICS.CAMERA_IMAGE}&type=mjpeg&quality=80&qos_profile=sensor_data&client_id=${this.clientId}`;
+        this.quality = options.quality !== undefined ? options.quality : 50;
+        this.width = options.width;
+        this.height = options.height;
+
+        let streamUrl = `${window.location.protocol}//${window.location.host}/camera-stream/stream?topic=${TOPICS.CAMERA_IMAGE}&type=mjpeg&quality=${this.quality}&qos_profile=sensor_data&client_id=${this.clientId}`;
+        if (this.width && this.height) {
+            streamUrl += `&width=${this.width}&height=${this.height}`;
+        }
+        this.baseUrl = streamUrl;
         this.isActive = false;
         this.init();
+    }
+
+    reconnect() {
+        if (!this.cameraStream) return;
+        console.log(`[CameraService] Forcing stream reconnect (${this.cameraStream.id})...`);
+        this.stopStreamOnly();
+        setTimeout(() => {
+            if (this.isActive) this.connect();
+        }, 50);
     }
 
     init() {

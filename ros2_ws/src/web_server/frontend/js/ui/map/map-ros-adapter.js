@@ -1,13 +1,18 @@
 import { rosService } from '../../services/ros-service.js';
 import { MSG_TYPES, TOPICS } from '../../shared/constants.js';
 
-const MAP_THROTTLE_MS = 2000;
+const MAP_THROTTLE_MS = 5000;
 
 export class MapRosAdapter {
     constructor(handlers) {
         this.handlers = handlers;
         this.subscriptions = [];
+        this.mapSubscription = null;
+        this.coveragePolygonSubscription = null;
+        this.visibilityHandler = null;
+
         this.subscribe();
+        this.initVisibilityListener();
     }
 
     subscribe() {
@@ -24,17 +29,45 @@ export class MapRosAdapter {
             this.handlers.robotPose,
             { throttle_rate: 33 },
         );
-        this.add(
+
+        this.subscribeMap();
+
+        // Dynamically subscribe to coverage polygon if enabled by user
+        const coverageEnabled = localStorage.getItem('navigation_coverage_boundary_enabled') === 'true';
+        this.subscribeCoveragePolygon(coverageEnabled);
+    }
+
+    subscribeMap() {
+        if (this.mapSubscription || !this.handlers?.map) return;
+        this.mapSubscription = rosService.subscribe(
             TOPICS.MAP,
             MSG_TYPES.OCCUPANCY_GRID,
             this.handlers.map,
             { throttle_rate: MAP_THROTTLE_MS },
         );
+    }
 
-        // Dynamically subscribe to coverage polygon if enabled by user
-        this.coveragePolygonSubscription = null;
-        const coverageEnabled = localStorage.getItem('navigation_coverage_boundary_enabled') === 'true';
-        this.subscribeCoveragePolygon(coverageEnabled);
+    unsubscribeMap() {
+        if (!this.mapSubscription) return;
+        try {
+            this.mapSubscription.unsubscribe();
+        } catch (e) {
+            console.warn('[MapRosAdapter] Failed to unsubscribe from map:', e);
+        }
+        this.mapSubscription = null;
+    }
+
+    initVisibilityListener() {
+        this.visibilityHandler = () => {
+            if (document.visibilityState === 'visible') {
+                console.log('[MapRosAdapter] Page visible, resuming map subscription...');
+                this.subscribeMap();
+            } else {
+                console.log('[MapRosAdapter] Page hidden, pausing map subscription to conserve bandwidth...');
+                this.unsubscribeMap();
+            }
+        };
+        document.addEventListener('visibilitychange', this.visibilityHandler);
     }
 
     subscribeCoveragePolygon(enabled) {
@@ -67,6 +100,11 @@ export class MapRosAdapter {
     }
 
     destroy() {
+        if (this.visibilityHandler) {
+            document.removeEventListener('visibilitychange', this.visibilityHandler);
+            this.visibilityHandler = null;
+        }
+        this.unsubscribeMap();
         this.subscriptions.forEach(subscription => subscription.unsubscribe());
         this.subscriptions = [];
         if (this.coveragePolygonSubscription) {

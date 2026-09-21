@@ -33,6 +33,7 @@ ReloBot is a ROS2-based robotics platform running on Raspberry Pi 5.
     - `start_wheel_calibration.sh`: One-command wheel calibration process launcher.
     - `start_camera_calibration.sh`: Camera calibration launcher.
     - `rviz2.sh`: Runs RViz2 container (supports `--sim` for simulation view).
+    - `apply_optimizations.sh`: Configures host Raspberry Pi 5 kernel, power overrides, ZRAM, and services for maximum performance.
 
 ## Setup
 1. **Repository**: `git clone ...` (already done if you are reading this).

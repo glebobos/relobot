@@ -107,14 +107,11 @@ services:
     volumes:
       - .:/ros2_ws/
       - ../helpers:/ros2_ws/helpers
+      - /dev/serial/by-id:/dev/serial/by-id:ro
     devices:
       - /dev/:/dev/
     environment:
       <<: *ros-env
-      TTY_0: /dev/ttyACM0
-      TTY_1: /dev/ttyACM1
-      TTY_2: /dev/ttyACM2
-      TTY_3: /dev/ttyACM3
     network_mode: host
     ipc: host 
     privileged: true

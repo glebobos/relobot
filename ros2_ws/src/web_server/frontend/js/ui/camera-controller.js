@@ -4,8 +4,8 @@ import { SERVICES, MSG_TYPES } from '../shared/constants.js';
 
 export class CameraController {
     constructor() {
-        this.mainCameraService = new CameraService('cameraStream');
-        this.pipCameraService = new CameraService('pipCameraStream');
+        this.mainCameraService = new CameraService('cameraStream', { quality: 50 });
+        this.pipCameraService = new CameraService('pipCameraStream', { quality: 40, width: 320, height: 240 });
         this.tfTopic = null;
         this.hudTimeout = null;
         this.currentScreenIndex = 0;

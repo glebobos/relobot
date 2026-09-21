@@ -25,11 +25,17 @@ pub async fn forward_broadcast_to_browser(
     throttle_rate_ms: u64,
 ) {
     let mut limiter = RateLimiter::new(Duration::from_millis(throttle_rate_ms));
+    let is_map = topic == "/map";
     loop {
         match rx.recv().await {
             Ok(json_payload) => {
                 let now = Instant::now();
                 if !limiter.should_process(now) {
+                    continue;
+                }
+                // Conflate /map messages: if client queue has backlog, drop to prevent buffer bloat
+                if is_map && tx.capacity() < 128 {
+                    debug!("Client queue congested; skipping obsolete /map update");
                     continue;
                 }
                 let frame = format_rosbridge_publish(&topic, &json_payload, id.as_deref());
@@ -72,14 +78,14 @@ pub async fn handle_client_connection(
     // 1. Task: Forward MPSC channel to Browser WebSocket with timeout protection
     let browser_writer = tokio::spawn(async move {
         while let Some(msg) = browser_out_rx.recv().await {
-            match tokio::time::timeout(Duration::from_secs(5), browser_tx.send(msg)).await {
+            match tokio::time::timeout(Duration::from_secs(30), browser_tx.send(msg)).await {
                 Ok(Ok(())) => {}
                 Ok(Err(e)) => {
                     debug!(error = %e, "Browser WebSocket write failed");
                     break;
                 }
                 Err(_) => {
-                    warn!("Browser WebSocket write timed out (>5s); disconnecting slow client");
+                    warn!("Browser WebSocket write timed out (>30s); disconnecting slow client");
                     break;
                 }
             }
