@@ -1,0 +1,82 @@
+<!-- SLIDE 1: OVERVIEW & SYSTEM INTRODUCTION -->
+<div class="slide active" data-index="1">
+  <div class="slide-top-row">
+    <div class="slide-title-group">
+      <div class="slide-eyebrow">ROBOFACTORY / PROJECT OVERVIEW</div>
+      <h1 class="slide-title">ReloBot Platform Architecture</h1>
+      <p class="slide-subtitle">A distributed micro-ROS and containerized ROS 2 system with an onboard AI agent running on Raspberry Pi 5.</p>
+    </div>
+    <div class="callout-why">
+      <div class="callout-why-title">Design Philosophy</div>
+      <div class="callout-why-text">Commercial robotic platforms are closed black boxes with high cloud latency. We built a hardware-first, distributed architecture with sub-millisecond control loops and complete local autonomy.</div>
+    </div>
+  </div>
+
+  <div class="hero-grid">
+    <div class="hero-left">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <svg class="icon" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="15" x2="23" y2="15"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="15" x2="4" y2="15"/></svg>
+            Core System Specifications
+          </div>
+          <span class="card-tag">REV-C 2026</span>
+        </div>
+        <ul class="hero-specs-list">
+          <li>
+            <strong>Real-Time MCUs</strong>
+            <span>4x dedicated RP2040 micro-ROS agents over isolated USB CDC channels</span>
+          </li>
+          <li>
+            <strong>Central Compute</strong>
+            <span>Raspberry Pi 5 (8GB RAM), PCIe NVMe, multi-container Docker runtime</span>
+          </li>
+          <li>
+            <strong>State & SLAM</strong>
+            <span>9-DOF IMU + 60 CPR optical encoders fused via EKF; 360° 2D LiDAR costmaps</span>
+          </li>
+          <li>
+            <strong>Autonomous Agent</strong>
+            <span>On-device Google Antigravity (AGY) core with local Piper neural TTS</span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <svg class="icon" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            Key Engineering Tenets
+          </div>
+        </div>
+        <ul class="bullet-list">
+          <li><strong>Physical loop isolation:</strong> Real-time motor PWM & watchdogs survive high-level container restarts.</li>
+          <li><strong>Zero cloud reliance:</strong> Telemetry, path planning, vision, and voice synthesis run 100% on the machine.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="hero-img-box">
+      <img src="images/robot_start.jpg" alt="DarkSelmash ReloBot MOW-X7 Cyber-Trim">
+      <div class="hero-img-meta">
+        <span>RELOBOT MOW-X7</span>
+        <span class="handwritten-note">Built for field reliability first.</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="pipeline-bar">
+    <div class="pipeline-step">
+      <span>RP2040 Micro-ROS</span>
+      <span class="pipeline-sep">➔</span>
+      <span class="pipeline-tag">Isolated USB CDC</span>
+      <span class="pipeline-sep">➔</span>
+      <strong>Raspberry Pi 5 (ROS 2)</strong>
+      <span class="pipeline-sep">➔</span>
+      <span>Nav2 & EKF</span>
+      <span class="pipeline-sep">➔</span>
+      <strong class="pipeline-tag">RoboFactory AGY + Piper</strong>
+    </div>
+    <div>LATENCY: &lt;100ms</div>
+  </div>
+</div>

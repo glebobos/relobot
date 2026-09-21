@@ -1,0 +1,124 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+}
+
+body {
+  background-color: var(--bg-canvas);
+  color: var(--text-primary);
+  font-family: var(--font-main);
+  overflow: hidden;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Subtle hairline engineering grid */
+.bg-grid {
+  position: absolute;
+  inset: 0;
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+  background-size: 36px 36px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Main Slide Stage */
+main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px 40px;
+  position: relative;
+  z-index: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.slide {
+  display: none;
+  width: 100%;
+  max-width: 1620px;
+  opacity: 0;
+  transition: opacity 0.2s ease-in-out;
+}
+
+.slide.active {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 16px;
+  opacity: 1;
+}
+
+/* Slide Header & Metadata */
+.slide-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 28px;
+  flex-shrink: 0;
+}
+
+.slide-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.slide-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+.slide-title {
+  font-size: 38px;
+  font-weight: 700;
+  line-height: 1.16;
+  letter-spacing: -0.5px;
+  color: #ffffff;
+}
+
+.slide-subtitle {
+  font-size: 17px;
+  color: var(--text-secondary);
+  font-weight: 400;
+  line-height: 1.45;
+  max-width: 920px;
+}
+
+/* Clean monochrome SVG line icons */
+.icon {
+  width: 18px;
+  height: 18px;
+  stroke-width: 1.75px;
+  stroke: currentColor;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex-shrink: 0;
+}
+
+code {
+  font-family: var(--font-mono);
+  background: var(--bg-inset);
+  color: var(--accent);
+  padding: 1.5px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border-subtle);
+  font-size: 0.88em;
+  white-space: nowrap;
+}

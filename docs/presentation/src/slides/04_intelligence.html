@@ -1,0 +1,66 @@
+<!-- SLIDE 4: ROBOFACTORY & AGY AGENT -->
+<div class="slide" data-index="4">
+  <div class="slide-top-row">
+    <div class="slide-title-group">
+      <div class="slide-eyebrow">ON-DEVICE AI / AGENT PLATFORM</div>
+      <h1 class="slide-title">The Self-Aware Robot: AGY Core</h1>
+      <p class="slide-subtitle">Natural language chat is just the operator interface — AGY is an extensible on-device agent platform.</p>
+    </div>
+    <div class="callout-why">
+      <div class="callout-why-title">Why Run Locally on Pi 5?</div>
+      <div class="callout-why-text">Robots lose Wi-Fi in the yard all the time. Critical diagnostics, sensor reasoning, and spoken operator feedback must function autonomously without waiting for a cloud round-trip.</div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M12 2a8 8 0 0 0-8 8c0 3.36 2.08 6.24 5 7.42V20a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2v-2.58c2.92-1.18 5-4.06 5-7.42a8 8 0 0 0-8-8z"/><line x1="9" y1="22" x2="15" y2="22"/></svg>
+          RoboFactory AGY Agent Platform
+        </div>
+        <span class="card-tag">AGY RUNTIME</span>
+      </div>
+      <ul class="bullet-list">
+        <li><strong>Onboard Runtime:</strong> Google Antigravity & AGY agent executed inside the <code>ros2_voice_chat</code> container.</li>
+        <li><strong>Full Introspection:</strong> Direct programmatic access to FastDDS telemetry, ROS 2 parameters, topic streams, and container logs.</li>
+        <li><strong>Beyond Chat:</strong> Natural language is just the operator UI; AGY's primary role is proactive system oversight and automated fault detection.</li>
+        <li><strong>Extensible Hooks:</strong> Evolving toward automated node restarts, PID parameter tuning, and multi-robot swarm task allocation.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <svg class="icon" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+          Piper Neural Voice Pipeline
+        </div>
+        <span class="card-tag">LOCAL TTS</span>
+      </div>
+      <ul class="bullet-list">
+        <li><strong>Sub-100ms Latency:</strong> Local neural speech synthesis running purely on Raspberry Pi 5 CPU cores with zero cloud dependencies.</li>
+        <li><strong>Pipelined Token Streaming:</strong> Regex punctuation chunking allows audio playback to start while the LLM is still generating tokens.</li>
+        <li><strong>Concurrent Audio Out:</strong> Simultaneous broadcast to physical robot chassis speaker and operator browser Web Audio.</li>
+        <li><strong>Engineering Persona:</strong> Tuned for concise, razor-sharp technical diagnostics and status reports.</li>
+      </ul>
+      <div style="margin-top: 6px; text-align: right;">
+        <span class="handwritten-note">Regex chunking cut voice delay from 3.2s down to 240ms.</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="pipeline-bar">
+    <div class="pipeline-step">
+      <span>Operator UI / Voice</span>
+      <span class="pipeline-sep">➔</span>
+      <span>WebSocket Bridge (:8765)</span>
+      <span class="pipeline-sep">➔</span>
+      <strong class="pipeline-tag">RoboFactory AGY Core</strong>
+      <span class="pipeline-sep">➔</span>
+      <span>System Actions & Piper TTS</span>
+      <span class="pipeline-sep">➔</span>
+      <strong>Hardware Execution</strong>
+    </div>
+    <div>ON-DEVICE LOCAL</div>
+  </div>
+</div>

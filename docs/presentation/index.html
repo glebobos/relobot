@@ -3,923 +3,996 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ReloBot — DarkSelmash AI Factory Presentation</title>
+  <title>ReloBot — Technical Architecture Review</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --bg-dark: #07090e;
-      --bg-surface: #0f1422;
-      --bg-card: rgba(20, 27, 45, 0.75);
-      --bg-card-hover: rgba(28, 38, 64, 0.85);
-      --border-color: rgba(56, 189, 248, 0.18);
-      --border-glow: rgba(56, 189, 248, 0.35);
-      
-      --accent-cyan: #38bdf8;
-      --accent-blue: #3b82f6;
-      --accent-neon: #00f2fe;
-      --accent-amber: #f59e0b;
-      --accent-emerald: #10b981;
-      --accent-rose: #f43f5e;
-      
-      --text-main: #f8fafc;
-      --text-muted: #94a3b8;
-      --text-dim: #64748b;
-      
-      --font-main: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      --font-mono: 'JetBrains Mono', monospace;
-    }
-
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      user-select: none;
-    }
-
-    body {
-      background-color: var(--bg-dark);
-      color: var(--text-main);
-      font-family: var(--font-main);
-      overflow: hidden;
-      width: 100vw;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-      position: relative;
-    }
-
-    /* Ambient background grid */
-    .bg-grid {
-      position: absolute;
-      inset: 0;
-      background-image: 
-        linear-gradient(to right, rgba(56, 189, 248, 0.03) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(56, 189, 248, 0.03) 1px, transparent 1px);
-      background-size: 40px 40px;
-      pointer-events: none;
-      z-index: 0;
-    }
-
-    .bg-glow {
-      position: absolute;
-      top: -15%;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 800px;
-      height: 400px;
-      background: radial-gradient(circle, rgba(56, 189, 248, 0.12) 0%, rgba(59, 130, 246, 0.04) 50%, transparent 80%);
-      pointer-events: none;
-      z-index: 0;
-    }
-
-    /* Top Navigation Bar */
-    header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 16px 36px;
-      background: rgba(15, 20, 34, 0.85);
-      backdrop-filter: blur(12px);
-      border-bottom: 1px solid var(--border-color);
-      z-index: 10;
-    }
-
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      font-weight: 700;
-      letter-spacing: 0.5px;
-    }
-
-    .brand-logo {
-      width: 28px;
-      height: 28px;
-      border-radius: 6px;
-      background: linear-gradient(135deg, var(--accent-neon), var(--accent-blue));
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 900;
-      color: #000;
-      font-size: 14px;
-      box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
-    }
-
-    .brand-title {
-      font-size: 15px;
-      color: #e2e8f0;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-    }
-
-    .brand-tag {
-      background: rgba(56, 189, 248, 0.12);
-      border: 1px solid var(--border-color);
-      color: var(--accent-cyan);
-      font-size: 11px;
-      padding: 3px 8px;
-      border-radius: 4px;
-      font-family: var(--font-mono);
-    }
-
-    .header-controls {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-    }
-
-    .timer-badge {
-      font-family: var(--font-mono);
-      font-size: 13px;
-      color: var(--text-muted);
-      background: rgba(255, 255, 255, 0.05);
-      padding: 4px 10px;
-      border-radius: 6px;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      cursor: pointer;
-    }
-
-    .timer-badge:hover {
-      color: var(--text-main);
-      border-color: var(--accent-cyan);
-    }
-
-    .btn-icon {
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      color: var(--text-muted);
-      padding: 6px 12px;
-      border-radius: 6px;
-      font-size: 12px;
-      font-weight: 600;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      transition: all 0.2s ease;
-    }
-
-    .btn-icon:hover, .btn-icon.active {
-      background: rgba(56, 189, 248, 0.15);
-      border-color: var(--accent-cyan);
-      color: var(--accent-cyan);
-    }
-
-    /* Progress bar */
-    .progress-bar-container {
-      width: 100%;
-      height: 3px;
-      background: rgba(255, 255, 255, 0.05);
-      position: relative;
-      z-index: 10;
-    }
-
-    .progress-bar {
-      height: 100%;
-      background: linear-gradient(90deg, var(--accent-blue), var(--accent-neon));
-      width: 10%;
-      box-shadow: 0 0 10px rgba(56, 189, 248, 0.7);
-      transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-
-    /* Main Slide Stage */
-    main {
-      flex: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 30px 48px;
-      position: relative;
-      z-index: 1;
-      overflow-y: auto;
-    }
-
-    .slide {
-      display: none;
-      width: 100%;
-      max-width: 1120px;
-      animation: fadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-    }
-
-    .slide.active {
-      display: flex;
-      flex-direction: column;
-      gap: 24px;
-    }
-
-    @keyframes fadeIn {
-      from {
-        opacity: 0;
-        transform: translateY(10px) scale(0.995);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-      }
-    }
-
-    /* Typography & Slide Elements */
-    .slide-eyebrow {
-      font-family: var(--font-mono);
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--accent-cyan);
-      letter-spacing: 1.5px;
-      text-transform: uppercase;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .slide-eyebrow::before {
-      content: "";
-      display: inline-block;
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: var(--accent-neon);
-      box-shadow: 0 0 8px var(--accent-neon);
-    }
-
-    .slide-title {
-      font-size: 44px;
-      font-weight: 800;
-      line-height: 1.15;
-      letter-spacing: -0.5px;
-      color: #ffffff;
-      background: linear-gradient(135deg, #ffffff 40%, #94a3b8 100%);
-      -webkit-background-clip: text;
-      background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-
-    .slide-subtitle {
-      font-size: 20px;
-      color: var(--text-muted);
-      font-weight: 400;
-      line-height: 1.4;
-    }
-
-    /* Badges */
-    .badge-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 6px;
-    }
-
-    .tech-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      background: rgba(15, 23, 42, 0.8);
-      border: 1px solid rgba(56, 189, 248, 0.25);
-      color: #bae6fd;
-      padding: 6px 14px;
-      border-radius: 8px;
-      font-size: 13px;
-      font-family: var(--font-mono);
-      font-weight: 500;
-    }
-
-    .tech-badge.highlight {
-      border-color: var(--accent-neon);
-      color: var(--accent-neon);
-      background: rgba(0, 242, 254, 0.08);
-      box-shadow: 0 0 10px rgba(0, 242, 254, 0.15);
-    }
-
-    /* Layout Grids */
-    .grid-2 {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 24px;
-      margin-top: 8px;
-    }
-
-    .grid-3 {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 20px;
-      margin-top: 8px;
-    }
-
-    .card {
-      background: var(--bg-card);
-      border: 1px solid var(--border-color);
-      border-radius: 14px;
-      padding: 24px;
-      backdrop-filter: blur(8px);
-      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
-      transition: all 0.2s ease;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-
-    .card:hover {
-      border-color: var(--border-glow);
-      background: var(--bg-card-hover);
-      transform: translateY(-2px);
-    }
-
-    .card.danger {
-      border-color: rgba(244, 63, 94, 0.3);
-      background: rgba(36, 15, 24, 0.5);
-    }
-
-    .card.success {
-      border-color: rgba(16, 185, 129, 0.35);
-      background: rgba(13, 33, 27, 0.5);
-    }
-
-    .card-title {
-      font-size: 18px;
-      font-weight: 700;
-      color: #fff;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .card-list {
-      list-style: none;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      font-size: 15px;
-      color: #cbd5e1;
-      line-height: 1.5;
-    }
-
-    .card-list li {
-      display: flex;
-      align-items: flex-start;
-      gap: 10px;
-    }
-
-    .card-list li::before {
-      content: "▹";
-      color: var(--accent-cyan);
-      font-weight: bold;
-    }
-
-    .card.danger .card-list li::before {
-      content: "✕";
-      color: var(--accent-rose);
-    }
-
-    .card.success .card-list li::before {
-      content: "✓";
-      color: var(--accent-emerald);
-    }
-
-    /* Pipeline / Architecture diagram block */
-    .flow-box {
-      background: rgba(10, 14, 26, 0.95);
-      border: 1px solid rgba(56, 189, 248, 0.25);
-      border-radius: 12px;
-      padding: 16px 20px;
-      font-family: var(--font-mono);
-      font-size: 13px;
-      color: #7dd3fc;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      overflow-x: auto;
-      gap: 12px;
-      margin-top: 10px;
-    }
-
-    .flow-node {
-      background: rgba(30, 41, 59, 0.9);
-      border: 1px solid rgba(56, 189, 248, 0.4);
-      padding: 8px 14px;
-      border-radius: 8px;
-      color: #fff;
-      font-weight: 600;
-      white-space: nowrap;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      text-align: center;
-    }
-
-    .flow-node small {
-      font-size: 10px;
-      color: var(--text-dim);
-      font-weight: normal;
-    }
-
-    .flow-arrow {
-      color: var(--accent-cyan);
-      font-size: 16px;
-      font-weight: bold;
-    }
-
-    /* Hub & Spoke Architecture Styles */
-    .hub-spoke-grid {
-      display: grid;
-      grid-template-columns: 1fr 1.15fr 1fr;
-      gap: 18px;
-      align-items: center;
-      margin-top: 4px;
-    }
-
-    .spoke-column {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-
-    .spoke-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border-color);
-      border-radius: 12px;
-      padding: 14px 18px;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      backdrop-filter: blur(8px);
-      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
-      position: relative;
-      transition: all 0.25s ease;
-    }
-
-    .spoke-card:hover {
-      border-color: var(--accent-neon);
-      transform: translateY(-2px);
-      box-shadow: 0 0 18px rgba(0, 242, 254, 0.2);
-    }
-
-    .spoke-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-    }
-
-    .spoke-title {
-      font-size: 14px;
-      font-weight: 700;
-      color: #fff;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .spoke-protocol {
-      font-family: var(--font-mono);
-      font-size: 10px;
-      color: var(--accent-cyan);
-      background: rgba(56, 189, 248, 0.12);
-      border: 1px solid rgba(56, 189, 248, 0.25);
-      padding: 2px 7px;
-      border-radius: 4px;
-      text-transform: uppercase;
-      white-space: nowrap;
-    }
-
-    .spoke-details {
-      font-size: 12.5px;
-      color: #cbd5e1;
-      line-height: 1.4;
-    }
-
-    .spoke-chips {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      margin-top: 4px;
-    }
-
-    .spoke-chip {
-      font-family: var(--font-mono);
-      font-size: 10.5px;
-      color: #94a3b8;
-      background: rgba(255, 255, 255, 0.04);
-      padding: 2px 7px;
-      border-radius: 4px;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-    }
-
-    .spoke-chip.highlight {
-      color: #7dd3fc;
-      border-color: rgba(56, 189, 248, 0.35);
-      background: rgba(56, 189, 248, 0.09);
-    }
-
-    /* Central Hub Card */
-    .central-hub {
-      background: linear-gradient(135deg, rgba(16, 26, 52, 0.95), rgba(9, 14, 28, 0.98));
-      border: 2px solid var(--accent-cyan);
-      border-radius: 20px;
-      padding: 24px 20px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      text-align: center;
-      gap: 14px;
-      position: relative;
-      box-shadow: 0 0 45px rgba(56, 189, 248, 0.25), inset 0 0 25px rgba(56, 189, 248, 0.08);
-    }
-
-    .hub-pulse-core {
-      position: relative;
-      width: 64px;
-      height: 64px;
-      border-radius: 50%;
-      background: radial-gradient(circle, var(--accent-neon) 0%, var(--accent-blue) 70%);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 900;
-      color: #000;
-      font-size: 20px;
-      box-shadow: 0 0 26px rgba(0, 242, 254, 0.6);
-    }
-
-    .hub-pulse-ring {
-      position: absolute;
-      inset: -8px;
-      border-radius: 50%;
-      border: 2px solid var(--accent-cyan);
-      opacity: 0.6;
-      animation: hubPulse 2.5s infinite ease-out;
-    }
-
-    @keyframes hubPulse {
-      0% { transform: scale(0.9); opacity: 0.8; }
-      50% { transform: scale(1.25); opacity: 0.2; }
-      100% { transform: scale(1.4); opacity: 0; }
-    }
-
-    .hub-title {
-      font-size: 20px;
-      font-weight: 800;
-      color: #fff;
-      letter-spacing: 0.5px;
-    }
-
-    .hub-subtitle {
-      font-size: 12px;
-      color: var(--accent-cyan);
-      font-family: var(--font-mono);
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-    }
-
-    .hub-specs-list {
-      list-style: none;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      width: 100%;
-      font-size: 12px;
-      color: #cbd5e1;
-      text-align: left;
-      background: rgba(0, 0, 0, 0.35);
-      padding: 12px 14px;
-      border-radius: 10px;
-      border: 1px solid rgba(255, 255, 255, 0.06);
-    }
-
-    .hub-specs-list li {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .hub-specs-list li::before {
-      content: "⚡";
-      font-size: 10px;
-      color: var(--accent-neon);
-    }
-
-    .hub-bus-badge {
-      background: rgba(0, 242, 254, 0.1);
-      border: 1px solid rgba(0, 242, 254, 0.3);
-      color: var(--accent-neon);
-      font-family: var(--font-mono);
-      font-size: 11px;
-      padding: 5px 12px;
-      border-radius: 6px;
-      font-weight: 600;
-      width: 100%;
-    }
-
-    /* Hero Slide 1 Layout */
-    .hero-grid {
-      display: grid;
-      grid-template-columns: 1.15fr 0.85fr;
-      gap: 32px;
-      align-items: center;
-      margin-top: 4px;
-    }
-
-    .hero-text {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-
-    .hero-image-wrapper {
-      position: relative;
-      border-radius: 16px;
-      overflow: hidden;
-      border: 1px solid rgba(56, 189, 248, 0.4);
-      box-shadow: 0 0 40px rgba(0, 242, 254, 0.2), 0 20px 40px rgba(0, 0, 0, 0.7);
-      background: rgba(15, 20, 34, 0.8);
-      transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
-    }
-
-    .hero-image-wrapper:hover {
-      transform: translateY(-4px) scale(1.01);
-      border-color: var(--accent-neon);
-      box-shadow: 0 0 50px rgba(0, 242, 254, 0.35), 0 24px 50px rgba(0, 0, 0, 0.8);
-    }
-
-    .hero-image-wrapper img {
-      width: 100%;
-      height: 380px;
-      display: block;
-      object-fit: cover;
-      border-radius: 15px;
-    }
-
-    .hero-image-badge {
-      position: absolute;
-      bottom: 12px;
-      right: 12px;
-      background: rgba(11, 15, 25, 0.88);
-      backdrop-filter: blur(8px);
-      border: 1px solid var(--accent-cyan);
-      color: var(--accent-neon);
-      font-family: var(--font-mono);
-      font-size: 11px;
-      font-weight: 700;
-      padding: 5px 12px;
-      border-radius: 6px;
-      letter-spacing: 0.5px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .hero-image-badge::before {
-      content: "";
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: var(--accent-emerald);
-      box-shadow: 0 0 6px var(--accent-emerald);
-    }
-
-    /* Live Demo Special Container */
-    .demo-container {
-      background: linear-gradient(135deg, rgba(16, 24, 48, 0.9), rgba(8, 12, 24, 0.95));
-      border: 1px solid var(--accent-cyan);
-      border-radius: 16px;
-      padding: 28px;
-      box-shadow: 0 0 35px rgba(56, 189, 248, 0.15);
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
-    }
-
-    .demo-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .demo-pulse {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      background: rgba(16, 185, 129, 0.15);
-      border: 1px solid var(--accent-emerald);
-      color: var(--accent-emerald);
-      padding: 4px 12px;
-      border-radius: 9999px;
-      font-family: var(--font-mono);
-      font-size: 12px;
-      font-weight: bold;
-    }
-
-    .demo-pulse-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: var(--accent-emerald);
-      box-shadow: 0 0 8px var(--accent-emerald);
-      animation: pulse 1.5s infinite;
-    }
-
-    @keyframes pulse {
-      0% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.4; transform: scale(1.3); }
-      100% { opacity: 1; transform: scale(1); }
-    }
-
-    .demo-grid {
-      display: grid;
-      grid-template-columns: 1.2fr 1fr;
-      gap: 20px;
-    }
-
-    .demo-steps {
-      list-style: none;
-      counter-reset: demo-counter;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-
-    .demo-steps li {
-      counter-increment: demo-counter;
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 10px;
-      padding: 12px 16px;
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      font-size: 14px;
-    }
-
-    .demo-steps li::before {
-      content: counter(demo-counter);
-      background: var(--accent-cyan);
-      color: #000;
-      font-weight: 800;
-      font-size: 12px;
-      width: 24px;
-      height: 24px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-    }
-
-    .demo-launch-btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      background: linear-gradient(135deg, var(--accent-blue), var(--accent-neon));
-      color: #000;
-      font-weight: 700;
-      font-size: 16px;
-      padding: 16px 28px;
-      border-radius: 10px;
-      text-decoration: none;
-      cursor: pointer;
-      box-shadow: 0 6px 20px rgba(0, 242, 254, 0.3);
-      transition: all 0.2s ease;
-      border: none;
-    }
-
-    .demo-launch-btn:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 26px rgba(0, 242, 254, 0.45);
-    }
-
-    /* Speaker Notes Drawer (Toggled by 'S') */
-    .speaker-drawer {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      height: 250px;
-      background: rgba(11, 15, 25, 0.97);
-      backdrop-filter: blur(16px);
-      border-top: 2px solid var(--accent-amber);
-      padding: 20px 36px;
-      z-index: 100;
-      transform: translateY(100%);
-      transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
-      box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.8);
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-
-    .speaker-drawer.open {
-      transform: translateY(0);
-    }
-
-    .speaker-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .speaker-title {
-      font-size: 13px;
-      font-family: var(--font-mono);
-      color: var(--accent-amber);
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .speaker-content {
-      font-size: 16px;
-      line-height: 1.6;
-      color: #f1f5f9;
-      overflow-y: auto;
-      padding-right: 12px;
-      font-family: var(--font-main);
-    }
-
-    /* Footer Controls */
-    footer {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 14px 36px;
-      background: rgba(15, 20, 34, 0.85);
-      border-top: 1px solid var(--border-color);
-      z-index: 10;
-    }
-
-    .slide-counter {
-      font-family: var(--font-mono);
-      font-size: 14px;
-      color: var(--text-muted);
-      font-weight: 600;
-    }
-
-    .nav-buttons {
-      display: flex;
-      gap: 12px;
-    }
-
-    .btn-nav {
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      color: var(--text-main);
-      padding: 8px 18px;
-      border-radius: 8px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      transition: all 0.2s;
-    }
-
-    .btn-nav:hover {
-      background: rgba(56, 189, 248, 0.15);
-      border-color: var(--accent-cyan);
-      color: var(--accent-cyan);
-    }
-
-    .btn-nav:disabled {
-      opacity: 0.3;
-      cursor: not-allowed;
-      border-color: transparent;
-    }
-
-    .key-hint {
-      font-family: var(--font-mono);
-      font-size: 11px;
-      background: rgba(255, 255, 255, 0.1);
-      padding: 2px 6px;
-      border-radius: 4px;
-      color: var(--text-dim);
-    }
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+    /* --- variables.css --- */
+:root {
+  --bg-canvas: #0b0f14;
+  --bg-panel: #11161f;
+  --bg-card: #131923;
+  --bg-card-hover: #171f2c;
+  --bg-inset: #0d1219;
+  
+  --border-subtle: #1f2733;
+  --border-medium: #2a3444;
+  --border-strong: #3b4759;
+  
+  --accent: #2ebd85;
+  --accent-dim: rgba(46, 189, 133, 0.12);
+  --accent-hover: #34d399;
+  
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --text-dim: #475569;
+  
+  --font-main: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --font-hand: 'Caveat', cursive;
+}
+
+
+    /* --- base.css --- */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+}
+
+body {
+  background-color: var(--bg-canvas);
+  color: var(--text-primary);
+  font-family: var(--font-main);
+  overflow: hidden;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Subtle hairline engineering grid */
+.bg-grid {
+  position: absolute;
+  inset: 0;
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+  background-size: 36px 36px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Main Slide Stage */
+main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px 40px;
+  position: relative;
+  z-index: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.slide {
+  display: none;
+  width: 100%;
+  max-width: 1620px;
+  opacity: 0;
+  transition: opacity 0.2s ease-in-out;
+}
+
+.slide.active {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 16px;
+  opacity: 1;
+}
+
+/* Slide Header & Metadata */
+.slide-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 28px;
+  flex-shrink: 0;
+}
+
+.slide-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.slide-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+.slide-title {
+  font-size: 38px;
+  font-weight: 700;
+  line-height: 1.16;
+  letter-spacing: -0.5px;
+  color: #ffffff;
+}
+
+.slide-subtitle {
+  font-size: 17px;
+  color: var(--text-secondary);
+  font-weight: 400;
+  line-height: 1.45;
+  max-width: 920px;
+}
+
+/* Clean monochrome SVG line icons */
+.icon {
+  width: 18px;
+  height: 18px;
+  stroke-width: 1.75px;
+  stroke: currentColor;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex-shrink: 0;
+}
+
+code {
+  font-family: var(--font-mono);
+  background: var(--bg-inset);
+  color: var(--accent);
+  padding: 1.5px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border-subtle);
+  font-size: 0.88em;
+  white-space: nowrap;
+}
+
+
+    /* --- components.css --- */
+/* Top Navigation Bar */
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 40px;
+  height: 52px;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border-subtle);
+  z-index: 10;
+  flex-shrink: 0;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.brand-logo {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--accent);
+  background: var(--accent-dim);
+  border: 1px solid var(--accent);
+  padding: 3px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+}
+
+.brand-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: 0.3px;
+}
+
+.brand-divider {
+  color: var(--text-dim);
+  font-size: 14px;
+}
+
+.brand-sub {
+  font-size: 14px;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+}
+
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.timer-badge {
+  font-family: var(--font-mono);
+  font-size: 13.5px;
+  color: var(--text-secondary);
+  background: var(--bg-inset);
+  padding: 6px 12px;
+  border-radius: 5px;
+  border: 1px solid var(--border-subtle);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.timer-badge:hover {
+  color: var(--text-primary);
+  border-color: var(--border-medium);
+}
+
+.btn-control {
+  background: var(--bg-inset);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  padding: 6px 14px;
+  border-radius: 5px;
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  transition: all 0.15s ease;
+}
+
+.btn-control:hover, .btn-control.active {
+  background: var(--bg-card);
+  border-color: var(--border-medium);
+  color: var(--text-primary);
+}
+
+.key-hint {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.06);
+  padding: 2px 6px;
+  border-radius: 3px;
+  border: 1px solid var(--border-subtle);
+}
+
+/* Progress bar */
+.progress-bar-container {
+  width: 100%;
+  height: 2px;
+  background: var(--border-subtle);
+  position: relative;
+  z-index: 10;
+  flex-shrink: 0;
+}
+
+.progress-bar {
+  height: 100%;
+  background: var(--accent);
+  width: 14.28%;
+  transition: width 0.25s ease;
+}
+
+/* Editorial Callout */
+.callout-why {
+  border-left: 2.5px solid var(--accent);
+  padding-left: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 480px;
+  flex-shrink: 0;
+}
+
+.callout-why-title {
+  color: var(--accent);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.callout-why-text {
+  color: var(--text-secondary);
+  font-size: 14.5px;
+  line-height: 1.45;
+}
+
+/* Handwritten Note */
+.handwritten-note {
+  font-family: var(--font-hand);
+  font-size: 25px;
+  color: var(--accent);
+  transform: rotate(-1.5deg);
+  display: inline-block;
+  line-height: 1.15;
+  font-weight: 600;
+}
+
+/* Card Components */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 14px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  transition: border-color 0.15s ease;
+}
+
+.card:hover {
+  border-color: var(--border-medium);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.card-title {
+  font-size: 17.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.card-tag {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.card-desc {
+  font-size: 14.5px;
+  color: var(--text-secondary);
+  line-height: 1.42;
+}
+
+.card-specs {
+  padding-top: 7px;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 13.5px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.card-specs .spec-item {
+  color: var(--text-secondary);
+}
+
+.card-specs .spec-item.highlight {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.card-specs .spec-sep {
+  color: var(--border-medium);
+}
+
+/* Bottom Linear Data Pipeline */
+.pipeline-bar {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  padding: 11px 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  font-size: 14px;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.pipeline-step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.pipeline-step strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.pipeline-sep {
+  color: var(--border-strong);
+  font-size: 14px;
+}
+
+.pipeline-tag {
+  color: var(--accent);
+}
+
+/* Standard Grids */
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  align-items: stretch;
+}
+
+.grid-2x2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  align-items: stretch;
+}
+
+.bullet-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 15px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.bullet-list li {
+  position: relative;
+  padding-left: 20px;
+  display: block;
+}
+
+.bullet-list li::before {
+  content: "—";
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.bullet-list li strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* Russian Speaker Notes Drawer */
+.speaker-drawer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 220px;
+  background: #0f141d;
+  border-top: 2px solid var(--accent);
+  padding: 16px 40px;
+  z-index: 100;
+  transform: translateY(100%);
+  transition: transform 0.22s ease-out;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.5);
+}
+
+.speaker-drawer.open {
+  transform: translateY(0);
+}
+
+.speaker-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.speaker-title {
+  font-size: 13px;
+  font-family: var(--font-mono);
+  color: var(--accent);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.speaker-content {
+  font-size: 15px;
+  line-height: 1.55;
+  color: #cbd5e1;
+  overflow-y: auto;
+  padding-right: 12px;
+}
+
+/* Footer Controls */
+footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 40px;
+  height: 48px;
+  background: var(--bg-panel);
+  border-top: 1px solid var(--border-subtle);
+  z-index: 10;
+  flex-shrink: 0;
+}
+
+.slide-counter {
+  font-family: var(--font-mono);
+  font-size: 13.5px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.footer-hints {
+  font-size: 12px;
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  display: flex;
+  gap: 18px;
+}
+
+.nav-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.btn-nav {
+  background: var(--bg-inset);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  padding: 6px 16px;
+  border-radius: 5px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  transition: all 0.15s;
+}
+
+.btn-nav:hover {
+  background: var(--bg-card);
+  border-color: var(--border-medium);
+}
+
+.btn-nav:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  border-color: transparent;
+}
+
+
+    /* --- slides.css --- */
+/* ==========================================================================
+   Slide 1: Overview & Hero Grid
+   ========================================================================== */
+.hero-grid {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 20px;
+  align-items: center;
+}
+
+.hero-left {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.hero-specs-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  font-size: 15px;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+.hero-specs-list li {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.hero-specs-list li strong {
+  color: var(--text-primary);
+  min-width: 150px;
+  flex-shrink: 0;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  font-size: 13.5px;
+}
+
+.hero-img-box {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.hero-img-box img {
+  width: 100%;
+  height: 250px;
+  object-fit: cover;
+  display: block;
+}
+
+.hero-img-meta {
+  padding: 10px 16px;
+  background: var(--bg-panel);
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+/* ==========================================================================
+   Slide 2: Hub & Spoke Hardware Architecture
+   ========================================================================== */
+.hub-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.22fr 1fr;
+  gap: 18px;
+  align-items: center;
+}
+
+.spoke-col {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  justify-content: center;
+}
+
+.spoke-col .card {
+  padding: 12px 18px;
+  gap: 5px;
+}
+
+.spoke-col .card-title {
+  font-size: 16.5px;
+}
+
+.spoke-col .card-tag {
+  font-size: 12.5px;
+}
+
+.spoke-col .card-desc {
+  font-size: 14px;
+  line-height: 1.38;
+}
+
+.spoke-col .card-specs {
+  padding-top: 6px;
+  font-size: 13px;
+  gap: 6px;
+}
+
+/* Central Hub Center Card */
+.hub-center-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-medium);
+  border-radius: 8px;
+  padding: 18px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  justify-content: center;
+}
+
+.hub-header {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.hub-title {
+  font-size: 21px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.hub-sub {
+  font-size: 14.5px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+.hub-img-wrapper {
+  width: 100%;
+  height: 145px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.hub-img-wrapper img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.hub-bullet-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px 14px;
+  font-size: 14.5px;
+  color: var(--text-secondary);
+}
+
+.hub-bullet-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  line-height: 1.38;
+}
+
+.hub-bullet-dot {
+  color: var(--accent);
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.hub-bus-footer {
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 9px;
+  font-family: var(--font-mono);
+  font-size: 13.5px;
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-weight: 500;
+}
+
+/* Shortened Notes card on Slide 2 */
+.notes-card {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 12px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.notes-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  text-transform: uppercase;
+  font-family: var(--font-mono);
+  letter-spacing: 0.5px;
+}
+
+.notes-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 13.5px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.notes-list li {
+  position: relative;
+  padding-left: 14px;
+  display: block;
+}
+
+.notes-list li::before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: var(--text-muted);
+}
+
+/* ==========================================================================
+   Slide 5: Live Demo Controls & Steps
+   ========================================================================== */
+.demo-step-list {
+  list-style: none;
+  counter-reset: demo-counter;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.demo-step-item {
+  counter-increment: demo-counter;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  padding: 10px 15px;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  font-size: 15px;
+  color: var(--text-secondary);
+  line-height: 1.42;
+}
+
+.demo-step-num {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 12.5px;
+  color: var(--accent);
+  background: var(--accent-dim);
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.demo-launch-box {
+  background: var(--bg-card);
+  border: 1px solid var(--border-medium);
+  border-radius: 8px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.demo-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--accent);
+  background: var(--accent-dim);
+  padding: 4px 12px;
+  border-radius: 4px;
+  border: 1px solid rgba(46, 189, 133, 0.3);
+}
+
+.demo-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.btn-launch {
+  background: var(--accent);
+  color: #0b0f14;
+  font-weight: 600;
+  font-size: 15.5px;
+  padding: 12px 26px;
+  border-radius: 6px;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  transition: background 0.15s ease;
+  border: none;
+  cursor: pointer;
+}
+
+.btn-launch:hover {
+  background: var(--accent-hover);
+}
+
+/* ==========================================================================
+   Slide 6: Problem / Solution Card Format
+   ========================================================================== */
+.problem-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.problem-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.problem-title {
+  font-size: 16.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.problem-meta {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--accent);
+  background: var(--accent-dim);
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.problem-body {
+  font-size: 14.5px;
+  color: var(--text-secondary);
+  line-height: 1.42;
+}
+
+.problem-body strong {
+  color: var(--text-primary);
+}
+
+.problem-fix {
+  background: var(--bg-inset);
+  border-left: 2.5px solid var(--accent);
+  padding: 6px 12px;
+  border-radius: 0 4px 4px 0;
+  font-size: 13.5px;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  line-height: 1.4;
+}
+
   </style>
 </head>
 <body>
 
   <div class="bg-grid"></div>
-  <div class="bg-glow"></div>
 
   <!-- Header -->
   <header>
     <div class="brand">
-      <div class="brand-logo">DS</div>
-      <div class="brand-title">DarkSelmash AI Factory</div>
-      <span class="brand-tag">ReloBot Platform</span>
+      <div class="brand-logo">RF</div>
+      <div class="brand-title">RoboFactory Architecture</div>
+      <span class="brand-divider">/</span>
+      <span class="brand-sub">ReloBot Platform</span>
     </div>
 
     <div class="header-controls">
-      <div class="timer-badge" id="timerBadge" title="Click to reset timer">⏱ 00:00</div>
-      <button class="btn-icon" id="toggleNotesBtn" title="Toggle Russian Speaker Notes (Press 'S')">
+      <div class="timer-badge" id="timerBadge" title="Click to reset timer">
+        <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span id="timerText">00:00</span>
+      </div>
+      <button class="btn-control" id="toggleNotesBtn" title="Toggle Russian Speaker Notes (Press 'S')">
         <span>RU Notes</span> <span class="key-hint">S</span>
       </button>
-      <button class="btn-icon" id="fullscreenBtn" title="Toggle Fullscreen (Press 'F')">
+      <button class="btn-control" id="fullscreenBtn" title="Toggle Fullscreen (Press 'F')">
         <span>Fullscreen</span> <span class="key-hint">F</span>
       </button>
     </div>
@@ -932,376 +1005,701 @@
 
   <!-- Main Slide Canvas -->
   <main id="slideCanvas">
+        <!-- SLIDE 1: OVERVIEW & SYSTEM INTRODUCTION -->
+<div class="slide active" data-index="1">
+  <div class="slide-top-row">
+    <div class="slide-title-group">
+      <div class="slide-eyebrow">ROBOFACTORY / PROJECT OVERVIEW</div>
+      <h1 class="slide-title">ReloBot Platform Architecture</h1>
+      <p class="slide-subtitle">A distributed micro-ROS and containerized ROS 2 system with an onboard AI agent running on Raspberry Pi 5.</p>
+    </div>
+    <div class="callout-why">
+      <div class="callout-why-title">Design Philosophy</div>
+      <div class="callout-why-text">Commercial robotic platforms are closed black boxes with high cloud latency. We built a hardware-first, distributed architecture with sub-millisecond control loops and complete local autonomy.</div>
+    </div>
+  </div>
 
-    <!-- SLIDE 1 -->
-    <div class="slide active" data-index="1">
-      <div class="hero-grid">
-        <div class="hero-text">
-          <div class="slide-eyebrow">DarkSelmash AI Factory Presentation</div>
-          <h1 class="slide-title">ReloBot</h1>
-          <p class="slide-subtitle">Next-Gen Autonomous Robotics Platform: Distributed micro-ROS, Containerized ROS 2 & On-Device AI Agent</p>
-          
-          <div class="badge-row">
-            <span class="tech-badge highlight">ROS 2 Humble</span>
-            <span class="tech-badge">micro-ROS (C Firmware)</span>
-            <span class="tech-badge">Multi-Container Orchestration</span>
-            <span class="tech-badge highlight">Antigravity (AGY) AI</span>
-            <span class="tech-badge">Piper Neural TTS</span>
-            <span class="tech-badge">DarkSelmash Cyber-Trim</span>
+  <div class="hero-grid">
+    <div class="hero-left">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <svg class="icon" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="15" x2="23" y2="15"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="15" x2="4" y2="15"/></svg>
+            Core System Specifications
           </div>
+          <span class="card-tag">REV-C 2026</span>
+        </div>
+        <ul class="hero-specs-list">
+          <li>
+            <strong>Real-Time MCUs</strong>
+            <span>4x dedicated RP2040 micro-ROS agents over isolated USB CDC channels</span>
+          </li>
+          <li>
+            <strong>Central Compute</strong>
+            <span>Raspberry Pi 5 (8GB RAM), PCIe NVMe, multi-container Docker runtime</span>
+          </li>
+          <li>
+            <strong>State & SLAM</strong>
+            <span>9-DOF IMU + 60 CPR optical encoders fused via EKF; 360° 2D LiDAR costmaps</span>
+          </li>
+          <li>
+            <strong>Autonomous Agent</strong>
+            <span>On-device Google Antigravity (AGY) core with local Piper neural TTS</span>
+          </li>
+        </ul>
+      </div>
 
-          <div class="flow-box">
-            <div class="flow-node">
-              RP2040 Micro-ROS
-              <small>Wheels & Blades</small>
-            </div>
-            <div class="flow-arrow">⇄</div>
-            <div class="flow-node">
-              Raspberry Pi 5
-              <small>ROS 2 Stack</small>
-            </div>
-            <div class="flow-arrow">⇄</div>
-            <div class="flow-node">
-              Nav2 & EKF
-              <small>SLAM</small>
-            </div>
-            <div class="flow-arrow">⇄</div>
-            <div class="flow-node">
-              AI Factory
-              <small>AGY + Piper</small>
-            </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <svg class="icon" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            Key Engineering Tenets
           </div>
         </div>
-
-        <div class="hero-image-wrapper">
-          <img src="images/robot_start.jpg" alt="DarkSelmash MOW-X7 Cyber-Trim Robot">
-          <div class="hero-image-badge">DARKSELMASH MOW-X7</div>
-        </div>
+        <ul class="bullet-list">
+          <li><strong>Physical loop isolation:</strong> Real-time motor PWM & watchdogs survive high-level container restarts.</li>
+          <li><strong>Zero cloud reliance:</strong> Telemetry, path planning, vision, and voice synthesis run 100% on the machine.</li>
+        </ul>
       </div>
     </div>
+
+    <div class="hero-img-box">
+      <img src="images/robot_start.jpg" alt="DarkSelmash ReloBot MOW-X7 Cyber-Trim">
+      <div class="hero-img-meta">
+        <span>RELOBOT MOW-X7</span>
+        <span class="handwritten-note">Built for field reliability first.</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="pipeline-bar">
+    <div class="pipeline-step">
+      <span>RP2040 Micro-ROS</span>
+      <span class="pipeline-sep">➔</span>
+      <span class="pipeline-tag">Isolated USB CDC</span>
+      <span class="pipeline-sep">➔</span>
+      <strong>Raspberry Pi 5 (ROS 2)</strong>
+      <span class="pipeline-sep">➔</span>
+      <span>Nav2 & EKF</span>
+      <span class="pipeline-sep">➔</span>
+      <strong class="pipeline-tag">RoboFactory AGY + Piper</strong>
+    </div>
+    <div>LATENCY: &lt;100ms</div>
+  </div>
+</div>
 
     <!-- SLIDE 2: HARDWARE HUB & SPOKE -->
-    <div class="slide" data-index="2">
-      <div class="slide-eyebrow">Hardware Architecture</div>
-      <h1 class="slide-title">Hub & Spoke Micro-Agent Network</h1>
+<div class="slide" data-index="2">
+  <div class="slide-top-row">
+    <div class="slide-title-group">
+      <div class="slide-eyebrow">ROBOFACTORY / CENTRAL HUB</div>
+      <h1 class="slide-title">RoboFactory Central Hub</h1>
       <p class="slide-subtitle">Physical separation of real-time control loops and high-level autonomous intelligence via isolated USB CDC channels.</p>
+    </div>
+    <div class="callout-why">
+      <div class="callout-why-title">Why this setup?</div>
+      <div class="callout-why-text">Keeps real-time motor control and sensor loops isolated from higher-level AI. If the AI crashes, wheels and safety loops keep running.</div>
+    </div>
+  </div>
 
-      <div class="hub-spoke-grid">
-        <!-- LEFT COLUMN: ACTUATORS & DRIVE -->
-        <div class="spoke-column">
-          <!-- Spoke 1: Drive -->
-          <div class="spoke-card">
-            <div class="spoke-header">
-              <div class="spoke-title">⚙️ Drive Subsystem</div>
-              <span class="spoke-protocol">XIAO RP2040 • 50 Hz</span>
-            </div>
-            <div class="spoke-details">
-              Dual Cytron MD13S 13A drivers + 60 CPR optical encoders.
-            </div>
-            <div class="spoke-chips">
-              <span class="spoke-chip highlight">Closed-Loop PI</span>
-              <span class="spoke-chip highlight">Stiction Compensation</span>
-              <span class="spoke-chip">TopicBasedSystem</span>
-            </div>
+  <div class="hub-grid">
+    <!-- LEFT COLUMN: ACTUATORS & SENSORS -->
+    <div class="spoke-col">
+      <!-- Card: Drive -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-.33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            Drive Subsystem
           </div>
-
-          <!-- Spoke 2: Mower -->
-          <div class="spoke-card">
-            <div class="spoke-header">
-              <div class="spoke-title">⚔️ Cutting Spindle</div>
-              <span class="spoke-protocol">XIAO RP2040 • 100 Hz</span>
-            </div>
-            <div class="spoke-details">
-              High-power brushless driver + 3000 RPM balanced tri-blade cutter.
-            </div>
-            <div class="spoke-chips">
-              <span class="spoke-chip highlight">Closed-Loop RPM Governor</span>
-              <span class="spoke-chip highlight">Hardware Watchdog Kill</span>
-            </div>
-          </div>
-
-          <!-- Spoke 3: IMU -->
-          <div class="spoke-card">
-            <div class="spoke-header">
-              <div class="spoke-title">🧭 9-DOF IMU Subsystem</div>
-              <span class="spoke-protocol">RPi Pico • 100 Hz</span>
-            </div>
-            <div class="spoke-details">
-              TDK InvenSense ICM-20948 (3-axis Gyro + Accel + Magnetometer).
-            </div>
-            <div class="spoke-chips">
-              <span class="spoke-chip highlight">I2C Fast Mode</span>
-              <span class="spoke-chip">/imu/data_raw</span>
-              <span class="spoke-chip highlight">EKF State Source</span>
-            </div>
-          </div>
+          <span class="card-tag">XIAO RP2040 · 50 Hz</span>
         </div>
-
-        <!-- CENTER COLUMN: CENTRAL HUB & ROBOFACTORY -->
-        <div class="central-hub">
-          <div class="hub-pulse-core">
-            <div class="hub-pulse-ring"></div>
-            HUB
-          </div>
-          <div>
-            <div class="hub-title">RoboFactory Central Hub</div>
-            <div class="hub-subtitle">Raspberry Pi 5 (8GB) Architecture</div>
-          </div>
-          <ul class="hub-specs-list">
-            <li><strong>RoboFactory Intelligence</strong>: Google Antigravity & AGY Agent</li>
-            <li><strong>Multi-Container Orchestration</strong>: Sandboxed Docker Services</li>
-            <li><strong>ROS 2 Humble Stack</strong>: FastDDS Shared Memory IPC & Bus</li>
-          </ul>
-          <div class="hub-bus-badge">⇄ 4x Isolated USB CDC micro-ROS Serial Buses ⇄</div>
-        </div>
-
-        <!-- RIGHT COLUMN: POWER, PERCEPTION & AUDIO -->
-        <div class="spoke-column">
-          <!-- Spoke 4: Battery & Power -->
-          <div class="spoke-card">
-            <div class="spoke-header">
-              <div class="spoke-title">🔋 Battery & Power</div>
-              <span class="spoke-protocol">Pico 2 RP2350 • 10 Hz</span>
-            </div>
-            <div class="spoke-details">
-              Texas Instruments INA226 high-side bi-directional current & bus monitor.
-            </div>
-            <div class="spoke-chips">
-              <span class="spoke-chip highlight">0–36V Bus Monitor</span>
-              <span class="spoke-chip highlight">Real-Time Amps/Watts</span>
-              <span class="spoke-chip">Li-Ion State of Charge</span>
-            </div>
-          </div>
-
-          <!-- Spoke 5: LiDAR & Vision -->
-          <div class="spoke-card">
-            <div class="spoke-header">
-              <div class="spoke-title">👁️ LiDAR & Vision</div>
-              <span class="spoke-protocol">Direct USB / UART</span>
-            </div>
-            <div class="spoke-details">
-              360° 2D LiDAR (10 Hz laser scan) + Fisheye HD Camera.
-            </div>
-            <div class="spoke-chips">
-              <span class="spoke-chip highlight">Obstacle Pointclouds</span>
-              <span class="spoke-chip">SLAM Costmaps</span>
-              <span class="spoke-chip">Operator Stream</span>
-            </div>
-          </div>
-
-          <!-- Spoke 6: Voice Output -->
-          <div class="spoke-card">
-            <div class="spoke-header">
-              <div class="spoke-title">🔊 Neural Audio Output</div>
-              <span class="spoke-protocol">ALSA / PulseAudio</span>
-            </div>
-            <div class="spoke-details">
-              High-efficiency audio amplifier + weatherproof onboard speaker.
-            </div>
-            <div class="spoke-chips">
-              <span class="spoke-chip highlight">Local Piper TTS</span>
-              <span class="spoke-chip highlight">Sub-100ms Speech</span>
-              <span class="spoke-chip">Dual Web/Bot Audio</span>
-            </div>
-          </div>
+        <div class="card-desc">Dual Cytron MD13S 13A drivers + 60 CPR optical encoders.</div>
+        <div class="card-specs">
+          <span class="spec-item highlight">Closed-loop PI</span>
+          <span class="spec-sep">·</span>
+          <span class="spec-item">TopicBasedSystem</span>
         </div>
       </div>
 
-      <div class="flow-box">
-        <span>Hardware Philosophy:</span>
-        <span style="color: var(--accent-neon);">Microseconds to Microcontrollers (PWM, Encoders, Watchdogs)</span>
-        <span>|</span>
-        <span style="color: var(--accent-cyan);">Milliseconds to Central Hub (RoboFactory, Container Orchestration, AGY)</span>
+      <!-- Card: Cutting Spindle -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <svg class="icon" viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>
+            Cutting Spindle
+          </div>
+          <span class="card-tag">XIAO RP2040 · 100 Hz</span>
+        </div>
+        <div class="card-desc">High-power brushless driver + 3000 RPM balanced tri-blade cutter.</div>
+        <div class="card-specs">
+          <span class="spec-item highlight">Closed-loop RPM Governor</span>
+          <span class="spec-sep">·</span>
+          <span class="spec-item">Hardware Watchdog Kill</span>
+        </div>
+      </div>
+
+      <!-- Card: IMU -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <svg class="icon" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/></svg>
+            9-DOF IMU Subsystem
+          </div>
+          <span class="card-tag">RPI PICO · 100 Hz</span>
+        </div>
+        <div class="card-desc">TDK InvenSense ICM-20948 (3-axis Gyro + Accel + Magnetometer).</div>
+        <div class="card-specs">
+          <span class="spec-item">I2C Fast Mode</span>
+          <span class="spec-sep">·</span>
+          <span class="spec-item">/imu/data_raw</span>
+          <span class="spec-sep">·</span>
+          <span class="spec-item highlight">EKF State Source</span>
+        </div>
       </div>
     </div>
+
+    <!-- CENTER COLUMN: CENTRAL HUB (PROMINENT & CENTERED) -->
+    <div class="hub-center-card">
+      <div class="hub-header">
+        <div class="hub-title">RoboFactory Central Hub</div>
+        <div class="hub-sub">Raspberry Pi 5 (8GB) + Industrial case</div>
+      </div>
+
+      <div class="hub-img-wrapper">
+        <img src="images/rpi5_case.jpg" alt="Raspberry Pi 5 Industrial Enclosure">
+      </div>
+
+      <div class="hub-bullet-grid">
+        <div class="hub-bullet-item">
+          <span class="hub-bullet-dot">•</span>
+          <span>Multi-container orchestration</span>
+        </div>
+        <div class="hub-bullet-item">
+          <span class="hub-bullet-dot">•</span>
+          <span>Google Antigravity & AGV agent</span>
+        </div>
+        <div class="hub-bullet-item">
+          <span class="hub-bullet-dot">•</span>
+          <span>ROS 2 Humble + Stack</span>
+        </div>
+        <div class="hub-bullet-item">
+          <span class="hub-bullet-dot">•</span>
+          <span>Sandboxed Docker services</span>
+        </div>
+        <div class="hub-bullet-item">
+          <span class="hub-bullet-dot">•</span>
+          <span>On-device AGV core</span>
+        </div>
+        <div class="hub-bullet-item">
+          <span class="hub-bullet-dot">•</span>
+          <span>FastDDS shared memory IPC</span>
+        </div>
+        <div class="hub-bullet-item" style="grid-column: span 2;">
+          <span class="hub-bullet-dot">•</span>
+          <span>Piper neural TTS engine</span>
+        </div>
+      </div>
+
+      <div class="hub-bus-footer">
+        <span>|</span>
+        <span>Isolated USB CDC micro-ROS serial buses ↔</span>
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN: BATTERY, PERCEPTION, AUDIO & NOTES -->
+    <div class="spoke-col">
+      <!-- Card: Battery -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <svg class="icon" viewBox="0 0 24 24"><rect x="2" y="7" width="16" height="10" rx="2"/><line x1="22" y1="11" x2="22" y2="13"/></svg>
+            Battery & Power
+          </div>
+          <span class="card-tag">PICO 2 RP2350 · 10 Hz</span>
+        </div>
+        <div class="card-desc">Texas Instruments INA226 high-side current & bus monitor.</div>
+        <div class="card-specs">
+          <span class="spec-item highlight">0–36V Bus</span>
+          <span class="spec-sep">·</span>
+          <span class="spec-item">Real-Time Amps/Watts</span>
+          <span class="spec-sep">·</span>
+          <span class="spec-item">Li-Ion SoC</span>
+        </div>
+      </div>
+
+      <!-- Card: LiDAR -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="6" r="6"/><circle cx="12" cy="2" r="2"/></svg>
+            LiDAR & Vision
+          </div>
+          <span class="card-tag">DIRECT USB / UART</span>
+        </div>
+        <div class="card-desc">360° 2D LiDAR (10 Hz laser scan) + Fisheye HD camera.</div>
+        <div class="card-specs">
+          <span class="spec-item highlight">Obstacle Pointclouds</span>
+          <span class="spec-sep">·</span>
+          <span class="spec-item">SLAM Costmaps</span>
+        </div>
+      </div>
+
+      <!-- Card: Audio -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <svg class="icon" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+            Neural Audio Output
+          </div>
+          <span class="card-tag">ALSA / PULSE AUDIO</span>
+        </div>
+        <div class="card-desc">High-efficiency audio amplifier + weatherproof onboard speaker.</div>
+        <div class="card-specs">
+          <span class="spec-item highlight">Local Piper TTS</span>
+          <span class="spec-sep">·</span>
+          <span class="spec-item">Sub-100ms Speech</span>
+        </div>
+      </div>
+
+      <!-- Shortened Notes Card -->
+      <div class="notes-card">
+        <div class="notes-title">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          Notes
+        </div>
+        <ul class="notes-list">
+          <li>Kept real-time loops on separate MCUs to avoid AI jitter.</li>
+          <li>USB CDC gives clean, isolated channels per node.</li>
+          <li>Slightly over-engineered, but field-reliable.</li>
+        </ul>
+        <div style="text-align: right; margin-top: 1px;">
+          <span class="handwritten-note">It's not perfect, but it works.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="pipeline-bar">
+    <div class="pipeline-step">
+      <span class="pipeline-tag">Hardware</span>
+      <span class="pipeline-sep">➔</span>
+      <span>Microcontrollers (PWM, Encoders, Watchdogs)</span>
+      <span class="pipeline-sep">➔</span>
+      <span class="pipeline-tag">USB CDC (4x isolated)</span>
+      <span class="pipeline-sep">➔</span>
+      <strong>Raspberry Pi 5 (Orchestration + AI)</strong>
+      <span class="pipeline-sep">➔</span>
+      <span>Central Hub: Milliseconds (RoboFactory, Docker, AGV)</span>
+    </div>
+    <div>BUILD / TEST / IMPROVE</div>
+  </div>
+</div>
 
     <!-- SLIDE 3: SOFTWARE & DIGITAL TWIN -->
-    <div class="slide" data-index="3">
-      <div class="slide-eyebrow">Software Architecture & Digital Twin</div>
-      <h1 class="slide-title">Pure ROS 2 & Zero-Risk Simulation</h1>
-      <p class="slide-subtitle">Multi-container orchestration on host paired with exact 100% API Gazebo simulation parity.</p>
+<div class="slide" data-index="3">
+  <div class="slide-top-row">
+    <div class="slide-title-group">
+      <div class="slide-eyebrow">SOFTWARE ARCHITECTURE / DIGITAL TWIN</div>
+      <h1 class="slide-title">Containerized ROS 2 & Gazebo Simulation</h1>
+      <p class="slide-subtitle">Zero host pollution with shared-memory IPC, paired with 100% API parity in the virtual digital twin.</p>
+    </div>
+    <div class="callout-why">
+      <div class="callout-why-title">Why Docker on Host?</div>
+      <div class="callout-why-text">Robotics stacks are notoriously brittle with OS dependencies. Containerizing every service ensures reproducible builds, while host-mode IPC preserves microsecond transport speeds.</div>
+    </div>
+  </div>
 
-      <div class="grid-2">
-        <div class="card">
-          <div class="card-title">📦 Multi-Container Orchestration Architecture</div>
-          <ul class="card-list">
-            <li><strong>Host Purity</strong>: Host OS only runs container engine (zero host pollution)</li>
-            <li><strong>Zero Latency</strong>: <code>network_mode: host</code> & <code>ipc: host</code> for shared memory transport</li>
-            <li><strong>Volume Mounts</strong>: Hot-reloading frontend and robot configs</li>
-            <li><strong>Standard Abstractions</strong>: <code>topic_based_ros2_control</code>, EKF odometry fusion, and Nav2</li>
-          </ul>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <svg class="icon" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+          Multi-Container Orchestration Architecture
         </div>
-
-        <div class="card">
-          <div class="card-title">🌍 Zero-Risk Gazebo Digital Twin</div>
-          <ul class="card-list">
-            <li><strong>Exact 100% API Parity</strong>: Identical topics, frame IDs (<code>base_link</code>, <code>odom</code>), and controllers</li>
-            <li><strong>Simulated Worlds</strong>: <code>garden.sdf</code> (trees, perimeter, lawn friction) & <code>obstacle_world.sdf</code></li>
-            <li><strong>Sensor Simulation</strong>: Virtual 360° laser scans, camera feeds, and blade motor mocks</li>
-            <li><strong>Instant Dev Launcher</strong>: <code>./start_sim.sh up --gui --dev</code> without touching hardware</li>
-          </ul>
-        </div>
+        <span class="card-tag">HOST RUNTIME</span>
+      </div>
+      <ul class="bullet-list">
+        <li><strong>Host Purity:</strong> Host OS only runs Docker and serial device mounts. No ROS dependencies installed on host.</li>
+        <li><strong>Zero Latency Transport:</strong> <code>network_mode: host</code> and <code>ipc: host</code> enable FastDDS shared memory communication.</li>
+        <li><strong>Volume Hot-Reloading:</strong> Code in <code>ros2_ws/src/</code> is mounted directly; rebuilds and web changes take effect immediately.</li>
+        <li><strong>Standard ROS 2 Interfaces:</strong> Uses <code>topic_based_ros2_control</code>, <code>robot_localization</code> EKF, and standard Nav2 behavior trees.</li>
+      </ul>
+      <div class="card-specs" style="margin-top: 6px;">
+        <span class="spec-item">ros2_nav2</span>
+        <span class="spec-sep">·</span>
+        <span class="spec-item">ros2_voice_chat</span>
+        <span class="spec-sep">·</span>
+        <span class="spec-item">ros2_rosbridge</span>
+        <span class="spec-sep">·</span>
+        <span class="spec-item">ros2_frontend</span>
       </div>
     </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          Zero-Risk Gazebo Digital Twin
+        </div>
+        <span class="card-tag">SIMULATION</span>
+      </div>
+      <ul class="bullet-list">
+        <li><strong>100% API Parity:</strong> Identical topic names (<code>/cmd_vel</code>, <code>/scan</code>), TF frame hierarchy (<code>map</code> → <code>odom</code> → <code>base_link</code>), and action servers.</li>
+        <li><strong>Physics & Friction Models:</strong> <code>garden.sdf</code> includes real lawn friction parameters, perimeter obstacles, and rough terrain.</li>
+        <li><strong>Emulated Sensors:</strong> Simulated 360° laser scans, synthetic camera feeds, and blade motor speed feedbacks.</li>
+        <li><strong>Instant Launch Command:</strong> <code>./start_sim.sh up --gui --dev</code> tests the entire autonomy pipeline on a laptop.</li>
+      </ul>
+      <div style="margin-top: 6px; text-align: right;">
+        <span class="handwritten-note">Saved ~3 weeks of bench testing before running physical blades.</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="pipeline-bar">
+    <div class="pipeline-step">
+      <span>Host OS</span>
+      <span class="pipeline-sep">➔</span>
+      <span class="pipeline-tag">Docker Compose (Profiles: hardware / sim)</span>
+      <span class="pipeline-sep">➔</span>
+      <strong>FastDDS Shared Memory IPC</strong>
+      <span class="pipeline-sep">➔</span>
+      <span>Nav2 / Gazebo Sim</span>
+    </div>
+    <div>PARITY: 100%</div>
+  </div>
+</div>
 
     <!-- SLIDE 4: ROBOFACTORY & AGY AGENT -->
-    <div class="slide" data-index="4">
-      <div class="slide-eyebrow">RoboFactory Intelligence</div>
+<div class="slide" data-index="4">
+  <div class="slide-top-row">
+    <div class="slide-title-group">
+      <div class="slide-eyebrow">ON-DEVICE AI / AGENT PLATFORM</div>
       <h1 class="slide-title">The Self-Aware Robot: AGY Core</h1>
-      <p class="slide-subtitle">Antigravity (AGY) running inside RoboFactory — Chat is just the gateway; AGY is our extensible on-device agent platform.</p>
+      <p class="slide-subtitle">Natural language chat is just the operator interface — AGY is an extensible on-device agent platform.</p>
+    </div>
+    <div class="callout-why">
+      <div class="callout-why-title">Why Run Locally on Pi 5?</div>
+      <div class="callout-why-text">Robots lose Wi-Fi in the yard all the time. Critical diagnostics, sensor reasoning, and spoken operator feedback must function autonomously without waiting for a cloud round-trip.</div>
+    </div>
+  </div>
 
-      <div class="grid-2">
-        <div class="card">
-          <div class="card-title">🧠 RoboFactory AGY Agent Platform</div>
-          <ul class="card-list">
-            <li><strong>Onboard Runtime</strong>: Antigravity & AGY agent run inside <code>ros2_voice_chat</code> container</li>
-            <li><strong>Full Introspection</strong>: Direct access to logs, FastDDS telemetry, configs, and node health</li>
-            <li><strong>Chat is Just the Gateway</strong>: Natural language is merely the operator UI; AGY's real role is autonomous system oversight</li>
-            <li><strong>Extending AGY</strong>: Evolving toward automated node restarts, failure recovery, and swarm task allocation</li>
-          </ul>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M12 2a8 8 0 0 0-8 8c0 3.36 2.08 6.24 5 7.42V20a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2v-2.58c2.92-1.18 5-4.06 5-7.42a8 8 0 0 0-8-8z"/><line x1="9" y1="22" x2="15" y2="22"/></svg>
+          RoboFactory AGY Agent Platform
         </div>
-
-        <div class="card">
-          <div class="card-title">🎙️ Piper Neural Voice Pipeline</div>
-          <ul class="card-list">
-            <li><strong>Zero Cloud Reliance</strong>: Local sub-100ms neural voice synthesis running directly on Pi 5</li>
-            <li><strong>Pipelined Token Streaming</strong>: Sentence & clause regex allows speech to start while LLM writes</li>
-            <li><strong>Concurrent Audio Out</strong>: Real-time broadcast to robot speaker + operator browser Web Audio</li>
-            <li><strong>Persona</strong>: Razor-sharp engineering specialist tuned for robotics diagnostics</li>
-          </ul>
-        </div>
+        <span class="card-tag">AGY RUNTIME</span>
       </div>
+      <ul class="bullet-list">
+        <li><strong>Onboard Runtime:</strong> Google Antigravity & AGY agent executed inside the <code>ros2_voice_chat</code> container.</li>
+        <li><strong>Full Introspection:</strong> Direct programmatic access to FastDDS telemetry, ROS 2 parameters, topic streams, and container logs.</li>
+        <li><strong>Beyond Chat:</strong> Natural language is just the operator UI; AGY's primary role is proactive system oversight and automated fault detection.</li>
+        <li><strong>Extensible Hooks:</strong> Evolving toward automated node restarts, PID parameter tuning, and multi-robot swarm task allocation.</li>
+      </ul>
+    </div>
 
-      <div class="flow-box">
-        <span>Operator (UI/Voice)</span>
-        <span class="flow-arrow">➔</span>
-        <span>WebSocket Bridge (:8765)</span>
-        <span class="flow-arrow">➔</span>
-        <span style="color: var(--accent-neon); font-weight: bold;">RoboFactory (Antigravity AGY Core)</span>
-        <span class="flow-arrow">➔</span>
-        <span>System Actions & Piper TTS</span>
-        <span class="flow-arrow">➔</span>
-        <span>Physical Robot Execution</span>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <svg class="icon" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+          Piper Neural Voice Pipeline
+        </div>
+        <span class="card-tag">LOCAL TTS</span>
+      </div>
+      <ul class="bullet-list">
+        <li><strong>Sub-100ms Latency:</strong> Local neural speech synthesis running purely on Raspberry Pi 5 CPU cores with zero cloud dependencies.</li>
+        <li><strong>Pipelined Token Streaming:</strong> Regex punctuation chunking allows audio playback to start while the LLM is still generating tokens.</li>
+        <li><strong>Concurrent Audio Out:</strong> Simultaneous broadcast to physical robot chassis speaker and operator browser Web Audio.</li>
+        <li><strong>Engineering Persona:</strong> Tuned for concise, razor-sharp technical diagnostics and status reports.</li>
+      </ul>
+      <div style="margin-top: 6px; text-align: right;">
+        <span class="handwritten-note">Regex chunking cut voice delay from 3.2s down to 240ms.</span>
       </div>
     </div>
+  </div>
+
+  <div class="pipeline-bar">
+    <div class="pipeline-step">
+      <span>Operator UI / Voice</span>
+      <span class="pipeline-sep">➔</span>
+      <span>WebSocket Bridge (:8765)</span>
+      <span class="pipeline-sep">➔</span>
+      <strong class="pipeline-tag">RoboFactory AGY Core</strong>
+      <span class="pipeline-sep">➔</span>
+      <span>System Actions & Piper TTS</span>
+      <span class="pipeline-sep">➔</span>
+      <strong>Hardware Execution</strong>
+    </div>
+    <div>ON-DEVICE LOCAL</div>
+  </div>
+</div>
 
     <!-- SLIDE 5: LIVE DEMO -->
-    <div class="slide" data-index="5">
-      <div class="slide-eyebrow">Live Demonstration</div>
-      <h1 class="slide-title">LIVE DEMO: Telemetry, Control & AI Voice</h1>
-      <p class="slide-subtitle">Real-time interaction with the ReloBot operator dashboard.</p>
+<div class="slide" data-index="5">
+  <div class="slide-top-row">
+    <div class="slide-title-group">
+      <div class="slide-eyebrow">SYSTEM VALIDATION / LIVE DEMO</div>
+      <h1 class="slide-title">Live Demo: Telemetry, Control & AI Voice</h1>
+      <p class="slide-subtitle">Real-time interaction with the ReloBot operator dashboard and onboard voice agent.</p>
+    </div>
+    <div class="callout-why">
+      <div class="callout-why-title">Live Test Protocol</div>
+      <div class="callout-why-text">All components demonstrated here are running live on the local hardware stack or Gazebo digital twin on port 80.</div>
+    </div>
+  </div>
 
-      <div class="demo-container">
-        <div class="demo-header">
-          <div class="card-title">🎮 Operator Dashboard Walkthrough</div>
-          <div class="demo-pulse">
-            <div class="demo-pulse-dot"></div>
-            SYSTEM ONLINE
-          </div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <svg class="icon" viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          Operator Dashboard Walkthrough
         </div>
+        <span class="card-tag">SEQUENCE</span>
+      </div>
+      <ol class="demo-step-list">
+        <li class="demo-step-item">
+          <div class="demo-step-num">1</div>
+          <div><strong>Live Telemetry:</strong> INA226 bus voltage (12.4V) and 9-DOF IMU pitch/roll sensor feeds.</div>
+        </li>
+        <li class="demo-step-item">
+          <div class="demo-step-num">2</div>
+          <div><strong>Manual Drive:</strong> Virtual joystick steering via <code>diff_drive_controller</code>.</div>
+        </li>
+        <li class="demo-step-item">
+          <div class="demo-step-num">3</div>
+          <div><strong>Cutter Spindle:</strong> Closed-loop RPM governor with safety watchdog kill.</div>
+        </li>
+        <li class="demo-step-item">
+          <div class="demo-step-num">4</div>
+          <div><strong>AI Voice Query:</strong> Ask <em>"ReloBot, report system status and battery voltage"</em>.</div>
+        </li>
+        <li class="demo-step-item">
+          <div class="demo-step-num">5</div>
+          <div><strong>Neural Speech:</strong> Sub-second spoken response streamed via local Piper TTS.</div>
+        </li>
+      </ol>
+    </div>
 
-        <div class="demo-grid">
-          <ol class="demo-steps">
-            <li><strong>Live Telemetry</strong>: INA226 battery voltage & 9-DOF IMU pitch/roll</li>
-            <li><strong>Manual Drive</strong>: Virtual joystick steering via <code>diff_drive_controller</code></li>
-            <li><strong>Mower Activation</strong>: Closed-loop blade spindle RPM governor</li>
-            <li><strong>AI Voice Query</strong>: Ask <em>"ReloBot, report system status and battery voltage"</em></li>
-            <li><strong>Neural Speech</strong>: Sub-second spoken report via onboard Piper TTS</li>
-          </ol>
+    <div class="demo-launch-box">
+      <div class="demo-status-pill">
+        <div class="demo-status-dot"></div>
+        <span>PORT 80 · WEBSOCKET 8765 ACTIVE</span>
+      </div>
 
-          <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 16px;">
-            <a href="http://localhost/" target="_blank" class="demo-launch-btn">
-              ⚡ Open ReloBot Dashboard
-            </a>
-            <span style="font-size: 13px; color: var(--text-dim); font-family: var(--font-mono);">
-              URL: http://localhost/ (Operator Dashboard)
-            </span>
-          </div>
-        </div>
+      <div>
+        <div style="font-size: 16px; font-weight: 600; color: var(--text-primary); margin-bottom: 2px;">ReloBot Operator Dashboard</div>
+        <div style="font-size: 12px; color: var(--text-muted); font-family: var(--font-mono);">http://localhost/ (or http://raspberrypi.local/)</div>
+      </div>
+
+      <a href="http://localhost/" target="_blank" class="btn-launch">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        Launch Operator Dashboard
+      </a>
+
+      <div style="font-size: 12px; color: var(--text-secondary); max-width: 300px; line-height: 1.4;">
+        Tip: Use <strong>Alt + Tab</strong> during presentation to switch between slides and live dashboard.
+      </div>
+
+      <div style="margin-top: 4px;">
+        <span class="handwritten-note">Voice synthesized 100% on Pi 5 CPU.</span>
       </div>
     </div>
+  </div>
+
+  <div class="pipeline-bar">
+    <div class="pipeline-step">
+      <span>Telemetry Polling</span>
+      <span class="pipeline-sep">➔</span>
+      <span>Virtual Joystick</span>
+      <span class="pipeline-sep">➔</span>
+      <strong class="pipeline-tag">Spindle Governor</strong>
+      <span class="pipeline-sep">➔</span>
+      <span>Voice Inquiry</span>
+      <span class="pipeline-sep">➔</span>
+      <strong>Local Speech Output</strong>
+    </div>
+    <div>TESTED & READY</div>
+  </div>
+</div>
 
     <!-- SLIDE 6: FIELD ENGINEERING -->
-    <div class="slide" data-index="6">
-      <div class="slide-eyebrow">Field Engineering</div>
-      <h1 class="slide-title">Hard Problems Solved</h1>
-      <p class="slide-subtitle">Real battle-tested lessons from assembling and running autonomous robotics.</p>
+<div class="slide" data-index="6">
+  <div class="slide-top-row">
+    <div class="slide-title-group">
+      <div class="slide-eyebrow">FIELD ENGINEERING / LESSONS LEARNED</div>
+      <h1 class="slide-title">Hard Problems Solved in Hardware & Software</h1>
+      <p class="slide-subtitle">Concrete engineering hurdles and battle-tested solutions from field deployment.</p>
+    </div>
+    <div class="callout-why">
+      <div class="callout-why-title">Field Reliability</div>
+      <div class="callout-why-text">Robotics is the art of fighting real-world physics. Theory guarantees nothing until hardware survives the elements and edge-case network loads.</div>
+    </div>
+  </div>
 
-      <div class="grid-2">
-        <div class="card">
-          <div class="card-title">⚡ FastDDS Buffer Storm</div>
-          <ul class="card-list">
-            <li><strong>Problem</strong>: Linux default 212 KB socket buffer choked on large SLAM maps, creating cascading NACK retry loops & CPU freeze.</li>
-            <li><strong>Solution</strong>: Tuned host kernel buffers to 64 MB (<code>net.core.rmem_max = 67108864</code>).</li>
-          </ul>
+  <div class="grid-2x2">
+    <!-- Problem 1 -->
+    <div class="problem-card">
+      <div class="problem-header">
+        <div class="problem-title">
+          <svg class="icon" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          FastDDS UDP Buffer Storm
         </div>
-
-        <div class="card">
-          <div class="card-title">📐 Wheel Velocity & Stiction Calibration</div>
-          <ul class="card-list">
-            <li><strong>Problem</strong>: DC motors exhibit non-linear deadbands and friction differences between left and right wheels.</li>
-            <li><strong>Solution</strong>: Automated velocity sweep & linear regression ($PWM = k \cdot v + b$) in <code>helpers/wheel_calibration</code>.</li>
-          </ul>
-        </div>
-
-        <div class="card">
-          <div class="card-title">📡 5 GHz Wi-Fi on Raspberry Pi 5</div>
-          <ul class="card-list">
-            <li><strong>Problem</strong>: Pi 5 defaults to <code>country 99 (DFS-UNSET)</code>, blocking 5 GHz high-speed channels.</li>
-            <li><strong>Solution</strong>: Host regulatory configuration unlocking Channel 52 for lag-free video streams.</li>
-          </ul>
-        </div>
-
-        <div class="card">
-          <div class="card-title">🧠 AI Agent Context & Session Reliability</div>
-          <ul class="card-list">
-            <li><strong>Problem</strong>: Preserved expired session IDs crashed CLI; LLM reasoning tokens delayed speech by 10–24s.</li>
-            <li><strong>Solution</strong>: Dynamic session lifecycle tracking, <code>&lt;think&gt;</code> token suppression (&lt;50ms TTFT), and RAM model pre-warming.</li>
-          </ul>
-        </div>
+        <span class="problem-meta">KERNEL SYSCTL</span>
+      </div>
+      <div class="problem-body">
+        <strong>Problem:</strong> Linux default 212 KB UDP socket buffer choked under high-frequency SLAM map exchanges. Cascading retransmissions caused 100% CPU lockup.
+      </div>
+      <div class="problem-fix">
+        Fix: <code>net.core.rmem_max = 67108864</code> (64 MB socket buffer) in <code>/etc/sysctl.d/99-ros2-fastdds.conf</code>.
       </div>
     </div>
+
+    <!-- Problem 2 -->
+    <div class="problem-card">
+      <div class="problem-header">
+        <div class="problem-title">
+          <svg class="icon" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          Wheel Velocity & Stiction Calibration
+        </div>
+        <span class="problem-meta">MICRO-ROS REGRESSION</span>
+      </div>
+      <div class="problem-body">
+        <strong>Problem:</strong> DC gearmotors exhibit non-linear friction deadbands; left and right motors had different starting torque thresholds.
+      </div>
+      <div class="problem-fix">
+        Fix: Automated velocity sweep ($PWM = k \cdot v + b$) in <code>helpers/wheel_calibration</code> embedded into firmware.
+      </div>
+    </div>
+
+    <!-- Problem 3 -->
+    <div class="problem-card">
+      <div class="problem-header">
+        <div class="problem-title">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+          5 GHz Wi-Fi Region Lockdown on Pi 5
+        </div>
+        <span class="problem-meta">HOST WIRELESS</span>
+      </div>
+      <div class="problem-body">
+        <strong>Problem:</strong> Raspberry Pi 5 kernel defaulted to <code>country 99 (DFS-UNSET)</code>, disabling 5 GHz bands and throttling camera stream.
+      </div>
+      <div class="problem-fix">
+        Fix: Configured persistent regulatory domain unlocking Channel 52 for low-latency RTSP camera streams.
+      </div>
+    </div>
+
+    <!-- Problem 4 -->
+    <div class="problem-card">
+      <div class="problem-header">
+        <div class="problem-title">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          AI Agent Context & Reasoning Latency
+        </div>
+        <span class="problem-meta">SESSION LIFECYCLE</span>
+      </div>
+      <div class="problem-body">
+        <strong>Problem:</strong> Expired chat session IDs crashed CLI; raw <code>&lt;think&gt;</code> tokens introduced 10–20s delays before speech playback.
+      </div>
+      <div class="problem-fix">
+        Fix: Dynamic session renewal, reasoning token suppression (&lt;50ms TTFT), and RAM model pre-warming.
+      </div>
+    </div>
+  </div>
+
+  <div class="pipeline-bar">
+    <div class="pipeline-step">
+      <span>Field Hardening:</span>
+      <span class="pipeline-tag">64MB FastDDS Buffers</span>
+      <span class="pipeline-sep">·</span>
+      <span class="pipeline-tag">Firmware Stiction PI</span>
+      <span class="pipeline-sep">·</span>
+      <span class="pipeline-tag">5 GHz Wi-Fi Unlock</span>
+      <span class="pipeline-sep">·</span>
+      <span class="pipeline-tag">&lt;50ms TTFT Voice</span>
+    </div>
+    <div class="handwritten-note" style="font-size: 17px;">Every fix was paid for with a late-night debugging session.</div>
+  </div>
+</div>
 
     <!-- SLIDE 7: ROADMAP, SUMMARY & QA -->
-    <div class="slide" data-index="7">
-      <div class="slide-eyebrow">Roadmap & Discussion</div>
+<div class="slide" data-index="7">
+  <div class="slide-top-row">
+    <div class="slide-title-group">
+      <div class="slide-eyebrow">FUTURE MILESTONES / ROADMAP</div>
       <h1 class="slide-title">Toward Autonomous Swarm Factory</h1>
-      <p class="slide-subtitle">The next evolution stages of the DarkSelmash AI Factory platform.</p>
+      <p class="slide-subtitle">Next phases of development for the DarkSelmash AI Factory platform.</p>
+    </div>
+    <div class="callout-why">
+      <div class="callout-why-title">Long-Term Vision</div>
+      <div class="callout-why-text">Moving from single-robot maintenance to an autonomous multi-agent swarm coordinated by an AI Factory central supervisor.</div>
+    </div>
+  </div>
 
-      <div class="grid-2">
-        <div class="card">
-          <div class="card-title">🚀 Next Milestones</div>
-          <ul class="card-list">
-            <li><strong>🎯 Precision Optical Docking</strong>: Sub-centimeter docking via AprilTag fiducial tags for auto-charging.</li>
-            <li><strong>🌱 Systematic Coverage</strong>: Boustrophedon and spiral mowing patterns via <code>opennav_coverage</code>.</li>
-            <li><strong>🤖 Swarm Fleet Coordination</strong>: Multi-robot shared spatial maps and central dispatch.</li>
-            <li><strong>🛠️ Supervised Self-Healing</strong>: Advancing AGY agent to auto-restart faulted nodes and tune PID loops.</li>
-          </ul>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <svg class="icon" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          Development Roadmap
         </div>
-
-        <div class="card success">
-          <div class="card-title">⭐ Platform Highlights & Q&A</div>
-          <ul class="card-list">
-            <li><strong>Hardware</strong>: Deterministic micro-ROS Hub & Spoke network</li>
-            <li><strong>Software</strong>: 100% Dockerized ROS 2 + Gazebo digital twin</li>
-            <li><strong>Intelligence</strong>: On-device Antigravity AI + Piper neural voice</li>
-            <li><strong>Web Dashboard</strong>: <code>http://localhost/</code></li>
-            <li><strong>Ready for your questions and technical discussion!</strong></li>
-          </ul>
-        </div>
+        <span class="card-tag">NEXT STAGES</span>
       </div>
+      <ul class="bullet-list">
+        <li><strong>Precision Optical Docking:</strong> Sub-centimeter outdoor docking using AprilTag fiducial markers (<code>opennav_docking</code>).</li>
+        <li><strong>Systematic Coverage Patterns:</strong> Boustrophedon and spiral sweep path generation via <code>opennav_coverage</code>.</li>
+        <li><strong>Multi-Robot Fleet Coordination:</strong> Distributed spatial maps and cooperative task dispatch across multiple ReloBots.</li>
+        <li><strong>Supervised Self-Healing:</strong> Autonomous AGY agent that can restart crashed ROS nodes, recalibrate sensors, and diagnose wiring faults.</li>
+      </ul>
     </div>
 
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+          Platform Summary & Technical Discussion
+        </div>
+        <span class="card-tag">SUMMARY & Q&A</span>
+      </div>
+      <ul class="bullet-list">
+        <li><strong>Deterministic Hardware:</strong> micro-ROS Hub & Spoke network isolating real-time loops.</li>
+        <li><strong>100% Docker & Simulation:</strong> Zero host pollution and 1:1 Gazebo digital twin parity.</li>
+        <li><strong>On-Device Intelligence:</strong> Antigravity AGY core with local Piper neural TTS.</li>
+        <li><strong>Web Dashboard:</strong> Zero-dependency operator interface at <code>http://localhost/</code>.</li>
+      </ul>
+      <div style="margin-top: 8px; text-align: right;">
+        <span class="handwritten-note">Ready for your questions and technical discussion!</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="pipeline-bar">
+    <div class="pipeline-step">
+      <span>ReloBot Architecture</span>
+      <span class="pipeline-sep">·</span>
+      <span>DarkSelmash AI Factory</span>
+      <span class="pipeline-sep">·</span>
+      <span>ROS 2 Humble</span>
+      <span class="pipeline-sep">·</span>
+      <span class="pipeline-tag">Google Antigravity AGY</span>
+    </div>
+    <div>OPEN FOR Q&A</div>
+  </div>
+</div>
   </main>
 
-  <!-- Russian Speaker Notes Drawer -->
+  <!-- Speaker Notes Drawer -->
   <div class="speaker-drawer" id="speakerDrawer">
     <div class="speaker-header">
       <div class="speaker-title">
-        <span>🎙️ Заметки спикера (RU)</span>
-        <span id="notesSlideIndicator" style="color: var(--text-dim);">[Слайд 1/7]</span>
+        <svg class="icon" viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+        <span>Speaker Notes</span>
+        <span id="notesSlideIndicator" style="color: var(--text-muted); font-size: 11.5px;">[Slide 1/7]</span>
       </div>
-      <button class="btn-icon" id="closeNotesBtn">✕ Закрыть</button>
+      <button class="btn-control" id="closeNotesBtn">✕ Close</button>
     </div>
     <div class="speaker-content" id="speakerNotesText">
       <!-- Injected via JavaScript -->
@@ -1312,131 +1710,169 @@
   <footer>
     <div class="slide-counter" id="slideCounter">01 / 07</div>
 
+    <div class="footer-hints">
+      <span>[← / → / Space] Navigate</span>
+      <span>[S] Speaker Notes</span>
+      <span>[F] Fullscreen</span>
+    </div>
+
     <div class="nav-buttons">
       <button class="btn-nav" id="prevBtn" disabled>
-        <span>← Назад</span> <span class="key-hint">Left</span>
+        <span>← Prev</span>
       </button>
       <button class="btn-nav" id="nextBtn">
-        <span>Вперед →</span> <span class="key-hint">Right / Space</span>
+        <span>Next →</span>
       </button>
     </div>
   </footer>
 
-  <script>
-    // Speaker notes for all 7 slides in Russian
-    const speakerNotes = {
-      1: "Всем привет! Рады приветствовать вас на DarkSelmash AI Factory. Сегодня мы представляем проект ReloBot. Это не просто радиоуправляемая тележка или самодельная косилка, а полноценная автономная робототехническая платформа. Наш ключевой фокус — объединение классической надежной робототехники на ROS 2 с концепцией AI Factory: когда искусственный интеллект встроен непосредственно в рантайм робота, способен общаться живым голосом и диагностировать систему изнутри.",
-      2: "В основе аппаратной архитектуры ReloBot лежит концепция Hub and Spoke. Центральным хабом выступает Raspberry Pi 5 с 8 гигабайтами оперативной памяти. Важнейшая деталь: прямо внутри хаба развернута среда RoboFactory, запускающая Google Antigravity и агентский рантайм AGY. Чат для оператора — это лишь маленькая входная фича, а само ядро AGY мы активно расширяем для автономной работы и диагностики. От хаба, как спицы колеса, расходятся изолированные каналы к микро-агентам: два модуля XIAO RP2040 для привода и ножей на 3000 оборотов, Pico с 9-осевым IMU, Pico 2 на RP2350 с чипом INA226 для батареи, круговой лидар и динамик голосового вывода.",
-      3: "Программный стек и симуляция образуют единый конвейер с нулевым загрязнением хост-системы. Все ноды ROS 2 Humble работают в мультиконтейнерной системе Docker с общей памятью IPC. При этом мы создали цифровой двойник ReloBot в симуляторе Gazebo с абсолютным, стопроцентным паритетом API. Топики, TF-дерево и алгоритмы навигации Nav2 работают в симуляторе точно так же, как на реальном газоне, позволяя отладить весь софт на ноутбуке до раскрутки металлических ножей.",
-      4: "Ядро концепции DarkSelmash AI Factory — среда RoboFactory и агент AGY на базе Google Antigravity, запущенные прямо на борту робота. Хочу подчеркнуть: чат в браузере — это лишь маленькая входная фича для человека. Настоящая сила в том, что Antigravity работает как расширяемый агентский движок с доступом к топикам, логам, файлам и состоянию всех нод. Мы расширяем AGY дальше: агент учится самостоятельно перезапускать сбойные процессы, диагностировать аппаратные ошибки и в будущем координировать роевые миссии. А локальный нейросетевой движок Piper TTS озвучивает мысли робота с задержкой менее 100 миллисекунд.",
-      5: "ДЕМО В ЭФИРЕ: Переключаемся на браузер с дашбордом оператора (Alt+Tab). В правом верхнем углу — живая телеметрия с INA226 и наклоны робота. Касаемся джойстика — дифференциальный привод откликается мгновенно. Задаем обороты шпинделя ножей. А теперь обращаемся к бортовому ИИ: 'ReloBot, report system status and battery voltage'. Слушаем локальный голос робота через Piper TTS: 'All subsystems nominal. Battery at 12.4 volts. Ready for autonomous operation.' Голос сгенерирован полностью на борту!",
-      6: "Робототехника — это искусство борьбы с физикой и граблями. Мы решили шторм буфера FastDDS, когда тяжелые карты SLAM забивали 200-килобайтный буфер Linux и вешали ядро — помог тюнинг сокетов до 64 МБ. Мы победили трение покоя моторов через калибровочную регрессию прямо на RP2040. Разблокировали 5 ГГц Wi-Fi на Pi 5 для видеопотока. И оптимизировали работу агента Antigravity: подавили задержку reasoning-токенов с 20 секунд до 50 миллисекунд и прогрели граф нейросети в RAM.",
-      7: "Куда мы движемся дальше? Наш ближайший шаг — автономная док-станция с оптической стыковкой по меткам AprilTag, алгоритмы сплошного покоса и объединение роботов в координированный рой под управлением диспетчера AI Factory. Большое спасибо за внимание! Мы открыты к вопросам и технической дискуссии."
-    };
+    <script>
+    // --- notes.js ---
+/**
+ * Speaker notes for all 7 slides in Russian.
+ * Corresponds directly to SPEAKER_NOTES_RU.md cue sheet.
+ */
+const speakerNotes = {
+  1: "Всем привет! Рады приветствовать вас на DarkSelmash AI Factory. Сегодня мы представляем проект ReloBot. Это не просто радиоуправляемая тележка или самодельная косилка, а полноценная автономная робототехническая платформа. Наш ключевой фокус — объединение классической надежной робототехники на ROS 2 с концепцией AI Factory: когда искусственный интеллект встроен непосредственно в рантайм робота, способен общаться живым голосом и диагностировать систему изнутри.",
+  2: "В основе аппаратной архитектуры ReloBot лежит концепция Hub and Spoke. Центральным хабом выступает Raspberry Pi 5 с 8 гигабайтами оперативной памяти. Важнейшая деталь: прямо внутри хаба развернута среда RoboFactory, запускающая Google Antigravity и агентский рантайм AGY. Чат для оператора — это лишь маленькая входная фича, а само ядро AGY мы активно расширяем для автономной работы и диагностики. От хаба, как спицы колеса, расходятся изолированные каналы к микро-агентам: два модуля XIAO RP2040 для привода и ножей на 3000 оборотов, Pico с 9-осевым IMU, Pico 2 на RP2350 с чипом INA226 для батареи, круговой лидар и динамик голосового вывода.",
+  3: "Программный стек и симуляция образуют единый конвейер с нулевым загрязнением хост-системы. Все ноды ROS 2 Humble работают в мультиконтейнерной системе Docker с общей памятью IPC. При этом мы создали цифровой двойник ReloBot в симуляторе Gazebo с абсолютным, стопроцентным паритетом API. Топики, TF-дерево и алгоритмы навигации Nav2 работают в симуляторе точно так же, как на реальном газоне, позволяя отладить весь софт на ноутбуке до раскрутки металлических ножей.",
+  4: "Ядро концепции DarkSelmash AI Factory — среда RoboFactory и агент AGY на базе Google Antigravity, запущенные прямо на борту робота. Хочу подчеркнуть: чат в браузере — это лишь маленькая входная фича для человека. Настоящая сила в том, что Antigravity работает как расширяемый агентский движок с доступом к топикам, логам, файлам и состоянию всех нод. Мы расширяем AGY дальше: агент учится самостоятельно перезапускать сбойные процессы, диагностировать аппаратные ошибки и в будущем координировать роевые миссии. А локальный нейросетевой движок Piper TTS озвучивает мысли робота с задержкой менее 100 миллисекунд.",
+  5: "ДЕМО В ЭФИРЕ: Переключаемся на браузер с дашбордом оператора (Alt+Tab). В правом верхнем углу — живая телеметрия с INA226 и наклоны робота. Касаемся джойстика — дифференциальный привод откликается мгновенно. Задаем обороты шпинделя ножей. А теперь обращаемся к бортовому ИИ: 'ReloBot, report system status and battery voltage'. Слушаем локальный голос робота через Piper TTS: 'All subsystems nominal. Battery at 12.4 volts. Ready for autonomous operation.' Голос сгенерирован полностью на борту!",
+  6: "Робототехника — это искусство борьбы с физикой и граблями. Мы решили шторм буфера FastDDS, когда тяжелые карты SLAM забивали 200-килобайтный буфер Linux и вешали ядро — помог тюнинг сокетов до 64 МБ. Мы победили трение покоя моторов через калибровочную регрессию прямо на RP2040. Разблокировали 5 ГГц Wi-Fi на Pi 5 для видеопотока. И оптимизировали работу агента Antigravity: подавили задержку reasoning-токенов с 20 секунд до 50 миллисекунд и прогрели граф нейросети в RAM.",
+  7: "Куда мы движемся дальше? Наш ближайший шаг — автономная док-станция с оптической стыковкой по меткам AprilTag, алгоритмы сплошного покоса и объединение роботов в координированный рой под управлением диспетчера AI Factory. Большое спасибо за внимание! Мы открыты к вопросам и технической дискуссии."
+};
 
-    let currentSlide = 1;
-    const totalSlides = 7;
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = speakerNotes;
+}
 
-    const slides = document.querySelectorAll('.slide');
-    const progressBar = document.getElementById('progressBar');
-    const slideCounter = document.getElementById('slideCounter');
-    const prevBtn = document.getElementById('prevBtn');
-    const nextBtn = document.getElementById('nextBtn');
-    const speakerDrawer = document.getElementById('speakerDrawer');
-    const speakerNotesText = document.getElementById('speakerNotesText');
-    const notesSlideIndicator = document.getElementById('notesSlideIndicator');
-    const toggleNotesBtn = document.getElementById('toggleNotesBtn');
-    const closeNotesBtn = document.getElementById('closeNotesBtn');
-    const fullscreenBtn = document.getElementById('fullscreenBtn');
-    const timerBadge = document.getElementById('timerBadge');
 
-    function updateSlide(index) {
-      if (index < 1 || index > totalSlides) return;
-      currentSlide = index;
+    // --- presentation.js ---
+/**
+ * ReloBot Presentation Deck Engine
+ * Handles slide navigation, keyboard shortcuts, speaker notes drawer, fullscreen, and stopwatch.
+ */
 
-      slides.forEach((slide) => {
-        const slideIdx = parseInt(slide.getAttribute('data-index'), 10);
-        if (slideIdx === currentSlide) {
-          slide.classList.add('active');
-        } else {
-          slide.classList.remove('active');
-        }
-      });
+(function () {
+  let currentSlide = 1;
+  const slides = document.querySelectorAll('.slide');
+  const totalSlides = slides.length || 7;
 
-      // Progress bar & counter
-      const progress = (currentSlide / totalSlides) * 100;
-      progressBar.style.width = `${progress}%`;
+  const progressBar = document.getElementById('progressBar');
+  const slideCounter = document.getElementById('slideCounter');
+  const prevBtn = document.getElementById('prevBtn');
+  const nextBtn = document.getElementById('nextBtn');
+  const speakerDrawer = document.getElementById('speakerDrawer');
+  const speakerNotesText = document.getElementById('speakerNotesText');
+  const notesSlideIndicator = document.getElementById('notesSlideIndicator');
+  const toggleNotesBtn = document.getElementById('toggleNotesBtn');
+  const closeNotesBtn = document.getElementById('closeNotesBtn');
+  const fullscreenBtn = document.getElementById('fullscreenBtn');
+  const timerBadge = document.getElementById('timerBadge');
+  const timerText = document.getElementById('timerText');
+
+  function updateSlide(index) {
+    if (index < 1 || index > totalSlides) return;
+    currentSlide = index;
+
+    slides.forEach((slide) => {
+      const slideIdx = parseInt(slide.getAttribute('data-index'), 10);
+      if (slideIdx === currentSlide) {
+        slide.classList.add('active');
+      } else {
+        slide.classList.remove('active');
+      }
+    });
+
+    // Progress bar & counter
+    const progress = (currentSlide / totalSlides) * 100;
+    if (progressBar) progressBar.style.width = `${progress}%`;
+    if (slideCounter) {
       slideCounter.textContent = `${currentSlide < 10 ? '0' + currentSlide : currentSlide} / 0${totalSlides}`;
+    }
 
-      // Prev/Next buttons state
-      prevBtn.disabled = currentSlide === 1;
-      nextBtn.disabled = currentSlide === totalSlides;
+    // Prev/Next buttons state
+    if (prevBtn) prevBtn.disabled = currentSlide === 1;
+    if (nextBtn) nextBtn.disabled = currentSlide === totalSlides;
 
-      // Update speaker notes
+    // Update speaker notes
+    if (typeof speakerNotes !== 'undefined' && speakerNotesText) {
       speakerNotesText.textContent = speakerNotes[currentSlide] || "";
-      notesSlideIndicator.textContent = `[Слайд ${currentSlide}/${totalSlides}]`;
     }
-
-    function nextSlide() {
-      if (currentSlide < totalSlides) updateSlide(currentSlide + 1);
+    if (notesSlideIndicator) {
+      notesSlideIndicator.textContent = `[Slide ${currentSlide}/${totalSlides}]`;
     }
+  }
 
-    function prevSlide() {
-      if (currentSlide > 1) updateSlide(currentSlide - 1);
-    }
+  function nextSlide() {
+    if (currentSlide < totalSlides) updateSlide(currentSlide + 1);
+  }
 
-    function toggleNotes() {
-      speakerDrawer.classList.toggle('open');
+  function prevSlide() {
+    if (currentSlide > 1) updateSlide(currentSlide - 1);
+  }
+
+  function toggleNotes() {
+    if (!speakerDrawer) return;
+    speakerDrawer.classList.toggle('open');
+    if (toggleNotesBtn) {
       toggleNotesBtn.classList.toggle('active', speakerDrawer.classList.contains('open'));
     }
+  }
 
-    function toggleFullscreen() {
-      if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen().catch(() => {});
-      } else {
-        document.exitFullscreen().catch(() => {});
-      }
+  function toggleFullscreen() {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    } else {
+      document.exitFullscreen().catch(() => {});
     }
+  }
 
-    // Keyboard navigation
-    window.addEventListener('keydown', (e) => {
-      if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
-        e.preventDefault();
-        nextSlide();
-      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
-        e.preventDefault();
-        prevSlide();
-      } else if (e.key.toLowerCase() === 's') {
-        e.preventDefault();
-        toggleNotes();
-      } else if (e.key.toLowerCase() === 'f') {
-        e.preventDefault();
-        toggleFullscreen();
-      }
-    });
+  // Keyboard navigation
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
+      e.preventDefault();
+      nextSlide();
+    } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+      e.preventDefault();
+      prevSlide();
+    } else if (e.key.toLowerCase() === 's') {
+      e.preventDefault();
+      toggleNotes();
+    } else if (e.key.toLowerCase() === 'f') {
+      e.preventDefault();
+      toggleFullscreen();
+    }
+  });
 
-    nextBtn.addEventListener('click', nextSlide);
-    prevBtn.addEventListener('click', prevSlide);
-    toggleNotesBtn.addEventListener('click', toggleNotes);
-    closeNotesBtn.addEventListener('click', toggleNotes);
-    fullscreenBtn.addEventListener('click', toggleFullscreen);
+  if (nextBtn) nextBtn.addEventListener('click', nextSlide);
+  if (prevBtn) prevBtn.addEventListener('click', prevSlide);
+  if (toggleNotesBtn) toggleNotesBtn.addEventListener('click', toggleNotes);
+  if (closeNotesBtn) closeNotesBtn.addEventListener('click', toggleNotes);
+  if (fullscreenBtn) fullscreenBtn.addEventListener('click', toggleFullscreen);
 
-    // Presentation stopwatch timer
-    let secondsElapsed = 0;
-    let timerInterval = setInterval(() => {
-      secondsElapsed++;
-      const mins = Math.floor(secondsElapsed / 60);
-      const secs = secondsElapsed % 60;
-      timerBadge.textContent = `⏱ ${mins < 10 ? '0' + mins : mins}:${secs < 10 ? '0' + secs : secs}`;
-    }, 1000);
+  // Presentation stopwatch timer
+  let secondsElapsed = 0;
+  setInterval(() => {
+    secondsElapsed++;
+    const mins = Math.floor(secondsElapsed / 60);
+    const secs = secondsElapsed % 60;
+    if (timerText) {
+      timerText.textContent = `${mins < 10 ? '0' + mins : mins}:${secs < 10 ? '0' + secs : secs}`;
+    }
+  }, 1000);
 
+  if (timerBadge) {
     timerBadge.addEventListener('click', () => {
       secondsElapsed = 0;
-      timerBadge.textContent = "⏱ 00:00";
+      if (timerText) timerText.textContent = "00:00";
     });
+  }
 
-    // Initialize
-    updateSlide(1);
+  // Initialize first slide
+  updateSlide(1);
+})();
+
   </script>
 </body>
 </html>

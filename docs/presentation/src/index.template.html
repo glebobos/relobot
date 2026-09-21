@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ReloBot — Technical Architecture Review</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <!-- INJECT:CSS -->
+</head>
+<body>
+
+  <div class="bg-grid"></div>
+
+  <!-- Header -->
+  <header>
+    <div class="brand">
+      <div class="brand-logo">RF</div>
+      <div class="brand-title">RoboFactory Architecture</div>
+      <span class="brand-divider">/</span>
+      <span class="brand-sub">ReloBot Platform</span>
+    </div>
+
+    <div class="header-controls">
+      <div class="timer-badge" id="timerBadge" title="Click to reset timer">
+        <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span id="timerText">00:00</span>
+      </div>
+      <button class="btn-control" id="toggleNotesBtn" title="Toggle Russian Speaker Notes (Press 'S')">
+        <span>RU Notes</span> <span class="key-hint">S</span>
+      </button>
+      <button class="btn-control" id="fullscreenBtn" title="Toggle Fullscreen (Press 'F')">
+        <span>Fullscreen</span> <span class="key-hint">F</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Progress Bar -->
+  <div class="progress-bar-container">
+    <div class="progress-bar" id="progressBar"></div>
+  </div>
+
+  <!-- Main Slide Canvas -->
+  <main id="slideCanvas">
+    <!-- INJECT:SLIDES -->
+  </main>
+
+  <!-- Speaker Notes Drawer -->
+  <div class="speaker-drawer" id="speakerDrawer">
+    <div class="speaker-header">
+      <div class="speaker-title">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+        <span>Speaker Notes</span>
+        <span id="notesSlideIndicator" style="color: var(--text-muted); font-size: 11.5px;">[Slide 1/7]</span>
+      </div>
+      <button class="btn-control" id="closeNotesBtn">✕ Close</button>
+    </div>
+    <div class="speaker-content" id="speakerNotesText">
+      <!-- Injected via JavaScript -->
+    </div>
+  </div>
+
+  <!-- Footer Controls -->
+  <footer>
+    <div class="slide-counter" id="slideCounter">01 / 07</div>
+
+    <div class="footer-hints">
+      <span>[← / → / Space] Navigate</span>
+      <span>[S] Speaker Notes</span>
+      <span>[F] Fullscreen</span>
+    </div>
+
+    <div class="nav-buttons">
+      <button class="btn-nav" id="prevBtn" disabled>
+        <span>← Prev</span>
+      </button>
+      <button class="btn-nav" id="nextBtn">
+        <span>Next →</span>
+      </button>
+    </div>
+  </footer>
+
+  <!-- INJECT:JS -->
+</body>
+</html>

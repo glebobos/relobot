@@ -1,0 +1,88 @@
+<!-- SLIDE 5: LIVE DEMO -->
+<div class="slide" data-index="5">
+  <div class="slide-top-row">
+    <div class="slide-title-group">
+      <div class="slide-eyebrow">SYSTEM VALIDATION / LIVE DEMO</div>
+      <h1 class="slide-title">Live Demo: Telemetry, Control & AI Voice</h1>
+      <p class="slide-subtitle">Real-time interaction with the ReloBot operator dashboard and onboard voice agent.</p>
+    </div>
+    <div class="callout-why">
+      <div class="callout-why-title">Live Test Protocol</div>
+      <div class="callout-why-text">All components demonstrated here are running live on the local hardware stack or Gazebo digital twin on port 80.</div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <svg class="icon" viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          Operator Dashboard Walkthrough
+        </div>
+        <span class="card-tag">SEQUENCE</span>
+      </div>
+      <ol class="demo-step-list">
+        <li class="demo-step-item">
+          <div class="demo-step-num">1</div>
+          <div><strong>Live Telemetry:</strong> INA226 bus voltage (12.4V) and 9-DOF IMU pitch/roll sensor feeds.</div>
+        </li>
+        <li class="demo-step-item">
+          <div class="demo-step-num">2</div>
+          <div><strong>Manual Drive:</strong> Virtual joystick steering via <code>diff_drive_controller</code>.</div>
+        </li>
+        <li class="demo-step-item">
+          <div class="demo-step-num">3</div>
+          <div><strong>Cutter Spindle:</strong> Closed-loop RPM governor with safety watchdog kill.</div>
+        </li>
+        <li class="demo-step-item">
+          <div class="demo-step-num">4</div>
+          <div><strong>AI Voice Query:</strong> Ask <em>"ReloBot, report system status and battery voltage"</em>.</div>
+        </li>
+        <li class="demo-step-item">
+          <div class="demo-step-num">5</div>
+          <div><strong>Neural Speech:</strong> Sub-second spoken response streamed via local Piper TTS.</div>
+        </li>
+      </ol>
+    </div>
+
+    <div class="demo-launch-box">
+      <div class="demo-status-pill">
+        <div class="demo-status-dot"></div>
+        <span>PORT 80 · WEBSOCKET 8765 ACTIVE</span>
+      </div>
+
+      <div>
+        <div style="font-size: 16px; font-weight: 600; color: var(--text-primary); margin-bottom: 2px;">ReloBot Operator Dashboard</div>
+        <div style="font-size: 12px; color: var(--text-muted); font-family: var(--font-mono);">http://localhost/ (or http://raspberrypi.local/)</div>
+      </div>
+
+      <a href="http://localhost/" target="_blank" class="btn-launch">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        Launch Operator Dashboard
+      </a>
+
+      <div style="font-size: 12px; color: var(--text-secondary); max-width: 300px; line-height: 1.4;">
+        Tip: Use <strong>Alt + Tab</strong> during presentation to switch between slides and live dashboard.
+      </div>
+
+      <div style="margin-top: 4px;">
+        <span class="handwritten-note">Voice synthesized 100% on Pi 5 CPU.</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="pipeline-bar">
+    <div class="pipeline-step">
+      <span>Telemetry Polling</span>
+      <span class="pipeline-sep">➔</span>
+      <span>Virtual Joystick</span>
+      <span class="pipeline-sep">➔</span>
+      <strong class="pipeline-tag">Spindle Governor</strong>
+      <span class="pipeline-sep">➔</span>
+      <span>Voice Inquiry</span>
+      <span class="pipeline-sep">➔</span>
+      <strong>Local Speech Output</strong>
+    </div>
+    <div>TESTED & READY</div>
+  </div>
+</div>

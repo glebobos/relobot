@@ -1,0 +1,387 @@
+/* ==========================================================================
+   Slide 1: Overview & Hero Grid
+   ========================================================================== */
+.hero-grid {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 20px;
+  align-items: center;
+}
+
+.hero-left {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.hero-specs-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  font-size: 15px;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+.hero-specs-list li {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.hero-specs-list li strong {
+  color: var(--text-primary);
+  min-width: 150px;
+  flex-shrink: 0;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  font-size: 13.5px;
+}
+
+.hero-img-box {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.hero-img-box img {
+  width: 100%;
+  height: 250px;
+  object-fit: cover;
+  display: block;
+}
+
+.hero-img-meta {
+  padding: 10px 16px;
+  background: var(--bg-panel);
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+/* ==========================================================================
+   Slide 2: Hub & Spoke Hardware Architecture
+   ========================================================================== */
+.hub-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.22fr 1fr;
+  gap: 18px;
+  align-items: center;
+}
+
+.spoke-col {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  justify-content: center;
+}
+
+.spoke-col .card {
+  padding: 12px 18px;
+  gap: 5px;
+}
+
+.spoke-col .card-title {
+  font-size: 16.5px;
+}
+
+.spoke-col .card-tag {
+  font-size: 12.5px;
+}
+
+.spoke-col .card-desc {
+  font-size: 14px;
+  line-height: 1.38;
+}
+
+.spoke-col .card-specs {
+  padding-top: 6px;
+  font-size: 13px;
+  gap: 6px;
+}
+
+/* Central Hub Center Card */
+.hub-center-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-medium);
+  border-radius: 8px;
+  padding: 18px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  justify-content: center;
+}
+
+.hub-header {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.hub-title {
+  font-size: 21px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.hub-sub {
+  font-size: 14.5px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+.hub-img-wrapper {
+  width: 100%;
+  height: 145px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.hub-img-wrapper img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.hub-bullet-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px 14px;
+  font-size: 14.5px;
+  color: var(--text-secondary);
+}
+
+.hub-bullet-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  line-height: 1.38;
+}
+
+.hub-bullet-dot {
+  color: var(--accent);
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.hub-bus-footer {
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 9px;
+  font-family: var(--font-mono);
+  font-size: 13.5px;
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-weight: 500;
+}
+
+/* Shortened Notes card on Slide 2 */
+.notes-card {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 12px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.notes-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  text-transform: uppercase;
+  font-family: var(--font-mono);
+  letter-spacing: 0.5px;
+}
+
+.notes-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 13.5px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.notes-list li {
+  position: relative;
+  padding-left: 14px;
+  display: block;
+}
+
+.notes-list li::before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: var(--text-muted);
+}
+
+/* ==========================================================================
+   Slide 5: Live Demo Controls & Steps
+   ========================================================================== */
+.demo-step-list {
+  list-style: none;
+  counter-reset: demo-counter;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.demo-step-item {
+  counter-increment: demo-counter;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  padding: 10px 15px;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  font-size: 15px;
+  color: var(--text-secondary);
+  line-height: 1.42;
+}
+
+.demo-step-num {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 12.5px;
+  color: var(--accent);
+  background: var(--accent-dim);
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.demo-launch-box {
+  background: var(--bg-card);
+  border: 1px solid var(--border-medium);
+  border-radius: 8px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.demo-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--accent);
+  background: var(--accent-dim);
+  padding: 4px 12px;
+  border-radius: 4px;
+  border: 1px solid rgba(46, 189, 133, 0.3);
+}
+
+.demo-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.btn-launch {
+  background: var(--accent);
+  color: #0b0f14;
+  font-weight: 600;
+  font-size: 15.5px;
+  padding: 12px 26px;
+  border-radius: 6px;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  transition: background 0.15s ease;
+  border: none;
+  cursor: pointer;
+}
+
+.btn-launch:hover {
+  background: var(--accent-hover);
+}
+
+/* ==========================================================================
+   Slide 6: Problem / Solution Card Format
+   ========================================================================== */
+.problem-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.problem-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.problem-title {
+  font-size: 16.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.problem-meta {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--accent);
+  background: var(--accent-dim);
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.problem-body {
+  font-size: 14.5px;
+  color: var(--text-secondary);
+  line-height: 1.42;
+}
+
+.problem-body strong {
+  color: var(--text-primary);
+}
+
+.problem-fix {
+  background: var(--bg-inset);
+  border-left: 2.5px solid var(--accent);
+  padding: 6px 12px;
+  border-radius: 0 4px 4px 0;
+  font-size: 13.5px;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  line-height: 1.4;
+}
