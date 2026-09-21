@@ -3,14 +3,14 @@
  * Coordinates UI message rendering, session persistence, voice transcription, and token streaming.
  */
 
-import { ChatService } from '../../services/chat-service.js';
+import { ChatService, chatService } from '../../services/chat-service.js';
 import { VoiceRecognitionService } from '../../services/voice-recognition-service.js';
 
 const STORAGE_CHAT_MESSAGES_KEY = 'relobot_chat_messages';
 
 export class ChatPanel {
-    constructor() {
-        this.chatService = new ChatService();
+    constructor(chatServiceInstance = chatService) {
+        this.chatService = chatServiceInstance;
         this.voiceService = new VoiceRecognitionService();
 
         // DOM elements
@@ -21,7 +21,6 @@ export class ChatPanel {
         this.liveBox = document.getElementById('chatLiveBox');
         this.liveText = document.getElementById('chatLiveText');
         this.waveform = document.getElementById('chatWaveform');
-        this.statusBadge = document.getElementById('chatStatusBadge');
         this.statusDot = document.getElementById('chatStatusDot');
         this.sessionChip = document.getElementById('chatSessionChip');
         this.sessionIdSpan = document.getElementById('chatSessionId');
@@ -30,6 +29,10 @@ export class ChatPanel {
         this.langBtn = document.getElementById('toggleChatLang');
         this.langLabel = document.getElementById('chatLangLabel');
         this.flushBtn = document.getElementById('chatFlushBtn');
+        this.chatView = document.querySelector('.c-chat-view');
+        this.advancedBtn = document.getElementById('toggleChatAdvanced');
+        this.terminalView = document.getElementById('chatTerminalView');
+        this.terminalFrame = document.getElementById('chatTerminalFrame');
 
         // State
         this.currentBotMsgBubble = null;
@@ -37,6 +40,8 @@ export class ChatPanel {
         this.activeMsgId = null;
         this.isGenerating = false;
         this.savedMessages = [];
+        this.isAdvancedMode = localStorage.getItem('relobot_chat_advanced_mode') === 'true';
+        this.unsubscribers = [];
     }
 
     init() {
@@ -48,100 +53,103 @@ export class ChatPanel {
         this._setupVoiceEvents();
         this._setupDomListeners();
         this._updateAudioToggleStates();
+        this._updateAdvancedModeUI();
     }
 
     _setupChatServiceEvents() {
-        this.chatService.onConnectionChange = (connected) => {
-            if (this.statusBadge && this.statusDot) {
-                if (connected) {
-                    this.statusDot.style.backgroundColor = 'var(--color-green)';
-                    this.statusDot.style.boxShadow = '0 0 6px var(--color-green-glow)';
-                    this.statusBadge.textContent = 'Online';
-                } else {
-                    this.statusDot.style.backgroundColor = 'var(--color-red)';
-                    this.statusDot.style.boxShadow = '0 0 6px var(--color-red-glow)';
-                    this.statusBadge.textContent = 'Disconnected';
+        this.unsubscribers.push(
+            this.chatService.on('connectionChange', (connected) => {
+                if (this.isAdvancedMode) {
+                    this._updateStatusDot(connected ? 'advanced' : 'disconnected');
+                    return;
                 }
-            }
-        };
+                this._updateStatusDot(connected ? 'connected' : 'disconnected');
+            }),
 
-        this.chatService.onStatus = (status) => {
-            if (this.statusBadge) {
-                if (status.has_agy) {
-                    this.statusBadge.textContent = 'AGY Ready';
-                } else {
-                    this.statusBadge.textContent = 'AGY Missing';
-                    if (this.statusDot) {
-                        this.statusDot.style.backgroundColor = 'var(--color-orange)';
+            this.chatService.on('status', (status) => {
+                if (this.isAdvancedMode) return;
+                if (!status.has_agy) {
+                    this._updateStatusDot('warning');
+                }
+            }),
+
+            this.chatService.on('init', (convId) => {
+                this._updateSessionBadge(convId);
+            }),
+
+            this.chatService.on('start', (msgId, convId) => {
+                this.isGenerating = true;
+                this.activeMsgId = msgId;
+                if (convId) this._updateSessionBadge(convId);
+                this._createBotMessageBubble(msgId);
+            }),
+
+            this.chatService.on('statusUpdate', (statusText, msgId) => {
+                // Update inline status inside the bot bubble if still waiting for text
+                const targetId = msgId || this.activeMsgId;
+                const statusElem = targetId ? document.getElementById(`status_${targetId}`) : null;
+                if (statusElem && !this.currentBotMsgText) {
+                    const textSpan = statusElem.querySelector('.c-chat-msg__status-text');
+                    if (textSpan) {
+                        textSpan.textContent = statusText;
                     }
                 }
-            }
-        };
+            }),
 
-        this.chatService.onInit = (convId) => {
-            this._updateSessionBadge(convId);
-        };
+            this.chatService.on('token', (token, msgId, convId) => {
+                if (this.currentBotMsgBubble && this.activeMsgId === msgId) {
+                    if (convId) this._updateSessionBadge(convId);
+                    this.currentBotMsgText += token;
+                    this._updateBotMessageBubble(this.currentBotMsgText, false);
+                    this._scrollToBottom();
+                }
+            }),
 
-        this.chatService.onStart = (msgId, convId) => {
-            this.isGenerating = true;
-            this.activeMsgId = msgId;
-            if (convId) this._updateSessionBadge(convId);
-            if (this.statusBadge) this.statusBadge.textContent = 'AGY Thinking...';
-            this._createBotMessageBubble(msgId);
-        };
-
-        this.chatService.onToken = (token, msgId, convId) => {
-            if (this.currentBotMsgBubble && this.activeMsgId === msgId) {
-                if (this.statusBadge) this.statusBadge.textContent = 'Streaming...';
+            this.chatService.on('done', (fullText, msgId, convId) => {
+                this.isGenerating = false;
                 if (convId) this._updateSessionBadge(convId);
-                this.currentBotMsgText += token;
-                this._updateBotMessageBubble(this.currentBotMsgText, false);
-                this._scrollToBottom();
-            }
-        };
 
-        this.chatService.onDone = (fullText, msgId, convId) => {
-            this.isGenerating = false;
-            if (this.statusBadge) this.statusBadge.textContent = 'Online';
-            if (convId) this._updateSessionBadge(convId);
+                const finalText = fullText || this.currentBotMsgText;
+                if (this.currentBotMsgBubble && this.activeMsgId === msgId) {
+                    this.currentBotMsgText = finalText;
+                    this._updateBotMessageBubble(this.currentBotMsgText, true);
+                    this._scrollToBottom();
+                }
 
-            const finalText = fullText || this.currentBotMsgText;
-            if (this.currentBotMsgBubble && this.activeMsgId === msgId) {
-                this.currentBotMsgText = finalText;
-                this._updateBotMessageBubble(this.currentBotMsgText, true);
-                this._scrollToBottom();
-            }
+                if (finalText) {
+                    this._saveMessageToHistory({
+                        role: 'bot',
+                        text: finalText,
+                        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                        msgId: msgId
+                    });
+                }
 
-            if (finalText) {
-                this._saveMessageToHistory({
-                    role: 'bot',
-                    text: finalText,
-                    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                    msgId: msgId
-                });
-            }
+                this.currentBotMsgBubble = null;
+                this.currentBotMsgText = '';
+                this.activeMsgId = null;
+            }),
 
-            this.currentBotMsgBubble = null;
-            this.currentBotMsgText = '';
-            this.activeMsgId = null;
-        };
+            this.chatService.onError = (errorMsg, msgId, convId) => {
+                this.isGenerating = false;
+                if (convId) this._updateSessionBadge(convId);
+                if (this.currentBotMsgBubble) {
+                    this._updateBotMessageBubble(`${this.currentBotMsgText}\n\n*[Error: ${errorMsg}]*`, true);
+                }
+                this.currentBotMsgBubble = null;
+                this.activeMsgId = null;
+            },
 
-        this.chatService.onError = (errorMsg, msgId, convId) => {
-            this.isGenerating = false;
-            if (this.statusBadge) this.statusBadge.textContent = 'Error';
-            if (convId) this._updateSessionBadge(convId);
-            if (this.currentBotMsgBubble) {
-                this._updateBotMessageBubble(`${this.currentBotMsgText}\n\n*[Error: ${errorMsg}]*`, true);
-            }
-            this.currentBotMsgBubble = null;
-            this.activeMsgId = null;
-        };
-
-        this.chatService.onAudioPlaying = (isPlaying) => {
-            if (this.statusBadge && !this.isGenerating) {
-                this.statusBadge.textContent = isPlaying ? 'Speaking...' : 'Online';
-            }
-        };
+            this.chatService.on('error', (errorMsg, msgId, convId) => {
+                this.isGenerating = false;
+                if (convId) this._updateSessionBadge(convId);
+                if (this.currentBotMsgBubble) {
+                    this._updateBotMessageBubble(`${this.currentBotMsgText}\n\n*[Error: ${errorMsg}]*`, true);
+                }
+                this.currentBotMsgBubble = null;
+                this.activeMsgId = null;
+            })
+        );
     }
 
     _setupVoiceEvents() {
@@ -280,6 +288,50 @@ export class ChatPanel {
                 this._copySessionId();
             });
         }
+
+        // Advanced Mode Toggle button handler
+        if (this.advancedBtn) {
+            this.advancedBtn.addEventListener('click', () => {
+                this._toggleAdvancedMode();
+            });
+        }
+    }
+
+    _toggleAdvancedMode() {
+        this.isAdvancedMode = !this.isAdvancedMode;
+        localStorage.setItem('relobot_chat_advanced_mode', this.isAdvancedMode ? 'true' : 'false');
+        this._updateAdvancedModeUI();
+    }
+
+    _updateStatusDot(state) {
+        if (!this.statusDot) return;
+        this.statusDot.classList.remove('is-connected', 'is-disconnected', 'is-warning', 'is-advanced');
+        if (state) {
+            this.statusDot.classList.add(`is-${state}`);
+        }
+    }
+
+    _updateAdvancedModeUI() {
+        if (!this.chatView) return;
+
+        this.chatView.classList.toggle('is-advanced-mode', this.isAdvancedMode);
+
+        if (this.advancedBtn) {
+            this.advancedBtn.classList.toggle('is-active', this.isAdvancedMode);
+        }
+
+        if (this.isAdvancedMode) {
+            // Lazy-load terminal iframe if not loaded yet
+            if (this.terminalFrame && !this.terminalFrame.getAttribute('src')) {
+                this.terminalFrame.src = '/agy-terminal/';
+            }
+            this._updateStatusDot(this.chatService.isConnected ? 'advanced' : 'disconnected');
+            if (this.voiceService && this.voiceService.isRecording) {
+                this.voiceService.stopRecording();
+            }
+        } else {
+            this._updateStatusDot(this.chatService.isConnected ? 'connected' : 'disconnected');
+        }
     }
 
     _updateLanguageUI() {
@@ -335,7 +387,10 @@ export class ChatPanel {
             <div class="c-chat-msg__avatar"><i class="fas fa-robot"></i></div>
             <div class="c-chat-msg__content">
                 <div class="c-chat-msg__bubble" id="bubble_${msgId}">
-                    <span class="c-chat-cursor"></span>
+                    <div class="c-chat-msg__status" id="status_${msgId}">
+                        <span class="c-chat-msg__status-icon"><i class="fas fa-circle-notch fa-spin"></i></span>
+                        <span class="c-chat-msg__status-text">Thinking...</span>
+                    </div>
                 </div>
                 <div class="c-chat-msg__time">
                     <span>${timeStr}</span>
@@ -348,14 +403,10 @@ export class ChatPanel {
         this._scrollToBottom();
     }
 
-    _updateBotMessageBubble(rawText, isFinal = false) {
+    _updateBotMessageBubble(rawText, _isFinal = false) {
         if (!this.currentBotMsgBubble) return;
         const rendered = this._renderMarkdown(rawText);
-        if (isFinal) {
-            this.currentBotMsgBubble.innerHTML = rendered;
-        } else {
-            this.currentBotMsgBubble.innerHTML = `${rendered}<span class="c-chat-cursor"></span>`;
-        }
+        this.currentBotMsgBubble.innerHTML = rendered;
     }
 
     _renderMarkdown(text) {
@@ -453,14 +504,6 @@ export class ChatPanel {
         }
 
         this._updateSessionBadge(null);
-
-        if (this.statusBadge) {
-            const prevText = this.statusBadge.textContent;
-            this.statusBadge.textContent = 'Session Flushed';
-            setTimeout(() => {
-                this.statusBadge.textContent = prevText || 'Online';
-            }, 2000);
-        }
     }
 
     _autoGrowInput() {
@@ -491,7 +534,12 @@ export class ChatPanel {
     }
 
     destroy() {
+        if (this.unsubscribers) {
+            this.unsubscribers.forEach(unsub => {
+                if (typeof unsub === 'function') unsub();
+            });
+            this.unsubscribers = [];
+        }
         this.voiceService.destroy();
-        this.chatService.destroy();
     }
 }

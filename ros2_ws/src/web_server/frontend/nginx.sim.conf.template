@@ -1,3 +1,8 @@
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    '' close;
+}
+
 server {
     listen 80 sndbuf=65536;
     server_name localhost ${DOMAIN_NAME};
@@ -9,64 +14,5 @@ server {
 
     access_log off;
 
-    location / {
-        root /usr/share/nginx/html;
-        index index.html;
-
-        # Never cache JS/HTML so stale control code can't persist in the browser
-        add_header Cache-Control "no-store, no-cache, must-revalidate";
-        expires -1;
-    }
-
-    # Stable asset filenames are edited in place during development. Revalidate
-    # them on refresh so Nginx can return 304 without serving stale content.
-    location ~* \.(?:glb|gltf|png|jpg|jpeg|gif|ico|svg|woff2?|eot|ttf|otf)$ {
-        root /usr/share/nginx/html;
-        add_header Cache-Control "no-cache, must-revalidate";
-        access_log off;
-    }
-
-    # WebSocket Proxy for Rosbridge
-    location /rosbridge/ {
-        proxy_pass http://127.0.0.1:9090/;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "Upgrade";
-        proxy_set_header Host $host;
-        proxy_buffering off;
-        tcp_nodelay on;
-        tcp_nopush off;
-        proxy_read_timeout 86400;
-        proxy_send_timeout 86400;
-    }
-
-    # Camera Stream Proxy (MJPEG real-time low-latency streaming)
-    location /camera-stream/ {
-        proxy_pass http://127.0.0.1:8080/;
-        proxy_http_version 1.1;
-        proxy_set_header Connection "";
-        proxy_set_header Host $host;
-        proxy_buffering off;
-        proxy_cache off;
-        proxy_max_temp_file_size 0;
-        chunked_transfer_encoding off;
-        tcp_nodelay on;
-        tcp_nopush off;
-        proxy_read_timeout 86400;
-        proxy_send_timeout 86400;
-    }
-
-    # Voice Chatbot & AGY WebSocket Proxy
-    location /chat-ws/ {
-        proxy_pass http://127.0.0.1:8765/;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "Upgrade";
-        proxy_set_header Host $host;
-        proxy_buffering off;
-        tcp_nodelay on;
-        tcp_nopush off;
-        proxy_read_timeout 86400;
-        proxy_send_timeout 86400;
-    }
+    include /usr/share/nginx/html/snippets/relobot_locations.conf;
 }

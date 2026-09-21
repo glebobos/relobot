@@ -2,14 +2,16 @@
 """On-demand AprilTag and Dock Pose Publisher manager for Nav2 docking."""
 
 import os
-import subprocess
 import threading
 
 import yaml
 import rclpy
 from rclpy.node import Node
 from rclpy.parameter import Parameter
-from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
+from rclpy.callback_groups import ReentrantCallbackGroup
+from rclpy.executors import MultiThreadedExecutor
+from geometry_msgs.msg import PoseStamped
+import tf2_ros
 from action_msgs.msg import GoalStatusArray, GoalStatus
 from composition_interfaces.srv import LoadNode, UnloadNode
 from rcl_interfaces.msg import (
@@ -93,10 +95,17 @@ class AprilTagManager(Node):
         # --- State ---
         self._lock = threading.Lock()
         self._apriltag_uid: int | None = None
-        self._dock_pose_proc: subprocess.Popen | None = None
         self._loading = False
         self._active_goals: set[tuple] = set()
         self._retry_timer = None
+
+        # --- In-Process Dock Pose Publishing (Zero subprocess) ---
+        self._tf_buffer = tf2_ros.Buffer(cache_time=rclpy.duration.Duration(seconds=5.0))
+        self._tf_listener = tf2_ros.TransformListener(self._tf_buffer, self)
+        self._dock_pub = self.create_publisher(PoseStamped, '/detected_dock_pose', 1)
+        self._dock_timer = None
+        self._last_pose: PoseStamped | None = None
+        self._last_detected_time: rclpy.time.Time | None = None
 
         # --- Load YAML once at startup ---
         try:
@@ -109,7 +118,7 @@ class AprilTagManager(Node):
             raise
 
         # --- Composition clients ---
-        cb = MutuallyExclusiveCallbackGroup()
+        cb = ReentrantCallbackGroup()
         self._load_cli = self.create_client(
             LoadNode, f'/{container_param}/_container/load_node', callback_group=cb)
         self._unload_cli = self.create_client(
@@ -261,55 +270,73 @@ class AprilTagManager(Node):
     # ------------------------------------------------------------------
     def _start_dock_pose_publisher(self):
         with self._lock:
-            if self._dock_pose_proc is not None:
+            if self._dock_timer is not None:
                 return
             rate = max(self._publish_rate, 1.0)
             self.get_logger().info(
-                f'Starting C++ dock_pose_publisher: {self._base_frame} -> {self._tag_frame} @ {rate:.1f} Hz')
-            try:
-                cmd = [
-                    'ros2', 'run', 'nav2', 'dock_pose_publisher',
-                    '--ros-args',
-                    '-p', f'dock_tag_frame:={self._tag_frame}',
-                    '-p', f'base_frame:={self._base_frame}',
-                    '-p', f'publish_rate:={rate}',
-                ]
-                if self._use_sim_time:
-                    cmd.extend(['-p', 'use_sim_time:=true'])
-
-                self._dock_pose_proc = subprocess.Popen(
-                    cmd,
-                    start_new_session=True,
-                )
-                self.get_logger().info('C++ dock_pose_publisher spawned successfully.')
-            except Exception as e:
-                self.get_logger().error(f'dock_pose_publisher start failed: {e}')
+                f'Activating in-process dock pose publisher: {self._base_frame} -> {self._tag_frame} @ {rate:.1f} Hz')
+            self._dock_timer = self.create_timer(1.0 / rate, self._publish_dock_pose)
 
     def _stop_dock_pose_publisher(self):
         with self._lock:
-            proc = self._dock_pose_proc
-            if proc is None:
+            if self._dock_timer is None:
                 return
-            self._dock_pose_proc = None
-            self.get_logger().info('Stopping C++ dock_pose_publisher...')
-            proc.terminate()
-            try:
-                proc.wait(timeout=3.0)
-            except subprocess.TimeoutExpired:
-                proc.kill()
-            self.get_logger().info('C++ dock_pose_publisher stopped.')
+            self.get_logger().info('Deactivating dock pose publisher...')
+            self._dock_timer.cancel()
+            self._dock_timer = None
+            self._last_pose = None
+            self._last_detected_time = None
+
+    def _publish_dock_pose(self):
+        now = self.get_clock().now()
+        try:
+            t = self._tf_buffer.lookup_transform(
+                self._base_frame, self._tag_frame, rclpy.time.Time())
+            msg = PoseStamped()
+            msg.header.frame_id = t.header.frame_id
+            msg.header.stamp = now.to_msg()
+            msg.pose.position.x = t.transform.translation.x
+            msg.pose.position.y = t.transform.translation.y
+            msg.pose.position.z = t.transform.translation.z
+            msg.pose.orientation = t.transform.rotation
+
+            if self._last_detected_time is None:
+                self.get_logger().info(
+                    f'[AprilTag] Tag {self._tag_frame} ACQUIRED at ({msg.pose.position.x:.3f}, {msg.pose.position.y:.3f}, {msg.pose.position.z:.3f})')
+
+            self._last_pose = msg
+            self._last_detected_time = now
+            self._dock_pub.publish(msg)
+        except (tf2_ros.LookupException,
+                tf2_ros.ConnectivityException,
+                tf2_ros.ExtrapolationException):
+            # Only republish last known pose if seen recently (< 5.0 s)
+            # to smooth momentary frame drops during close approach
+            if self._last_pose is not None and self._last_detected_time is not None:
+                age_sec = (now - self._last_detected_time).nanoseconds / 1e9
+                if age_sec < 5.0:
+                    self._last_pose.header.stamp = now.to_msg()
+                    self._dock_pub.publish(self._last_pose)
+                else:
+                    self.get_logger().warn(
+                        f'[AprilTag] Tag {self._tag_frame} LOST (>5.0s without detection).')
+                    self._last_pose = None
+                    self._last_detected_time = None
 
 
 def main(args=None):
     rclpy.init(args=args)
     node = AprilTagManager()
+    executor = MultiThreadedExecutor()
+    executor.add_node(node)
     try:
-        rclpy.spin(node)
+        executor.spin()
     except KeyboardInterrupt:
         pass
     finally:
         node._unload_apriltag()
         node._stop_dock_pose_publisher()
+        executor.shutdown()
         node.destroy_node()
         rclpy.shutdown()
 

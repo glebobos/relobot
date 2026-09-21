@@ -1,6 +1,8 @@
 x-ros-env: &ros-env
   DEV: ${DEV:-false}
   PYTHONUNBUFFERED: 1
+  OPENBLAS_NUM_THREADS: 1
+  OMP_NUM_THREADS: 2
   FASTDDS_DEFAULT_PROFILES_FILE: ${FASTDDS_DEFAULT_PROFILES_FILE:-/ros2_ws/fastdds_localhost.xml}
   FASTRTPS_DEFAULT_PROFILES_FILE: ${FASTRTPS_DEFAULT_PROFILES_FILE:-/ros2_ws/fastdds_localhost.xml}
 
@@ -61,12 +63,16 @@ services:
     pid: host
     volumes:
       - .:/ros2_ws/
+      - ..:/relobot
       - ../.agents:/ros2_ws/.agents:ro
       - ${HOME}/.gemini:/root/.gemini
       - ${HOME}/.local/bin:/host_local_bin:ro
       - /usr/local/bin:/host_usr_local_bin:ro
       - /snap/bin:/host_snap_bin:ro
       - /run/user/1000/pulse:/run/user/1000/pulse
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /etc/ssl/certs:/etc/ssl/certs:ro
+      - ${HOME}/.cache/uv:/root/.cache/uv
     devices:
       - /dev/snd:/dev/snd
     environment:
@@ -74,6 +80,11 @@ services:
       PATH: /host_local_bin:/host_snap_bin:/host_usr_local_bin:/usr/local/bin:/usr/bin:/bin
       HOME: /root
       PULSE_SERVER: unix:/run/user/1000/pulse/native
+      RELOBOT_HOST_DIR: ${RELOBOT_HOST_DIR:-}
+      RELOBOT_WORKSPACE: ${RELOBOT_WORKSPACE:-/relobot}
+      AGY_MODEL: ${AGY_MODEL:-gemini-3.7-flash-low}
+      AGY_EFFORT: ${AGY_EFFORT:-low}
+    working_dir: /relobot
     network_mode: host
     privileged: true
     restart: unless-stopped

@@ -115,31 +115,19 @@ class MapProcessor:
         epsilon_px = map_contour_epsilon / res
         approx = cv2.approxPolyDP(largest, epsilon_px, closed=True)
 
-        if len(approx) <= 4:
-            approx_area = cv2.contourArea(approx)
-            if approx_area > original_area * 1.05 or len(approx) < 3 or self._is_bounding_rect(approx, largest):
-                for scale in (0.5, 0.25, 0.1):
-                    smaller_eps = epsilon_px * scale
-                    retry = cv2.approxPolyDP(largest, smaller_eps, closed=True)
-                    retry_area = cv2.contourArea(retry)
-                    if len(retry) >= 5 and retry_area <= original_area * 1.05 and not self._is_bounding_rect(retry, largest):
-                        approx = retry
-                        if self._logger:
-                            self._logger.info(
-                                f'approxPolyDP retry with eps={smaller_eps:.1f}px '
-                                f'gave {len(approx)} points'
-                            )
-                        break
-                else:
-                    if self._logger:
-                        self._logger.warn(
-                            'Map contour simplification produced a degenerate polygon; '
-                            'skipping polygon update. Try refreshing the map again.'
-                        )
-                    return None, []
-
         if len(approx) < 3:
-            return None, []
+            for scale in (0.5, 0.25, 0.1):
+                smaller_eps = epsilon_px * scale
+                retry = cv2.approxPolyDP(largest, smaller_eps, closed=True)
+                if len(retry) >= 3:
+                    approx = retry
+                    break
+            else:
+                if self._logger:
+                    self._logger.warn(
+                        'Map contour simplification produced fewer than 3 vertices; skipping polygon update.'
+                    )
+                return None, []
 
         origin_x = msg.info.origin.position.x
         origin_y = msg.info.origin.position.y
@@ -210,18 +198,3 @@ class MapProcessor:
             obstacle_polygons.append(pts)
 
         return normalized, obstacle_polygons
-
-    def _is_bounding_rect(self, poly_pts: np.ndarray, contour: np.ndarray) -> bool:
-        """Return True if poly_pts is effectively the axis-aligned or rotated bounding rectangle of contour."""
-        if len(poly_pts) != 4:
-            return False
-        p_area = cv2.contourArea(poly_pts)
-        _x, _y, bw, bh = cv2.boundingRect(contour)
-        bbox_area = float(bw * bh)
-        if bbox_area > 0 and abs(p_area - bbox_area) / bbox_area < 0.05:
-            return True
-        (_, (rw, rh), _) = cv2.minAreaRect(contour)
-        min_rect_area = float(rw * rh)
-        if min_rect_area > 0 and abs(p_area - min_rect_area) / min_rect_area < 0.05:
-            return True
-        return False
