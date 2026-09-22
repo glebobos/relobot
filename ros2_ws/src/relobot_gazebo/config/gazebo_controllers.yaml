@@ -1,6 +1,6 @@
 controller_manager:
   ros__parameters:
-    update_rate: 50  # Hz
+    update_rate: 30  # Hz
     use_sim_time: true
     joint_state_broadcaster:
       type: joint_state_broadcaster/JointStateBroadcaster
@@ -16,15 +16,15 @@ diff_drive_controller:
     wheel_separation: 0.295
     wheel_radius: 0.0937
 
-    publish_rate: 50.0
+    publish_rate: 30.0
     odom_frame_id: "odom"
     base_frame_id: "base_link"
     publish_tf: false
     enable_odom_tf: false
 
     use_stamped_vel: false
-    pose_covariance_diagonal: [0.001, 0.001, 9999.0, 9999.0, 9999.0, 0.01]
-    twist_covariance_diagonal: [0.001, 0.001, 9999.0, 9999.0, 9999.0, 0.01]
+    pose_covariance_diagonal: [0.2, 0.2, 9999.0, 9999.0, 9999.0, 0.2]
+    twist_covariance_diagonal: [0.2, 0.2, 9999.0, 9999.0, 9999.0, 0.2]
 
     # Velocity and acceleration limits
     linear:
