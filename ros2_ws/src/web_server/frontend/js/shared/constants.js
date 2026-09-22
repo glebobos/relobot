@@ -35,9 +35,10 @@ export const TOPICS = {
     CMD_VEL: '/cmd_vel',
     CMD_KNIVES: '/knives/set_rpm',
 
-    // Exploration
+    // Exploration & Navigation
     EXPLORE_RESUME: '/explore/resume',
     EXPLORE_STATUS: '/explore/status',
+    CONTROLLER_PLAN: '/plan',
 
     // Coverage
     COVERAGE_COMMAND: '/coverage/command',

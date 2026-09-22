@@ -14,6 +14,7 @@ export class MapRosAdapter {
 
     subscribe() {
         this.add(TOPICS.COVERAGE_PREVIEW_PATH, MSG_TYPES.PATH, this.handlers.previewPath);
+        this.add(TOPICS.CONTROLLER_PLAN, MSG_TYPES.PATH, this.handlers.controllerPlan);
         this.add(
             TOPICS.COVERAGE_OBSTACLES_ACTIVE,
             MSG_TYPES.STRING,
