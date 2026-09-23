@@ -1,82 +1,58 @@
 <!-- SLIDE 1: OVERVIEW & ARCHITECTURAL PILLARS -->
-<div class="slide active" data-index="1">
-  <div class="slide-top-row">
-    <div class="slide-title-group">
-      <div class="slide-eyebrow">RELOBOT / SYSTEM OVERVIEW</div>
-      <h1 class="slide-title">ReloBot Platform Architecture</h1>
-      <p class="slide-subtitle">An end-to-end robotics platform born from learning real-world robotics from scratch — combining micro-ROS, containerized ROS 2, and edge AI.</p>
-    </div>
-    <div class="callout-why">
-      <div class="callout-why-title">Engineering Journey</div>
-      <div class="callout-why-text">Started as a hands-on journey to learn real robotics from first principles — motor physics, microcontrollers, and ROS 2. It naturally evolved into a full-scale autonomous platform with on-device AI.</div>
-    </div>
-  </div>
+<section class="slide slide-overview active" data-index="1" aria-labelledby="slide-1-title">
+  <header class="slide-heading overview-heading">
+    <p class="slide-kicker">ReloBot / System overview</p>
+    <h1 class="slide-title" id="slide-1-title">ReloBot Platform Architecture</h1>
+    <p class="slide-subtitle">An end-to-end robotics platform born from learning real-world robotics from scratch — combining micro-ROS, containerized ROS 2, and edge AI.</p>
+  </header>
 
-  <div class="hero-grid">
-    <!-- LEFT: 3 CORE STATEMENTS / PILLARS -->
-    <div class="hero-pillars">
-      <!-- Pillar 1: Hardware -->
-      <div class="pillar-card">
-        <div class="pillar-icon-box">
-          <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-        </div>
-        <div class="pillar-content">
-          <div class="pillar-header">
-            <div class="pillar-title">Hardware-Isolated Real-Time Core</div>
-            <span class="pillar-tag">MICRO-ROS</span>
-          </div>
-          <div class="pillar-desc">Real-time motor control, safety watchdogs, and sensor loops run on dedicated microcontrollers — fully decoupled from high-level software crashes.</div>
-        </div>
+  <aside class="editorial-note overview-journey">
+    <strong>Engineering journey</strong>
+    Started as a hands-on journey to learn real robotics from first principles — motor physics, microcontrollers, and ROS 2. It naturally evolved into a full-scale autonomous platform with on-device AI.
+  </aside>
+
+  <figure class="overview-visual">
+    <img src="images/robot_start.jpg" alt="DarkSelmash ReloBot MOW-X7 Cyber-Trim">
+    <figcaption class="overview-caption">
+      <span>ReloBot MOW-X7</span>
+      <span>Built for education &amp; deep learning first.</span>
+    </figcaption>
+  </figure>
+
+  <ol class="overview-pillars" aria-label="Architectural pillars">
+    <li class="overview-pillar">
+      <span class="pillar-index">01</span>
+      <div class="pillar-copy">
+        <h2>Hardware-Isolated Real-Time Core</h2>
+        <p>Real-time motor control, safety watchdogs, and sensor loops run on dedicated microcontrollers — fully decoupled from high-level software crashes.</p>
       </div>
-
-      <!-- Pillar 2: Software -->
-      <div class="pillar-card">
-        <div class="pillar-icon-box">
-          <svg class="icon" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
-        </div>
-        <div class="pillar-content">
-          <div class="pillar-header">
-            <div class="pillar-title">Containerized ROS 2 & Digital Twin</div>
-            <span class="pillar-tag">DOCKER · GAZEBO</span>
-          </div>
-          <div class="pillar-desc">Zero host pollution with shared-memory IPC, paired with 100% topic, TF, and physics parity inside Gazebo simulation for risk-free testing.</div>
-        </div>
+      <span class="pillar-technology">micro-ROS</span>
+    </li>
+    <li class="overview-pillar">
+      <span class="pillar-index">02</span>
+      <div class="pillar-copy">
+        <h2>Containerized ROS 2 &amp; Digital Twin</h2>
+        <p>Zero host pollution with shared-memory IPC, paired with 100% topic, TF, and physics parity inside Gazebo simulation for risk-free testing.</p>
       </div>
-
-      <!-- Pillar 3: AI -->
-      <div class="pillar-card">
-        <div class="pillar-icon-box">
-          <svg class="icon" viewBox="0 0 24 24"><path d="M12 2a8 8 0 0 0-8 8c0 3.36 2.08 6.24 5 7.42V20a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2v-2.58c2.92-1.18 5-4.06 5-7.42a8 8 0 0 0-8-8z"/><line x1="9" y1="22" x2="15" y2="22"/></svg>
-        </div>
-        <div class="pillar-content">
-          <div class="pillar-header">
-            <div class="pillar-title">100% On-Device AI Autonomy</div>
-            <span class="pillar-tag">AGY · PIPER TTS</span>
-          </div>
-          <div class="pillar-desc">Onboard agent platform (AGY) and sub-100ms local neural voice synthesis (Piper) running entirely on Raspberry Pi 5 without cloud reliance.</div>
-        </div>
+      <span class="pillar-technology">Docker · Gazebo</span>
+    </li>
+    <li class="overview-pillar">
+      <span class="pillar-index">03</span>
+      <div class="pillar-copy">
+        <h2>100% On-Device AI Autonomy</h2>
+        <p>Onboard agent platform (AGY) and sub-100ms local neural voice synthesis (Piper) running entirely on Raspberry Pi 5 without cloud reliance.</p>
       </div>
-    </div>
+      <span class="pillar-technology">AGY · Piper TTS</span>
+    </li>
+  </ol>
 
-    <!-- RIGHT: HERO IMAGE -->
-    <div class="hero-img-box">
-      <img src="images/robot_start.jpg" alt="DarkSelmash ReloBot MOW-X7 Cyber-Trim">
-      <div class="hero-img-meta">
-        <span>RELOBOT MOW-X7</span>
-        <span class="handwritten-note">Built for education & deep learning first.</span>
-      </div>
-    </div>
-  </div>
-
-  <div class="pipeline-bar">
-    <div class="pipeline-step">
-      <span>Foundation:</span>
-      <span class="pipeline-tag">Hardware Isolation</span>
-      <span class="pipeline-sep">➔</span>
+  <footer class="overview-foundation">
+    <span class="technical-label">Foundation</span>
+    <div class="foundation-flow">
+      <span>Hardware Isolation</span>
       <span>Containerized ROS 2</span>
-      <span class="pipeline-sep">➔</span>
-      <strong class="pipeline-tag">On-Device AI Autonomy</strong>
+      <strong>On-Device AI Autonomy</strong>
     </div>
-    <div>LEARNING BY BUILDING</div>
-  </div>
-</div>
+    <span class="foundation-outcome">Learning by building</span>
+  </footer>
+</section>

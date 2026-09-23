@@ -9,6 +9,7 @@
   const totalSlides = slides.length || 7;
 
   const progressBar = document.getElementById('progressBar');
+  const progressTrack = document.querySelector('.progress-track');
   const slideCounter = document.getElementById('slideCounter');
   const prevBtn = document.getElementById('prevBtn');
   const nextBtn = document.getElementById('nextBtn');
@@ -29,16 +30,19 @@
       const slideIdx = parseInt(slide.getAttribute('data-index'), 10);
       if (slideIdx === currentSlide) {
         slide.classList.add('active');
+        slide.setAttribute('aria-hidden', 'false');
       } else {
         slide.classList.remove('active');
+        slide.setAttribute('aria-hidden', 'true');
       }
     });
 
     // Progress bar & counter
     const progress = (currentSlide / totalSlides) * 100;
     if (progressBar) progressBar.style.width = `${progress}%`;
+    if (progressTrack) progressTrack.setAttribute('aria-valuenow', currentSlide);
     if (slideCounter) {
-      slideCounter.textContent = `${currentSlide < 10 ? '0' + currentSlide : currentSlide} / 0${totalSlides}`;
+      slideCounter.textContent = `${String(currentSlide).padStart(2, '0')} / ${String(totalSlides).padStart(2, '0')}`;
     }
 
     // Prev/Next buttons state
@@ -50,7 +54,7 @@
       speakerNotesText.textContent = speakerNotes[currentSlide] || "";
     }
     if (notesSlideIndicator) {
-      notesSlideIndicator.textContent = `[Slide ${currentSlide}/${totalSlides}]`;
+      notesSlideIndicator.textContent = `Slide ${currentSlide} / ${totalSlides}`;
     }
   }
 
@@ -65,8 +69,11 @@
   function toggleNotes() {
     if (!speakerDrawer) return;
     speakerDrawer.classList.toggle('open');
+    const isOpen = speakerDrawer.classList.contains('open');
+    speakerDrawer.setAttribute('aria-hidden', String(!isOpen));
     if (toggleNotesBtn) {
-      toggleNotesBtn.classList.toggle('active', speakerDrawer.classList.contains('open'));
+      toggleNotesBtn.classList.toggle('active', isOpen);
+      toggleNotesBtn.setAttribute('aria-expanded', String(isOpen));
     }
   }
 
@@ -92,6 +99,8 @@
     } else if (e.key.toLowerCase() === 'f') {
       e.preventDefault();
       toggleFullscreen();
+    } else if (e.key === 'Escape' && speakerDrawer?.classList.contains('open')) {
+      toggleNotes();
     }
   });
 

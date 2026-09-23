@@ -1,98 +1,56 @@
 <!-- SLIDE 6: FIELD ENGINEERING -->
-<div class="slide" data-index="6">
-  <div class="slide-top-row">
-    <div class="slide-title-group">
-      <div class="slide-eyebrow">FIELD ENGINEERING / LESSONS LEARNED</div>
-      <h1 class="slide-title">Hard Problems Solved in the Field</h1>
-      <p class="slide-subtitle">Concrete engineering hurdles and battle-tested solutions from actual lawn deployments.</p>
+<section class="slide slide-engineering" data-index="6" aria-labelledby="slide-6-title">
+  <header class="slide-heading engineering-heading">
+    <p class="slide-kicker">Field engineering / Lessons learned</p>
+    <h1 class="slide-title" id="slide-6-title">Hard Problems Solved in the Field</h1>
+    <p class="slide-subtitle">Concrete engineering hurdles and battle-tested solutions from actual lawn deployments.</p>
+  </header>
+
+  <aside class="editorial-note engineering-note">
+    <strong>Learning by doing</strong>
+    Real robotics is learned on the bench and in the grass. Theory guarantees nothing until code survives physical friction, socket buffers, and real-world edge cases.
+  </aside>
+
+  <div class="incident-matrix" role="table" aria-label="Field engineering hurdles and fixes">
+    <div class="incident-header" role="row">
+      <span role="columnheader">Subsystem / incident</span>
+      <span role="columnheader">Hurdle observed</span>
+      <span role="columnheader">Intervention</span>
+      <span role="columnheader">Evidence</span>
     </div>
-    <div class="callout-why">
-      <div class="callout-why-title">Learning by Doing</div>
-      <div class="callout-why-text">Real robotics is learned on the bench and in the grass. Theory guarantees nothing until code survives physical friction, socket buffers, and real-world edge cases.</div>
-    </div>
+
+    <article class="incident-row" role="row">
+      <div role="cell"><span class="technical-label">Kernel sysctl</span><h2>FastDDS UDP Buffer Storm</h2></div>
+      <p role="cell">Default Linux 212 KB socket buffer choked under high-rate SLAM maps, triggering retransmission storms and 100% CPU lockup.</p>
+      <p role="cell">Set <code>net.core.rmem_max = 67108864</code> in sysctl.</p>
+      <strong role="cell"><s>212 KB</s><span>→</span>64 MB</strong>
+    </article>
+
+    <article class="incident-row" role="row">
+      <div role="cell"><span class="technical-label">Firmware regression</span><h2>Motor Stiction Non-Linearity</h2></div>
+      <p role="cell">DC gearmotors had asymmetrical starting friction deadbands, causing low-speed angular drift.</p>
+      <p role="cell">Automated linear sweep in RP2040 firmware.</p>
+      <strong role="cell"><var>PWM = k · v + b</var></strong>
+    </article>
+
+    <article class="incident-row" role="row">
+      <div role="cell"><span class="technical-label">Host wireless</span><h2>5 GHz Wi-Fi Region Lockdown</h2></div>
+      <p role="cell">Pi 5 kernel defaulted to DFS-UNSET, blocking 5 GHz channels and throttling camera streams.</p>
+      <p role="cell">Configured persistent regulatory domain for RTSP.</p>
+      <strong role="cell">Channel 52</strong>
+    </article>
+
+    <article class="incident-row" role="row">
+      <div role="cell"><span class="technical-label">Session lifecycle</span><h2>AI Agent Context &amp; Reasoning</h2></div>
+      <p role="cell">Raw thinking tokens introduced 10–20s delays before voice speech started.</p>
+      <p role="cell">Suppressed reasoning tokens and pre-warmed model graph in RAM.</p>
+      <strong role="cell"><s>10–20s</s><span>→</span>&lt;50ms TTFT</strong>
+    </article>
   </div>
 
-  <div class="grid-2x2">
-    <!-- Problem 1 -->
-    <div class="problem-card">
-      <div class="problem-header">
-        <div class="problem-title">
-          <svg class="icon" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-          FastDDS UDP Buffer Storm
-        </div>
-        <span class="problem-meta">KERNEL SYSCTL</span>
-      </div>
-      <div class="problem-body">
-        <strong>Hurdle:</strong> Default Linux 212 KB socket buffer choked under high-rate SLAM maps, triggering retransmission storms and 100% CPU lockup.
-      </div>
-      <div class="problem-fix">
-        Fix: <code>net.core.rmem_max = 67108864</code> (64 MB buffer) in sysctl.
-      </div>
-    </div>
-
-    <!-- Problem 2 -->
-    <div class="problem-card">
-      <div class="problem-header">
-        <div class="problem-title">
-          <svg class="icon" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-          Motor Stiction Non-Linearity
-        </div>
-        <span class="problem-meta">FIRMWARE REGRESSION</span>
-      </div>
-      <div class="problem-body">
-        <strong>Hurdle:</strong> DC gearmotors had asymmetrical starting friction deadbands, causing low-speed angular drift.
-      </div>
-      <div class="problem-fix">
-        Fix: Automated linear sweep ($PWM = k \cdot v + b$) in RP2040 firmware.
-      </div>
-    </div>
-
-    <!-- Problem 3 -->
-    <div class="problem-card">
-      <div class="problem-header">
-        <div class="problem-title">
-          <svg class="icon" viewBox="0 0 24 24"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
-          5 GHz Wi-Fi Region Lockdown
-        </div>
-        <span class="problem-meta">HOST WIRELESS</span>
-      </div>
-      <div class="problem-body">
-        <strong>Hurdle:</strong> Pi 5 kernel defaulted to DFS-UNSET, blocking 5 GHz channels and throttling camera streams.
-      </div>
-      <div class="problem-fix">
-        Fix: Configured persistent regulatory domain unlocking Channel 52 for RTSP.
-      </div>
-    </div>
-
-    <!-- Problem 4 -->
-    <div class="problem-card">
-      <div class="problem-header">
-        <div class="problem-title">
-          <svg class="icon" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-          AI Agent Context & Reasoning
-        </div>
-        <span class="problem-meta">SESSION LIFECYCLE</span>
-      </div>
-      <div class="problem-body">
-        <strong>Hurdle:</strong> Raw thinking tokens introduced 10–20s delays before voice speech started.
-      </div>
-      <div class="problem-fix">
-        Fix: Suppressed reasoning tokens (&lt;50ms TTFT) and pre-warmed model graph in RAM.
-      </div>
-    </div>
-  </div>
-
-  <div class="pipeline-bar">
-    <div class="pipeline-step">
-      <span>Field Hardening:</span>
-      <span class="pipeline-tag">64MB Socket Buffers</span>
-      <span class="pipeline-sep">·</span>
-      <span class="pipeline-tag">Stiction Linearization</span>
-      <span class="pipeline-sep">·</span>
-      <span class="pipeline-tag">5 GHz Wi-Fi Unlock</span>
-      <span class="pipeline-sep">·</span>
-      <span class="pipeline-tag">&lt;50ms TTFT Voice</span>
-    </div>
-    <div class="handwritten-note" style="font-size: 17px;">Every fix was paid for with a late-night debugging session.</div>
-  </div>
-</div>
+  <footer class="engineering-footer">
+    <span class="technical-label">Field hardening</span>
+    <p>64MB Socket Buffers · Stiction Linearization · 5 GHz Wi-Fi Unlock · &lt;50ms TTFT Voice</p>
+    <span>Every fix was paid for with a late-night debugging session.</span>
+  </footer>
+</section>

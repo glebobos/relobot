@@ -6,80 +6,68 @@
   <title>ReloBot — Technical Architecture Review</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <!-- INJECT:CSS -->
 </head>
 <body>
 
-  <div class="bg-grid"></div>
+  <div class="presentation-shell">
+    <div class="deck-stage">
+      <main id="slideCanvas" aria-live="polite">
+        <!-- INJECT:SLIDES -->
+      </main>
 
-  <!-- Header -->
-  <header>
-    <div class="brand">
-      <div class="brand-logo">RF</div>
-      <div class="brand-title">RoboFactory Architecture</div>
-      <span class="brand-divider">/</span>
-      <span class="brand-sub">ReloBot Platform</span>
-    </div>
-
-    <div class="header-controls">
-      <div class="timer-badge" id="timerBadge" title="Click to reset timer">
-        <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><polyline points="12 6 12 12 16 14"/></svg>
-        <span id="timerText">00:00</span>
+      <div class="progress-track" role="progressbar" aria-label="Presentation progress" aria-valuemin="1" aria-valuemax="7" aria-valuenow="1">
+        <div class="progress-bar" id="progressBar"></div>
       </div>
-      <button class="btn-control" id="toggleNotesBtn" title="Toggle Russian Speaker Notes (Press 'S')">
-        <span>RU Notes</span> <span class="key-hint">S</span>
-      </button>
-      <button class="btn-control" id="fullscreenBtn" title="Toggle Fullscreen (Press 'F')">
-        <span>Fullscreen</span> <span class="key-hint">F</span>
-      </button>
     </div>
-  </header>
 
-  <!-- Progress Bar -->
-  <div class="progress-bar-container">
-    <div class="progress-bar" id="progressBar"></div>
+    <nav class="presenter-bar" aria-label="Presentation controls">
+      <div class="deck-identity">
+        <strong>RELOBOT</strong>
+        <span>Technical architecture</span>
+      </div>
+
+      <div class="presenter-status">
+        <button class="timer-control" id="timerBadge" type="button" title="Reset presentation timer">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><polyline points="12 6 12 12 16 14"/></svg>
+          <span id="timerText">00:00</span>
+        </button>
+        <span class="slide-counter" id="slideCounter" aria-live="polite">01 / 07</span>
+      </div>
+
+      <div class="presenter-actions">
+        <button class="control-button control-button--text" id="toggleNotesBtn" type="button" title="Toggle Russian speaker notes (S)" aria-expanded="false" aria-controls="speakerDrawer">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h14v18H5z"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="13" y2="16"/></svg>
+          <span>RU notes</span>
+        </button>
+        <button class="control-button" id="fullscreenBtn" type="button" title="Toggle fullscreen (F)" aria-label="Toggle fullscreen">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><polyline points="8 3 3 3 3 8"/><polyline points="16 3 21 3 21 8"/><polyline points="8 21 3 21 3 16"/><polyline points="16 21 21 21 21 16"/></svg>
+        </button>
+        <span class="action-rule" aria-hidden="true"></span>
+        <button class="control-button" id="prevBtn" type="button" title="Previous slide" aria-label="Previous slide" disabled>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+        </button>
+        <button class="control-button" id="nextBtn" type="button" title="Next slide" aria-label="Next slide">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </button>
+      </div>
+    </nav>
   </div>
 
-  <!-- Main Slide Canvas -->
-  <main id="slideCanvas">
-    <!-- INJECT:SLIDES -->
-  </main>
-
-  <!-- Speaker Notes Drawer -->
-  <div class="speaker-drawer" id="speakerDrawer">
+  <aside class="speaker-drawer" id="speakerDrawer" aria-label="Russian speaker notes" aria-hidden="true">
     <div class="speaker-header">
       <div class="speaker-title">
-        <svg class="icon" viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
-        <span>Speaker Notes</span>
-        <span id="notesSlideIndicator" style="color: var(--text-muted); font-size: 11.5px;">[Slide 1/7]</span>
+        <span>Speaker notes</span>
+        <span id="notesSlideIndicator">Slide 1 / 7</span>
       </div>
-      <button class="btn-control" id="closeNotesBtn">✕ Close</button>
-    </div>
-    <div class="speaker-content" id="speakerNotesText">
-      <!-- Injected via JavaScript -->
-    </div>
-  </div>
-
-  <!-- Footer Controls -->
-  <footer>
-    <div class="slide-counter" id="slideCounter">01 / 07</div>
-
-    <div class="footer-hints">
-      <span>[← / → / Space] Navigate</span>
-      <span>[S] Speaker Notes</span>
-      <span>[F] Fullscreen</span>
-    </div>
-
-    <div class="nav-buttons">
-      <button class="btn-nav" id="prevBtn" disabled>
-        <span>← Prev</span>
-      </button>
-      <button class="btn-nav" id="nextBtn">
-        <span>Next →</span>
+      <button class="control-button control-button--text" id="closeNotesBtn" type="button">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        <span>Close</span>
       </button>
     </div>
-  </footer>
+    <div class="speaker-content" id="speakerNotesText"></div>
+  </aside>
 
   <!-- INJECT:JS -->
 </body>

@@ -1,180 +1,99 @@
 <!-- SLIDE 2: HARDWARE HUB & SPOKE -->
-<div class="slide" data-index="2">
-  <div class="slide-top-row">
-    <div class="slide-title-group">
-      <div class="slide-eyebrow">HARDWARE ARCHITECTURE / HUB & SPOKE</div>
-      <h1 class="slide-title">Hub & Spoke Micro-Agent Network</h1>
-      <p class="slide-subtitle">Physical separation of real-time control loops and central compute via dedicated USB CDC channels.</p>
-    </div>
-    <div class="callout-why">
-      <div class="callout-why-title">Why Hardware Isolation?</div>
-      <div class="callout-why-text">Keeps real-time motor PWM and sensor acquisition isolated on dedicated MCUs. If higher-level software restarts, safety watchdogs and wheel loops never miss a cycle.</div>
-    </div>
+<section class="slide slide-hardware" data-index="2" aria-labelledby="slide-2-title">
+  <header class="slide-heading architecture-heading">
+    <p class="slide-kicker">Hardware architecture / Hub &amp; spoke</p>
+    <h1 class="slide-title" id="slide-2-title">Hub &amp; Spoke Micro-Agent Network</h1>
+    <p class="slide-subtitle">Physical separation of real-time control loops and central compute via dedicated USB CDC channels.</p>
+  </header>
+
+  <aside class="editorial-note architecture-note">
+    <strong>Why hardware isolation?</strong>
+    Keeps real-time motor PWM and sensor acquisition isolated on dedicated MCUs. If higher-level software restarts, safety watchdogs and wheel loops never miss a cycle.
+  </aside>
+
+  <div class="hardware-topology" aria-label="Raspberry Pi hub connected to six hardware subsystems">
+    <article class="hardware-node node-drive">
+      <div class="node-heading">
+        <h2>Differential Drive</h2>
+        <span>RP2040 · 50 Hz</span>
+      </div>
+      <p>Dual Cytron MD13S (13A) drivers with 60 CPR optical encoder feedback.</p>
+      <p class="node-spec"><strong>Closed-loop PI</strong> · Stiction Linearized</p>
+    </article>
+    <div class="bus-link bus-link-left link-drive"><span>USB CDC</span></div>
+
+    <article class="hardware-node node-cutting">
+      <div class="node-heading">
+        <h2>Cutting Spindle</h2>
+        <span>RP2040 · 100 Hz</span>
+      </div>
+      <p>High-power brushless spindle driver + 3000 RPM balanced tri-blade cutter.</p>
+      <p class="node-spec"><strong>RPM Governor</strong> · Hardware Watchdog Kill</p>
+    </article>
+    <div class="bus-link bus-link-left link-cutting"><span>USB CDC</span></div>
+
+    <article class="hardware-node node-imu">
+      <div class="node-heading">
+        <h2>9-DOF IMU Subsystem</h2>
+        <span>RP2040 · 100 Hz</span>
+      </div>
+      <p>TDK InvenSense ICM-20948 (Gyroscope + Accelerometer + Magnetometer).</p>
+      <p class="node-spec">I2C Fast Mode · <strong>EKF State Source</strong></p>
+    </article>
+    <div class="bus-link bus-link-left link-imu"><span>USB CDC</span></div>
+
+    <article class="hardware-hub">
+      <div class="hub-identity">
+        <span class="technical-label">Central compute</span>
+        <h2>RoboFactory Central Hub</h2>
+        <p>Raspberry Pi 5 (8GB) + Industrial Enclosure</p>
+      </div>
+      <img src="images/rpi5_case.jpg" alt="Raspberry Pi 5 industrial enclosure">
+      <ul class="hub-specs">
+        <li>Quad-core ARM Cortex-A76</li>
+        <li>High-Speed PCIe NVMe Storage</li>
+        <li>4x Dedicated USB CDC Channels</li>
+        <li>Hardware Watchdog Heartbeats</li>
+        <li>Central Power Bus Distribution</li>
+        <li>FastDDS Shared-Memory IPC</li>
+      </ul>
+      <p class="hub-bus">4x isolated USB CDC micro-ROS serial buses</p>
+    </article>
+
+    <div class="bus-link bus-link-right link-power"><span>USB CDC</span></div>
+    <article class="hardware-node node-power">
+      <div class="node-heading">
+        <h2>Battery &amp; Power</h2>
+        <span>RP2350 · 10 Hz</span>
+      </div>
+      <p>Texas Instruments INA226 high-side current &amp; bus voltage monitor.</p>
+      <p class="node-spec"><strong>0–36V Bus</strong> · Real-Time Current / SoC</p>
+    </article>
+
+    <div class="bus-link bus-link-right link-perception"><span>USB / UART</span></div>
+    <article class="hardware-node node-perception">
+      <div class="node-heading">
+        <h2>LiDAR &amp; Vision</h2>
+        <span>Direct USB / UART</span>
+      </div>
+      <p>360° 2D LiDAR (10 Hz laser scan) + Fisheye HD camera.</p>
+      <p class="node-spec"><strong>Obstacle Pointclouds</strong> · Costmaps</p>
+    </article>
+
+    <div class="bus-link bus-link-right link-audio"><span>ALSA</span></div>
+    <article class="hardware-node node-audio">
+      <div class="node-heading">
+        <h2>Chassis Audio Output</h2>
+        <span>ALSA / HW AMP</span>
+      </div>
+      <p>High-efficiency audio amplifier + weatherproof chassis speaker.</p>
+      <p class="node-spec"><strong>Local Audio Out</strong> · Sub-100ms Playback</p>
+    </article>
   </div>
 
-  <div class="hub-grid">
-    <!-- LEFT COLUMN: ACTUATORS & SENSORS -->
-    <div class="spoke-col">
-      <!-- Card: Drive -->
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">
-            <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-.33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-            Differential Drive
-          </div>
-          <span class="card-tag">RP2040 · 50 Hz</span>
-        </div>
-        <div class="card-desc">Dual Cytron MD13S (13A) drivers with 60 CPR optical encoder feedback.</div>
-        <div class="card-specs">
-          <span class="spec-item highlight">Closed-loop PI</span>
-          <span class="spec-sep">·</span>
-          <span class="spec-item">Stiction Linearized</span>
-        </div>
-      </div>
-
-      <!-- Card: Cutting Spindle -->
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">
-            <svg class="icon" viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>
-            Cutting Spindle
-          </div>
-          <span class="card-tag">RP2040 · 100 Hz</span>
-        </div>
-        <div class="card-desc">High-power brushless spindle driver + 3000 RPM balanced tri-blade cutter.</div>
-        <div class="card-specs">
-          <span class="spec-item highlight">RPM Governor</span>
-          <span class="spec-sep">·</span>
-          <span class="spec-item">Hardware Watchdog Kill</span>
-        </div>
-      </div>
-
-      <!-- Card: IMU -->
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">
-            <svg class="icon" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/></svg>
-            9-DOF IMU Subsystem
-          </div>
-          <span class="card-tag">RP2040 · 100 Hz</span>
-        </div>
-        <div class="card-desc">TDK InvenSense ICM-20948 (Gyroscope + Accelerometer + Magnetometer).</div>
-        <div class="card-specs">
-          <span class="spec-item">I2C Fast Mode</span>
-          <span class="spec-sep">·</span>
-          <span class="spec-item highlight">EKF State Source</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- CENTER COLUMN: CENTRAL HUB -->
-    <div class="hub-center-card">
-      <div class="hub-header">
-        <div class="hub-title">RoboFactory Central Hub</div>
-        <div class="hub-sub">Raspberry Pi 5 (8GB) + Industrial Enclosure</div>
-      </div>
-
-      <div class="hub-img-wrapper">
-        <img src="images/rpi5_case.jpg" alt="Raspberry Pi 5 Industrial Enclosure">
-      </div>
-
-      <div class="hub-bullet-grid">
-        <div class="hub-bullet-item">
-          <span class="hub-bullet-dot">•</span>
-          <span>Quad-core ARM Cortex-A76</span>
-        </div>
-        <div class="hub-bullet-item">
-          <span class="hub-bullet-dot">•</span>
-          <span>High-Speed PCIe NVMe Storage</span>
-        </div>
-        <div class="hub-bullet-item">
-          <span class="hub-bullet-dot">•</span>
-          <span>4x Dedicated USB CDC Channels</span>
-        </div>
-        <div class="hub-bullet-item">
-          <span class="hub-bullet-dot">•</span>
-          <span>Hardware Watchdog Heartbeats</span>
-        </div>
-        <div class="hub-bullet-item">
-          <span class="hub-bullet-dot">•</span>
-          <span>Central Power Bus Distribution</span>
-        </div>
-        <div class="hub-bullet-item">
-          <span class="hub-bullet-dot">•</span>
-          <span>FastDDS Shared-Memory IPC</span>
-        </div>
-      </div>
-
-      <div class="hub-bus-footer">
-        <span>↔</span>
-        <span>4x Isolated USB CDC micro-ROS Serial Buses</span>
-      </div>
-    </div>
-
-    <!-- RIGHT COLUMN: BATTERY, PERCEPTION, AUDIO -->
-    <div class="spoke-col">
-      <!-- Card: Battery -->
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">
-            <svg class="icon" viewBox="0 0 24 24"><rect x="2" y="7" width="16" height="10" rx="2"/><line x1="22" y1="11" x2="22" y2="13"/></svg>
-            Battery & Power
-          </div>
-          <span class="card-tag">RP2350 · 10 Hz</span>
-        </div>
-        <div class="card-desc">Texas Instruments INA226 high-side current & bus voltage monitor.</div>
-        <div class="card-specs">
-          <span class="spec-item highlight">0–36V Bus</span>
-          <span class="spec-sep">·</span>
-          <span class="spec-item">Real-Time Current / SoC</span>
-        </div>
-      </div>
-
-      <!-- Card: LiDAR -->
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">
-            <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="6" r="6"/><circle cx="12" cy="2" r="2"/></svg>
-            LiDAR & Vision
-          </div>
-          <span class="card-tag">DIRECT USB / UART</span>
-        </div>
-        <div class="card-desc">360° 2D LiDAR (10 Hz laser scan) + Fisheye HD camera.</div>
-        <div class="card-specs">
-          <span class="spec-item highlight">Obstacle Pointclouds</span>
-          <span class="spec-sep">·</span>
-          <span class="spec-item">Costmaps</span>
-        </div>
-      </div>
-
-      <!-- Card: Audio -->
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">
-            <svg class="icon" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
-            Chassis Audio Output
-          </div>
-          <span class="card-tag">ALSA / HW AMP</span>
-        </div>
-        <div class="card-desc">High-efficiency audio amplifier + weatherproof chassis speaker.</div>
-        <div class="card-specs">
-          <span class="spec-item highlight">Local Audio Out</span>
-          <span class="spec-sep">·</span>
-          <span class="spec-item">Sub-100ms Playback</span>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="pipeline-bar">
-    <div class="pipeline-step">
-      <span class="pipeline-tag">Microcontrollers</span>
-      <span>(PWM, Encoders, Safety Watchdogs)</span>
-      <span class="pipeline-sep">➔</span>
-      <span class="pipeline-tag">4x USB CDC</span>
-      <span class="pipeline-sep">➔</span>
-      <strong>Raspberry Pi 5 Central Hub</strong>
-    </div>
-    <div>DETERMINISTIC & ISOLATED</div>
-  </div>
-</div>
+  <footer class="architecture-footer">
+    <span class="technical-label">Control boundary</span>
+    <p><strong>Microcontrollers:</strong> PWM, encoders, safety watchdogs <span>→</span> <strong>Raspberry Pi 5:</strong> central compute</p>
+    <span>Deterministic &amp; isolated</span>
+  </footer>
+</section>

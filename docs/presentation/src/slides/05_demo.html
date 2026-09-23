@@ -1,86 +1,57 @@
 <!-- SLIDE 5: LIVE DEMO -->
-<div class="slide" data-index="5">
-  <div class="slide-top-row">
-    <div class="slide-title-group">
-      <div class="slide-eyebrow">SYSTEM VALIDATION / LIVE DEMO</div>
-      <h1 class="slide-title">Live Demo: Telemetry, Control & AI Voice</h1>
-      <p class="slide-subtitle">Real-time interaction with the ReloBot operator dashboard and onboard voice agent.</p>
+<section class="slide slide-demo" data-index="5" aria-labelledby="slide-5-title">
+  <header class="slide-heading demo-heading">
+    <p class="slide-kicker">System validation / Live demo</p>
+    <h1 class="slide-title" id="slide-5-title">Live Demo: Telemetry, Control &amp; AI Voice</h1>
+    <p class="slide-subtitle">Real-time interaction with the ReloBot operator dashboard and onboard voice agent.</p>
+  </header>
+
+  <aside class="editorial-note demo-note">
+    <strong>Live test protocol</strong>
+    All components demonstrated here are running live on the local hardware stack or Gazebo digital twin on port 80.
+  </aside>
+
+  <ol class="demo-runbook" aria-label="Four-step demonstration protocol">
+    <li>
+      <span class="runbook-number">01</span>
+      <div><h2>Live Telemetry</h2><p>INA226 bus voltage (<strong>12.4V</strong>) and 9-DOF IMU pitch &amp; roll attitude.</p></div>
+    </li>
+    <li>
+      <span class="runbook-number">02</span>
+      <div><h2>Manual Drive &amp; Spindle</h2><p>Virtual joystick teleop and <strong>3000 RPM</strong> governor control.</p></div>
+    </li>
+    <li>
+      <span class="runbook-number">03</span>
+      <div><h2>Voice Status Query</h2><p>Ask “ReloBot, report system status and battery voltage”.</p></div>
+    </li>
+    <li>
+      <span class="runbook-number">04</span>
+      <div><h2>Local Neural Speech</h2><p>Sub-second spoken response synthesized on Pi 5 CPU.</p></div>
+    </li>
+  </ol>
+
+  <aside class="demo-launch" aria-label="Launch ReloBot operator dashboard">
+    <div class="live-status"><span aria-hidden="true"></span>Port 80 · WebSocket 8765 active</div>
+    <div class="launch-heading">
+      <span class="technical-label">Live system</span>
+      <h2>ReloBot Operator Dashboard</h2>
     </div>
-    <div class="callout-why">
-      <div class="callout-why-title">Live Test Protocol</div>
-      <div class="callout-why-text">All components demonstrated here are running live on the local hardware stack or Gazebo digital twin on port 80.</div>
+    <div class="launch-addresses">
+      <code>http://localhost/</code>
+      <span>or</span>
+      <code>http://raspberrypi.local/</code>
     </div>
-  </div>
+    <a class="launch-action" href="http://localhost/" target="_blank" rel="noopener">
+      Launch Operator Dashboard
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+    </a>
+    <p class="launch-tip">Press <strong>Alt + Tab</strong> to switch between slides and the live dashboard during presentation.</p>
+    <p class="launch-proof">Voice synthesized 100% on Pi 5 CPU.</p>
+  </aside>
 
-  <div class="grid-2">
-    <!-- Left: 4-Step Walkthrough -->
-    <div class="card">
-      <div class="card-header">
-        <div class="card-title">
-          <svg class="icon" viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-          Demonstration Protocol
-        </div>
-        <span class="card-tag">4 CHECKS</span>
-      </div>
-      <ol class="demo-step-list">
-        <li class="demo-step-item">
-          <div class="demo-step-num">1</div>
-          <div><strong>Live Telemetry:</strong> INA226 bus voltage (12.4V) and 9-DOF IMU pitch & roll attitude.</div>
-        </li>
-        <li class="demo-step-item">
-          <div class="demo-step-num">2</div>
-          <div><strong>Manual Drive & Spindle:</strong> Virtual joystick teleop and 3000 RPM governor control.</div>
-        </li>
-        <li class="demo-step-item">
-          <div class="demo-step-num">3</div>
-          <div><strong>Voice Status Query:</strong> Ask <em>"ReloBot, report system status and battery voltage"</em>.</div>
-        </li>
-        <li class="demo-step-item">
-          <div class="demo-step-num">4</div>
-          <div><strong>Local Neural Speech:</strong> Sub-second spoken response synthesized on Pi 5 CPU.</div>
-        </li>
-      </ol>
-    </div>
-
-    <!-- Right: Launch Box -->
-    <div class="demo-launch-box">
-      <div class="demo-status-pill">
-        <div class="demo-status-dot"></div>
-        <span>PORT 80 · WEBSOCKET 8765 ACTIVE</span>
-      </div>
-
-      <div>
-        <div style="font-size: 17px; font-weight: 600; color: var(--text-primary); margin-bottom: 2px;">ReloBot Operator Dashboard</div>
-        <div style="font-size: 13px; color: var(--text-muted); font-family: var(--font-mono);">http://localhost/ (or http://raspberrypi.local/)</div>
-      </div>
-
-      <a href="http://localhost/" target="_blank" class="btn-launch">
-        <svg class="icon" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-        Launch Operator Dashboard
-      </a>
-
-      <div style="font-size: 12.5px; color: var(--text-secondary); max-width: 320px; line-height: 1.45;">
-        Tip: Press <strong>Alt + Tab</strong> to switch between slides and the live dashboard during presentation.
-      </div>
-
-      <div style="margin-top: 2px;">
-        <span class="handwritten-note">Voice synthesized 100% on Pi 5 CPU.</span>
-      </div>
-    </div>
-  </div>
-
-  <div class="pipeline-bar">
-    <div class="pipeline-step">
-      <span>Telemetry Polling</span>
-      <span class="pipeline-sep">➔</span>
-      <span>Virtual Joystick</span>
-      <span class="pipeline-sep">➔</span>
-      <strong class="pipeline-tag">Spindle Governor</strong>
-      <span class="pipeline-sep">➔</span>
-      <span>Voice Query</span>
-      <span class="pipeline-sep">➔</span>
-      <strong>Local Speech Output</strong>
-    </div>
-    <div>TESTED & READY</div>
-  </div>
-</div>
+  <footer class="demo-sequence">
+    <span class="technical-label">Test sequence</span>
+    <p><span>Telemetry Polling</span><span>Virtual Joystick</span><span>Spindle Governor</span><span>Voice Query</span><strong>Local Speech Output</strong></p>
+    <span>Tested &amp; ready</span>
+  </footer>
+</section>
