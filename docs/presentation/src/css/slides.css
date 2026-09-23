@@ -261,7 +261,7 @@
   background: var(--paper-raised);
   display: grid;
   grid-template-columns: 1fr;
-  grid-template-rows: auto 145px auto auto;
+  grid-template-rows: auto clamp(145px, 18vh, 190px) auto auto;
   row-gap: 9px;
   align-content: start;
 }
@@ -286,8 +286,9 @@
 .hardware-hub img {
   grid-column: 1;
   grid-row: 2;
-  width: 100%;
+  width: calc(100% + 36px);
   height: 100%;
+  margin-left: -18px;
   object-fit: cover;
   object-position: center 54%;
   border-top: 1px solid var(--rule);
