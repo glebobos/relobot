@@ -6,8 +6,7 @@ from typing import Any
 
 from action_msgs.msg import GoalStatus
 from geometry_msgs.msg import Point32, Pose, PoseStamped, PolygonStamped
-from nav2_msgs.action import FollowPath, BackUp, Spin, Wait
-from nav2_msgs.srv import ClearEntireCostmap
+from nav2_msgs.action import NavigateThroughPoses
 from builtin_interfaces.msg import Duration as MsgDuration
 from nav_msgs.msg import OccupancyGrid, Path
 from opennav_coverage_msgs.action import ComputeCoveragePath
@@ -32,7 +31,11 @@ class CoverageManager(Node):
         self.declare_parameter('preview_path_topic', '/coverage/preview_path')
         self.declare_parameter('default_frame_id', 'map')
         self.declare_parameter('compute_coverage_action_name', 'compute_coverage_path')
-        self.declare_parameter('navigate_through_poses_action_name', 'follow_path')
+        self.declare_parameter('navigate_through_poses_action_name', 'navigate_through_poses')
+        self.declare_parameter(
+            'coverage_bt_xml',
+            '/ros2_ws/install/nav2/share/nav2/behavior_trees/coverage_through_poses.xml',
+        )
         self.declare_parameter('headland_width', 0.5)
         self.declare_parameter('path_continuity_type', 'CONTINUOUS')
         self.declare_parameter('path_type', 'REEDS_SHEPP')
@@ -95,33 +98,15 @@ class CoverageManager(Node):
         )
 
         self._compute_client = ActionClient(self, ComputeCoveragePath, compute_action_name)
-        self._nav_client = ActionClient(self, FollowPath, nav_through_poses_action_name)
+        self._nav_client = ActionClient(self, NavigateThroughPoses, nav_through_poses_action_name)
 
         self._polygon_msg = PolygonStamped()
         self._obstacle_polygons: list[list[tuple[float, float]]] = []
-        self._cached_waypoints = []
+        self._cached_waypoints: list[PoseStamped] = []
         self._cached_path = Path()
-        self._active_path = Path()
         self._compute_goal_handle = None
         self._nav_goal_handle = None
         self._state = 'idle'
-
-        # Recovery state variables
-        self._retry_count: int = 0
-        self._max_retries: int = 3
-        self._in_recovery: bool = False
-        self._recovery_goal_handle = None
-
-        # Recovery clients
-        self._clear_local_costmap_client = self.create_client(
-            ClearEntireCostmap, '/local_costmap/clear_entirely_local_costmap'
-        )
-        self._clear_global_costmap_client = self.create_client(
-            ClearEntireCostmap, '/global_costmap/clear_entirely_global_costmap'
-        )
-        self._backup_client = ActionClient(self, BackUp, 'backup')
-        self._spin_client = ActionClient(self, Spin, 'spin')
-        self._wait_client = ActionClient(self, Wait, 'wait')
         self._last_preview_valid = False
         # Counts how many more 1 Hz ticks should republish the cached path.
         # Set to 10 whenever the path is updated; decrements to 0 to stop.
@@ -246,7 +231,7 @@ class CoverageManager(Node):
         # For the auto-detected SLAM map: keep headland to avoid driving into walls.
         goal.generate_headland = not self._custom_polygon_active
         goal.generate_route = True
-        goal.generate_path = True
+        goal.generate_path = False
         goal.frame_id = self._polygon_msg.header.frame_id or self._default_frame_id
 
         # polygons[0] = outer field boundary
@@ -328,11 +313,18 @@ class CoverageManager(Node):
             return
 
         frame_id = self._polygon_msg.header.frame_id or self._default_frame_id
-        if result.nav_path.poses:
+        endpoint_margin = float(self.get_parameter('swath_endpoint_margin').value)
+        self._cached_waypoints = swath_to_waypoints(
+            result.coverage_path.swaths,
+            frame_id,
+            self.get_clock().now().to_msg(),
+            endpoint_margin,
+        )
+        if self._cached_waypoints:
             robot_pose = self._get_robot_pose()
             if robot_pose is not None:
-                start_p = result.nav_path.poses[0].pose.position
-                end_p = result.nav_path.poses[-1].pose.position
+                start_p = self._cached_waypoints[0].pose.position
+                end_p = self._cached_waypoints[-1].pose.position
                 rob_p = robot_pose.position
                 dist_start = math.hypot(start_p.x - rob_p.x, start_p.y - rob_p.y)
                 dist_end = math.hypot(end_p.x - rob_p.x, end_p.y - rob_p.y)
@@ -340,31 +332,21 @@ class CoverageManager(Node):
                     self.get_logger().info(
                         'Robot is closer to the end of the computed coverage path. Reversing path direction.'
                     )
-                    result.nav_path.poses.reverse()
-                    for wp in result.nav_path.poses:
+                    self._cached_waypoints.reverse()
+                    for wp in self._cached_waypoints:
                         wp.pose.orientation = flip_quaternion(wp.pose.orientation)
-            self._cached_waypoints = result.nav_path.poses
-            self._cached_path = result.nav_path
-            self._path_republish_count = 10
-        else:
-            endpoint_margin = float(self.get_parameter('swath_endpoint_margin').value)
-            self._cached_waypoints = swath_to_waypoints(
-                result.coverage_path.swaths,
-                frame_id,
-                self.get_clock().now().to_msg(),
-                endpoint_margin
-            )
-            # Build a preview path from straight swath lines (no turn arcs)
-            preview = Path()
-            preview.header.frame_id = frame_id
-            preview.header.stamp = self.get_clock().now().to_msg()
-            for wp in self._cached_waypoints:
-                ps = PoseStamped()
-                ps.header = wp.header
-                ps.pose = wp.pose
-                preview.poses.append(ps)
-            self._cached_path = preview
-            self._path_republish_count = 10
+
+        # Build a preview path from straight swath lines
+        preview = Path()
+        preview.header.frame_id = frame_id
+        preview.header.stamp = self.get_clock().now().to_msg()
+        for wp in self._cached_waypoints:
+            ps = PoseStamped()
+            ps.header = wp.header
+            ps.pose = wp.pose
+            preview.poses.append(ps)
+        self._cached_path = preview
+        self._path_republish_count = 10
 
         self._preview_path_pub.publish(self._cached_path)
         self._last_preview_valid = True
@@ -380,42 +362,36 @@ class CoverageManager(Node):
         if self._compute_goal_handle or self._nav_goal_handle:
             self._publish_status('busy', 'Coverage manager is already handling a request.')
             return
-        # Reset recovery tracking when starting a fresh execution
-        self._retry_count = 0
-        self._in_recovery = False
-        self._recovery_goal_handle = None
-        if not self._cached_path.poses:
+        if not self._cached_waypoints:
             self._publish_status('no_preview', 'Preview a coverage path before execution.')
             return
         if not self._last_preview_valid and not self._allow_execute_without_fresh_preview:
             self._publish_status('stale_preview', 'Preview the current polygon again before execution.')
             return
         if not self._nav_client.wait_for_server(timeout_sec=self._action_wait_timeout_sec):
-            self._publish_status('server_unavailable', 'FollowPath action is not available.')
+            self._publish_status('server_unavailable', 'NavigateThroughPoses action is not available.')
             return
 
         stamp = self.get_clock().now().to_msg()
-        self._active_path = Path()
-        self._active_path.header.frame_id = self._cached_path.header.frame_id
-        self._active_path.header.stamp = stamp
-        self._active_path.poses = []
-        for wp in self._cached_path.poses:
+        execution_waypoints = []
+        for wp in self._cached_waypoints:
             wp_copy = PoseStamped()
             wp_copy.header.frame_id = wp.header.frame_id
             wp_copy.header.stamp = stamp
             wp_copy.pose = wp.pose
-            self._active_path.poses.append(wp_copy)
+            execution_waypoints.append(wp_copy)
 
-        goal = FollowPath.Goal()
-        goal.path = self._active_path
-        goal.controller_id = 'FollowPath'
-        goal.goal_checker_id = 'goal_checker'
+        goal = NavigateThroughPoses.Goal()
+        goal.poses = execution_waypoints
+        bt_xml = self.get_parameter('coverage_bt_xml').value
+        if bt_xml:
+            goal.behavior_tree = str(bt_xml)
 
         self._state = 'executing'
         self._publish_status(
             'executing',
-            'Executing coverage path.',
-            waypoint_count=len(goal.path.poses),
+            'Executing coverage path with Nav2 planner.',
+            waypoint_count=len(goal.poses),
         )
 
         send_future = self._nav_client.send_goal_async(
@@ -453,31 +429,27 @@ class CoverageManager(Node):
             self._publish_status('canceled', 'Coverage execution canceled.')
             return
         if status != GoalStatus.STATUS_SUCCEEDED:
-            if self._retry_count < self._max_retries:
-                self._retry_count += 1
-                self.get_logger().warn(
-                    f'FollowPath execution failed/aborted (status {status}). Triggering recovery attempt {self._retry_count}/{self._max_retries}.'
-                )
-                self._run_recovery()
-            else:
-                self.get_logger().error(
-                    f'FollowPath execution failed/aborted (status {status}) and max retries ({self._max_retries}) reached. Aborting.'
-                )
-                self._state = 'failed'
-                self._publish_status('failed', f'Coverage execution failed after maximum retries.')
+            self._state = 'failed'
+            self._publish_status('failed', f'Coverage execution failed (status {status}).')
             return
 
-        # Successfully reached the end of the path
-        self._retry_count = 0
+        # Successfully reached the end of the coverage path
         self._state = 'completed'
         self._publish_status('completed', 'Coverage execution completed successfully.')
 
     def _on_nav_feedback(self, feedback_msg) -> None:
         feedback = feedback_msg.feedback
+        poses_left = getattr(feedback, 'number_of_poses_remaining', None)
+        dist_left = getattr(feedback, 'distance_remaining', getattr(feedback, 'distance_to_goal', None))
+        extra = {}
+        if dist_left is not None:
+            extra['distance_remaining'] = round(float(dist_left), 2)
+        if poses_left is not None:
+            extra['poses_remaining'] = int(poses_left)
         self._publish_status(
             'executing',
             'Coverage execution in progress.',
-            distance_remaining=round(float(feedback.distance_to_goal), 2),
+            **extra
         )
 
     def _cancel_active_goals(self) -> None:
@@ -488,10 +460,6 @@ class CoverageManager(Node):
         if self._nav_goal_handle is not None:
             canceled = True
             self._nav_goal_handle.cancel_goal_async().add_done_callback(self._on_cancel_done)
-        if self._recovery_goal_handle is not None:
-            canceled = True
-            self._recovery_goal_handle.cancel_goal_async().add_done_callback(self._on_cancel_done)
-            self._recovery_goal_handle = None
 
         if canceled:
             self._state = 'cancel_requested'
@@ -509,15 +477,7 @@ class CoverageManager(Node):
         self._cached_waypoints = []
         self._cached_path = Path()
         self._last_preview_valid = False
-        self._retry_count = 0
-        self._in_recovery = False
-        self._recovery_goal_handle = None
         self._preview_path_pub.publish(Path())
-        # Do NOT publish an empty PolygonStamped here: doing so would latch an
-        # empty message on TRANSIENT_LOCAL, meaning any browser that reconnects
-        # after a clear would receive an empty polygon instead of waiting for the
-        # next valid extraction.  The preview path is volatile so clearing it is
-        # safe; the polygon stays as the last good value until a new one is ready.
         self._state = 'idle'
         self._publish_status('idle', 'Coverage state cleared.')
 
@@ -704,215 +664,6 @@ class CoverageManager(Node):
         payload = {'state': state, 'message': message}
         payload.update(extra)
         self._status_pub.publish(String(data=json.dumps(payload)))
-
-    def _run_recovery(self) -> None:
-        self._in_recovery = True
-        self._state = 'recovering'
-        
-        if self._retry_count == 1:
-            self._publish_status(
-                'recovering',
-                f'Recovery attempt {self._retry_count}/{self._max_retries}: Clearing costmaps.'
-            )
-            self._clear_costmaps_async(self._resume_execution)
-        elif self._retry_count == 2:
-            self._publish_status(
-                'recovering',
-                f'Recovery attempt {self._retry_count}/{self._max_retries}: Waiting for obstacle to clear.'
-            )
-            self._wait_async(2.0, lambda: self._clear_costmaps_async(self._resume_execution))
-        elif self._retry_count == 3:
-            self._publish_status(
-                'recovering',
-                f'Recovery attempt {self._retry_count}/{self._max_retries}: Backing up and spinning.'
-            )
-            # Backup 0.25m, spin 45 degrees (0.78 rad) to look for clearing, clear costmaps, resume
-            self._backup_async(
-                -0.25,
-                0.15,
-                lambda: self._spin_async(
-                    0.78,
-                    lambda: self._clear_costmaps_async(self._resume_execution)
-                )
-            )
-
-    def _clear_costmaps_async(self, callback) -> None:
-        if not self._clear_local_costmap_client.service_is_ready() or not self._clear_global_costmap_client.service_is_ready():
-            self.get_logger().warn('Costmap clearing services not ready. Skipping clear.')
-            callback()
-            return
-
-        req = ClearEntireCostmap.Request()
-        pending = 2
-
-        def on_service_done(future):
-            nonlocal pending
-            try:
-                future.result()
-            except Exception as e:
-                self.get_logger().error(f'Service call failed: {e}')
-            pending -= 1
-            if pending == 0:
-                self.get_logger().info('Local and global costmaps cleared successfully.')
-                # Wait 0.5 seconds for the costmaps to update before resuming
-                self._create_one_shot_timer(0.5, callback)
-
-        future_local = self._clear_local_costmap_client.call_async(req)
-        future_local.add_done_callback(on_service_done)
-
-        future_global = self._clear_global_costmap_client.call_async(req)
-        future_global.add_done_callback(on_service_done)
-
-    def _wait_async(self, duration_sec: float, callback) -> None:
-        if not self._wait_client.wait_for_server(timeout_sec=1.0):
-            self.get_logger().warn('Wait action server not available. Skipping.')
-            callback()
-            return
-
-        goal = Wait.Goal()
-        goal.time = MsgDuration()
-        goal.time.sec = int(duration_sec)
-        goal.time.nanosec = int((duration_sec - int(duration_sec)) * 1e9)
-
-        def on_result(future):
-            self._recovery_goal_handle = None
-            callback()
-
-        def on_goal_response(future):
-            goal_handle = future.result()
-            if not goal_handle.accepted:
-                self.get_logger().warn('Wait action goal rejected.')
-                callback()
-                return
-            self._recovery_goal_handle = goal_handle
-            goal_handle.get_result_async().add_done_callback(on_result)
-
-        self._wait_client.send_goal_async(goal).add_done_callback(on_goal_response)
-
-    def _backup_async(self, distance: float, speed: float, callback) -> None:
-        if not self._backup_client.wait_for_server(timeout_sec=1.0):
-            self.get_logger().warn('Backup action server not available. Skipping.')
-            callback()
-            return
-
-        goal = BackUp.Goal()
-        goal.target.x = float(distance)
-        goal.speed = float(speed)
-        goal.time_allowance = MsgDuration()
-        goal.time_allowance.sec = 10
-
-        def on_result(future):
-            self._recovery_goal_handle = None
-            callback()
-
-        def on_goal_response(future):
-            goal_handle = future.result()
-            if not goal_handle.accepted:
-                self.get_logger().warn('Backup action goal rejected.')
-                callback()
-                return
-            self._recovery_goal_handle = goal_handle
-            goal_handle.get_result_async().add_done_callback(on_result)
-
-        self._backup_client.send_goal_async(goal).add_done_callback(on_goal_response)
-
-    def _spin_async(self, target_yaw: float, callback) -> None:
-        if not self._spin_client.wait_for_server(timeout_sec=1.0):
-            self.get_logger().warn('Spin action server not available. Skipping.')
-            callback()
-            return
-
-        goal = Spin.Goal()
-        goal.target_yaw = float(target_yaw)
-        goal.time_allowance = MsgDuration()
-        goal.time_allowance.sec = 10
-
-        def on_result(future):
-            self._recovery_goal_handle = None
-            callback()
-
-        def on_goal_response(future):
-            goal_handle = future.result()
-            if not goal_handle.accepted:
-                self.get_logger().warn('Spin action goal rejected.')
-                callback()
-                return
-            self._recovery_goal_handle = goal_handle
-            goal_handle.get_result_async().add_done_callback(on_result)
-
-        self._spin_client.send_goal_async(goal).add_done_callback(on_goal_response)
-
-    def _create_one_shot_timer(self, delay_sec: float, callback) -> None:
-        timer = None
-        def timer_cb():
-            nonlocal timer
-            if timer is not None:
-                timer.destroy()
-            callback()
-        timer = self.create_timer(delay_sec, timer_cb)
-
-    def _resume_execution(self) -> None:
-        self._in_recovery = False
-
-        robot_pose = self._get_robot_pose()
-        if robot_pose is None:
-            self.get_logger().error('Could not get robot pose to resume execution. Aborting.')
-            self._state = 'failed'
-            self._publish_status('failed', 'Could not determine robot pose to resume.')
-            return
-
-        poses = self._active_path.poses
-        if not poses:
-            self.get_logger().error('No active path to resume. Aborting.')
-            self._state = 'failed'
-            self._publish_status('failed', 'No active path to resume.')
-            return
-
-        closest_idx = self._find_closest_waypoint_index(robot_pose, poses)
-        self.get_logger().info(f'Resuming execution from waypoint {closest_idx}/{len(poses)}.')
-
-        resumed_path = Path()
-        resumed_path.header.frame_id = self._active_path.header.frame_id
-        resumed_path.header.stamp = self.get_clock().now().to_msg()
-        resumed_path.poses = poses[closest_idx:]
-
-        self._active_path = resumed_path
-
-        if not resumed_path.poses:
-            self._state = 'completed'
-            self._publish_status('completed', 'Coverage path completed (no remaining waypoints).')
-            return
-
-        goal = FollowPath.Goal()
-        goal.path = resumed_path
-        goal.controller_id = 'FollowPath'
-        goal.goal_checker_id = 'goal_checker'
-
-        self._state = 'executing'
-        self._publish_status(
-            'executing',
-            f'Resuming coverage path (attempt {self._retry_count + 1}).',
-            waypoint_count=len(goal.path.poses),
-        )
-
-        send_future = self._nav_client.send_goal_async(
-            goal, feedback_callback=self._on_nav_feedback
-        )
-        send_future.add_done_callback(self._on_execute_goal_response)
-
-    def _find_closest_waypoint_index(self, robot_pose: Pose, poses: list[PoseStamped]) -> int:
-        min_dist = float('inf')
-        closest_idx = 0
-        rx = robot_pose.position.x
-        ry = robot_pose.position.y
-        for i, ps in enumerate(poses):
-            px = ps.pose.position.x
-            py = ps.pose.position.y
-            dist = math.hypot(px - rx, py - ry)
-            if dist < min_dist:
-                min_dist = dist
-                closest_idx = i
-        return closest_idx
 
 
 def main(args: list[str] | None = None) -> None:
