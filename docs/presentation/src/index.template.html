@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ReloBot — An Engineering Journey</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- INJECT:CSS -->
+</head>
+<body>
+
+  <div class="presentation-shell">
+    <div class="deck-stage">
+      <main id="slideCanvas" aria-live="polite">
+        <!-- INJECT:SLIDES -->
+      </main>
+
+      <div class="progress-track" role="progressbar" aria-label="Presentation progress" aria-valuemin="1" aria-valuemax="6" aria-valuenow="1">
+        <div class="progress-bar" id="progressBar"></div>
+      </div>
+    </div>
+
+    <nav class="presenter-bar" aria-label="Presentation controls">
+      <div class="deck-identity">
+        <strong>RELOBOT</strong>
+        <span>An engineering journey</span>
+      </div>
+
+      <div class="presenter-status">
+        <button class="timer-control" id="timerBadge" type="button" title="Reset presentation timer">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><polyline points="12 6 12 12 16 14"/></svg>
+          <span id="timerText">00:00</span>
+        </button>
+        <span class="slide-counter" id="slideCounter" aria-live="polite">01 / 06</span>
+      </div>
+
+      <div class="presenter-actions">
+        <button class="control-button control-button--text" id="toggleNotesBtn" type="button" title="Toggle Russian speaker notes (S)" aria-expanded="false" aria-controls="speakerDrawer">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h14v18H5z"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="13" y2="16"/></svg>
+          <span>RU notes</span>
+        </button>
+        <button class="control-button" id="fullscreenBtn" type="button" title="Toggle fullscreen (F)" aria-label="Toggle fullscreen">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><polyline points="8 3 3 3 3 8"/><polyline points="16 3 21 3 21 8"/><polyline points="8 21 3 21 3 16"/><polyline points="16 21 21 21 21 16"/></svg>
+        </button>
+        <span class="action-rule" aria-hidden="true"></span>
+        <button class="control-button" id="prevBtn" type="button" title="Previous slide" aria-label="Previous slide" disabled>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+        </button>
+        <button class="control-button" id="nextBtn" type="button" title="Next slide" aria-label="Next slide">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </button>
+      </div>
+    </nav>
+  </div>
+
+  <aside class="speaker-drawer" id="speakerDrawer" aria-label="Russian speaker notes" aria-hidden="true">
+    <div class="speaker-header">
+      <div class="speaker-title">
+        <span>Speaker notes</span>
+        <span id="notesSlideIndicator">Slide 1 / 6</span>
+      </div>
+      <button class="control-button control-button--text" id="closeNotesBtn" type="button">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        <span>Close</span>
+      </button>
+    </div>
+    <div class="speaker-content" id="speakerNotesText"></div>
+  </aside>
+
+  <!-- INJECT:JS -->
+</body>
+</html>

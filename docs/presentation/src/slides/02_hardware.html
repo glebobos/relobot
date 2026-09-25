@@ -1,0 +1,67 @@
+<!-- SLIDE 2: ROS 2 CONTRACTS & HUB AND SPOKE -->
+<section class="slide slide-hardware" data-index="2" aria-labelledby="slide-2-title">
+  <header class="slide-heading architecture-heading">
+    <p class="slide-kicker">Framework / Architecture</p>
+    <h1 class="slide-title" id="slide-2-title">Choosing ROS 2 and boundaries</h1>
+    <p class="slide-subtitle">Hub &amp; spoke hardware, ROS 2 contracts, Docker Compose orchestration.</p>
+  </header>
+
+  <aside class="editorial-note architecture-note">
+    <strong>Why not another monolith?</strong>
+    ROS 2 connects independent modules without giving up their local constraints.
+  </aside>
+
+  <div class="hardware-topology" aria-label="Raspberry Pi hub connected to six hardware subsystems">
+    <article class="hardware-node node-drive">
+      <h2>Differential drive</h2>
+      <p>Wheel feedback and safe stops</p>
+    </article>
+    <div class="bus-link bus-link-left link-drive" aria-hidden="true"></div>
+
+    <article class="hardware-node node-cutting">
+      <h2>Cutting spindle</h2>
+      <p>Independent blade control</p>
+    </article>
+    <div class="bus-link bus-link-left link-cutting" aria-hidden="true"></div>
+
+    <article class="hardware-node node-imu">
+      <h2>9-DOF IMU</h2>
+      <p>Motion data for navigation</p>
+    </article>
+    <div class="bus-link bus-link-left link-imu" aria-hidden="true"></div>
+
+    <article class="hardware-hub">
+      <div class="hub-identity">
+        <span class="technical-label">Central compute</span>
+        <h2>Raspberry Pi 5 / ROS 2</h2>
+        <p>Coordination, not every control loop</p>
+      </div>
+      <img src="images/rpi5_case.jpg" alt="Raspberry Pi 5 industrial enclosure">
+      <p class="hub-bus">ROS 2 contracts connect the modules</p>
+    </article>
+
+    <div class="bus-link bus-link-right link-power" aria-hidden="true"></div>
+    <article class="hardware-node node-power">
+      <h2>Battery &amp; power</h2>
+      <p>Voltage and current telemetry</p>
+    </article>
+
+    <div class="bus-link bus-link-right link-perception" aria-hidden="true"></div>
+    <article class="hardware-node node-perception">
+      <h2>LiDAR &amp; vision</h2>
+      <p>Signals from the outside world</p>
+    </article>
+
+    <div class="bus-link bus-link-right link-audio" aria-hidden="true"></div>
+    <article class="hardware-node node-audio">
+      <h2>Audio output</h2>
+      <p>A voice back to the operator</p>
+    </article>
+  </div>
+
+  <footer class="architecture-footer">
+    <span class="technical-label">Present-day stack</span>
+    <p><strong>Pico loops</strong> <span>→</span> <strong>ROS 2 contracts</strong> <span>→</span> <strong>Docker Compose</strong></p>
+    <span>Modular by design</span>
+  </footer>
+</section>

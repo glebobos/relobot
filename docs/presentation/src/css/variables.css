@@ -1,0 +1,43 @@
+:root {
+  --surround: #dfe1dc;
+  --paper: #f3f2ed;
+  --paper-raised: #fbfaf6;
+  --paper-inset: #e9e8e2;
+  --ink: #171b18;
+  --ink-secondary: #4f5651;
+  --ink-muted: #737a75;
+  --rule: #cdcec8;
+  --rule-strong: #9fa49f;
+  --accent: #176b4d;
+  --accent-soft: #dce8e1;
+  --accent-strong: #0e533a;
+  --live: #21855f;
+  --warning: #a34a3c;
+
+  --bg-canvas: var(--paper);
+  --bg-panel: var(--paper-raised);
+  --bg-card: var(--paper-raised);
+  --bg-card-hover: var(--paper-raised);
+  --bg-inset: var(--paper-inset);
+  --border-subtle: var(--rule);
+  --border-medium: var(--rule-strong);
+  --border-strong: var(--ink-muted);
+  --accent-dim: var(--accent-soft);
+  --accent-hover: var(--accent-strong);
+  --text-primary: var(--ink);
+  --text-secondary: var(--ink-secondary);
+  --text-muted: var(--ink-muted);
+  --text-dim: var(--ink-muted);
+
+  --font-main: 'IBM Plex Sans', 'Helvetica Neue', sans-serif;
+  --font-mono: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+}

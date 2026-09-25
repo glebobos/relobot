@@ -1,0 +1,129 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  background: var(--surround);
+  color: var(--ink);
+  font-family: var(--font-main);
+  display: grid;
+  place-items: center;
+  padding: 8px;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+button,
+a {
+  font: inherit;
+}
+
+.presentation-shell {
+  width: min(96vw, calc((100vh - 80px) * 16 / 9), 1600px);
+  display: grid;
+  gap: 8px;
+}
+
+.deck-stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: var(--paper);
+  border: 1px solid var(--rule-strong);
+}
+
+main {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.slide {
+  display: none;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  padding: 34px 46px 32px;
+  background: var(--paper);
+}
+
+.slide.active {
+  display: grid;
+  animation: slide-in 180ms ease-out both;
+}
+
+@keyframes slide-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.slide-heading {
+  display: grid;
+  gap: 7px;
+  align-content: start;
+}
+
+.slide-kicker,
+.section-label {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--ink-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.slide-title {
+  max-width: 1020px;
+  font-size: 46px;
+  font-weight: 700;
+  line-height: 1.07;
+  letter-spacing: 0;
+  color: var(--ink);
+}
+
+.slide-subtitle {
+  max-width: 940px;
+  font-size: 24px;
+  font-weight: 400;
+  line-height: 1.42;
+  color: var(--ink-secondary);
+}
+
+.icon {
+  width: 18px;
+  height: 18px;
+  stroke-width: 1.75px;
+  stroke: currentColor;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex-shrink: 0;
+}
+
+code {
+  font-family: var(--font-mono);
+  background: var(--paper-inset);
+  color: var(--accent);
+  padding: 1px 4px;
+  border-radius: 2px;
+  font-size: 1em;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .slide.active {
+    animation: none;
+  }
+}

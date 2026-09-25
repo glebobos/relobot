@@ -173,6 +173,11 @@
     border-color: transparent;
 }
 
+.c-sidebar-btn.is-disabled {
+    color: var(--color-text-muted);
+    opacity: 0.7;
+}
+
 .c-sidebar-btn--danger {
     background-color: var(--color-red);
     border-color: transparent;

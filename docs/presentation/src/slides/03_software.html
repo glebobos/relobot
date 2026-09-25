@@ -1,0 +1,41 @@
+<section class="slide slide-engineering" data-index="3" aria-labelledby="slide-3-title">
+  <header class="slide-heading engineering-heading">
+    <p class="slide-kicker">Interacting layers / Simulation</p>
+    <h1 class="slide-title" id="slide-3-title">From the field to Gazebo</h1>
+    <p class="slide-subtitle">Together, these layers create behavior that no single layer explains.</p>
+  </header>
+
+  <aside class="editorial-note engineering-note">
+    <strong>The missing test loop</strong>
+    Field tests exposed the interactions. Gazebo makes many of them repeatable.
+  </aside>
+
+  <ol class="incident-matrix" aria-label="Four interacting layers of the robot">
+    <li class="incident-row">
+      <span>01</span>
+      <div><h2>The world</h2><p>Grass, ground, obstacles</p></div>
+      <strong>The same path changes outside</strong>
+    </li>
+    <li class="incident-row">
+      <span>02</span>
+      <div><h2>The robot</h2><p>Wheels, weight, traction</p></div>
+      <strong>Contact changes the motion</strong>
+    </li>
+    <li class="incident-row">
+      <span>03</span>
+      <div><h2>The controllers</h2><p>Timing and feedback</p></div>
+      <strong>Delay changes the loop</strong>
+    </li>
+    <li class="incident-row">
+      <span>04</span>
+      <div><h2>The code</h2><p>ROS 2 messages and decisions</p></div>
+      <strong>One QoS setting can hide a regression</strong>
+    </li>
+  </ol>
+
+  <footer class="engineering-footer">
+    <span class="technical-label">Development loop</span>
+    <p>Change → Gazebo → Observe → Field</p>
+    <span>The yard still decides</span>
+  </footer>
+</section>
