@@ -13,8 +13,72 @@ use std::time::{Duration, Instant};
 use tokio::net::TcpStream;
 use tokio::sync::{broadcast, mpsc};
 use tokio::task::JoinHandle;
+use tokio_tungstenite::tungstenite::handshake::server::{Request, Response};
 use tokio_tungstenite::tungstenite::Message;
-use tracing::{debug, instrument, warn};
+use tokio_tungstenite::WebSocketStream;
+use tracing::{debug, info, instrument, warn};
+
+/// Handles a dedicated high-speed binary map client connection.
+///
+/// Immediately sends the cached compressed binary OccupancyGrid frame,
+/// and streams subsequent binary updates with automatic conflation/lag dropping.
+#[instrument(skip_all, fields(client = %peer_addr))]
+pub async fn handle_binary_map_client(
+    ws_stream: WebSocketStream<TcpStream>,
+    peer_addr: SocketAddr,
+    state: Arc<SharedState>,
+) -> Result<()> {
+    let (mut ws_tx, mut ws_rx) = ws_stream.split();
+    info!(client = %peer_addr, "Binary Map WebSocket client connected");
+
+    // 1. Send cached binary map immediately if available
+    {
+        let cache_guard = state.binary_map_cache.read().await;
+        if let Some(cached) = &*cache_guard {
+            let msg = Message::Binary(cached.to_vec());
+            if ws_tx.send(msg).await.is_err() {
+                return Ok(());
+            }
+        }
+    }
+
+    let mut map_rx = state.binary_map_tx.subscribe();
+
+    loop {
+        tokio::select! {
+            client_msg = ws_rx.next() => {
+                match client_msg {
+                    Some(Ok(Message::Close(_))) | None => break,
+                    Some(Ok(Message::Ping(payload))) => {
+                        if ws_tx.send(Message::Pong(payload)).await.is_err() {
+                            break;
+                        }
+                    }
+                    Some(Err(_)) => break,
+                    _ => {}
+                }
+            }
+            broadcast_msg = map_rx.recv() => {
+                match broadcast_msg {
+                    Ok(frame) => {
+                        let msg = Message::Binary(frame.to_vec());
+                        if ws_tx.send(msg).await.is_err() {
+                            break;
+                        }
+                    }
+                    Err(broadcast::error::RecvError::Lagged(n)) => {
+                        debug!(lagged_count = n, "Binary map client lagged; dropped old frame");
+                        continue;
+                    }
+                    Err(broadcast::error::RecvError::Closed) => break,
+                }
+            }
+        }
+    }
+
+    info!(client = %peer_addr, "Binary Map WebSocket client disconnected");
+    Ok(())
+}
 
 /// Streams broadcast topic updates to an MPSC sink for a client subscription with pacing.
 pub async fn forward_broadcast_to_browser(
@@ -25,11 +89,17 @@ pub async fn forward_broadcast_to_browser(
     throttle_rate_ms: u64,
 ) {
     let mut limiter = RateLimiter::new(Duration::from_millis(throttle_rate_ms));
+    let is_map = topic == "/map";
     loop {
         match rx.recv().await {
             Ok(json_payload) => {
                 let now = Instant::now();
                 if !limiter.should_process(now) {
+                    continue;
+                }
+                // Conflate /map messages: if client queue has backlog, drop to prevent buffer bloat
+                if is_map && tx.capacity() < 128 {
+                    debug!("Client queue congested; skipping obsolete /map update");
                     continue;
                 }
                 let frame = format_rosbridge_publish(&topic, &json_payload, id.as_deref());
@@ -54,7 +124,17 @@ pub async fn handle_client_connection(
     state: Arc<SharedState>,
     upstream_url: &str,
 ) -> Result<()> {
-    let ws_stream = tokio_tungstenite::accept_async(stream).await?;
+    let mut request_path = String::new();
+    let callback = |req: &Request, response: Response| {
+        request_path = req.uri().path().to_string();
+        Ok(response)
+    };
+    let ws_stream = tokio_tungstenite::accept_hdr_async(stream, callback).await?;
+
+    if request_path.contains("map-ws") {
+        return handle_binary_map_client(ws_stream, peer_addr, state).await;
+    }
+
     let (mut browser_tx, mut browser_rx) = ws_stream.split();
 
     // Outgoing channel for messages destined to the browser WebSocket
@@ -72,14 +152,14 @@ pub async fn handle_client_connection(
     // 1. Task: Forward MPSC channel to Browser WebSocket with timeout protection
     let browser_writer = tokio::spawn(async move {
         while let Some(msg) = browser_out_rx.recv().await {
-            match tokio::time::timeout(Duration::from_secs(5), browser_tx.send(msg)).await {
+            match tokio::time::timeout(Duration::from_secs(30), browser_tx.send(msg)).await {
                 Ok(Ok(())) => {}
                 Ok(Err(e)) => {
                     debug!(error = %e, "Browser WebSocket write failed");
                     break;
                 }
                 Err(_) => {
-                    warn!("Browser WebSocket write timed out (>5s); disconnecting slow client");
+                    warn!("Browser WebSocket write timed out (>30s); disconnecting slow client");
                     break;
                 }
             }

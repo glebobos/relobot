@@ -31,9 +31,10 @@ async fn main() -> Result<()> {
     // Create broadcast channels for high-bandwidth native topics
     let (tf_tx, _) = broadcast::channel(100);
     let (map_tx, _) = broadcast::channel(10);
+    let (binary_map_tx, _) = broadcast::channel(10);
     let (pose_tx, _) = broadcast::channel(100);
 
-    let state = SharedState::new(tf_tx, map_tx, pose_tx);
+    let state = SharedState::new(tf_tx, map_tx, binary_map_tx, pose_tx);
 
     // Initialize ROS 2 node and native topic subscribers
     let ros_tasks = init_ros2_node(state.clone())?;

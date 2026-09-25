@@ -3,11 +3,8 @@ import { RosSubscription } from './ros-subscription.js';
 
 class RosService {
     constructor() {
-        const isHttps = window.location.protocol === 'https:';
-        const protocol = isHttps ? 'wss:' : 'ws:';
-        const port = isHttps ? '' : ':9090';
-        const path = isHttps ? '/rosbridge/' : '';
-        this.url = `${protocol}//${window.location.hostname}${port}${path}`;
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        this.url = `${protocol}//${window.location.host}/rosbridge/`;
         
         this._reconnectTimer = null;
         this._stableTimer = null;

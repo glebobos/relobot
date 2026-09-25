@@ -1,17 +1,20 @@
+import { mapStreamService } from '../../services/map-stream-service.js';
 import { rosService } from '../../services/ros-service.js';
 import { MSG_TYPES, TOPICS } from '../../shared/constants.js';
-
-const MAP_THROTTLE_MS = 2000;
 
 export class MapRosAdapter {
     constructor(handlers) {
         this.handlers = handlers;
         this.subscriptions = [];
+        this.mapUnsubscribe = null;
+        this.coveragePolygonSubscription = null;
+
         this.subscribe();
     }
 
     subscribe() {
         this.add(TOPICS.COVERAGE_PREVIEW_PATH, MSG_TYPES.PATH, this.handlers.previewPath);
+        this.add(TOPICS.CONTROLLER_PLAN, MSG_TYPES.PATH, this.handlers.controllerPlan);
         this.add(
             TOPICS.COVERAGE_OBSTACLES_ACTIVE,
             MSG_TYPES.STRING,
@@ -24,17 +27,27 @@ export class MapRosAdapter {
             this.handlers.robotPose,
             { throttle_rate: 33 },
         );
-        this.add(
-            TOPICS.MAP,
-            MSG_TYPES.OCCUPANCY_GRID,
-            this.handlers.map,
-            { throttle_rate: MAP_THROTTLE_MS },
-        );
+
+        this.subscribeMap();
 
         // Dynamically subscribe to coverage polygon if enabled by user
-        this.coveragePolygonSubscription = null;
         const coverageEnabled = localStorage.getItem('navigation_coverage_boundary_enabled') === 'true';
         this.subscribeCoveragePolygon(coverageEnabled);
+    }
+
+    subscribeMap() {
+        if (this.mapUnsubscribe || !this.handlers?.map) return;
+        this.mapUnsubscribe = mapStreamService.subscribe(this.handlers.map);
+    }
+
+    unsubscribeMap() {
+        if (!this.mapUnsubscribe) return;
+        try {
+            this.mapUnsubscribe();
+        } catch (e) {
+            console.warn('[MapRosAdapter] Failed to unsubscribe from binary map:', e);
+        }
+        this.mapUnsubscribe = null;
     }
 
     subscribeCoveragePolygon(enabled) {
@@ -67,6 +80,7 @@ export class MapRosAdapter {
     }
 
     destroy() {
+        this.unsubscribeMap();
         this.subscriptions.forEach(subscription => subscription.unsubscribe());
         this.subscriptions = [];
         if (this.coveragePolygonSubscription) {

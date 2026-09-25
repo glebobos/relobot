@@ -4,8 +4,8 @@ import { SERVICES, MSG_TYPES } from '../shared/constants.js';
 
 export class CameraController {
     constructor() {
-        this.mainCameraService = new CameraService('cameraStream');
-        this.pipCameraService = new CameraService('pipCameraStream');
+        this.mainCameraService = new CameraService('cameraStream', { type: 'ros_compressed' });
+        this.pipCameraService = new CameraService('pipCameraStream', { type: 'ros_compressed' });
         this.tfTopic = null;
         this.hudTimeout = null;
         this.currentScreenIndex = 0;

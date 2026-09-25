@@ -23,12 +23,6 @@ from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 
 def generate_launch_description():
-    # Serial devices from environment variables
-    imu_tty    = os.environ.get('IMU_TTY',    '/dev/ttyACM5')
-    ina226_tty = os.environ.get('INA226_TTY', '/dev/ttyACM2')
-    knives_tty = os.environ.get('KNIVES_TTY', '/dev/ttyACM4')
-    wheels_tty = os.environ.get('WHEELS_TTY', '/dev/ttyACM1')
-
     # Get URDF via xacro
     robot_description_content = Command(
         [
@@ -64,11 +58,29 @@ def generate_launch_description():
         'robot_state_publisher.yaml'
     )
 
-    # Micro-ROS agent — multiserial
-    serial_devs = [
-        v for k, v in os.environ.items()
-        if k.startswith('TTY_') and v
-    ]
+    # Micro-ROS agent — multiserial with persistent hardware symlinks discovery
+    import glob
+    by_id_devs = sorted(
+        glob.glob('/dev/serial/by-id/usb-*Pico*') +
+        glob.glob('/dev/serial/by-id/usb-*ReloBot*')
+    )
+    if by_id_devs:
+        serial_devs = by_id_devs
+    else:
+        # Fallback for environments where by-id symlinks are unavailable (e.g. mock/test)
+        serial_devs = sorted(glob.glob('/dev/ttyACM*'))
+
+    # Also include any valid explicit TTY_* overrides from environment
+    for k, v in os.environ.items():
+        if k.startswith('TTY_') and v and os.path.exists(v):
+            if v not in serial_devs:
+                serial_devs.append(v)
+
+    if not serial_devs:
+        serial_devs = ['/dev/ttyACM0']
+
+    print(f"[DiffBot Launch] Active Micro-ROS serial devices: {serial_devs}")
+
     micro_ros_agent = Node(
         package='micro_ros_agent',
         executable='micro_ros_agent',

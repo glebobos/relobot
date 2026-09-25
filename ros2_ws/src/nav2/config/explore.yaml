@@ -104,15 +104,15 @@ controller_server:
 
     progress_checker:
       plugin: "nav2_controller::SimpleProgressChecker"
-      required_movement_radius: 0.25
-      movement_time_allowance: 10.0
+      required_movement_radius: 0.20
+      movement_time_allowance: 20.0
       
     goal_checker:
       stateful: True
       plugin: "nav2_controller::SimpleGoalChecker"
       xy_goal_tolerance: 0.25
       yaw_goal_tolerance: 0.25
-      
+
     FollowPath:
       plugin: "nav2_rotation_shim_controller::RotationShimController"
       primary_controller: "nav2_regulated_pure_pursuit_controller::RegulatedPurePursuitController"
@@ -403,7 +403,7 @@ coverage_server:
     default_step_angle: 0.017453
     default_route_type: "BOUSTROPHEDON"
     default_spiral_n: 4
-    default_path_continuity_type: "DISCONTINUOUS"
+    default_path_continuity_type: "CONTINUOUS"
     default_path_type: "REEDS_SHEPP"
     default_turn_point_distance: 0.1
 
@@ -416,9 +416,10 @@ coverage_manager:
     preview_path_topic: "/coverage/preview_path"
     default_frame_id: "map"
     compute_coverage_action_name: "compute_coverage_path"
-    navigate_through_poses_action_name: "follow_path"
+    navigate_through_poses_action_name: "navigate_through_poses"
+    coverage_bt_xml: "/ros2_ws/install/nav2/share/nav2/behavior_trees/coverage_through_poses.xml"
     headland_width: 0.5
-    path_continuity_type: "DISCONTINUOUS"
+    path_continuity_type: "CONTINUOUS"
     path_type: "REEDS_SHEPP"
     turn_point_distance: 0.1
     swath_endpoint_margin: 0.25

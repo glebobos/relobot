@@ -34,19 +34,44 @@ export class MapOverlayRenderer {
         this.obstacleLayer = new THREE.Group();
         this.zoneLayer = new THREE.Group();
         this.targetLayer = new THREE.Group();
-        [this.previewLayer, this.polygonLayer, this.obstacleLayer, this.zoneLayer, this.targetLayer]
+        this.controllerPlanLayer = new THREE.Group();
+        [this.previewLayer, this.polygonLayer, this.obstacleLayer, this.zoneLayer, this.targetLayer, this.controllerPlanLayer]
             .forEach(layer => this.scene.add(layer));
 
         this.previewLine = new DynamicLine(0xd17a00, 5000, 1);
         this.polygonLine = new DynamicLine(0x1a6fcc, 5000, 1);
         this.zoneLine = new DynamicLine(0x00e676, 100, 1);
+        this.controllerPlanLine = new DynamicLine(0x00e5ff, 5000, 2, { transparent: true, opacity: 1.0 });
         this.previewLayer.add(this.previewLine.line);
         this.polygonLayer.add(this.polygonLine.line);
         this.zoneLayer.add(this.zoneLine.line);
+        this.controllerPlanLayer.add(this.controllerPlanLine.line);
+
+        this.controllerPlanTimestamp = 0;
+        this.controllerPlanHoldMs = 1500; // Hold full opacity for 1.5s
+        this.controllerPlanFadeMs = 3000; // Fade out over 3.0s
+        this.controllerPlanActive = false;
+
         this.obstacleLines = [];
         this.obstacleSegments = [];
         this.obstacleAnimations = new Map();
         this.obstacleReady = true;
+    }
+
+    renderControllerPath(message) {
+        const points = message?.poses
+            ?.map(pose => pose?.pose?.position)
+            .filter(finitePoint)
+            .map(point => new THREE.Vector3(point.x, point.y, 0.05)) || [];
+        if (points.length < 2 || !validCoordinates(points)) {
+            this.controllerPlanLine.clear();
+            this.controllerPlanActive = false;
+            return;
+        }
+        this.controllerPlanLine.updatePoints(points);
+        this.controllerPlanLine.setOpacity(1.0);
+        this.controllerPlanTimestamp = performance.now();
+        this.controllerPlanActive = true;
     }
 
     renderPreviewPath(message) {
@@ -228,6 +253,22 @@ export class MapOverlayRenderer {
 
     animate(now = performance.now()) {
         if (!this.obstacleReady) this.updateObstacleInstances(now);
+        this.updateControllerPlanFade(now);
+    }
+
+    updateControllerPlanFade(now = performance.now()) {
+        if (!this.controllerPlanActive) return;
+        const elapsed = now - this.controllerPlanTimestamp;
+        if (elapsed < this.controllerPlanHoldMs) {
+            this.controllerPlanLine.setOpacity(1.0);
+        } else if (elapsed < this.controllerPlanHoldMs + this.controllerPlanFadeMs) {
+            const progress = (elapsed - this.controllerPlanHoldMs) / this.controllerPlanFadeMs;
+            this.controllerPlanLine.setOpacity(Math.max(0.0, 1.0 - progress));
+        } else {
+            this.controllerPlanLine.clear();
+            this.controllerPlanLine.setOpacity(0.0);
+            this.controllerPlanActive = false;
+        }
     }
 
     renderZone(corners) {
@@ -298,11 +339,11 @@ export class MapOverlayRenderer {
 
     destroy() {
         this.clearTargetObjects();
-        [this.previewLine, this.polygonLine, this.zoneLine, ...this.obstacleLines]
+        [this.previewLine, this.polygonLine, this.zoneLine, this.controllerPlanLine, ...this.obstacleLines]
             .forEach(line => line.dispose());
         this.obstacleGeometry?.dispose();
         this.obstacleMaterial?.dispose();
-        [this.previewLayer, this.polygonLayer, this.obstacleLayer, this.zoneLayer, this.targetLayer]
+        [this.previewLayer, this.polygonLayer, this.obstacleLayer, this.zoneLayer, this.targetLayer, this.controllerPlanLayer]
             .forEach((layer) => {
                 layer.clear();
                 this.scene?.remove(layer);
