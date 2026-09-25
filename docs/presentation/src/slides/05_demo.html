@@ -1,57 +1,40 @@
 <!-- SLIDE 5: LIVE DEMO -->
 <section class="slide slide-demo" data-index="5" aria-labelledby="slide-5-title">
   <header class="slide-heading demo-heading">
-    <p class="slide-kicker">System validation / Live demo</p>
-    <h1 class="slide-title" id="slide-5-title">Live Demo: Telemetry, Control &amp; AI Voice</h1>
-    <p class="slide-subtitle">Real-time interaction with the ReloBot operator dashboard and onboard voice agent.</p>
+    <p class="slide-kicker">Live / Gazebo to UI</p>
+    <h1 class="slide-title" id="slide-5-title">Watch it change live</h1>
+    <p class="slide-subtitle">From a simulated robot to one small, visible change in its interface.</p>
   </header>
 
   <aside class="editorial-note demo-note">
-    <strong>Live test protocol</strong>
-    All components demonstrated here are running live on the local hardware stack or Gazebo digital twin on port 80.
+    <strong>The fallback is part of the plan</strong>
+    If a live step stalls, show the saved map and the prepared change.
   </aside>
 
-  <ol class="demo-runbook" aria-label="Four-step demonstration protocol">
-    <li>
-      <span class="runbook-number">01</span>
-      <div><h2>Live Telemetry</h2><p>INA226 bus voltage (<strong>12.4V</strong>) and 9-DOF IMU pitch &amp; roll attitude.</p></div>
-    </li>
-    <li>
-      <span class="runbook-number">02</span>
-      <div><h2>Manual Drive &amp; Spindle</h2><p>Virtual joystick teleop and <strong>3000 RPM</strong> governor control.</p></div>
-    </li>
-    <li>
-      <span class="runbook-number">03</span>
-      <div><h2>Voice Status Query</h2><p>Ask “ReloBot, report system status and battery voltage”.</p></div>
-    </li>
-    <li>
-      <span class="runbook-number">04</span>
-      <div><h2>Local Neural Speech</h2><p>Sub-second spoken response synthesized on Pi 5 CPU.</p></div>
-    </li>
+  <ol class="demo-runbook" aria-label="Live demonstration sequence">
+    <li><span class="runbook-number">01</span><div><h2>Start the twin</h2><p>Gazebo in VS Code</p></div></li>
+    <li><span class="runbook-number">02</span><div><h2>Open the robot UI</h2><p>Map, cameras, one-click actions</p></div></li>
+    <li><span class="runbook-number">03</span><div><h2>Meet Petrovich and GSKB</h2><p>Ask for a camera toggle on the map</p></div></li>
+    <li><span class="runbook-number">04</span><div><h2>Show the change</h2><p>Review the diff, refresh the UI</p></div></li>
   </ol>
 
-  <aside class="demo-launch" aria-label="Launch ReloBot operator dashboard">
-    <div class="live-status"><span aria-hidden="true"></span>Port 80 · WebSocket 8765 active</div>
+  <aside class="demo-launch" aria-label="Open ReloBot operator dashboard">
+    <div class="live-status"><span aria-hidden="true"></span>Gazebo / Local UI</div>
     <div class="launch-heading">
-      <span class="technical-label">Live system</span>
+      <span class="technical-label">After starting the simulation</span>
       <h2>ReloBot Operator Dashboard</h2>
     </div>
-    <div class="launch-addresses">
-      <code>http://localhost/</code>
-      <span>or</span>
-      <code>http://raspberrypi.local/</code>
-    </div>
+    <div class="launch-addresses"><code>http://localhost/</code></div>
     <a class="launch-action" href="http://localhost/" target="_blank" rel="noopener">
-      Launch Operator Dashboard
+      Open robot UI
       <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
     </a>
-    <p class="launch-tip">Press <strong>Alt + Tab</strong> to switch between slides and the live dashboard during presentation.</p>
-    <p class="launch-proof">Voice synthesized 100% on Pi 5 CPU.</p>
+    <p class="launch-proof">Plan B: saved map and reviewed diff.</p>
   </aside>
 
   <footer class="demo-sequence">
-    <span class="technical-label">Test sequence</span>
-    <p><span>Telemetry Polling</span><span>Virtual Joystick</span><span>Spindle Governor</span><span>Voice Query</span><strong>Local Speech Output</strong></p>
-    <span>Tested &amp; ready</span>
+    <span class="technical-label">Demo route</span>
+    <p><span>VS Code</span><span>Gazebo</span><span>Robot UI</span><span>Petrovich</span><strong>GSKB</strong></p>
+    <span>Back to the story</span>
   </footer>
 </section>

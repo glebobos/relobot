@@ -1,99 +1,67 @@
-<!-- SLIDE 2: HARDWARE HUB & SPOKE -->
+<!-- SLIDE 2: ROS 2 CONTRACTS & HUB AND SPOKE -->
 <section class="slide slide-hardware" data-index="2" aria-labelledby="slide-2-title">
   <header class="slide-heading architecture-heading">
-    <p class="slide-kicker">Hardware architecture / Hub &amp; spoke</p>
-    <h1 class="slide-title" id="slide-2-title">Hub &amp; Spoke Micro-Agent Network</h1>
-    <p class="slide-subtitle">Physical separation of real-time control loops and central compute via dedicated USB CDC channels.</p>
+    <p class="slide-kicker">Framework / Architecture</p>
+    <h1 class="slide-title" id="slide-2-title">Choosing ROS 2 and boundaries</h1>
+    <p class="slide-subtitle">Hub &amp; spoke hardware, ROS 2 contracts, Docker Compose orchestration.</p>
   </header>
 
   <aside class="editorial-note architecture-note">
-    <strong>Why hardware isolation?</strong>
-    Keeps real-time motor PWM and sensor acquisition isolated on dedicated MCUs. If higher-level software restarts, safety watchdogs and wheel loops never miss a cycle.
+    <strong>Why not another monolith?</strong>
+    ROS 2 connects independent modules without giving up their local constraints.
   </aside>
 
   <div class="hardware-topology" aria-label="Raspberry Pi hub connected to six hardware subsystems">
     <article class="hardware-node node-drive">
-      <div class="node-heading">
-        <h2>Differential Drive</h2>
-        <span>RP2040 · 50 Hz</span>
-      </div>
-      <p>Dual Cytron MD13S (13A) drivers with 60 CPR optical encoder feedback.</p>
-      <p class="node-spec"><strong>Closed-loop PI</strong> · Stiction Linearized</p>
+      <h2>Differential drive</h2>
+      <p>Wheel feedback and safe stops</p>
     </article>
-    <div class="bus-link bus-link-left link-drive"><span>USB CDC</span></div>
+    <div class="bus-link bus-link-left link-drive" aria-hidden="true"></div>
 
     <article class="hardware-node node-cutting">
-      <div class="node-heading">
-        <h2>Cutting Spindle</h2>
-        <span>RP2040 · 100 Hz</span>
-      </div>
-      <p>High-power brushless spindle driver + 3000 RPM balanced tri-blade cutter.</p>
-      <p class="node-spec"><strong>RPM Governor</strong> · Hardware Watchdog Kill</p>
+      <h2>Cutting spindle</h2>
+      <p>Independent blade control</p>
     </article>
-    <div class="bus-link bus-link-left link-cutting"><span>USB CDC</span></div>
+    <div class="bus-link bus-link-left link-cutting" aria-hidden="true"></div>
 
     <article class="hardware-node node-imu">
-      <div class="node-heading">
-        <h2>9-DOF IMU Subsystem</h2>
-        <span>RP2040 · 100 Hz</span>
-      </div>
-      <p>TDK InvenSense ICM-20948 (Gyroscope + Accelerometer + Magnetometer).</p>
-      <p class="node-spec">I2C Fast Mode · <strong>EKF State Source</strong></p>
+      <h2>9-DOF IMU</h2>
+      <p>Motion data for navigation</p>
     </article>
-    <div class="bus-link bus-link-left link-imu"><span>USB CDC</span></div>
+    <div class="bus-link bus-link-left link-imu" aria-hidden="true"></div>
 
     <article class="hardware-hub">
       <div class="hub-identity">
         <span class="technical-label">Central compute</span>
-        <h2>RoboFactory Central Hub</h2>
-        <p>Raspberry Pi 5 (8GB) + Industrial Enclosure</p>
+        <h2>Raspberry Pi 5 / ROS 2</h2>
+        <p>Coordination, not every control loop</p>
       </div>
       <img src="images/rpi5_case.jpg" alt="Raspberry Pi 5 industrial enclosure">
-      <ul class="hub-specs">
-        <li>Quad-core ARM Cortex-A76</li>
-        <li>High-Speed PCIe NVMe Storage</li>
-        <li>4x Dedicated USB CDC Channels</li>
-        <li>Hardware Watchdog Heartbeats</li>
-        <li>Central Power Bus Distribution</li>
-        <li>FastDDS Shared-Memory IPC</li>
-      </ul>
-      <p class="hub-bus">4x isolated USB CDC micro-ROS serial buses</p>
+      <p class="hub-bus">ROS 2 contracts connect the modules</p>
     </article>
 
-    <div class="bus-link bus-link-right link-power"><span>USB CDC</span></div>
+    <div class="bus-link bus-link-right link-power" aria-hidden="true"></div>
     <article class="hardware-node node-power">
-      <div class="node-heading">
-        <h2>Battery &amp; Power</h2>
-        <span>RP2350 · 10 Hz</span>
-      </div>
-      <p>Texas Instruments INA226 high-side current &amp; bus voltage monitor.</p>
-      <p class="node-spec"><strong>0–36V Bus</strong> · Real-Time Current / SoC</p>
+      <h2>Battery &amp; power</h2>
+      <p>Voltage and current telemetry</p>
     </article>
 
-    <div class="bus-link bus-link-right link-perception"><span>USB / UART</span></div>
+    <div class="bus-link bus-link-right link-perception" aria-hidden="true"></div>
     <article class="hardware-node node-perception">
-      <div class="node-heading">
-        <h2>LiDAR &amp; Vision</h2>
-        <span>Direct USB / UART</span>
-      </div>
-      <p>360° 2D LiDAR (10 Hz laser scan) + Fisheye HD camera.</p>
-      <p class="node-spec"><strong>Obstacle Pointclouds</strong> · Costmaps</p>
+      <h2>LiDAR &amp; vision</h2>
+      <p>Signals from the outside world</p>
     </article>
 
-    <div class="bus-link bus-link-right link-audio"><span>ALSA</span></div>
+    <div class="bus-link bus-link-right link-audio" aria-hidden="true"></div>
     <article class="hardware-node node-audio">
-      <div class="node-heading">
-        <h2>Chassis Audio Output</h2>
-        <span>ALSA / HW AMP</span>
-      </div>
-      <p>High-efficiency audio amplifier + weatherproof chassis speaker.</p>
-      <p class="node-spec"><strong>Local Audio Out</strong> · Sub-100ms Playback</p>
+      <h2>Audio output</h2>
+      <p>A voice back to the operator</p>
     </article>
   </div>
 
   <footer class="architecture-footer">
-    <span class="technical-label">Control boundary</span>
-    <p><strong>Microcontrollers:</strong> PWM, encoders, safety watchdogs <span>→</span> <strong>Raspberry Pi 5:</strong> central compute</p>
-    <span>Deterministic &amp; isolated</span>
+    <span class="technical-label">Present-day stack</span>
+    <p><strong>Pico loops</strong> <span>→</span> <strong>ROS 2 contracts</strong> <span>→</span> <strong>Docker Compose</strong></p>
+    <span>Modular by design</span>
   </footer>
 </section>

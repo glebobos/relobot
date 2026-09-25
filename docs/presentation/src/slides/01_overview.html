@@ -1,21 +1,20 @@
-<!-- SLIDE 1: OVERVIEW & ARCHITECTURAL PILLARS -->
+<!-- SLIDE 1: ORIGIN -->
 <section class="slide slide-overview active" data-index="1" aria-labelledby="slide-1-title">
   <header class="slide-heading overview-heading">
-    <p class="slide-kicker">ReloBot / System overview</p>
-    <h1 class="slide-title" id="slide-1-title">ReloBot Platform Architecture</h1>
-    <p class="slide-subtitle">An end-to-end robotics platform born from learning real-world robotics from scratch — combining micro-ROS, containerized ROS 2, and edge AI.</p>
+    <p class="slide-kicker">ReloBot / Origin</p>
+    <h1 class="slide-title" id="slide-1-title">How it started</h1>
+    <p class="slide-subtitle">A dead board. A working chassis. A robot to rebuild.</p>
   </header>
 
   <aside class="editorial-note overview-journey">
-    <strong>Engineering journey</strong>
-    Started as a hands-on journey to learn real robotics from first principles — motor physics, microcontrollers, and ROS 2. It naturally evolved into a full-scale autonomous platform with on-device AI.
+    <strong>A problem, not a product pitch</strong>
+    An overgrown lawn, 1,500 km away from its owner.
   </aside>
 
   <figure class="overview-visual">
     <img src="images/robot_start.jpg" alt="DarkSelmash ReloBot MOW-X7 Cyber-Trim">
     <figcaption class="overview-caption">
-      <span>ReloBot MOW-X7</span>
-      <span>Built for education &amp; deep learning first.</span>
+      <span>The chassis that became ReloBot</span>
     </figcaption>
   </figure>
 
@@ -23,36 +22,33 @@
     <li class="overview-pillar">
       <span class="pillar-index">01</span>
       <div class="pillar-copy">
-        <h2>Hardware-Isolated Real-Time Core</h2>
-        <p>Real-time motor control, safety watchdogs, and sensor loops run on dedicated microcontrollers — fully decoupled from high-level software crashes.</p>
+        <h2>The board was gone</h2>
+        <p>The original controller could not be saved.</p>
       </div>
-      <span class="pillar-technology">micro-ROS</span>
     </li>
     <li class="overview-pillar">
       <span class="pillar-index">02</span>
       <div class="pillar-copy">
-        <h2>Containerized ROS 2 &amp; Digital Twin</h2>
-        <p>Zero host pollution with shared-memory IPC, paired with 100% topic, TF, and physics parity inside Gazebo simulation for risk-free testing.</p>
+        <h2>The mechanics survived</h2>
+        <p>Wheels, blade motor and chassis still worked.</p>
       </div>
-      <span class="pillar-technology">Docker · Gazebo</span>
     </li>
     <li class="overview-pillar">
       <span class="pillar-index">03</span>
       <div class="pillar-copy">
-        <h2>100% On-Device AI Autonomy</h2>
-        <p>Onboard agent platform (AGY) and sub-100ms local neural voice synthesis (Piper) running entirely on Raspberry Pi 5 without cloud reliance.</p>
+        <h2>Rebuild instead of discard</h2>
+        <p>Raspberry Pi became the starting point.</p>
       </div>
-      <span class="pillar-technology">AGY · Piper TTS</span>
     </li>
   </ol>
 
   <footer class="overview-foundation">
-    <span class="technical-label">Foundation</span>
+    <span class="technical-label">The beginning</span>
     <div class="foundation-flow">
-      <span>Hardware Isolation</span>
-      <span>Containerized ROS 2</span>
-      <strong>On-Device AI Autonomy</strong>
+      <span>Broken mower</span>
+      <span>Surviving mechanics</span>
+      <strong>Build a robot</strong>
     </div>
-    <span class="foundation-outcome">Learning by building</span>
+    <span class="foundation-outcome">Necessity led the way</span>
   </footer>
 </section>

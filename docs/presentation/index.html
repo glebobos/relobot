@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ReloBot — Technical Architecture Review</title>
+  <title>ReloBot — An Engineering Journey</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -133,7 +133,7 @@ main {
 .slide-kicker,
 .section-label {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 16px;
   font-weight: 600;
   line-height: 1.3;
   color: var(--ink-muted);
@@ -152,7 +152,7 @@ main {
 
 .slide-subtitle {
   max-width: 940px;
-  font-size: 18px;
+  font-size: 24px;
   font-weight: 400;
   line-height: 1.42;
   color: var(--ink-secondary);
@@ -296,7 +296,7 @@ code {
 }
 
 .progress-bar {
-  width: 14.28%;
+  width: 16.67%;
   height: 100%;
   background: var(--accent);
   transition: width 180ms ease-out;
@@ -353,6 +353,7 @@ code {
   font-size: 18px;
   line-height: 1.55;
   color: var(--ink-secondary);
+  white-space: pre-line;
   user-select: text;
 }
 
@@ -360,22 +361,22 @@ code {
 .editorial-note {
   padding-left: 16px;
   border-left: 3px solid var(--accent);
-  font-size: 16px;
-  line-height: 1.45;
+  font-size: 22px;
+  line-height: 1.3;
   color: var(--ink-secondary);
 }
 
 .editorial-note strong {
   display: block;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
   color: var(--ink);
-  font-size: 15px;
+  font-size: 22px;
   font-weight: 600;
 }
 
 .technical-label {
   font-family: var(--font-mono);
-  font-size: 11.5px;
+  font-size: 16px;
   font-weight: 600;
   line-height: 1.3;
   letter-spacing: 0.06em;
@@ -408,7 +409,7 @@ code {
 }
 
     /* --- slides.css --- */
-/* Slide 1: platform overview */
+/* Slide 1: origin */
 .slide-overview {
   grid-template-columns: repeat(12, minmax(0, 1fr));
   grid-template-rows: auto 1fr auto;
@@ -449,23 +450,11 @@ code {
 
 .overview-caption {
   display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 10px 0 9px;
+  padding: 12px 0;
   font-family: var(--font-mono);
-  font-size: 11.5px;
+  font-size: 21px;
   line-height: 1.35;
-  color: var(--ink-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.overview-caption span:last-child {
-  max-width: 220px;
-  text-align: right;
   color: var(--ink-secondary);
-  text-transform: none;
-  letter-spacing: 0;
 }
 
 .overview-pillars {
@@ -477,43 +466,31 @@ code {
 
 .overview-pillar {
   display: grid;
-  grid-template-columns: 52px minmax(0, 1fr) 150px;
-  gap: 16px;
+  grid-template-columns: 52px minmax(0, 1fr);
+  gap: 20px;
   align-items: start;
-  padding: 14px 0 13px;
+  padding: 24px 0;
   border-bottom: 1px solid var(--rule);
 }
 
 .pillar-index {
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: 24px;
   color: var(--accent);
 }
 
 .pillar-copy h2 {
-  margin-bottom: 5px;
-  font-size: 21px;
+  margin-bottom: 10px;
+  font-size: 32px;
   line-height: 1.2;
   font-weight: 600;
 }
 
 .pillar-copy p {
   max-width: 640px;
-  font-size: 15px;
-  line-height: 1.42;
+  font-size: 23px;
+  line-height: 1.27;
   color: var(--ink-secondary);
-}
-
-.pillar-technology {
-  justify-self: end;
-  text-align: right;
-  font-family: var(--font-mono);
-  font-size: 11.5px;
-  line-height: 1.4;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--ink-muted);
 }
 
 .overview-foundation {
@@ -602,13 +579,13 @@ code {
   grid-column: 1 / -1;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 82px minmax(270px, 1.1fr) 82px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) 54px minmax(360px, 1.12fr) 54px minmax(0, 1fr);
   grid-template-rows: repeat(3, minmax(0, 1fr));
   align-items: stretch;
 }
 
 .hardware-node {
-  padding: 10px 0 9px;
+  padding: 23px 4px 16px;
   border-top: 1px solid var(--rule-strong);
   align-self: stretch;
 }
@@ -617,42 +594,17 @@ code {
   border-bottom: 1px solid var(--rule-strong);
 }
 
-.node-heading {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  align-items: baseline;
-  margin-bottom: 5px;
-}
-
-.node-heading h2 {
-  font-size: 17px;
-  line-height: 1.2;
+.hardware-node h2 {
+  font-size: 30px;
+  line-height: 1.15;
   font-weight: 600;
 }
 
-.node-heading span,
-.node-spec {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  line-height: 1.35;
-  color: var(--ink-muted);
-}
-
-.hardware-node > p:not(.node-spec) {
-  max-width: 340px;
-  font-size: 13.5px;
-  line-height: 1.35;
+.hardware-node p {
+  margin-top: 10px;
+  font-size: 23px;
+  line-height: 1.25;
   color: var(--ink-secondary);
-}
-
-.node-spec {
-  margin-top: 6px;
-}
-
-.node-spec strong {
-  color: var(--accent);
-  font-weight: 600;
 }
 
 .node-drive { grid-column: 1; grid-row: 1; }
@@ -666,14 +618,13 @@ code {
   grid-column: 3;
   grid-row: 1 / 4;
   min-height: 0;
-  padding: 16px 18px 14px;
+  padding: 20px 20px 16px;
   border: 1px solid var(--ink);
   background: var(--paper-raised);
   display: grid;
   grid-template-columns: 1fr;
-  grid-template-rows: auto clamp(145px, 18vh, 190px) auto auto;
-  row-gap: 9px;
-  align-content: start;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  row-gap: 14px;
 }
 
 .hub-identity {
@@ -681,57 +632,38 @@ code {
 }
 
 .hub-identity h2 {
-  margin-top: 3px;
-  font-size: 22px;
-  line-height: 1.15;
+  margin-top: 8px;
+  font-size: 32px;
+  line-height: 1.12;
 }
 
 .hub-identity p {
-  margin-top: 3px;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--ink-muted);
+  margin-top: 8px;
+  font-size: 21px;
+  line-height: 1.25;
+  color: var(--ink-secondary);
 }
 
 .hardware-hub img {
   grid-column: 1;
   grid-row: 2;
-  width: calc(100% + 36px);
+  width: calc(100% + 40px);
   height: 100%;
-  margin-left: -18px;
+  margin-left: -20px;
   object-fit: cover;
   object-position: center 54%;
   border-top: 1px solid var(--rule);
   border-bottom: 1px solid var(--rule);
 }
 
-.hub-specs {
-  grid-column: 1;
-  grid-row: 3;
-  list-style: none;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 4px 12px;
-  font-size: 12px;
-  line-height: 1.25;
-  color: var(--ink-secondary);
-}
-
-.hub-specs li::before {
-  content: "—";
-  margin-right: 7px;
-  color: var(--accent);
-}
-
 .hub-bus {
   grid-column: 1;
-  grid-row: 4;
-  padding-top: 9px;
+  grid-row: 3;
+  padding-top: 14px;
   border-top: 1px solid var(--rule);
-  font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 21px;
+  line-height: 1.25;
   color: var(--accent);
-  text-align: center;
 }
 
 .bus-link {
@@ -755,26 +687,13 @@ code {
 .bus-link::before { left: 0; }
 .bus-link::after { right: 0; }
 
-.bus-link span {
-  position: absolute;
-  left: 50%;
-  bottom: 6px;
-  transform: translateX(-50%);
-  padding: 0 4px;
-  background: var(--paper);
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  color: var(--accent);
-  white-space: nowrap;
-}
-
 .bus-link-left { grid-column: 2; }
 .bus-link-right { grid-column: 4; }
 .link-drive, .link-power { grid-row: 1; }
 .link-cutting, .link-perception { grid-row: 2; }
 .link-imu, .link-audio { grid-row: 3; }
 
-/* Slide 3: runtime and digital twin parity */
+/* Software map layout */
 .software-map {
   grid-column: 1 / -1;
   min-height: 0;
@@ -899,7 +818,11 @@ code {
   color: var(--ink-muted);
 }
 
-/* Slide 4: local intelligence pipeline */
+/* Slide 4: GSKB workflow */
+.slide-intelligence {
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+}
+
 .intelligence-flow {
   grid-column: 1 / -1;
   list-style: none;
@@ -911,8 +834,8 @@ code {
 
 .intelligence-flow li {
   position: relative;
-  min-height: 74px;
-  padding: 10px 11px 9px;
+  min-height: 120px;
+  padding: 22px 15px;
   border-top: 1px solid var(--rule-strong);
   border-bottom: 1px solid var(--rule);
 }
@@ -920,36 +843,25 @@ code {
 .intelligence-flow li:not(:last-child)::after {
   content: "→";
   position: absolute;
-  top: 27px;
+  top: 48px;
   right: -22px;
   color: var(--accent);
   font-family: var(--font-mono);
+  font-size: 24px;
 }
 
 .intelligence-flow li > span {
   display: block;
-  margin-bottom: 7px;
+  margin-bottom: 12px;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 21px;
   color: var(--accent);
 }
 
-.intelligence-flow strong,
-.intelligence-flow small {
-  display: block;
-}
-
 .intelligence-flow strong {
-  font-size: 15px;
+  display: block;
+  font-size: 30px;
   line-height: 1.25;
-}
-
-.intelligence-flow small {
-  margin-top: 4px;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  line-height: 1.35;
-  color: var(--ink-muted);
 }
 
 .intelligence-flow .flow-core {
@@ -966,81 +878,47 @@ code {
 }
 
 .intelligence-domain {
-  padding-top: 8px;
+  padding: 24px 20px 20px;
   border-top: 1px solid var(--ink);
+  display: grid;
+  align-content: center;
+  gap: 24px;
 }
 
 .intelligence-domain header {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 16px;
-  margin-bottom: 5px;
+  display: grid;
+  gap: 14px;
 }
 
 .intelligence-domain h2 {
-  font-size: 18px;
-  line-height: 1.2;
+  font-size: 38px;
+  line-height: 1.14;
 }
 
-.intelligence-domain dl {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  column-gap: 14px;
-}
-
-.intelligence-domain dl > div {
-  padding: 5px 0;
-  border-top: 1px solid var(--rule);
-}
-
-.intelligence-domain dt {
-  margin-bottom: 3px;
-  font-size: 12.5px;
-  font-weight: 600;
-}
-
-.intelligence-domain dd {
-  font-size: 12px;
-  line-height: 1.35;
+.intelligence-domain p {
+  font-size: 27px;
+  line-height: 1.25;
   color: var(--ink-secondary);
 }
 
 .latency-evidence {
   grid-column: 1 / -1;
   display: grid;
-  grid-template-columns: 1fr 1fr auto;
-  gap: 28px;
-  align-items: end;
-  padding-top: 10px;
+  grid-template-columns: 1fr auto;
+  gap: 24px;
+  align-items: center;
+  padding-top: 16px;
   border-top: 1px solid var(--ink);
+  font-size: 22px;
 }
 
-.latency-evidence div {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
+.latency-evidence p span {
+  color: var(--accent);
+  margin: 0 12px;
 }
 
 .latency-evidence strong {
-  font-family: var(--font-mono);
-  font-size: 20px;
   color: var(--accent);
-}
-
-.latency-evidence s {
-  color: var(--ink-muted);
-  text-decoration-color: var(--warning);
-}
-
-.latency-evidence > span {
-  font-family: var(--font-mono);
-  font-size: 11.5px;
-  font-weight: 600;
-  color: var(--accent);
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
 }
 
 /* Slide 5: live demonstration */
@@ -1070,32 +948,35 @@ code {
   grid-column: 1 / span 7;
   min-height: 0;
   list-style: none;
+  display: grid;
+  grid-template-rows: repeat(4, minmax(0, 1fr));
   border-top: 1px solid var(--ink);
 }
 
 .demo-runbook li {
   display: grid;
-  grid-template-columns: 54px 1fr;
-  gap: 16px;
-  padding: 11px 0 10px;
+  grid-template-columns: 62px 1fr;
+  gap: 20px;
+  align-content: center;
+  padding: 14px 0;
   border-bottom: 1px solid var(--rule);
 }
 
 .runbook-number {
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: 23px;
   color: var(--accent);
 }
 
 .demo-runbook h2 {
-  margin-bottom: 3px;
-  font-size: 18px;
-  line-height: 1.2;
+  margin-bottom: 10px;
+  font-size: 31px;
+  line-height: 1.15;
 }
 
 .demo-runbook p {
-  font-size: 14px;
-  line-height: 1.4;
+  font-size: 24px;
+  line-height: 1.25;
   color: var(--ink-secondary);
 }
 
@@ -1107,7 +988,7 @@ code {
 .demo-launch {
   grid-column: 8 / -1;
   min-height: 0;
-  padding: 16px 20px;
+  padding: 26px;
   border: 1px solid var(--ink);
   background: var(--paper-raised);
   display: flex;
@@ -1120,7 +1001,7 @@ code {
   align-items: center;
   gap: 8px;
   font-family: var(--font-mono);
-  font-size: 11.5px;
+  font-size: 20px;
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -1135,12 +1016,12 @@ code {
 }
 
 .launch-heading {
-  margin-top: 18px;
+  margin-top: 34px;
 }
 
 .launch-heading h2 {
-  margin-top: 5px;
-  font-size: 25px;
+  margin-top: 12px;
+  font-size: 36px;
   line-height: 1.15;
 }
 
@@ -1148,15 +1029,15 @@ code {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin-top: 10px;
-  font-size: 11.5px;
+  margin-top: 20px;
+  font-size: 22px;
   color: var(--ink-muted);
 }
 
 .launch-action {
   width: 100%;
-  margin-top: 16px;
-  padding: 12px 14px;
+  margin-top: 28px;
+  padding: 20px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -1164,7 +1045,7 @@ code {
   border: 1px solid var(--accent);
   border-radius: 3px;
   color: var(--paper-raised);
-  font-size: 15px;
+  font-size: 24px;
   font-weight: 600;
   text-decoration: none;
 }
@@ -1176,15 +1057,9 @@ code {
   outline-offset: 2px;
 }
 
-.launch-tip,
 .launch-proof {
-  font-size: 12.5px;
-  line-height: 1.4;
-}
-
-.launch-tip {
-  margin-top: 14px;
-  color: var(--ink-secondary);
+  font-size: 22px;
+  line-height: 1.3;
 }
 
 .launch-proof {
@@ -1235,93 +1110,81 @@ code {
   text-transform: uppercase;
 }
 
-/* Slide 6: field incident matrix */
+/* Slide 3: interacting layers */
 .incident-matrix {
   grid-column: 1 / -1;
   min-height: 0;
+  list-style: none;
+  display: grid;
+  grid-template-rows: repeat(4, minmax(0, 1fr));
   border-top: 1px solid var(--ink);
   border-bottom: 1px solid var(--ink);
 }
 
-.incident-header,
 .incident-row {
   display: grid;
-  grid-template-columns: 1.18fr 1.65fr 1.35fr 0.8fr;
-  gap: 22px;
-}
-
-.incident-header {
-  padding: 7px 0;
-  border-bottom: 1px solid var(--rule-strong);
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--ink-muted);
-}
-
-.incident-row {
-  min-height: 64px;
+  grid-template-columns: 80px minmax(0, 1fr) minmax(0, 1.15fr);
+  gap: 26px;
   align-items: center;
-  padding: 7px 0;
+  padding: 14px 16px;
   border-bottom: 1px solid var(--rule);
+}
+
+.incident-row:nth-child(even) {
+  background: var(--paper-inset);
 }
 
 .incident-row:last-child {
   border-bottom: 0;
 }
 
-.incident-row h2 {
-  margin-top: 3px;
-  font-size: 16px;
-  line-height: 1.22;
+.incident-row > span {
+  font-family: var(--font-mono);
+  font-size: 27px;
+  color: var(--accent);
 }
 
-.incident-row > p {
-  font-size: 13px;
-  line-height: 1.37;
+.incident-row h2 {
+  font-size: 34px;
+  line-height: 1.1;
+}
+
+.incident-row p {
+  margin-top: 8px;
+  font-size: 23px;
+  line-height: 1.25;
   color: var(--ink-secondary);
 }
 
 .incident-row > strong {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-family: var(--font-mono);
-  font-size: 16px;
-  line-height: 1.25;
+  font-size: 27px;
+  line-height: 1.2;
   font-weight: 600;
-  color: var(--accent);
+  color: var(--ink);
 }
 
-.incident-row > strong s {
-  color: var(--ink-muted);
-  text-decoration-color: var(--warning);
-}
-
-.incident-row > strong span {
-  color: var(--rule-strong);
-}
-
-.incident-row var {
-  font-family: var(--font-mono);
-  font-style: normal;
-  white-space: nowrap;
+.engineering-footer {
+  font-size: 20px;
 }
 
 .engineering-footer > span:last-child {
-  max-width: 360px;
-  color: var(--ink-muted);
+  color: var(--accent);
   text-align: right;
 }
 
-/* Slide 7: roadmap and discussion */
+/* Slide 6: roadmap and discussion */
+.slide-roadmap {
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+}
+
 .roadmap-primary {
-  grid-column: 1 / span 8;
+  grid-column: 1 / -1;
   min-height: 0;
-  padding-top: 12px;
+  padding-top: 18px;
   border-top: 1px solid var(--ink);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 20px;
 }
 
 .roadmap-section-heading {
@@ -1329,12 +1192,10 @@ code {
   justify-content: space-between;
   align-items: baseline;
   gap: 20px;
-  margin-bottom: 13px;
 }
 
-.roadmap-section-heading h2,
-.discussion-zone h2 {
-  font-size: 20px;
+.roadmap-section-heading h2 {
+  font-size: 24px;
   line-height: 1.2;
 }
 
@@ -1342,83 +1203,55 @@ code {
   min-height: 0;
   list-style: none;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .milestone-sequence li {
   position: relative;
-  padding: 14px 17px 0 0;
+  padding: 20px 32px 0 0;
   border-top: 2px solid var(--accent);
 }
 
 .milestone-sequence li:not(:first-child) {
-  padding-left: 17px;
+  padding-left: 32px;
   border-left: 1px solid var(--rule);
 }
 
 .milestone-sequence li > span {
   display: block;
-  margin-bottom: 14px;
+  margin-bottom: 24px;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 32px;
   color: var(--accent);
 }
 
 .milestone-sequence h3 {
-  min-height: 43px;
-  margin-bottom: 7px;
-  font-size: 17px;
-  line-height: 1.25;
+  margin-bottom: 14px;
+  font-size: 36px;
+  line-height: 1.12;
 }
 
 .milestone-sequence p {
-  font-size: 13px;
-  line-height: 1.42;
+  font-size: 25px;
+  line-height: 1.27;
   color: var(--ink-secondary);
 }
 
 .discussion-zone {
-  grid-column: 9 / -1;
-  min-height: 0;
-  padding: 10px 0 0 20px;
-  border-top: 1px solid var(--ink);
-  border-left: 1px solid var(--rule-strong);
+  grid-column: 1 / -1;
+  padding: 18px 0 20px;
+  border-top: 2px solid var(--ink);
 }
 
 .discussion-zone h2 {
-  margin-top: 4px;
-}
-
-.discussion-zone dl {
-  margin-top: 8px;
-}
-
-.discussion-zone dl > div {
-  padding: 6px 0;
-  border-top: 1px solid var(--rule);
-}
-
-.discussion-zone dt {
-  margin-bottom: 3px;
-  font-size: 13.5px;
-  font-weight: 600;
-}
-
-.discussion-zone dd {
-  font-size: 12.5px;
-  line-height: 1.35;
-  color: var(--ink-secondary);
-}
-
-.discussion-zone > p {
-  margin-top: 11px;
-  color: var(--accent);
-  font-size: 13px;
-  font-weight: 600;
+  margin-top: 7px;
+  font-size: 44px;
+  line-height: 1.15;
 }
 
 .roadmap-footer {
   grid-template-columns: 1fr auto;
+  font-size: 18px;
 }
 
 .roadmap-footer p span {
@@ -1437,24 +1270,23 @@ code {
   <div class="presentation-shell">
     <div class="deck-stage">
       <main id="slideCanvas" aria-live="polite">
-            <!-- SLIDE 1: OVERVIEW & ARCHITECTURAL PILLARS -->
+            <!-- SLIDE 1: ORIGIN -->
 <section class="slide slide-overview active" data-index="1" aria-labelledby="slide-1-title">
   <header class="slide-heading overview-heading">
-    <p class="slide-kicker">ReloBot / System overview</p>
-    <h1 class="slide-title" id="slide-1-title">ReloBot Platform Architecture</h1>
-    <p class="slide-subtitle">An end-to-end robotics platform born from learning real-world robotics from scratch — combining micro-ROS, containerized ROS 2, and edge AI.</p>
+    <p class="slide-kicker">ReloBot / Origin</p>
+    <h1 class="slide-title" id="slide-1-title">How it started</h1>
+    <p class="slide-subtitle">A dead board. A working chassis. A robot to rebuild.</p>
   </header>
 
   <aside class="editorial-note overview-journey">
-    <strong>Engineering journey</strong>
-    Started as a hands-on journey to learn real robotics from first principles — motor physics, microcontrollers, and ROS 2. It naturally evolved into a full-scale autonomous platform with on-device AI.
+    <strong>A problem, not a product pitch</strong>
+    An overgrown lawn, 1,500 km away from its owner.
   </aside>
 
   <figure class="overview-visual">
     <img src="images/robot_start.jpg" alt="DarkSelmash ReloBot MOW-X7 Cyber-Trim">
     <figcaption class="overview-caption">
-      <span>ReloBot MOW-X7</span>
-      <span>Built for education &amp; deep learning first.</span>
+      <span>The chassis that became ReloBot</span>
     </figcaption>
   </figure>
 
@@ -1462,426 +1294,264 @@ code {
     <li class="overview-pillar">
       <span class="pillar-index">01</span>
       <div class="pillar-copy">
-        <h2>Hardware-Isolated Real-Time Core</h2>
-        <p>Real-time motor control, safety watchdogs, and sensor loops run on dedicated microcontrollers — fully decoupled from high-level software crashes.</p>
+        <h2>The board was gone</h2>
+        <p>The original controller could not be saved.</p>
       </div>
-      <span class="pillar-technology">micro-ROS</span>
     </li>
     <li class="overview-pillar">
       <span class="pillar-index">02</span>
       <div class="pillar-copy">
-        <h2>Containerized ROS 2 &amp; Digital Twin</h2>
-        <p>Zero host pollution with shared-memory IPC, paired with 100% topic, TF, and physics parity inside Gazebo simulation for risk-free testing.</p>
+        <h2>The mechanics survived</h2>
+        <p>Wheels, blade motor and chassis still worked.</p>
       </div>
-      <span class="pillar-technology">Docker · Gazebo</span>
     </li>
     <li class="overview-pillar">
       <span class="pillar-index">03</span>
       <div class="pillar-copy">
-        <h2>100% On-Device AI Autonomy</h2>
-        <p>Onboard agent platform (AGY) and sub-100ms local neural voice synthesis (Piper) running entirely on Raspberry Pi 5 without cloud reliance.</p>
+        <h2>Rebuild instead of discard</h2>
+        <p>Raspberry Pi became the starting point.</p>
       </div>
-      <span class="pillar-technology">AGY · Piper TTS</span>
     </li>
   </ol>
 
   <footer class="overview-foundation">
-    <span class="technical-label">Foundation</span>
+    <span class="technical-label">The beginning</span>
     <div class="foundation-flow">
-      <span>Hardware Isolation</span>
-      <span>Containerized ROS 2</span>
-      <strong>On-Device AI Autonomy</strong>
+      <span>Broken mower</span>
+      <span>Surviving mechanics</span>
+      <strong>Build a robot</strong>
     </div>
-    <span class="foundation-outcome">Learning by building</span>
+    <span class="foundation-outcome">Necessity led the way</span>
   </footer>
 </section>
 
-    <!-- SLIDE 2: HARDWARE HUB & SPOKE -->
+    <!-- SLIDE 2: ROS 2 CONTRACTS & HUB AND SPOKE -->
 <section class="slide slide-hardware" data-index="2" aria-labelledby="slide-2-title">
   <header class="slide-heading architecture-heading">
-    <p class="slide-kicker">Hardware architecture / Hub &amp; spoke</p>
-    <h1 class="slide-title" id="slide-2-title">Hub &amp; Spoke Micro-Agent Network</h1>
-    <p class="slide-subtitle">Physical separation of real-time control loops and central compute via dedicated USB CDC channels.</p>
+    <p class="slide-kicker">Framework / Architecture</p>
+    <h1 class="slide-title" id="slide-2-title">Choosing ROS 2 and boundaries</h1>
+    <p class="slide-subtitle">Hub &amp; spoke hardware, ROS 2 contracts, Docker Compose orchestration.</p>
   </header>
 
   <aside class="editorial-note architecture-note">
-    <strong>Why hardware isolation?</strong>
-    Keeps real-time motor PWM and sensor acquisition isolated on dedicated MCUs. If higher-level software restarts, safety watchdogs and wheel loops never miss a cycle.
+    <strong>Why not another monolith?</strong>
+    ROS 2 connects independent modules without giving up their local constraints.
   </aside>
 
   <div class="hardware-topology" aria-label="Raspberry Pi hub connected to six hardware subsystems">
     <article class="hardware-node node-drive">
-      <div class="node-heading">
-        <h2>Differential Drive</h2>
-        <span>RP2040 · 50 Hz</span>
-      </div>
-      <p>Dual Cytron MD13S (13A) drivers with 60 CPR optical encoder feedback.</p>
-      <p class="node-spec"><strong>Closed-loop PI</strong> · Stiction Linearized</p>
+      <h2>Differential drive</h2>
+      <p>Wheel feedback and safe stops</p>
     </article>
-    <div class="bus-link bus-link-left link-drive"><span>USB CDC</span></div>
+    <div class="bus-link bus-link-left link-drive" aria-hidden="true"></div>
 
     <article class="hardware-node node-cutting">
-      <div class="node-heading">
-        <h2>Cutting Spindle</h2>
-        <span>RP2040 · 100 Hz</span>
-      </div>
-      <p>High-power brushless spindle driver + 3000 RPM balanced tri-blade cutter.</p>
-      <p class="node-spec"><strong>RPM Governor</strong> · Hardware Watchdog Kill</p>
+      <h2>Cutting spindle</h2>
+      <p>Independent blade control</p>
     </article>
-    <div class="bus-link bus-link-left link-cutting"><span>USB CDC</span></div>
+    <div class="bus-link bus-link-left link-cutting" aria-hidden="true"></div>
 
     <article class="hardware-node node-imu">
-      <div class="node-heading">
-        <h2>9-DOF IMU Subsystem</h2>
-        <span>RP2040 · 100 Hz</span>
-      </div>
-      <p>TDK InvenSense ICM-20948 (Gyroscope + Accelerometer + Magnetometer).</p>
-      <p class="node-spec">I2C Fast Mode · <strong>EKF State Source</strong></p>
+      <h2>9-DOF IMU</h2>
+      <p>Motion data for navigation</p>
     </article>
-    <div class="bus-link bus-link-left link-imu"><span>USB CDC</span></div>
+    <div class="bus-link bus-link-left link-imu" aria-hidden="true"></div>
 
     <article class="hardware-hub">
       <div class="hub-identity">
         <span class="technical-label">Central compute</span>
-        <h2>RoboFactory Central Hub</h2>
-        <p>Raspberry Pi 5 (8GB) + Industrial Enclosure</p>
+        <h2>Raspberry Pi 5 / ROS 2</h2>
+        <p>Coordination, not every control loop</p>
       </div>
       <img src="images/rpi5_case.jpg" alt="Raspberry Pi 5 industrial enclosure">
-      <ul class="hub-specs">
-        <li>Quad-core ARM Cortex-A76</li>
-        <li>High-Speed PCIe NVMe Storage</li>
-        <li>4x Dedicated USB CDC Channels</li>
-        <li>Hardware Watchdog Heartbeats</li>
-        <li>Central Power Bus Distribution</li>
-        <li>FastDDS Shared-Memory IPC</li>
-      </ul>
-      <p class="hub-bus">4x isolated USB CDC micro-ROS serial buses</p>
+      <p class="hub-bus">ROS 2 contracts connect the modules</p>
     </article>
 
-    <div class="bus-link bus-link-right link-power"><span>USB CDC</span></div>
+    <div class="bus-link bus-link-right link-power" aria-hidden="true"></div>
     <article class="hardware-node node-power">
-      <div class="node-heading">
-        <h2>Battery &amp; Power</h2>
-        <span>RP2350 · 10 Hz</span>
-      </div>
-      <p>Texas Instruments INA226 high-side current &amp; bus voltage monitor.</p>
-      <p class="node-spec"><strong>0–36V Bus</strong> · Real-Time Current / SoC</p>
+      <h2>Battery &amp; power</h2>
+      <p>Voltage and current telemetry</p>
     </article>
 
-    <div class="bus-link bus-link-right link-perception"><span>USB / UART</span></div>
+    <div class="bus-link bus-link-right link-perception" aria-hidden="true"></div>
     <article class="hardware-node node-perception">
-      <div class="node-heading">
-        <h2>LiDAR &amp; Vision</h2>
-        <span>Direct USB / UART</span>
-      </div>
-      <p>360° 2D LiDAR (10 Hz laser scan) + Fisheye HD camera.</p>
-      <p class="node-spec"><strong>Obstacle Pointclouds</strong> · Costmaps</p>
+      <h2>LiDAR &amp; vision</h2>
+      <p>Signals from the outside world</p>
     </article>
 
-    <div class="bus-link bus-link-right link-audio"><span>ALSA</span></div>
+    <div class="bus-link bus-link-right link-audio" aria-hidden="true"></div>
     <article class="hardware-node node-audio">
-      <div class="node-heading">
-        <h2>Chassis Audio Output</h2>
-        <span>ALSA / HW AMP</span>
-      </div>
-      <p>High-efficiency audio amplifier + weatherproof chassis speaker.</p>
-      <p class="node-spec"><strong>Local Audio Out</strong> · Sub-100ms Playback</p>
+      <h2>Audio output</h2>
+      <p>A voice back to the operator</p>
     </article>
   </div>
 
   <footer class="architecture-footer">
-    <span class="technical-label">Control boundary</span>
-    <p><strong>Microcontrollers:</strong> PWM, encoders, safety watchdogs <span>→</span> <strong>Raspberry Pi 5:</strong> central compute</p>
-    <span>Deterministic &amp; isolated</span>
+    <span class="technical-label">Present-day stack</span>
+    <p><strong>Pico loops</strong> <span>→</span> <strong>ROS 2 contracts</strong> <span>→</span> <strong>Docker Compose</strong></p>
+    <span>Modular by design</span>
   </footer>
 </section>
 
-    <!-- SLIDE 3: SOFTWARE & DIGITAL TWIN -->
-<section class="slide slide-software" data-index="3" aria-labelledby="slide-3-title">
-  <header class="slide-heading architecture-heading">
-    <p class="slide-kicker">Software architecture / Digital twin</p>
-    <h1 class="slide-title" id="slide-3-title">Containerized ROS 2 &amp; Gazebo Simulation</h1>
-    <p class="slide-subtitle">Zero host pollution with shared-memory IPC, paired with 100% API parity in the virtual digital twin.</p>
+    <section class="slide slide-engineering" data-index="3" aria-labelledby="slide-3-title">
+  <header class="slide-heading engineering-heading">
+    <p class="slide-kicker">Interacting layers / Simulation</p>
+    <h1 class="slide-title" id="slide-3-title">From the field to Gazebo</h1>
+    <p class="slide-subtitle">Together, these layers create behavior that no single layer explains.</p>
   </header>
 
-  <aside class="editorial-note architecture-note">
-    <strong>Why Docker &amp; simulation?</strong>
-    Fast iteration without breaking the host OS. Docker and Gazebo simulation enabled safe, rapid learning of ROS 2 navigation before running physical hardware.
+  <aside class="editorial-note engineering-note">
+    <strong>The missing test loop</strong>
+    Field tests exposed the interactions. Gazebo makes many of them repeatable.
   </aside>
 
-  <div class="software-map">
-    <article class="software-domain runtime-domain">
-      <div class="domain-heading">
-        <span class="technical-label">Docker runtime</span>
-        <h2>Multi-Container ROS 2 Architecture</h2>
-      </div>
-      <dl class="domain-facts">
-        <div><dt>Host purity</dt><dd>Host OS only runs Docker and serial device mounts. No ROS packages installed on host.</dd></div>
-        <div><dt>Transport</dt><dd><code>network_mode: host</code> and <code>ipc: host</code> enable FastDDS shared memory communication.</dd></div>
-        <div><dt>Development</dt><dd>Workspace source mounted directly; node rebuilds and web changes take effect immediately.</dd></div>
-        <div><dt>Interfaces</dt><dd><code>ros2_control</code>, <code>robot_localization</code> EKF, and standard Nav2 behavior trees.</dd></div>
-      </dl>
-      <div class="service-index" aria-label="ROS 2 services">
-        <span>ros2_nav2</span><span>ros2_voice_chat</span><span>ros2_rosbridge</span><span>ros2_frontend</span>
-      </div>
-    </article>
+  <ol class="incident-matrix" aria-label="Four interacting layers of the robot">
+    <li class="incident-row">
+      <span>01</span>
+      <div><h2>The world</h2><p>Grass, ground, obstacles</p></div>
+      <strong>The same path changes outside</strong>
+    </li>
+    <li class="incident-row">
+      <span>02</span>
+      <div><h2>The robot</h2><p>Wheels, weight, traction</p></div>
+      <strong>Contact changes the motion</strong>
+    </li>
+    <li class="incident-row">
+      <span>03</span>
+      <div><h2>The controllers</h2><p>Timing and feedback</p></div>
+      <strong>Delay changes the loop</strong>
+    </li>
+    <li class="incident-row">
+      <span>04</span>
+      <div><h2>The code</h2><p>ROS 2 messages and decisions</p></div>
+      <strong>One QoS setting can hide a regression</strong>
+    </li>
+  </ol>
 
-    <div class="parity-contract" aria-label="Shared ROS 2 API contract">
-      <span class="technical-label">Same API contract</span>
-      <strong>100%</strong>
-      <span>API parity</span>
-      <ul>
-        <li><code>/cmd_vel</code></li>
-        <li><code>/scan</code></li>
-        <li>TF frames</li>
-        <li>Nav2 action servers</li>
-      </ul>
-    </div>
-
-    <article class="software-domain simulation-domain">
-      <div class="domain-heading">
-        <span class="technical-label">Simulation</span>
-        <h2>Zero-Risk Gazebo Digital Twin</h2>
-      </div>
-      <dl class="domain-facts">
-        <div><dt>Parity</dt><dd>Identical topic names, TF frames, and Nav2 action servers.</dd></div>
-        <div><dt>Physics</dt><dd><code>garden.sdf</code> includes real lawn friction parameters, perimeter obstacles, and rough terrain.</dd></div>
-        <div><dt>Sensors</dt><dd>Simulated 360° laser scans, synthetic camera feeds, and blade motor speed feedbacks.</dd></div>
-        <div><dt>Launch</dt><dd><code>./start_sim.sh up --gui --dev</code> tests the entire autonomy pipeline on a laptop.</dd></div>
-      </dl>
-      <p class="evidence-note">Saved ~3 weeks of bench testing before running physical blades.</p>
-    </article>
-  </div>
-
-  <footer class="architecture-footer software-footer">
-    <span class="technical-label">Execution path</span>
-    <p>Host OS <span>→</span> Docker Compose <small>(profiles: hardware / sim)</small> <span>→</span> FastDDS Shared Memory IPC <span>→</span> Gazebo Sim Parity</p>
-    <strong>Parity: 100%</strong>
+  <footer class="engineering-footer">
+    <span class="technical-label">Development loop</span>
+    <p>Change → Gazebo → Observe → Field</p>
+    <span>The yard still decides</span>
   </footer>
 </section>
 
-    <!-- SLIDE 4: ROBOFACTORY & AGY AGENT -->
+    <!-- SLIDE 4: GSKB VS CODE FACTORIES -->
 <section class="slide slide-intelligence" data-index="4" aria-labelledby="slide-4-title">
   <header class="slide-heading architecture-heading">
-    <p class="slide-kicker">On-device AI / Agent platform</p>
-    <h1 class="slide-title" id="slide-4-title">The Self-Aware Robot: AGY Core</h1>
-    <p class="slide-subtitle">Autonomous onboard reasoning engine with native ROS 2 introspection and sub-100ms neural voice.</p>
+    <p class="slide-kicker">DarkSelmash / GSKB</p>
+    <h1 class="slide-title" id="slide-4-title">A design bureau, not a factory</h1>
+    <p class="slide-subtitle">Constraints and validation turn an idea into a testable change.</p>
   </header>
 
   <aside class="editorial-note architecture-note">
-    <strong>Why run locally on Pi 5?</strong>
-    Robots lose Wi-Fi in the yard all the time. Critical diagnostics, sensor reasoning, and spoken operator feedback must function autonomously without waiting for a cloud round-trip.
+    <strong>Different kind of work</strong>
+    A production line repeats a known process. Here the process must still be designed.
   </aside>
 
-  <ol class="intelligence-flow" aria-label="Local voice and reasoning pipeline">
-    <li><span>01</span><strong>Operator Voice / UI</strong></li>
-    <li><span>02</span><strong>WebSocket</strong><small>:8765</small></li>
-    <li class="flow-core"><span>03</span><strong>RoboFactory AGY Core</strong><small>Google Antigravity · AGY runtime</small></li>
-    <li><span>04</span><strong>Piper TTS</strong><small>Local neural speech</small></li>
-    <li><span>05</span><strong>Audio Output</strong><small>Chassis + browser</small></li>
+  <ol class="intelligence-flow" aria-label="Design bureau development loop">
+    <li><span>01</span><strong>Intent</strong></li>
+    <li><span>02</span><strong>Contracts</strong></li>
+    <li class="flow-core"><span>03</span><strong>GSKB</strong></li>
+    <li><span>04</span><strong>Code</strong></li>
+    <li><span>05</span><strong>Evidence</strong></li>
   </ol>
 
   <div class="intelligence-details">
     <article class="intelligence-domain">
-      <header><span class="technical-label">AGY runtime</span><h2>RoboFactory AGY Agent Platform</h2></header>
-      <dl>
-        <div><dt>Onboard runtime</dt><dd>Google Antigravity &amp; AGY agent executed directly inside the <code>ros2_voice_chat</code> container.</dd></div>
-        <div><dt>Full introspection</dt><dd>FastDDS telemetry, ROS 2 parameters, topic streams, and container logs.</dd></div>
-        <div><dt>Proactive oversight</dt><dd>Automated system diagnostics, runtime health monitoring, and proactive fault detection.</dd></div>
-        <div><dt>Extensible brain</dt><dd>Autonomous decision layer and self-healing supervisor.</dd></div>
-      </dl>
+      <header><span class="technical-label">Production line</span><h2>Repeat a known process</h2></header>
+      <p>Fixed input → predictable result</p>
     </article>
-
     <article class="intelligence-domain">
-      <header><span class="technical-label">Local TTS</span><h2>Piper Neural Voice Pipeline</h2></header>
-      <dl>
-        <div><dt>Sub-100ms latency</dt><dd>Local neural speech synthesis on Raspberry Pi 5 CPU cores with zero cloud dependencies.</dd></div>
-        <div><dt>Token streaming</dt><dd>Regex punctuation chunking starts audio while tokens are still streaming.</dd></div>
-        <div><dt>Concurrent output</dt><dd>Physical chassis speaker and browser Web Audio.</dd></div>
-        <div><dt>Diagnostic persona</dt><dd>Concise technical diagnostics and operational alerts.</dd></div>
-      </dl>
+      <header><span class="technical-label">Design bureau</span><h2>Explore a new solution</h2></header>
+      <p>An idea → code that can be tested</p>
     </article>
   </div>
 
   <footer class="latency-evidence">
-    <div><span class="technical-label">Voice delay after regex chunking</span><strong><s>3.2s</s> → 240ms</strong></div>
-    <div><span class="technical-label">Local synthesis</span><strong>&lt;100ms</strong></div>
-    <span>100% local AI</span>
+    <p>Intent <span>→</span> Change <span>→</span> Evidence</p>
+    <strong>Human stays in the loop</strong>
   </footer>
 </section>
 
     <!-- SLIDE 5: LIVE DEMO -->
 <section class="slide slide-demo" data-index="5" aria-labelledby="slide-5-title">
   <header class="slide-heading demo-heading">
-    <p class="slide-kicker">System validation / Live demo</p>
-    <h1 class="slide-title" id="slide-5-title">Live Demo: Telemetry, Control &amp; AI Voice</h1>
-    <p class="slide-subtitle">Real-time interaction with the ReloBot operator dashboard and onboard voice agent.</p>
+    <p class="slide-kicker">Live / Gazebo to UI</p>
+    <h1 class="slide-title" id="slide-5-title">Watch it change live</h1>
+    <p class="slide-subtitle">From a simulated robot to one small, visible change in its interface.</p>
   </header>
 
   <aside class="editorial-note demo-note">
-    <strong>Live test protocol</strong>
-    All components demonstrated here are running live on the local hardware stack or Gazebo digital twin on port 80.
+    <strong>The fallback is part of the plan</strong>
+    If a live step stalls, show the saved map and the prepared change.
   </aside>
 
-  <ol class="demo-runbook" aria-label="Four-step demonstration protocol">
-    <li>
-      <span class="runbook-number">01</span>
-      <div><h2>Live Telemetry</h2><p>INA226 bus voltage (<strong>12.4V</strong>) and 9-DOF IMU pitch &amp; roll attitude.</p></div>
-    </li>
-    <li>
-      <span class="runbook-number">02</span>
-      <div><h2>Manual Drive &amp; Spindle</h2><p>Virtual joystick teleop and <strong>3000 RPM</strong> governor control.</p></div>
-    </li>
-    <li>
-      <span class="runbook-number">03</span>
-      <div><h2>Voice Status Query</h2><p>Ask “ReloBot, report system status and battery voltage”.</p></div>
-    </li>
-    <li>
-      <span class="runbook-number">04</span>
-      <div><h2>Local Neural Speech</h2><p>Sub-second spoken response synthesized on Pi 5 CPU.</p></div>
-    </li>
+  <ol class="demo-runbook" aria-label="Live demonstration sequence">
+    <li><span class="runbook-number">01</span><div><h2>Start the twin</h2><p>Gazebo in VS Code</p></div></li>
+    <li><span class="runbook-number">02</span><div><h2>Open the robot UI</h2><p>Map, cameras, one-click actions</p></div></li>
+    <li><span class="runbook-number">03</span><div><h2>Meet Petrovich and GSKB</h2><p>Ask for a camera toggle on the map</p></div></li>
+    <li><span class="runbook-number">04</span><div><h2>Show the change</h2><p>Review the diff, refresh the UI</p></div></li>
   </ol>
 
-  <aside class="demo-launch" aria-label="Launch ReloBot operator dashboard">
-    <div class="live-status"><span aria-hidden="true"></span>Port 80 · WebSocket 8765 active</div>
+  <aside class="demo-launch" aria-label="Open ReloBot operator dashboard">
+    <div class="live-status"><span aria-hidden="true"></span>Gazebo / Local UI</div>
     <div class="launch-heading">
-      <span class="technical-label">Live system</span>
+      <span class="technical-label">After starting the simulation</span>
       <h2>ReloBot Operator Dashboard</h2>
     </div>
-    <div class="launch-addresses">
-      <code>http://localhost/</code>
-      <span>or</span>
-      <code>http://raspberrypi.local/</code>
-    </div>
+    <div class="launch-addresses"><code>http://localhost/</code></div>
     <a class="launch-action" href="http://localhost/" target="_blank" rel="noopener">
-      Launch Operator Dashboard
+      Open robot UI
       <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
     </a>
-    <p class="launch-tip">Press <strong>Alt + Tab</strong> to switch between slides and the live dashboard during presentation.</p>
-    <p class="launch-proof">Voice synthesized 100% on Pi 5 CPU.</p>
+    <p class="launch-proof">Plan B: saved map and reviewed diff.</p>
   </aside>
 
   <footer class="demo-sequence">
-    <span class="technical-label">Test sequence</span>
-    <p><span>Telemetry Polling</span><span>Virtual Joystick</span><span>Spindle Governor</span><span>Voice Query</span><strong>Local Speech Output</strong></p>
-    <span>Tested &amp; ready</span>
+    <span class="technical-label">Demo route</span>
+    <p><span>VS Code</span><span>Gazebo</span><span>Robot UI</span><span>Petrovich</span><strong>GSKB</strong></p>
+    <span>Back to the story</span>
   </footer>
 </section>
 
-    <!-- SLIDE 6: FIELD ENGINEERING -->
-<section class="slide slide-engineering" data-index="6" aria-labelledby="slide-6-title">
-  <header class="slide-heading engineering-heading">
-    <p class="slide-kicker">Field engineering / Lessons learned</p>
-    <h1 class="slide-title" id="slide-6-title">Hard Problems Solved in the Field</h1>
-    <p class="slide-subtitle">Concrete engineering hurdles and battle-tested solutions from actual lawn deployments.</p>
-  </header>
-
-  <aside class="editorial-note engineering-note">
-    <strong>Learning by doing</strong>
-    Real robotics is learned on the bench and in the grass. Theory guarantees nothing until code survives physical friction, socket buffers, and real-world edge cases.
-  </aside>
-
-  <div class="incident-matrix" role="table" aria-label="Field engineering hurdles and fixes">
-    <div class="incident-header" role="row">
-      <span role="columnheader">Subsystem / incident</span>
-      <span role="columnheader">Hurdle observed</span>
-      <span role="columnheader">Intervention</span>
-      <span role="columnheader">Evidence</span>
-    </div>
-
-    <article class="incident-row" role="row">
-      <div role="cell"><span class="technical-label">Kernel sysctl</span><h2>FastDDS UDP Buffer Storm</h2></div>
-      <p role="cell">Default Linux 212 KB socket buffer choked under high-rate SLAM maps, triggering retransmission storms and 100% CPU lockup.</p>
-      <p role="cell">Set <code>net.core.rmem_max = 67108864</code> in sysctl.</p>
-      <strong role="cell"><s>212 KB</s><span>→</span>64 MB</strong>
-    </article>
-
-    <article class="incident-row" role="row">
-      <div role="cell"><span class="technical-label">Firmware regression</span><h2>Motor Stiction Non-Linearity</h2></div>
-      <p role="cell">DC gearmotors had asymmetrical starting friction deadbands, causing low-speed angular drift.</p>
-      <p role="cell">Automated linear sweep in RP2040 firmware.</p>
-      <strong role="cell"><var>PWM = k · v + b</var></strong>
-    </article>
-
-    <article class="incident-row" role="row">
-      <div role="cell"><span class="technical-label">Host wireless</span><h2>5 GHz Wi-Fi Region Lockdown</h2></div>
-      <p role="cell">Pi 5 kernel defaulted to DFS-UNSET, blocking 5 GHz channels and throttling camera streams.</p>
-      <p role="cell">Configured persistent regulatory domain for RTSP.</p>
-      <strong role="cell">Channel 52</strong>
-    </article>
-
-    <article class="incident-row" role="row">
-      <div role="cell"><span class="technical-label">Session lifecycle</span><h2>AI Agent Context &amp; Reasoning</h2></div>
-      <p role="cell">Raw thinking tokens introduced 10–20s delays before voice speech started.</p>
-      <p role="cell">Suppressed reasoning tokens and pre-warmed model graph in RAM.</p>
-      <strong role="cell"><s>10–20s</s><span>→</span>&lt;50ms TTFT</strong>
-    </article>
-  </div>
-
-  <footer class="engineering-footer">
-    <span class="technical-label">Field hardening</span>
-    <p>64MB Socket Buffers · Stiction Linearization · 5 GHz Wi-Fi Unlock · &lt;50ms TTFT Voice</p>
-    <span>Every fix was paid for with a late-night debugging session.</span>
-  </footer>
-</section>
-
-    <!-- SLIDE 7: ROADMAP & TECHNICAL DISCUSSION -->
-<section class="slide slide-roadmap" data-index="7" aria-labelledby="slide-7-title">
+    <!-- SLIDE 6: WHAT NEXT & QUESTIONS -->
+<section class="slide slide-roadmap" data-index="6" aria-labelledby="slide-6-title">
   <header class="slide-heading roadmap-heading">
-    <p class="slide-kicker">Future milestones / Roadmap</p>
-    <h1 class="slide-title" id="slide-7-title">Toward Autonomous Swarm Factory</h1>
-    <p class="slide-subtitle">Next phases of development for the DarkSelmash AI Factory robotics platform.</p>
+    <p class="slide-kicker">ReloBot / What comes next</p>
+    <h1 class="slide-title" id="slide-6-title">A platform still learning</h1>
+    <p class="slide-subtitle">Open code, evolving hardware support, and more capability on the compute already aboard.</p>
   </header>
 
   <aside class="editorial-note roadmap-note">
-    <strong>Long-term vision</strong>
-    Moving from single-robot maintenance to an autonomous multi-agent swarm coordinated by an AI Factory central supervisor.
+    <strong>Already speaks. Next: see and recover.</strong>
+    A low obstacle below the LiDAR can still be a big problem.
   </aside>
 
   <section class="roadmap-primary" aria-labelledby="roadmap-milestones-title">
     <div class="roadmap-section-heading">
       <span class="technical-label">Roadmap</span>
-      <h2 id="roadmap-milestones-title">Next Milestones</h2>
+      <h2 id="roadmap-milestones-title">What comes next</h2>
     </div>
     <ol class="milestone-sequence">
-      <li>
-        <span>01</span>
-        <div><h3>Precision Optical Docking</h3><p>Sub-centimeter outdoor docking using AprilTag fiducial markers (<code>opennav_docking</code>).</p></div>
-      </li>
-      <li>
-        <span>02</span>
-        <div><h3>Systematic Coverage</h3><p>Boustrophedon and spiral sweep path planning algorithms via <code>opennav_coverage</code>.</p></div>
-      </li>
-      <li>
-        <span>03</span>
-        <div><h3>Multi-Robot Fleet Swarm</h3><p>Distributed spatial maps and cooperative task dispatch across multiple ReloBots.</p></div>
-      </li>
-      <li>
-        <span>04</span>
-        <div><h3>Supervised Self-Healing</h3><p>Autonomous AGY agent that can restart crashed ROS nodes and recalibrate sensors.</p></div>
-      </li>
+      <li><span>01</span><div><h3>See more</h3><p>Use vision to notice obstacles the LiDAR misses.</p></div></li>
+      <li><span>02</span><div><h3>Recover safely</h3><p>Detect faults and recover with a human in the loop.</p></div></li>
+      <li><span>03</span><div><h3>Grow the platform</h3><p>Optimize onboard code and support more hardware.</p></div></li>
     </ol>
   </section>
 
   <aside class="discussion-zone" aria-labelledby="discussion-title">
     <span class="technical-label">Q&amp;A</span>
-    <h2 id="discussion-title">Key Discussion Topics</h2>
-    <dl>
-      <div><dt>Physical Loop Isolation</dt><dd>Tradeoffs of dedicated micro-ROS MCUs vs monolithic single-board controllers.</dd></div>
-      <div><dt>Edge AI Integration</dt><dd>Practicalities of running autonomous LLM agents and neural TTS directly on embedded SBCs.</dd></div>
-      <div><dt>Simulation-First Workflow</dt><dd>Achieving 100% digital twin fidelity and Gazebo-to-hardware transition.</dd></div>
-    </dl>
-    <p>Ready for your questions and technical discussion!</p>
+    <h2 id="discussion-title">Where does autonomy need a human?</h2>
   </aside>
 
   <footer class="roadmap-footer">
-    <p>ReloBot Platform <span>·</span> DarkSelmash AI Factory <span>·</span> ROS 2 Humble <span>·</span> <strong>Google Antigravity AGY</strong></p>
-    <span>Open for Q&amp;A</span>
+    <p>ReloBot <span>·</span> <strong>Open source</strong></p>
+    <span>ROS 2 · Docker Compose</span>
   </footer>
 </section>
       </main>
 
-      <div class="progress-track" role="progressbar" aria-label="Presentation progress" aria-valuemin="1" aria-valuemax="7" aria-valuenow="1">
+      <div class="progress-track" role="progressbar" aria-label="Presentation progress" aria-valuemin="1" aria-valuemax="6" aria-valuenow="1">
         <div class="progress-bar" id="progressBar"></div>
       </div>
     </div>
@@ -1889,7 +1559,7 @@ code {
     <nav class="presenter-bar" aria-label="Presentation controls">
       <div class="deck-identity">
         <strong>RELOBOT</strong>
-        <span>Technical architecture</span>
+        <span>An engineering journey</span>
       </div>
 
       <div class="presenter-status">
@@ -1897,7 +1567,7 @@ code {
           <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><polyline points="12 6 12 12 16 14"/></svg>
           <span id="timerText">00:00</span>
         </button>
-        <span class="slide-counter" id="slideCounter" aria-live="polite">01 / 07</span>
+        <span class="slide-counter" id="slideCounter" aria-live="polite">01 / 06</span>
       </div>
 
       <div class="presenter-actions">
@@ -1923,7 +1593,7 @@ code {
     <div class="speaker-header">
       <div class="speaker-title">
         <span>Speaker notes</span>
-        <span id="notesSlideIndicator">Slide 1 / 7</span>
+        <span id="notesSlideIndicator">Slide 1 / 6</span>
       </div>
       <button class="control-button control-button--text" id="closeNotesBtn" type="button">
         <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -1935,18 +1605,59 @@ code {
 
     <script>
     // --- notes.js ---
-/**
- * Speaker notes for all 7 slides in Russian.
- * Corresponds directly to SPEAKER_NOTES_RU.md cue sheet.
- */
 const speakerNotes = {
-  1: "Всем привет! Сегодня я представляю проект ReloBot. Изначально моей главной целью было глубоко изучить робототехнику с самых азов — от микроконтроллеров, физики моторов и фильтров Калмана до ROS 2 и навигации. Постепенно это практическое обучение переросло в полноценную автономную платформу: с аппаратной изоляцией на micro-ROS, цифровым двойником в Gazebo и встроенным локальным ИИ-агентом. Сегодня я поделюсь этой архитектурой и главными уроками, полученными на этом пути.",
-  2: "В основе аппаратной архитектуры ReloBot лежит концепция Hub and Spoke. Центральным хабом выступает Raspberry Pi 5 с 8 гигабайтами оперативной памяти. Прямо внутри хаба развернута среда RoboFactory, запускающая Google Antigravity и агентский рантайм AGY для глубокой автономной работы и диагностики. От хаба, как спицы колеса, расходятся изолированные аппаратные каналы к микро-агентам: два модуля XIAO RP2040 для привода и ножей на 3000 оборотов со стабилизацией скорости и вочдогом безопасности, Pico с 9-осевым IMU для фильтра Калмана, Pico 2 на RP2350 с чипом INA226 для батареи, круговой лидар и динамик голосового вывода. Микросекунды отданы микроконтроллерам, миллисекунды — центральному процессору.",
-  3: "Программный стек и симуляция образуют единый конвейер с нулевым загрязнением хост-системы. Все ноды ROS 2 Humble работают в мультиконтейнерной системе Docker с общей памятью IPC. При этом мы создали цифровой двойник ReloBot в симуляторе Gazebo с абсолютным, стопроцентным паритетом API. Топики, TF-дерево и алгоритмы навигации Nav2 работают в симуляторе точно так же, как на реальном газоне, позволяя отладить весь софт на ноутбуке до раскрутки металлических ножей.",
-  4: "Ядро концепции DarkSelmash AI Factory — среда RoboFactory и агент AGY на базе Google Antigravity, запущенные прямо на борту робота. Важно подчеркнуть: Antigravity работает как полноценный агентский движок с прямым доступом к топикам, логам, файлам и состоянию всех нод. Агент способен выполнять глубокую диагностику, самостоятельно перезапускать сбойные ноды, находить аппаратные ошибки и в будущем координировать роевые миссии. А локальный нейросетевой движок Piper TTS озвучивает статус и мысли робота с задержкой менее 100 миллисекунд прямо на динамик корпуса.",
-  5: "ДЕМО В ЭФИРЕ: Переключаемся на браузер с дашбордом оператора (Alt+Tab). В правом верхнем углу — живая телеметрия с INA226 и наклоны робота. Касаемся джойстика — дифференциальный привод откликается мгновенно. Задаем обороты шпинделя ножей. А теперь обращаемся к бортовому ИИ голосовым запросом: 'ReloBot, report system status and battery voltage'. Слушаем локальный голос робота через Piper TTS: 'All subsystems nominal. Battery at 12.4 volts. Ready for autonomous operation.' Голос сгенерирован полностью на борту!",
-  6: "Робототехника — это искусство борьбы с физикой и граблями. Мы решили шторм буфера FastDDS, когда тяжелые карты SLAM забивали 200-килобайтный буфер Linux и вешали ядро — помог тюнинг сокетов до 64 МБ. Мы победили трение покоя моторов через калибровочную регрессию прямо на RP2040. Разблокировали 5 ГГц Wi-Fi на Pi 5 для видеопотока. И оптимизировали работу агента Antigravity: подавили задержку reasoning-токенов с 20 секунд до 50 миллисекунд и прогрели граф нейросети в RAM.",
-  7: "Куда мы движемся дальше? Наш ближайший шаг — автономная док-станция с оптической стыковкой по меткам AprilTag, алгоритмы сплошного покоса и объединение роботов в координированный рой под управлением диспетчера AI Factory. Большое спасибо за внимание! Мы открыты к вопросам и технической дискуссии."
+  1: `Все идеи рождаются из сложностей и необходимости. У меня такая была — трава по колено вокруг дома. Бурьян растёт, а я за полторы тысячи километров. Хоть каждые выходные бери и летай косить.
+
+Роботы-пылесосы всем давно знакомы. Роботы-газонокосилки — штука менее привычная, но идея похожая: хочется, чтобы техника справлялась без постоянного внимания. Я купил на аукционе робота-газонокосилку — «работает, но почему-то не едет». Классика. По факту приехал хлам со сгоревшей материнской платой, которую я отмаливал до конца. Повезло, что колёсная трансмиссия и моторы остались худо-бедно живыми. Мотор ножей тоже. Полуживой аккумулятор с контроллером заряда. И самое ценное — шасси.
+
+После уймы вечеров стало ясно: либо на свалку, либо делать что-то самому. Решил делать робота. Всё по классике — нужен контроллер. Ещё не понимая, к чему это приведёт и каких мощностей потребует, выбор пал на Raspberry Pi.`,
+  2: `Обзор доступных фреймворков для робототехники показал: всё не то. Древность, монолитность, жёсткая завязка на конкретное железо. Стало понятно — пойдём своим путём. Выбор пал на ROS 2.
+
+Это тоже достаточно консервативный фреймворк, однако именно он давал связку между уровнями взаимодействия. А уровней этих — четыре, и все разной природы: окружающий мир с его физикой; сам робот и его механика; контроллеры с физическими и логическими ограничениями; наконец, код, алгоритмы и логика поведения. Всё это должно сойтись в одной точке.
+
+Заметил такую тенденцию у инженеров — да и у себя самого: без должного контроля всё скатывается к монолитам. На масштабе это ни к чему хорошему не приводит. Поэтому с самого начала заложил архитектуру hub-and-spoke, plug-and-play и контракты между модулями. Были эксперименты и с Kubernetes, и с удалёнными нодами. Но сейчас это Docker Compose — проще и понятнее. Плюс отдельные контроллеры на USB-устройствах.
+
+На схеме центральный Raspberry Pi 5 координирует ROS 2 Humble-ноды: топики, TF и actions, контейнеры поднимаются через профили Docker Compose. Но быстрые контуры остаются рядом с железом. Колёса — отдельный RP2040 с локальным PI-контуром и таймаутом безопасности: цикл управления 100 Гц, телеметрия около 30 Гц. Ножи — свой RP2040: цикл управления 50 Гц, телеметрия 10 Гц. IMU — ещё один RP2040, публикация данных около 30 Гц. Они связаны с Pi через USB CDC. Мониторинг напряжения и тока — отдельный контроллер RP2350 с публикацией 10 Гц. Лидар и камера приходят напрямую через USB или UART, голосовой выход идёт через ALSA и усилитель. На экране оставили главное: эти модули можно менять независимо, сохраняя контракты.`,
+  3: `Возвращаясь к четырём уровням взаимодействия. Есть греческое слово — синергия. Это когда разнородные вещи, соединяясь, усиливают друг друга или дают новое свойство.
+
+Хороший пример — железобетон. Бетон хорошо держит сжатие, но плохо работает на растяжение; арматура принимает растягивающие нагрузки. А вместе получается материал, из которого построено здание, в котором мы сейчас находимся.
+
+Так и в проектировании роботов: изменение малюсенького параметра — например, настройки QoS в одном топике — может повлиять на доставку сообщений и сломать что-то, казалось бы, совершенно не связанное.
+
+На схеме мир — это трава, грунт, препятствия и погода; механика — колёса, масса, сцепление и ножи; контроллеры — обратная связь и задержка; код — сообщения ROS 2 и принятые по ним решения. Поменялось сцепление или запоздала команда — и путь уже другой.
+
+Я пошёл самым сложным путём — всё оттачивал на живом железе. Процесс как в обычном SDLC: feature-ветка, код, перезапуск, и смотрим, как робот бьётся о стену и ножами разлохмачивает ковёр. Это воспоминание об испытаниях, не план для живого демо. По моей оценке, процентов девяносто того, что сейчас есть, было отточено именно так. На это ушло почти два года.
+
+Но когда система становится необъятной, регрессия возникает на каждом шагу. С софтом и хардом ещё понятно, как отлаживать. А с механикой? С физикой окружающего мира? На одной интуиции далеко не уедешь.
+
+Вот тут на сцену выходит Gazebo — симулятор, который даёт модели мира, движения и сенсоров. Он замыкает цикл разработки: сначала воспроизводим сценарий там, потом проверяем на настоящем роботе. Это не точная копия газона или всех контроллеров, зато ошибки можно ловить раньше и безопаснее.`,
+  4: `Сейчас новая мода: все делают автономные фабрики по производству кода, интеллектуальных решений — по сути, текста. Волну, конечно, подтолкнул AI. Но мне кажется, что слово «фабрика» здесь часто уводит не туда.
+
+Давайте посмотрим на реальное производство. Есть универсальный цех: куча станков, два работяги, которые и заказы принимают, и технологию придумывают, и металл заказывают, и точат. Потом заказов становится больше. Появляется отдел технологов. А чтобы те не выдумывали отсебятину — им ставят «харнес»: документация, вход, выход. И так постепенно происходит со всеми частями производства.
+
+На повторяемом участке мы стремимся сделать результат предсказуемым: подали заготовку — получили деталь. Там не нужно, чтобы AI принимал каждое решение. Но проектирование нового робота — не повторяемый участок. Это творчество: создание систем с помощью кода, машин с помощью кода. Даже чертёж детали — это код.
+
+Поэтому у меня в роботе — ГСКБ: Головное Самодостаточное Конструкторское Бюро. На вход подаётся идея, намерение. Внутри — ограничения, правила, процессы: достаточно жёсткие для контроля изменений и достаточно гибкие, чтобы находить неожиданные решения. По сути, это работа агента и субагентов с контрактами и валидацией. Изменение можно показать в коде и проверить в симуляции, а инженер всё равно принимает решение.
+
+Если говорить о фабриках в контексте SDLC — это отдельная тема. Сейчас лучше показать, как работает такой цикл на роботе.`,
+  5: `Переключаюсь в VS Code, запускаю симуляцию командой ./start_sim.sh up --gui и по ходу рассказываю, что именно поднимается. Возвращаюсь на слайд, нажимаю кнопку — открывается UI робота. Быстро прохожу по доступным экранам.
+
+Ключевая мысль: сложные процессы в итоге превращаются в одну кнопку. Dock / Undock, Explore, Coverage — всё в один клик. Вот карта, вот камеры.
+
+На базе ГСКБ есть агент-помощник — Петрович. Показываю чат, потом через кнопку GSKB открываю AGY-терминал и прошу добавить переключатель уже существующей камеры на экране карты.
+
+Через чат прошу сделать undock, затем explore — если симуляция и навигация готовы, робот начинает ездить по карте. К этому моменту изменение интерфейса, возможно, уже будет готово. Переключаюсь в VS Code и показываю, что именно изменилось; если успели проверить результат, обновляю UI.
+
+Если симуляция или агент задерживаются, не ждём молча: показываю заранее подготовленный экран карты и проверенный diff. Ножи в этом демо не включаем.`,
+  6: `Какой путь дальше? Из этой истории выросла открытая основа для автономных мобильных роботов с дифференциальным приводом. Хочется постепенно делать её более универсальной. Код открыт, многое работает в Docker-контейнерах, но реальному роботу пока нужны конкретные контроллеры, датчики и настройки — полной независимостью от железа это не назвать.
+
+Робот уже умеет говорить — это можно показать отдельно, сейчас времени мало. Дальше учимся смотреть: использовать камеры не просто для картинки, а для понимания мира. Отдельная боль — препятствия ниже высоты установки лидара. Ещё направление — self-healing: обнаруживать сбои и восстанавливаться под контролем человека. И производительность: сначала оптимизируем код, а не просто наращиваем мощность железа.
+
+Докинг и покрытие уже существуют как части системы; дальше важно проверять их в более сложных условиях, а не записывать в список ещё не начатых функций.
+
+Из вопросов на экране оставил один: где автономии всё-таки нужен человек? Можно обсудить и другие границы: где заканчивается модуль и начинается контракт, когда симуляции достаточно, что обязательно должно работать на самом роботе — управление, восприятие, голос и агенты. Gazebo сокращает цикл, но окончательная проверка остаётся в поле.
+
+Ну и вопросы.`
 };
 
 if (typeof module !== 'undefined' && module.exports) {
@@ -1963,7 +1674,7 @@ if (typeof module !== 'undefined' && module.exports) {
 (function () {
   let currentSlide = 1;
   const slides = document.querySelectorAll('.slide');
-  const totalSlides = slides.length || 7;
+  const totalSlides = slides.length || 6;
 
   const progressBar = document.getElementById('progressBar');
   const progressTrack = document.querySelector('.progress-track');
@@ -1978,6 +1689,20 @@ if (typeof module !== 'undefined' && module.exports) {
   const fullscreenBtn = document.getElementById('fullscreenBtn');
   const timerBadge = document.getElementById('timerBadge');
   const timerText = document.getElementById('timerText');
+  const slideCanvas = document.getElementById('slideCanvas');
+  const deckStage = document.querySelector('.deck-stage');
+
+  function fitSlides() {
+    if (!slideCanvas || !deckStage) return;
+    const scale = Math.min(deckStage.clientWidth / 1440, deckStage.clientHeight / 810);
+    slideCanvas.style.width = '1440px';
+    slideCanvas.style.height = '810px';
+    slideCanvas.style.transformOrigin = 'top left';
+    slideCanvas.style.transform = `scale(${scale})`;
+  }
+
+  window.addEventListener('resize', fitSlides);
+  fitSlides();
 
   function updateSlide(index) {
     if (index < 1 || index > totalSlides) return;

@@ -182,6 +182,10 @@
     background: rgba(0, 200, 255, 0.08);
 }
 
+.c-chat-advanced-btn .c-chat-toggle-label {
+    display: inline-block;
+}
+
 .c-chat-advanced-btn:hover {
     background: rgba(0, 200, 255, 0.2);
     border-color: #00c8ff;
@@ -718,6 +722,22 @@
     }
 }
 
+@media (max-width: 440px) {
+    .c-chat-header {
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .c-chat-header__controls {
+        width: 100%;
+        justify-content: flex-end;
+    }
+
+    .c-chat-view.is-advanced-mode .c-chat-header__controls {
+        width: auto;
+    }
+}
+
 /* --------------------------------------------------------------------------
    Responsive Landscape Adjustments
    -------------------------------------------------------------------------- */
@@ -851,6 +871,10 @@
 /* When Advanced Terminal Mode is active: toggle views cleanly without !important */
 .c-chat-view.is-advanced-mode .c-chat-terminal-view {
     display: flex;
+}
+
+.c-chat-view.is-advanced-mode .c-chat-session-chip {
+    display: none;
 }
 
 .c-chat-view.is-advanced-mode .c-chat-feed,

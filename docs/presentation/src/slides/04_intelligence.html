@@ -1,49 +1,37 @@
-<!-- SLIDE 4: ROBOFACTORY & AGY AGENT -->
+<!-- SLIDE 4: GSKB VS CODE FACTORIES -->
 <section class="slide slide-intelligence" data-index="4" aria-labelledby="slide-4-title">
   <header class="slide-heading architecture-heading">
-    <p class="slide-kicker">On-device AI / Agent platform</p>
-    <h1 class="slide-title" id="slide-4-title">The Self-Aware Robot: AGY Core</h1>
-    <p class="slide-subtitle">Autonomous onboard reasoning engine with native ROS 2 introspection and sub-100ms neural voice.</p>
+    <p class="slide-kicker">DarkSelmash / GSKB</p>
+    <h1 class="slide-title" id="slide-4-title">A design bureau, not a factory</h1>
+    <p class="slide-subtitle">Constraints and validation turn an idea into a testable change.</p>
   </header>
 
   <aside class="editorial-note architecture-note">
-    <strong>Why run locally on Pi 5?</strong>
-    Robots lose Wi-Fi in the yard all the time. Critical diagnostics, sensor reasoning, and spoken operator feedback must function autonomously without waiting for a cloud round-trip.
+    <strong>Different kind of work</strong>
+    A production line repeats a known process. Here the process must still be designed.
   </aside>
 
-  <ol class="intelligence-flow" aria-label="Local voice and reasoning pipeline">
-    <li><span>01</span><strong>Operator Voice / UI</strong></li>
-    <li><span>02</span><strong>WebSocket</strong><small>:8765</small></li>
-    <li class="flow-core"><span>03</span><strong>RoboFactory AGY Core</strong><small>Google Antigravity · AGY runtime</small></li>
-    <li><span>04</span><strong>Piper TTS</strong><small>Local neural speech</small></li>
-    <li><span>05</span><strong>Audio Output</strong><small>Chassis + browser</small></li>
+  <ol class="intelligence-flow" aria-label="Design bureau development loop">
+    <li><span>01</span><strong>Intent</strong></li>
+    <li><span>02</span><strong>Contracts</strong></li>
+    <li class="flow-core"><span>03</span><strong>GSKB</strong></li>
+    <li><span>04</span><strong>Code</strong></li>
+    <li><span>05</span><strong>Evidence</strong></li>
   </ol>
 
   <div class="intelligence-details">
     <article class="intelligence-domain">
-      <header><span class="technical-label">AGY runtime</span><h2>RoboFactory AGY Agent Platform</h2></header>
-      <dl>
-        <div><dt>Onboard runtime</dt><dd>Google Antigravity &amp; AGY agent executed directly inside the <code>ros2_voice_chat</code> container.</dd></div>
-        <div><dt>Full introspection</dt><dd>FastDDS telemetry, ROS 2 parameters, topic streams, and container logs.</dd></div>
-        <div><dt>Proactive oversight</dt><dd>Automated system diagnostics, runtime health monitoring, and proactive fault detection.</dd></div>
-        <div><dt>Extensible brain</dt><dd>Autonomous decision layer and self-healing supervisor.</dd></div>
-      </dl>
+      <header><span class="technical-label">Production line</span><h2>Repeat a known process</h2></header>
+      <p>Fixed input → predictable result</p>
     </article>
-
     <article class="intelligence-domain">
-      <header><span class="technical-label">Local TTS</span><h2>Piper Neural Voice Pipeline</h2></header>
-      <dl>
-        <div><dt>Sub-100ms latency</dt><dd>Local neural speech synthesis on Raspberry Pi 5 CPU cores with zero cloud dependencies.</dd></div>
-        <div><dt>Token streaming</dt><dd>Regex punctuation chunking starts audio while tokens are still streaming.</dd></div>
-        <div><dt>Concurrent output</dt><dd>Physical chassis speaker and browser Web Audio.</dd></div>
-        <div><dt>Diagnostic persona</dt><dd>Concise technical diagnostics and operational alerts.</dd></div>
-      </dl>
+      <header><span class="technical-label">Design bureau</span><h2>Explore a new solution</h2></header>
+      <p>An idea → code that can be tested</p>
     </article>
   </div>
 
   <footer class="latency-evidence">
-    <div><span class="technical-label">Voice delay after regex chunking</span><strong><s>3.2s</s> → 240ms</strong></div>
-    <div><span class="technical-label">Local synthesis</span><strong>&lt;100ms</strong></div>
-    <span>100% local AI</span>
+    <p>Intent <span>→</span> Change <span>→</span> Evidence</p>
+    <strong>Human stays in the loop</strong>
   </footer>
 </section>

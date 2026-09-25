@@ -1,63 +1,41 @@
-<!-- SLIDE 3: SOFTWARE & DIGITAL TWIN -->
-<section class="slide slide-software" data-index="3" aria-labelledby="slide-3-title">
-  <header class="slide-heading architecture-heading">
-    <p class="slide-kicker">Software architecture / Digital twin</p>
-    <h1 class="slide-title" id="slide-3-title">Containerized ROS 2 &amp; Gazebo Simulation</h1>
-    <p class="slide-subtitle">Zero host pollution with shared-memory IPC, paired with 100% API parity in the virtual digital twin.</p>
+<section class="slide slide-engineering" data-index="3" aria-labelledby="slide-3-title">
+  <header class="slide-heading engineering-heading">
+    <p class="slide-kicker">Interacting layers / Simulation</p>
+    <h1 class="slide-title" id="slide-3-title">From the field to Gazebo</h1>
+    <p class="slide-subtitle">Together, these layers create behavior that no single layer explains.</p>
   </header>
 
-  <aside class="editorial-note architecture-note">
-    <strong>Why Docker &amp; simulation?</strong>
-    Fast iteration without breaking the host OS. Docker and Gazebo simulation enabled safe, rapid learning of ROS 2 navigation before running physical hardware.
+  <aside class="editorial-note engineering-note">
+    <strong>The missing test loop</strong>
+    Field tests exposed the interactions. Gazebo makes many of them repeatable.
   </aside>
 
-  <div class="software-map">
-    <article class="software-domain runtime-domain">
-      <div class="domain-heading">
-        <span class="technical-label">Docker runtime</span>
-        <h2>Multi-Container ROS 2 Architecture</h2>
-      </div>
-      <dl class="domain-facts">
-        <div><dt>Host purity</dt><dd>Host OS only runs Docker and serial device mounts. No ROS packages installed on host.</dd></div>
-        <div><dt>Transport</dt><dd><code>network_mode: host</code> and <code>ipc: host</code> enable FastDDS shared memory communication.</dd></div>
-        <div><dt>Development</dt><dd>Workspace source mounted directly; node rebuilds and web changes take effect immediately.</dd></div>
-        <div><dt>Interfaces</dt><dd><code>ros2_control</code>, <code>robot_localization</code> EKF, and standard Nav2 behavior trees.</dd></div>
-      </dl>
-      <div class="service-index" aria-label="ROS 2 services">
-        <span>ros2_nav2</span><span>ros2_voice_chat</span><span>ros2_rosbridge</span><span>ros2_frontend</span>
-      </div>
-    </article>
+  <ol class="incident-matrix" aria-label="Four interacting layers of the robot">
+    <li class="incident-row">
+      <span>01</span>
+      <div><h2>The world</h2><p>Grass, ground, obstacles</p></div>
+      <strong>The same path changes outside</strong>
+    </li>
+    <li class="incident-row">
+      <span>02</span>
+      <div><h2>The robot</h2><p>Wheels, weight, traction</p></div>
+      <strong>Contact changes the motion</strong>
+    </li>
+    <li class="incident-row">
+      <span>03</span>
+      <div><h2>The controllers</h2><p>Timing and feedback</p></div>
+      <strong>Delay changes the loop</strong>
+    </li>
+    <li class="incident-row">
+      <span>04</span>
+      <div><h2>The code</h2><p>ROS 2 messages and decisions</p></div>
+      <strong>One QoS setting can hide a regression</strong>
+    </li>
+  </ol>
 
-    <div class="parity-contract" aria-label="Shared ROS 2 API contract">
-      <span class="technical-label">Same API contract</span>
-      <strong>100%</strong>
-      <span>API parity</span>
-      <ul>
-        <li><code>/cmd_vel</code></li>
-        <li><code>/scan</code></li>
-        <li>TF frames</li>
-        <li>Nav2 action servers</li>
-      </ul>
-    </div>
-
-    <article class="software-domain simulation-domain">
-      <div class="domain-heading">
-        <span class="technical-label">Simulation</span>
-        <h2>Zero-Risk Gazebo Digital Twin</h2>
-      </div>
-      <dl class="domain-facts">
-        <div><dt>Parity</dt><dd>Identical topic names, TF frames, and Nav2 action servers.</dd></div>
-        <div><dt>Physics</dt><dd><code>garden.sdf</code> includes real lawn friction parameters, perimeter obstacles, and rough terrain.</dd></div>
-        <div><dt>Sensors</dt><dd>Simulated 360° laser scans, synthetic camera feeds, and blade motor speed feedbacks.</dd></div>
-        <div><dt>Launch</dt><dd><code>./start_sim.sh up --gui --dev</code> tests the entire autonomy pipeline on a laptop.</dd></div>
-      </dl>
-      <p class="evidence-note">Saved ~3 weeks of bench testing before running physical blades.</p>
-    </article>
-  </div>
-
-  <footer class="architecture-footer software-footer">
-    <span class="technical-label">Execution path</span>
-    <p>Host OS <span>→</span> Docker Compose <small>(profiles: hardware / sim)</small> <span>→</span> FastDDS Shared Memory IPC <span>→</span> Gazebo Sim Parity</p>
-    <strong>Parity: 100%</strong>
+  <footer class="engineering-footer">
+    <span class="technical-label">Development loop</span>
+    <p>Change → Gazebo → Observe → Field</p>
+    <span>The yard still decides</span>
   </footer>
 </section>

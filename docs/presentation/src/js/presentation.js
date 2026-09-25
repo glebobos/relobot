@@ -6,7 +6,7 @@
 (function () {
   let currentSlide = 1;
   const slides = document.querySelectorAll('.slide');
-  const totalSlides = slides.length || 7;
+  const totalSlides = slides.length || 6;
 
   const progressBar = document.getElementById('progressBar');
   const progressTrack = document.querySelector('.progress-track');
@@ -21,6 +21,20 @@
   const fullscreenBtn = document.getElementById('fullscreenBtn');
   const timerBadge = document.getElementById('timerBadge');
   const timerText = document.getElementById('timerText');
+  const slideCanvas = document.getElementById('slideCanvas');
+  const deckStage = document.querySelector('.deck-stage');
+
+  function fitSlides() {
+    if (!slideCanvas || !deckStage) return;
+    const scale = Math.min(deckStage.clientWidth / 1440, deckStage.clientHeight / 810);
+    slideCanvas.style.width = '1440px';
+    slideCanvas.style.height = '810px';
+    slideCanvas.style.transformOrigin = 'top left';
+    slideCanvas.style.transform = `scale(${scale})`;
+  }
+
+  window.addEventListener('resize', fitSlides);
+  fitSlides();
 
   function updateSlide(index) {
     if (index < 1 || index > totalSlides) return;

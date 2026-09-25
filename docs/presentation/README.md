@@ -1,6 +1,6 @@
-# ReloBot Presentation & Architecture Review
+# ReloBot: An Engineering Journey
 
-Interactive, modern technical architecture presentation for the **ReloBot Platform / DarkSelmash AI Factory**.
+An interview-style account of how a broken mower became a ROS 2 robot, from field testing to Gazebo and the GSKB design workflow. The six English slides are visual cues; one Russian speaker's notes carry the story. Allow roughly 15–20 minutes including the live demo.
 
 ## Quick Start
 
@@ -34,7 +34,8 @@ python3 build.py
 docs/presentation/
 ├── index.html                      # Standalone, compiled single-file presentation (portable)
 ├── build.py                        # Zero-dependency Python compiler & live watcher
-├── SPEAKER_NOTES_RU.md             # Complete Russian speaker cue sheet & speech reference
+├── SPEAKER_NOTES_RU.md             # Russian interview cues, transitions, demo fallback
+├── slides.md                       # Short Marp backup of the six-slide story
 ├── images/                         # Media assets (robot photo, Pi 5 case)
 └── src/                            # Modular source files (edit these!)
     ├── index.template.html         # HTML shell template (head, navbar, canvas, drawer, footer)
@@ -45,16 +46,15 @@ docs/presentation/
     │   ├── slides.css              # Custom layouts (Hub & Spoke, Live Demo, Incidents)
     │   └── main.css                # Root stylesheet importing all sub-modules
     ├── js/
-    │   ├── notes.js                # Speaker notes dictionary mapped by slide index (1–7)
+    │   ├── notes.js                # On-screen Russian speaker notes (slides 1–6)
     │   └── presentation.js         # Keyboard navigation, stopwatch timer, drawer, fullscreen
     └── slides/
-        ├── 01_overview.html        # Slide 1: Platform Overview & Specs
-        ├── 02_hardware.html        # Slide 2: Hub & Spoke Hardware Network
-        ├── 03_software.html        # Slide 3: Containerized ROS 2 & Gazebo Twin
-        ├── 04_intelligence.html    # Slide 4: RoboFactory AGY Agent & Piper TTS
-        ├── 05_demo.html            # Slide 5: Live Dashboard & Telemetry Demo
-        ├── 06_engineering.html     # Slide 6: Hard Problems Solved in Field
-        └── 07_roadmap.html         # Slide 7: Roadmap & Technical Discussion
+        ├── 01_overview.html        # Slide 1: Broken mower and surviving chassis
+        ├── 02_hardware.html        # Slide 2: ROS 2 contracts and hub & spoke
+        ├── 03_software.html        # Slide 3: Synergy, field tests, Gazebo
+        ├── 04_intelligence.html    # Slide 4: GSKB vs. code factories
+        ├── 05_demo.html            # Slide 5: Gazebo, UI, Petrovich/GSKB live demo
+        └── 06_engineering.html     # Slide 6: Next challenges and questions
 ```
 
 ---
@@ -67,3 +67,7 @@ docs/presentation/
 | `S` | Toggle Russian Speaker Notes Drawer |
 | `F` | Toggle Fullscreen Mode |
 | Click on Stopwatch | Reset Presentation Timer to `00:00` |
+
+## Live Demo
+
+From the repository root, start the simulation with `./start_sim.sh up --gui`. Once the stack is ready, slide 5 opens the robot dashboard at `http://localhost/`. The chat is named **Petrovich**; its **GSKB** button opens the AGY terminal. The presentation itself works offline, but the dashboard and agent require their respective services. Rehearse the workflow and prepare a saved map and code diff for the fallback described in `SPEAKER_NOTES_RU.md`.

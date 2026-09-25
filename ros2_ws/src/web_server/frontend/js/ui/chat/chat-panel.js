@@ -22,6 +22,7 @@ export class ChatPanel {
         this.liveText = document.getElementById('chatLiveText');
         this.waveform = document.getElementById('chatWaveform');
         this.statusDot = document.getElementById('chatStatusDot');
+        this.headerTitle = document.getElementById('chatHeaderTitle');
         this.sessionChip = document.getElementById('chatSessionChip');
         this.sessionIdSpan = document.getElementById('chatSessionId');
         this.toggleRobotSpeakerBtn = document.getElementById('toggleRobotSpeaker');
@@ -315,9 +316,14 @@ export class ChatPanel {
         if (!this.chatView) return;
 
         this.chatView.classList.toggle('is-advanced-mode', this.isAdvancedMode);
+        if (this.headerTitle) {
+            this.headerTitle.textContent = this.isAdvancedMode ? 'GSKB' : 'Petrovich';
+        }
 
         if (this.advancedBtn) {
             this.advancedBtn.classList.toggle('is-active', this.isAdvancedMode);
+            this.advancedBtn.setAttribute('aria-pressed', String(this.isAdvancedMode));
+            this.advancedBtn.title = this.isAdvancedMode ? 'Return to Petrovich chat' : 'Open GSKB terminal';
         }
 
         if (this.isAdvancedMode) {
@@ -494,13 +500,7 @@ export class ChatPanel {
         this.savedMessages = [];
 
         if (this.feed) {
-            this.feed.innerHTML = `
-                <div class="c-chat-welcome">
-                    <div class="c-chat-welcome__icon"><i class="fas fa-robot"></i></div>
-                    <div class="c-chat-welcome__title">ReloBot AI Assistant</div>
-                    <div class="c-chat-welcome__text">Direct conversational interface powered by Antigravity (AGY) & Piper Neural Voice. Type a message or click the microphone to speak.</div>
-                </div>
-            `;
+            this.feed.replaceChildren();
         }
 
         this._updateSessionBadge(null);

@@ -462,13 +462,7 @@ export class FloatingChatWidget {
         this.savedMessages = [];
 
         if (this.feed) {
-            this.feed.innerHTML = `
-                <div class="c-floating-chat-widget__welcome">
-                    <div class="c-floating-chat-widget__welcome-icon"><i class="fas fa-robot"></i></div>
-                    <div class="c-floating-chat-widget__welcome-title">ReloBot Assistant</div>
-                    <div class="c-floating-chat-widget__welcome-text">Ask questions, plan moves, or tap the microphone to dictate hands-free.</div>
-                </div>
-            `;
+            this.feed.replaceChildren();
         }
     }
 
