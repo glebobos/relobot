@@ -4,7 +4,7 @@ map $http_upgrade $connection_upgrade {
 }
 
 server {
-    listen 80;
+    listen 80 sndbuf=65536;
     server_name localhost ${DOMAIN_NAME};
 
     include /etc/nginx/mime.types;
@@ -18,7 +18,7 @@ server {
 }
 
 server {
-    listen 443 ssl;
+    listen 443 ssl sndbuf=65536;
     server_name ${DOMAIN_NAME};
 
     ssl_certificate /etc/nginx/certs/live/${DOMAIN_NAME}/fullchain.pem;

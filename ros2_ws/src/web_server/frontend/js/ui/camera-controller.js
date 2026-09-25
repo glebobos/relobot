@@ -4,8 +4,8 @@ import { SERVICES, MSG_TYPES } from '../shared/constants.js';
 
 export class CameraController {
     constructor() {
-        this.mainCameraService = new CameraService('cameraStream');
-        this.pipCameraService = new CameraService('pipCameraStream');
+        this.mainCameraService = new CameraService('cameraStream', { type: 'ros_compressed' });
+        this.pipCameraService = new CameraService('pipCameraStream', { type: 'ros_compressed' });
         this.tfTopic = null;
         this.hudTimeout = null;
         this.currentScreenIndex = 0;
@@ -174,13 +174,13 @@ export class CameraController {
 
                 if (elYaw) elYaw.innerText = yawDeg;
 
-                // Auto-hide HUD if tag disappears (1.5 seconds threshold)
+                // Auto-hide HUD if tag disappears (3.5 seconds threshold)
                 if (this.hudTimeout) clearTimeout(this.hudTimeout);
                 this.hudTimeout = setTimeout(() => {
                     if (hud) hud.style.display = 'none';
-                }, 1500);
+                }, 3500);
             }
-        }, { throttle_rate: 100 });
+        });
     }
 
     destroy() {

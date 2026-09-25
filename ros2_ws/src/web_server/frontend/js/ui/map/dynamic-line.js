@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
 export class DynamicLine {
-    constructor(color, maxPoints = 5000, thickness = 1) {
+    constructor(color, maxPoints = 5000, thickness = 1, options = {}) {
         this.maxPoints = maxPoints;
         this.geometry = new THREE.BufferGeometry();
         this.positions = new Float32Array(maxPoints * 3);
@@ -12,11 +12,19 @@ export class DynamicLine {
 
         this.material = new THREE.LineBasicMaterial({
             color: color,
-            linewidth: thickness
+            linewidth: thickness,
+            transparent: options.transparent ?? false,
+            opacity: options.opacity ?? 1.0,
         });
 
         this.line = new THREE.Line(this.geometry, this.material);
         this.line.frustumCulled = false;
+    }
+
+    setOpacity(opacity) {
+        this.material.opacity = opacity;
+        this.material.transparent = opacity < 1.0;
+        this.material.needsUpdate = true;
     }
 
     updatePoints(points) {

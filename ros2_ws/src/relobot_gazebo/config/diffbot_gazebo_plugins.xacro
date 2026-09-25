@@ -75,15 +75,15 @@
   </gazebo>
 
   <gazebo reference="front_caster">
-    <mu1>0.001</mu1>
-    <mu2>0.001</mu2>
+    <mu1>0.0</mu1>
+    <mu2>0.0</mu2>
     <kp>1000000.0</kp>
     <kd>10.0</kd>
     <surface>
       <friction>
         <ode>
-          <mu>0.001</mu>
-          <mu2>0.001</mu2>
+          <mu>0.0</mu>
+          <mu2>0.0</mu2>
           <slip1>1.0</slip1>
           <slip2>1.0</slip2>
         </ode>
@@ -93,15 +93,15 @@
   </gazebo>
 
   <gazebo reference="rear_caster">
-    <mu1>0.001</mu1>
-    <mu2>0.001</mu2>
+    <mu1>0.0</mu1>
+    <mu2>0.0</mu2>
     <kp>1000000.0</kp>
     <kd>10.0</kd>
     <surface>
       <friction>
         <ode>
-          <mu>0.001</mu>
-          <mu2>0.001</mu2>
+          <mu>0.0</mu>
+          <mu2>0.0</mu2>
           <slip1>1.0</slip1>
           <slip2>1.0</slip2>
         </ode>
@@ -178,7 +178,7 @@
     <sensor name="camera" type="camera">
       <pose relative_to="base_link">0.51 0 0.14 0 0.05 0</pose>
       <topic>/camera/image_raw</topic>
-      <update_rate>15</update_rate>
+      <update_rate>10</update_rate>
       <gz_frame_id>camera</gz_frame_id>
       <always_on>true</always_on>
       <visualize>false</visualize>

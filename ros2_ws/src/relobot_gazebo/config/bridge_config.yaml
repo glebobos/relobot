@@ -18,13 +18,19 @@
   direction: GZ_TO_ROS
   frame_id: "imu_link"
 
+- ros_topic_name: "/camera/image_raw"
+  gz_topic_name: "/camera/image_raw"
+  ros_type_name: "sensor_msgs/msg/Image"
+  gz_type_name: "gz.msgs.Image"
+  direction: GZ_TO_ROS
+  frame_id: "camera"
+
 - ros_topic_name: "/camera/image_rect"
   gz_topic_name: "/camera/image_raw"
   ros_type_name: "sensor_msgs/msg/Image"
   gz_type_name: "gz.msgs.Image"
   direction: GZ_TO_ROS
   frame_id: "camera"
-  lazy: true
 
 - ros_topic_name: "/camera/camera_info"
   gz_topic_name: "/camera/camera_info"
@@ -32,4 +38,3 @@
   gz_type_name: "gz.msgs.CameraInfo"
   direction: GZ_TO_ROS
   frame_id: "camera"
-  lazy: true
