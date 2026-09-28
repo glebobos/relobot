@@ -6,7 +6,7 @@
 (function () {
   let currentSlide = 1;
   const slides = document.querySelectorAll('.slide');
-  const totalSlides = slides.length || 6;
+  const totalSlides = slides.length;
 
   const progressBar = document.getElementById('progressBar');
   const progressTrack = document.querySelector('.progress-track');
@@ -26,6 +26,12 @@
 
   function fitSlides() {
     if (!slideCanvas || !deckStage) return;
+    if (document.body.classList.contains('media-slide')) {
+      slideCanvas.style.width = '100%';
+      slideCanvas.style.height = '100%';
+      slideCanvas.style.transform = 'none';
+      return;
+    }
     const scale = Math.min(deckStage.clientWidth / 1440, deckStage.clientHeight / 810);
     slideCanvas.style.width = '1440px';
     slideCanvas.style.height = '810px';
@@ -40,6 +46,16 @@
     if (index < 1 || index > totalSlides) return;
     currentSlide = index;
 
+    const isMediaSlide = slides[index - 1].classList.contains('slide-media');
+    document.body.classList.toggle('media-slide', isMediaSlide);
+    if (isMediaSlide && speakerDrawer?.classList.contains('open')) {
+      speakerDrawer.classList.remove('open');
+      speakerDrawer.setAttribute('aria-hidden', 'true');
+      toggleNotesBtn.classList.remove('active');
+      toggleNotesBtn.setAttribute('aria-expanded', 'false');
+    }
+    fitSlides();
+
     slides.forEach((slide) => {
       const slideIdx = parseInt(slide.getAttribute('data-index'), 10);
       if (slideIdx === currentSlide) {
@@ -48,6 +64,17 @@
       } else {
         slide.classList.remove('active');
         slide.setAttribute('aria-hidden', 'true');
+      }
+      const video = slide.querySelector('video');
+      if (video) {
+        if (slideIdx === currentSlide) {
+          video.muted = true;
+          video.currentTime = 0;
+          video.play().catch(() => {});
+        } else {
+          video.pause();
+          video.currentTime = 0;
+        }
       }
     });
 
@@ -81,7 +108,7 @@
   }
 
   function toggleNotes() {
-    if (!speakerDrawer) return;
+    if (!speakerDrawer || document.body.classList.contains('media-slide')) return;
     speakerDrawer.classList.toggle('open');
     const isOpen = speakerDrawer.classList.contains('open');
     speakerDrawer.setAttribute('aria-hidden', String(!isOpen));
@@ -123,6 +150,13 @@
   if (toggleNotesBtn) toggleNotesBtn.addEventListener('click', toggleNotes);
   if (closeNotesBtn) closeNotesBtn.addEventListener('click', toggleNotes);
   if (fullscreenBtn) fullscreenBtn.addEventListener('click', toggleFullscreen);
+
+  document.querySelectorAll('.slide-media video').forEach((video) => {
+    video.addEventListener('click', () => {
+      if (video.paused) video.play().catch(() => {});
+      else video.pause();
+    });
+  });
 
   // Presentation stopwatch timer
   let secondsElapsed = 0;

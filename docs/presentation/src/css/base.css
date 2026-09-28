@@ -22,6 +22,11 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+body.media-slide {
+  display: block;
+  padding: 0;
+}
+
 button,
 a {
   font: inherit;
@@ -40,6 +45,21 @@ a {
   overflow: hidden;
   background: var(--paper);
   border: 1px solid var(--rule-strong);
+}
+
+.media-slide .presentation-shell,
+.media-slide .deck-stage {
+  width: 100%;
+  height: 100%;
+}
+
+.media-slide .presentation-shell {
+  display: block;
+}
+
+.media-slide .deck-stage {
+  aspect-ratio: auto;
+  border: 0;
 }
 
 main {

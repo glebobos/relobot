@@ -1,3 +1,21 @@
+.slide-media {
+  padding: 0;
+  background: #000;
+}
+
+.slide-media.active {
+  display: block;
+  animation: none;
+}
+
+.slide-media img,
+.slide-media video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 /* Slide 1: origin */
 .slide-overview {
   grid-template-columns: repeat(12, minmax(0, 1fr));

@@ -79,6 +79,11 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+body.media-slide {
+  display: block;
+  padding: 0;
+}
+
 button,
 a {
   font: inherit;
@@ -97,6 +102,21 @@ a {
   overflow: hidden;
   background: var(--paper);
   border: 1px solid var(--rule-strong);
+}
+
+.media-slide .presentation-shell,
+.media-slide .deck-stage {
+  width: 100%;
+  height: 100%;
+}
+
+.media-slide .presentation-shell {
+  display: block;
+}
+
+.media-slide .deck-stage {
+  aspect-ratio: auto;
+  border: 0;
 }
 
 main {
@@ -302,6 +322,12 @@ code {
   transition: width 180ms ease-out;
 }
 
+.media-slide .presenter-bar,
+.media-slide .progress-track,
+.media-slide .speaker-drawer {
+  display: none;
+}
+
 /* Speaker notes */
 .speaker-drawer {
   position: fixed;
@@ -409,6 +435,24 @@ code {
 }
 
     /* --- slides.css --- */
+.slide-media {
+  padding: 0;
+  background: #000;
+}
+
+.slide-media.active {
+  display: block;
+  animation: none;
+}
+
+.slide-media img,
+.slide-media video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 /* Slide 1: origin */
 .slide-overview {
   grid-template-columns: repeat(12, minmax(0, 1fr));
@@ -1276,11 +1320,27 @@ code {
   <div class="presentation-shell">
     <div class="deck-stage">
       <main id="slideCanvas" aria-live="polite">
-            <!-- SLIDE 1: ORIGIN -->
-<section class="slide slide-overview active" data-index="1" aria-labelledby="slide-1-title">
+            <section class="slide slide-media" data-index="1" aria-label="Windows XP animated wallpaper">
+  <video src="video/MicrosoftWindowsXPBlissWallpaperAnimated.mp4" autoplay muted loop playsinline preload="auto" aria-label="Windows XP animated wallpaper"></video>
+</section>
+
+    <section class="slide slide-media" data-index="2" aria-label="Gladiator">
+  <img src="images/gladiator.png" alt="Gladiator">
+</section>
+
+    <section class="slide slide-media" data-index="3" aria-label="Dreame robot vacuum">
+  <video src="video/DreameX60Ultrareview.mp4" muted loop playsinline preload="metadata" aria-label="Dreame robot vacuum"></video>
+</section>
+
+    <section class="slide slide-media" data-index="4" aria-label="Worx robotic lawn mower">
+  <video src="video/WorxLandroidInstallationGuide.mp4" muted loop playsinline preload="metadata" aria-label="Worx robotic lawn mower"></video>
+</section>
+
+    <!-- SLIDE 5: ORIGIN -->
+<section class="slide slide-overview" data-index="5" aria-labelledby="slide-5-title">
   <header class="slide-heading overview-heading">
     <p class="slide-kicker">ReloBot / Origin</p>
-    <h1 class="slide-title" id="slide-1-title">DarkСельмаш Factory</h1>
+    <h1 class="slide-title" id="slide-5-title">DarkСельмаш Factory</h1>
     <p class="slide-subtitle">A dead board. A working chassis. A robot to rebuild.</p>
   </header>
 
@@ -1331,11 +1391,11 @@ code {
   </footer>
 </section>
 
-    <!-- SLIDE 2: ROS 2 CONTRACTS & HUB AND SPOKE -->
-<section class="slide slide-hardware" data-index="2" aria-labelledby="slide-2-title">
+    <!-- SLIDE 6: ROS 2 CONTRACTS & HUB AND SPOKE -->
+<section class="slide slide-hardware" data-index="6" aria-labelledby="slide-6-title">
   <header class="slide-heading architecture-heading">
     <p class="slide-kicker">Framework / Architecture</p>
-    <h1 class="slide-title" id="slide-2-title">Choosing ROS 2 and boundaries</h1>
+    <h1 class="slide-title" id="slide-6-title">Choosing ROS 2 and boundaries</h1>
     <p class="slide-subtitle">Hub &amp; spoke hardware, ROS 2 contracts, Docker Compose orchestration.</p>
   </header>
 
@@ -1399,10 +1459,10 @@ code {
   </footer>
 </section>
 
-    <section class="slide slide-engineering" data-index="3" aria-labelledby="slide-3-title">
+    <section class="slide slide-engineering" data-index="7" aria-labelledby="slide-7-title">
   <header class="slide-heading engineering-heading">
     <p class="slide-kicker">Interacting layers / Simulation</p>
-    <h1 class="slide-title" id="slide-3-title">From the field to Gazebo</h1>
+    <h1 class="slide-title" id="slide-7-title">From the field to Gazebo</h1>
     <p class="slide-subtitle">Together, these layers create behavior that no single layer explains.</p>
   </header>
 
@@ -1441,11 +1501,11 @@ code {
   </footer>
 </section>
 
-    <!-- SLIDE 4: GSKB VS CODE FACTORIES -->
-<section class="slide slide-intelligence" data-index="4" aria-labelledby="slide-4-title">
+    <!-- SLIDE 8: GSKB VS CODE FACTORIES -->
+<section class="slide slide-intelligence" data-index="8" aria-labelledby="slide-8-title">
   <header class="slide-heading architecture-heading">
     <p class="slide-kicker">DarkSelmash / GSKB</p>
-    <h1 class="slide-title" id="slide-4-title">A design bureau, not a factory</h1>
+    <h1 class="slide-title" id="slide-8-title">A design bureau, not a factory</h1>
     <p class="slide-subtitle">Constraints and validation turn an idea into a testable change.</p>
   </header>
 
@@ -1479,11 +1539,11 @@ code {
   </footer>
 </section>
 
-    <!-- SLIDE 5: LIVE DEMO -->
-<section class="slide slide-demo" data-index="5" aria-labelledby="slide-5-title">
+    <!-- SLIDE 9: LIVE DEMO -->
+<section class="slide slide-demo" data-index="9" aria-labelledby="slide-9-title">
   <header class="slide-heading demo-heading">
     <p class="slide-kicker">ReloBot / Simulation</p>
-    <h1 class="slide-title" id="slide-5-title">Live demo in Gazebo</h1>
+    <h1 class="slide-title" id="slide-9-title">Live demo in Gazebo</h1>
     <p class="slide-subtitle">One simulated world, from interaction to action, code and data.</p>
   </header>
 
@@ -1508,11 +1568,11 @@ code {
   </aside>
 </section>
 
-    <!-- SLIDE 6: WHAT NEXT & QUESTIONS -->
-<section class="slide slide-roadmap" data-index="6" aria-labelledby="slide-6-title">
+    <!-- SLIDE 10: WHAT NEXT & QUESTIONS -->
+<section class="slide slide-roadmap" data-index="10" aria-labelledby="slide-10-title">
   <header class="slide-heading roadmap-heading">
     <p class="slide-kicker">ReloBot / What comes next</p>
-    <h1 class="slide-title" id="slide-6-title">A platform still learning</h1>
+    <h1 class="slide-title" id="slide-10-title">A platform still learning</h1>
     <p class="slide-subtitle">Open code, evolving hardware support, and more capability on the compute already aboard.</p>
   </header>
 
@@ -1545,7 +1605,7 @@ code {
 </section>
       </main>
 
-      <div class="progress-track" role="progressbar" aria-label="Presentation progress" aria-valuemin="1" aria-valuemax="6" aria-valuenow="1">
+      <div class="progress-track" role="progressbar" aria-label="Presentation progress" aria-valuemin="1" aria-valuemax="10" aria-valuenow="1">
         <div class="progress-bar" id="progressBar"></div>
       </div>
     </div>
@@ -1561,7 +1621,7 @@ code {
           <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><polyline points="12 6 12 12 16 14"/></svg>
           <span id="timerText">00:00</span>
         </button>
-        <span class="slide-counter" id="slideCounter" aria-live="polite">01 / 06</span>
+        <span class="slide-counter" id="slideCounter" aria-live="polite">01 / 10</span>
       </div>
 
       <div class="presenter-actions">
@@ -1587,7 +1647,7 @@ code {
     <div class="speaker-header">
       <div class="speaker-title">
         <span>Speaker notes</span>
-        <span id="notesSlideIndicator">Slide 1 / 6</span>
+        <span id="notesSlideIndicator">Slide 1 / 10</span>
       </div>
       <button class="control-button control-button--text" id="closeNotesBtn" type="button">
         <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -1600,19 +1660,19 @@ code {
     <script>
     // --- notes.js ---
 const speakerNotes = {
-  1: `Все идеи рождаются из сложностей и необходимости. У меня такая была — трава по колено вокруг дома. Бурьян растёт, а я за полторы тысячи километров. Хоть каждые выходные бери и летай косить.
+  5: `Все идеи рождаются из сложностей и необходимости. У меня такая была — трава по колено вокруг дома. Бурьян растёт, а я за полторы тысячи километров. Хоть каждые выходные бери и летай косить.
 
 Роботы-пылесосы всем давно знакомы. Роботы-газонокосилки — штука менее привычная, но идея похожая: хочется, чтобы техника справлялась без постоянного внимания. Я купил на аукционе робота-газонокосилку — «работает, но почему-то не едет». Классика. По факту приехал хлам со сгоревшей материнской платой, которую я отмаливал до конца. Повезло, что колёсная трансмиссия и моторы остались худо-бедно живыми. Мотор ножей тоже. Полуживой аккумулятор с контроллером заряда. И самое ценное — шасси.
 
 После уймы вечеров стало ясно: либо на свалку, либо делать что-то самому. Решил делать робота. Всё по классике — нужен контроллер. Ещё не понимая, к чему это приведёт и каких мощностей потребует, выбор пал на Raspberry Pi.`,
-  2: `Обзор доступных фреймворков для робототехники показал: всё не то. Древность, монолитность, жёсткая завязка на конкретное железо. Стало понятно — пойдём своим путём. Выбор пал на ROS 2.
+  6: `Обзор доступных фреймворков для робототехники показал: всё не то. Древность, монолитность, жёсткая завязка на конкретное железо. Стало понятно — пойдём своим путём. Выбор пал на ROS 2.
 
 Это тоже достаточно консервативный фреймворк, однако именно он давал связку между уровнями взаимодействия. А уровней этих — четыре, и все разной природы: окружающий мир с его физикой; сам робот и его механика; контроллеры с физическими и логическими ограничениями; наконец, код, алгоритмы и логика поведения. Всё это должно сойтись в одной точке.
 
 Заметил такую тенденцию у инженеров — да и у себя самого: без должного контроля всё скатывается к монолитам. На масштабе это ни к чему хорошему не приводит. Поэтому с самого начала заложил архитектуру hub-and-spoke, plug-and-play и контракты между модулями. Были эксперименты и с Kubernetes, и с удалёнными нодами. Но сейчас это Docker Compose — проще и понятнее. Плюс отдельные контроллеры на USB-устройствах.
 
 На схеме центральный Raspberry Pi 5 координирует ROS 2 Humble-ноды: топики, TF и actions, контейнеры поднимаются через профили Docker Compose. Но быстрые контуры остаются рядом с железом. Колёса — отдельный RP2040 с локальным PI-контуром и таймаутом безопасности: цикл управления 100 Гц, телеметрия около 30 Гц. Ножи — свой RP2040: цикл управления 50 Гц, телеметрия 10 Гц. IMU — ещё один RP2040, публикация данных около 30 Гц. Они связаны с Pi через USB CDC. Мониторинг напряжения и тока — отдельный контроллер RP2350 с публикацией 10 Гц. Лидар и камера приходят напрямую через USB или UART, голосовой выход идёт через ALSA и усилитель. На экране оставили главное: эти модули можно менять независимо, сохраняя контракты.`,
-  3: `Возвращаясь к четырём уровням взаимодействия. Есть греческое слово — синергия. Это когда разнородные вещи, соединяясь, усиливают друг друга или дают новое свойство.
+  7: `Возвращаясь к четырём уровням взаимодействия. Есть греческое слово — синергия. Это когда разнородные вещи, соединяясь, усиливают друг друга или дают новое свойство.
 
 Хороший пример — железобетон. Бетон хорошо держит сжатие, но плохо работает на растяжение; арматура принимает растягивающие нагрузки. А вместе получается материал, из которого построено здание, в котором мы сейчас находимся.
 
@@ -1625,7 +1685,7 @@ const speakerNotes = {
 Но когда система становится необъятной, регрессия возникает на каждом шагу. С софтом и хардом ещё понятно, как отлаживать. А с механикой? С физикой окружающего мира? На одной интуиции далеко не уедешь.
 
 Вот тут на сцену выходит Gazebo — симулятор, который даёт модели мира, движения и сенсоров. Он замыкает цикл разработки: сначала воспроизводим сценарий там, потом проверяем на настоящем роботе. Это не точная копия газона или всех контроллеров, зато ошибки можно ловить раньше и безопаснее.`,
-  4: `Сейчас новая мода: все делают автономные фабрики по производству кода, интеллектуальных решений — по сути, текста. Волну, конечно, подтолкнул AI. Но мне кажется, что слово «фабрика» здесь часто уводит не туда.
+  8: `Сейчас новая мода: все делают автономные фабрики по производству кода, интеллектуальных решений — по сути, текста. Волну, конечно, подтолкнул AI. Но мне кажется, что слово «фабрика» здесь часто уводит не туда.
 
 Давайте посмотрим на реальное производство. Есть универсальный цех: куча станков, два работяги, которые и заказы принимают, и технологию придумывают, и металл заказывают, и точат. Потом заказов становится больше. Появляется отдел технологов. А чтобы те не выдумывали отсебятину — им ставят «харнес»: документация, вход, выход. И так постепенно происходит со всеми частями производства.
 
@@ -1634,7 +1694,7 @@ const speakerNotes = {
 Поэтому у меня в роботе — ГСКБ: Головное Самодостаточное Конструкторское Бюро. На вход подаётся идея, намерение. Внутри — ограничения, правила, процессы: достаточно жёсткие для контроля изменений и достаточно гибкие, чтобы находить неожиданные решения. По сути, это работа агента и субагентов с контрактами и валидацией. Изменение можно показать в коде и проверить в симуляции, а инженер всё равно принимает решение.
 
 Если говорить о фабриках в контексте SDLC — это отдельная тема. Сейчас лучше показать, как работает такой цикл на роботе.`,
-  5: `Переключаюсь в VS Code, запускаю симуляцию командой ./start_sim.sh up --gui и по ходу рассказываю, что именно поднимается. Возвращаюсь на слайд, нажимаю кнопку — открывается UI робота. Быстро прохожу по доступным экранам.
+  9: `Переключаюсь в VS Code, запускаю симуляцию командой ./start_sim.sh up --gui и по ходу рассказываю, что именно поднимается. Возвращаюсь на слайд, нажимаю кнопку — открывается UI робота. Быстро прохожу по доступным экранам.
 
 Ключевая мысль: сложные процессы в итоге превращаются в одну кнопку. Dock / Undock, Explore, Coverage — всё в один клик. Вот карта, вот камеры.
 
@@ -1643,7 +1703,7 @@ const speakerNotes = {
 Через чат прошу сделать undock, затем explore — если симуляция и навигация готовы, робот начинает ездить по карте. К этому моменту изменение интерфейса, возможно, уже будет готово. Переключаюсь в VS Code и показываю, что именно изменилось; если успели проверить результат, обновляю UI.
 
 Если симуляция или агент задерживаются, не ждём молча: показываю заранее подготовленный экран карты и проверенный diff. Ножи в этом демо не включаем.`,
-  6: `Какой путь дальше? Из этой истории выросла открытая основа для автономных мобильных роботов с дифференциальным приводом. Хочется постепенно делать её более универсальной. Код открыт, многое работает в Docker-контейнерах, но реальному роботу пока нужны конкретные контроллеры, датчики и настройки — полной независимостью от железа это не назвать.
+  10: `Какой путь дальше? Из этой истории выросла открытая основа для автономных мобильных роботов с дифференциальным приводом. Хочется постепенно делать её более универсальной. Код открыт, многое работает в Docker-контейнерах, но реальному роботу пока нужны конкретные контроллеры, датчики и настройки — полной независимостью от железа это не назвать.
 
 Робот уже умеет говорить — это можно показать отдельно, сейчас времени мало. Дальше учимся смотреть: использовать камеры не просто для картинки, а для понимания мира. Отдельная боль — препятствия ниже высоты установки лидара. Ещё направление — self-healing: обнаруживать сбои и восстанавливаться под контролем человека. И производительность: сначала оптимизируем код, а не просто наращиваем мощность железа.
 
@@ -1668,7 +1728,7 @@ if (typeof module !== 'undefined' && module.exports) {
 (function () {
   let currentSlide = 1;
   const slides = document.querySelectorAll('.slide');
-  const totalSlides = slides.length || 6;
+  const totalSlides = slides.length;
 
   const progressBar = document.getElementById('progressBar');
   const progressTrack = document.querySelector('.progress-track');
@@ -1688,6 +1748,12 @@ if (typeof module !== 'undefined' && module.exports) {
 
   function fitSlides() {
     if (!slideCanvas || !deckStage) return;
+    if (document.body.classList.contains('media-slide')) {
+      slideCanvas.style.width = '100%';
+      slideCanvas.style.height = '100%';
+      slideCanvas.style.transform = 'none';
+      return;
+    }
     const scale = Math.min(deckStage.clientWidth / 1440, deckStage.clientHeight / 810);
     slideCanvas.style.width = '1440px';
     slideCanvas.style.height = '810px';
@@ -1702,6 +1768,16 @@ if (typeof module !== 'undefined' && module.exports) {
     if (index < 1 || index > totalSlides) return;
     currentSlide = index;
 
+    const isMediaSlide = slides[index - 1].classList.contains('slide-media');
+    document.body.classList.toggle('media-slide', isMediaSlide);
+    if (isMediaSlide && speakerDrawer?.classList.contains('open')) {
+      speakerDrawer.classList.remove('open');
+      speakerDrawer.setAttribute('aria-hidden', 'true');
+      toggleNotesBtn.classList.remove('active');
+      toggleNotesBtn.setAttribute('aria-expanded', 'false');
+    }
+    fitSlides();
+
     slides.forEach((slide) => {
       const slideIdx = parseInt(slide.getAttribute('data-index'), 10);
       if (slideIdx === currentSlide) {
@@ -1710,6 +1786,17 @@ if (typeof module !== 'undefined' && module.exports) {
       } else {
         slide.classList.remove('active');
         slide.setAttribute('aria-hidden', 'true');
+      }
+      const video = slide.querySelector('video');
+      if (video) {
+        if (slideIdx === currentSlide) {
+          video.muted = true;
+          video.currentTime = 0;
+          video.play().catch(() => {});
+        } else {
+          video.pause();
+          video.currentTime = 0;
+        }
       }
     });
 
@@ -1743,7 +1830,7 @@ if (typeof module !== 'undefined' && module.exports) {
   }
 
   function toggleNotes() {
-    if (!speakerDrawer) return;
+    if (!speakerDrawer || document.body.classList.contains('media-slide')) return;
     speakerDrawer.classList.toggle('open');
     const isOpen = speakerDrawer.classList.contains('open');
     speakerDrawer.setAttribute('aria-hidden', String(!isOpen));
@@ -1785,6 +1872,13 @@ if (typeof module !== 'undefined' && module.exports) {
   if (toggleNotesBtn) toggleNotesBtn.addEventListener('click', toggleNotes);
   if (closeNotesBtn) closeNotesBtn.addEventListener('click', toggleNotes);
   if (fullscreenBtn) fullscreenBtn.addEventListener('click', toggleFullscreen);
+
+  document.querySelectorAll('.slide-media video').forEach((video) => {
+    video.addEventListener('click', () => {
+      if (video.paused) video.play().catch(() => {});
+      else video.pause();
+    });
+  });
 
   // Presentation stopwatch timer
   let secondsElapsed = 0;

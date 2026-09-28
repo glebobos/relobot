@@ -113,6 +113,12 @@
   transition: width 180ms ease-out;
 }
 
+.media-slide .presenter-bar,
+.media-slide .progress-track,
+.media-slide .speaker-drawer {
+  display: none;
+}
+
 /* Speaker notes */
 .speaker-drawer {
   position: fixed;
