@@ -63,14 +63,12 @@ The production line repeats. The design bureau explores and checks.
 ---
 
 <!-- Slide 5 -->
-# Watch it change live
+# Live demo in Gazebo
 
-1. Start Gazebo in VS Code.
-2. Open the robot UI: `http://localhost/`.
-3. Meet **Petrovich** and open **GSKB**.
-4. Ask for a map-camera toggle; inspect the diff.
-
-Fallback: saved map and reviewed change.
+- **Robot interface:** map, cameras and simulated controls.
+- **Petrovich:** control the simulated robot via chat.
+- **Code changes:** from request to reviewed diff.
+- **Coverage & telemetry:** simulated route and live data.
 
 ---
 

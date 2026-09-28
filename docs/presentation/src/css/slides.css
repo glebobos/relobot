@@ -203,6 +203,12 @@
 .node-perception { grid-column: 5; grid-row: 2; }
 .node-audio { grid-column: 5; grid-row: 3; }
 
+.node-power,
+.node-perception,
+.node-audio {
+  text-align: right;
+}
+
 .hardware-hub {
   grid-column: 3;
   grid-row: 1 / 4;
