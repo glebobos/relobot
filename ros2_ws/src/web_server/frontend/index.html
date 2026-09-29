@@ -60,7 +60,7 @@
             <nav class="c-app-header__nav c-dots-nav" id="headerNav">
                 <div class="c-dots-nav__dot is-active" data-index="0" title="Map"></div>
                 <div class="c-dots-nav__dot" data-index="1" title="Camera"></div>
-                <div class="c-dots-nav__dot" data-index="2" title="AI Chat"></div>
+                <div class="c-dots-nav__dot" data-index="2" title="Petrovich"></div>
                 <div class="c-dots-nav__dot" data-index="3" title="Settings"></div>
             </nav>
             <div class="c-app-header__right">
@@ -130,7 +130,7 @@
                                     <i class="fas fa-location-dot"></i>
                                 </button>
                                 <!-- Assistant Chat -->
-                                <button id="map-chat-toggle-btn" class="c-sidebar-btn c-chat-toggle-icon-btn" title="ReloBot Assistant Chat">
+                                <button id="map-chat-toggle-btn" class="c-sidebar-btn c-chat-toggle-icon-btn" title="Open Petrovich chat">
                                     <i class="fas fa-comment-dots"></i>
                                 </button>
                             </div>
@@ -198,7 +198,7 @@
 
                                 <!-- Camera Top Controls (Assistant Chat) -->
                                 <div class="c-camera-view__top-controls">
-                                    <button id="camera-chat-toggle-btn" class="c-sidebar-btn c-chat-toggle-icon-btn" title="ReloBot Assistant Chat">
+                                    <button id="camera-chat-toggle-btn" class="c-sidebar-btn c-chat-toggle-icon-btn" title="Open Petrovich chat">
                                         <i class="fas fa-comment-dots"></i>
                                     </button>
                                 </div>
@@ -226,7 +226,7 @@
                                     </div>
                                     <div class="c-chat-header__title-group">
                                         <div class="c-chat-header__title-row">
-                                            <span class="c-chat-header__title">ReloBot AI <i class="fas fa-sparkles"></i></span>
+                                            <span class="c-chat-header__title"><span id="chatHeaderTitle">Petrovich</span> <i class="fas fa-sparkles"></i></span>
                                             <span class="c-chat-session-chip" id="chatSessionChip" title="Active AGY session. Click to copy full ID.">
                                                 <i class="fas fa-fingerprint"></i> <span id="chatSessionId">New Session</span>
                                             </span>
@@ -234,8 +234,8 @@
                                     </div>
                                 </div>
                                 <div class="c-chat-header__controls">
-                                    <button class="c-chat-toggle-btn c-chat-advanced-btn" id="toggleChatAdvanced" title="Toggle Advanced Interactive AGY Terminal">
-                                        <i class="fas fa-terminal"></i> <span class="c-chat-toggle-label">Advanced</span>
+                                    <button class="c-chat-toggle-btn c-chat-advanced-btn" id="toggleChatAdvanced" title="Toggle GSKB terminal">
+                                        <span class="c-chat-toggle-label">GSKB</span>
                                     </button>
                                     <button class="c-chat-toggle-btn c-chat-lang-btn" id="toggleChatLang" title="Toggle Voice Recognition Language (English / Russian)">
                                         <i class="fas fa-language"></i> <span class="c-chat-toggle-label" id="chatLangLabel">EN</span>
@@ -253,13 +253,7 @@
                             </div>
 
                             <!-- Message Feed -->
-                            <div class="c-chat-feed" id="chatFeed">
-                                <div class="c-chat-welcome">
-                                    <div class="c-chat-welcome__icon"><i class="fas fa-robot"></i></div>
-                                    <div class="c-chat-welcome__title">ReloBot AI Assistant</div>
-                                    <div class="c-chat-welcome__text">Direct conversational interface powered by Antigravity (AGY) & Piper Neural Voice. Type a message or click the microphone to speak.</div>
-                                </div>
-                            </div>
+                            <div class="c-chat-feed" id="chatFeed"></div>
 
                             <!-- Live Voice Transcript & Waveform Box -->
                             <div class="c-chat-live-box" id="chatLiveBox">
@@ -279,7 +273,7 @@
                                     <i class="fas fa-microphone"></i>
                                 </button>
                                 <div class="c-chat-input-wrapper">
-                                    <textarea id="chatInputText" class="c-chat-textarea" placeholder="Ask ReloBot or tap mic to speak..." rows="1"></textarea>
+                                    <textarea id="chatInputText" class="c-chat-textarea" placeholder="Ask Petrovich or tap mic to speak..." rows="1"></textarea>
                                 </div>
                                 <button class="c-chat-send-btn" id="chatSendBtn" title="Send Message">
                                     <i class="fas fa-paper-plane"></i>
@@ -357,7 +351,7 @@
                             <div class="c-floating-chat-widget__status-dot" id="floatingChatStatusDot"></div>
                         </div>
                         <div class="c-floating-chat-widget__title-group">
-                            <span class="c-floating-chat-widget__title">ReloBot AI <i class="fas fa-sparkles"></i></span>
+                            <span class="c-floating-chat-widget__title">Petrovich <i class="fas fa-sparkles"></i></span>
                             <span class="c-floating-chat-widget__subtitle">Live Assistant</span>
                         </div>
                     </div>
@@ -371,13 +365,7 @@
                     </div>
                 </div>
 
-                <div class="c-floating-chat-widget__feed" id="floatingChatFeed">
-                    <div class="c-floating-chat-widget__welcome">
-                        <div class="c-floating-chat-widget__welcome-icon"><i class="fas fa-robot"></i></div>
-                        <div class="c-floating-chat-widget__welcome-title">ReloBot Assistant</div>
-                        <div class="c-floating-chat-widget__welcome-text">Ask questions, plan moves, or tap the microphone to dictate hands-free.</div>
-                    </div>
-                </div>
+                <div class="c-floating-chat-widget__feed" id="floatingChatFeed"></div>
 
                 <!-- Live Voice Transcript & Waveform Box -->
                 <div class="c-floating-chat-widget__live-box" id="floatingChatLiveBox">
@@ -397,7 +385,7 @@
                         <i class="fas fa-microphone"></i>
                     </button>
                     <div class="c-floating-chat-widget__input-wrapper">
-                        <textarea id="floatingChatInputText" class="c-floating-chat-widget__textarea" placeholder="Ask ReloBot or tap mic..." rows="1"></textarea>
+                        <textarea id="floatingChatInputText" class="c-floating-chat-widget__textarea" placeholder="Ask Petrovich or tap mic..." rows="1"></textarea>
                     </div>
                     <button class="c-floating-chat-widget__lang-btn" id="floatingChatLangBtn" title="Toggle Voice Recognition Language (English / Russian)">
                         <span id="floatingChatLangLabel">EN</span>
