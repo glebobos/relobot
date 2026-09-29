@@ -220,6 +220,20 @@ def generate_launch_description():
         }]
     )
 
+    camera_compressed_republisher = Node(
+        condition=IfCondition(web_video_arg),
+        package='image_transport',
+        executable='republish',
+        name='camera_compressed_republisher',
+        output='screen',
+        arguments=[
+            'raw', 'compressed', '--ros-args',
+            '-r', 'in:=/camera/image_raw',
+            '-r', 'out/compressed:=/camera/image_rect/compressed',
+        ],
+        parameters=[{'use_sim_time': use_sim_time_arg}],
+    )
+
     # Knives RPM mock node (/knives/set_rpm -> /knives/current_rpm)
     knives_mock_node = Node(
         package='relobot_gazebo',
@@ -256,6 +270,7 @@ def generate_launch_description():
         knives_mock_node,
         ekf_node,
         web_video_server_node,
+        camera_compressed_republisher,
     ])
 
 

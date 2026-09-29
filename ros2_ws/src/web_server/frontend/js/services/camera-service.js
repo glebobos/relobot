@@ -5,7 +5,7 @@ export class CameraService {
         this.cameraStream = document.getElementById(imgElementId);
         this.clientId = 'web-ui-' + Math.random().toString(36).substring(2, 9);
         this.type = options.type || 'ros_compressed';
-        this.topic = options.topic || (this.type === 'ros_compressed' ? (TOPICS.CAMERA_RAW || '/camera/image_raw') : (TOPICS.CAMERA_IMAGE || '/camera/image_rect'));
+        this.topic = options.topic || TOPICS.CAMERA_IMAGE;
         this.quality = options.quality !== undefined ? options.quality : 50;
         this.width = options.width;
         this.height = options.height;
