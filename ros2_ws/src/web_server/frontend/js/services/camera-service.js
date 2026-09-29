@@ -10,12 +10,9 @@ export class CameraService {
         this.width = options.width;
         this.height = options.height;
 
-        let streamUrl = `${window.location.protocol}//${window.location.host}/camera-stream/stream?topic=${this.topic}&type=${this.type}&qos_profile=sensor_data&client_id=${this.clientId}`;
-        if (this.type === 'mjpeg') {
-            streamUrl += `&quality=${this.quality}`;
-            if (this.width && this.height) {
-                streamUrl += `&width=${this.width}&height=${this.height}`;
-            }
+        let streamUrl = `${window.location.protocol}//${window.location.host}/camera-stream/stream?topic=${this.topic}&type=${this.type}&qos_profile=sensor_data&client_id=${this.clientId}&quality=${this.quality}`;
+        if (this.width && this.height) {
+            streamUrl += `&width=${this.width}&height=${this.height}`;
         }
         this.baseUrl = streamUrl;
         this.isActive = false;
