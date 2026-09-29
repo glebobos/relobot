@@ -8,8 +8,6 @@ export class NavigationManager {
 
         this.pipCamera = document.getElementById('pipCamera');
         this.pipMap = document.getElementById('pipMap');
-        this.mapVideoToggleBtn = document.getElementById('map-video-toggle-btn');
-        this.isMapVideoEnabled = localStorage.getItem('map_video_enabled') !== 'false';
     }
 
     init() {
@@ -32,47 +30,8 @@ export class NavigationManager {
             this.pipMap.addEventListener('click', this.pipMapHandler);
         }
 
-        if (this.mapVideoToggleBtn) {
-            this.mapVideoToggleHandler = () => this.toggleMapVideo();
-            this.mapVideoToggleBtn.addEventListener('click', this.mapVideoToggleHandler);
-        }
-
-        this.updateMapVideoUI();
-
         // Initialize streams and view based on active screen
         this.navigateToScreen(0);
-    }
-
-    toggleMapVideo(forceState) {
-        if (forceState !== undefined) {
-            this.isMapVideoEnabled = Boolean(forceState);
-        } else {
-            this.isMapVideoEnabled = !this.isMapVideoEnabled;
-        }
-        localStorage.setItem('map_video_enabled', String(this.isMapVideoEnabled));
-        this.updateMapVideoUI();
-
-        if (this.currentScreen === 0) {
-            if (this.isMapVideoEnabled) {
-                if (this.pipCameraService) this.pipCameraService.connect();
-            } else {
-                if (this.pipCameraService) this.pipCameraService.stop();
-            }
-        }
-    }
-
-    updateMapVideoUI() {
-        if (this.pipCamera) {
-            this.pipCamera.style.display = this.isMapVideoEnabled ? '' : 'none';
-        }
-        if (this.mapVideoToggleBtn) {
-            this.mapVideoToggleBtn.classList.toggle('is-disabled', !this.isMapVideoEnabled);
-            const icon = this.mapVideoToggleBtn.querySelector('i');
-            if (icon) {
-                icon.className = this.isMapVideoEnabled ? 'fas fa-video' : 'fas fa-video-slash';
-            }
-            this.mapVideoToggleBtn.title = this.isMapVideoEnabled ? 'Disable Video Feed' : 'Enable Video Feed';
-        }
     }
 
     navigateToScreen(index) {
@@ -87,7 +46,7 @@ export class NavigationManager {
 
         // Optimize camera streams based on active screen
         if (index === 0) {
-            if (this.pipCameraService && this.isMapVideoEnabled) this.pipCameraService.connect();
+            if (this.pipCameraService) this.pipCameraService.connect();
             if (this.mainCameraService) this.mainCameraService.stop();
         } else if (index === 1) {
             if (this.mainCameraService) this.mainCameraService.connect();
@@ -111,9 +70,6 @@ export class NavigationManager {
         }
         if (this.pipMap && this.pipMapHandler) {
             this.pipMap.removeEventListener('click', this.pipMapHandler);
-        }
-        if (this.mapVideoToggleBtn && this.mapVideoToggleHandler) {
-            this.mapVideoToggleBtn.removeEventListener('click', this.mapVideoToggleHandler);
         }
     }
 }
