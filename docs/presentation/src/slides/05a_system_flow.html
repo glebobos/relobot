@@ -1,0 +1,85 @@
+<section class="slide slide-system-flow" data-index="10" aria-labelledby="slide-10-title">
+  <header class="slide-heading flow-heading">
+    <p class="slide-kicker">ReloBot / Inside the demo</p>
+    <h1 class="slide-title" id="slide-10-title">From request to robot motion</h1>
+    <p class="slide-subtitle">Two agent workflows. One physical robot with many control layers.</p>
+  </header>
+
+  <div class="flow-entry">
+    <span class="technical-label">Human / intent</span>
+    <strong>"Change the robot"</strong>
+    <span class="flow-entry-divider" aria-hidden="true"></span>
+    <strong>"Undock, then explore"</strong>
+  </div>
+
+  <div class="flow-body">
+    <section class="flow-design" aria-labelledby="flow-design-title">
+      <span class="technical-label">01 / Development</span>
+      <h2 id="flow-design-title">GSKB</h2>
+      <p class="flow-design-request">Intent <span aria-hidden="true">→</span> AGY terminal</p>
+      <div class="flow-harness" aria-labelledby="flow-harness-title">
+        <h3 class="technical-label" id="flow-harness-title">Harness / constraints</h3>
+        <ul>
+          <li>Skills</li>
+          <li>Instructions</li>
+          <li>Memory</li>
+          <li>Codebase</li>
+        </ul>
+      </div>
+      <ol class="flow-development-steps">
+        <li><span>01</span>Change code</li>
+        <li><span>02</span>Restart containers / rebuild</li>
+        <li><span>03</span>Verify behavior</li>
+      </ol>
+      <p class="flow-design-outcome">Feedback <span aria-hidden="true">↺</span> next iteration</p>
+    </section>
+
+    <section class="flow-operation" aria-labelledby="flow-operation-title">
+      <div class="flow-operation-heading">
+        <div>
+          <span class="technical-label">02 / Robot operation</span>
+          <h2 id="flow-operation-title">Petrovich</h2>
+        </div>
+        <p>Chat WebSocket <span aria-hidden="true">→</span> AGY <span aria-hidden="true">→</span> ros-mcp <span aria-hidden="true">→</span> ROS 2 action</p>
+      </div>
+
+      <div class="flow-action">
+        <span class="technical-label">Undock / physical robot</span>
+        <code>/navigate_to_pose</code>
+      </div>
+
+      <ol class="flow-stages" aria-label="Undock command path through the physical robot">
+        <li>
+          <span class="technical-label">Plan &amp; navigate</span>
+          <h3>Nav2 BT</h3>
+          <p>UndockRobot <span aria-hidden="true">→</span> plan <span aria-hidden="true">→</span> follow</p>
+        </li>
+        <li>
+          <span class="technical-label">Velocity to joints</span>
+          <h3>ROS 2 control</h3>
+          <p><code>/cmd_vel</code> <span aria-hidden="true">→</span> diff drive</p>
+        </li>
+        <li>
+          <span class="technical-label">USB serial</span>
+          <h3>micro-ROS</h3>
+          <p>Joint commands <span aria-hidden="true">→</span> Pico</p>
+        </li>
+        <li>
+          <span class="technical-label">Local loop / 100 Hz</span>
+          <h3>Wheel controller</h3>
+          <p>PI control <span aria-hidden="true">→</span> motors</p>
+        </li>
+      </ol>
+
+      <div class="flow-feedback" aria-label="Sensor and encoder feedback">
+        <p><strong>LiDAR</strong> <code>/scan</code> <span aria-hidden="true">→</span> Nav2 costmaps</p>
+        <p><strong>Encoders</strong> <code>/robot_joint_states</code> <span aria-hidden="true">→</span> odometry</p>
+      </div>
+    </section>
+  </div>
+
+  <footer class="flow-footer">
+    <p><strong>Explore:</strong> <code>/explore/resume</code> <span aria-hidden="true">→</span> Nav2</p>
+    <p><strong>Direct UI controls:</strong> rosbridge <span aria-hidden="true">→</span> ROS 2</p>
+  </footer>
+</section>

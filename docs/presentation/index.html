@@ -1121,6 +1121,269 @@ code {
   font-weight: 600;
 }
 
+.slide-system-flow {
+  display: none;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  gap: 16px;
+}
+
+.slide-system-flow.active {
+  display: grid;
+}
+
+.flow-entry {
+  display: grid;
+  grid-template-columns: 186px minmax(0, 0.9fr) 1px minmax(0, 1.7fr);
+  align-items: center;
+  gap: 22px;
+  min-height: 62px;
+  border-top: 1px solid var(--ink);
+  border-bottom: 1px solid var(--rule);
+}
+
+.flow-entry strong {
+  font-size: 23px;
+  font-weight: 600;
+}
+
+.flow-entry-divider {
+  height: 28px;
+  background: var(--rule);
+}
+
+.flow-body {
+  display: grid;
+  grid-template-columns: minmax(0, 0.36fr) minmax(0, 1fr);
+  gap: 28px;
+  min-height: 0;
+}
+
+.flow-design,
+.flow-operation {
+  min-width: 0;
+  border-top: 2px solid var(--accent);
+  padding-top: 14px;
+}
+
+.flow-design {
+  display: flex;
+  flex-direction: column;
+  padding-right: 24px;
+  border-right: 1px solid var(--rule);
+}
+
+.flow-design h2,
+.flow-operation h2 {
+  margin-top: 6px;
+  font-size: 34px;
+  line-height: 1.1;
+}
+
+.flow-design-request {
+  margin-top: 16px;
+  font-size: 20px;
+  line-height: 1.25;
+}
+
+.flow-harness {
+  margin-top: 16px;
+  padding-left: 14px;
+  border-left: 3px solid var(--accent);
+}
+
+.flow-harness ul {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 10px;
+  margin-top: 7px;
+  list-style: none;
+}
+
+.flow-harness li {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--rule);
+  font-size: 20px;
+  line-height: 1.2;
+}
+
+.flow-development-steps {
+  margin-top: 16px;
+  list-style: none;
+  border-top: 1px solid var(--rule);
+}
+
+.flow-development-steps li {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--rule);
+  font-size: 20px;
+  line-height: 1.2;
+}
+
+.flow-development-steps li span {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  color: var(--accent);
+}
+
+.flow-design-request span,
+.flow-design-outcome span {
+  color: var(--accent);
+}
+
+.flow-design-outcome {
+  margin-top: auto;
+  padding-bottom: 12px;
+  font-size: 20px;
+  line-height: 1.25;
+  color: var(--ink-secondary);
+}
+
+.flow-operation {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  gap: 14px;
+}
+
+.flow-operation-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 18px;
+  min-height: 70px;
+}
+
+.flow-operation-heading .technical-label {
+  display: block;
+}
+
+.flow-operation h2 {
+  line-height: 1.3;
+}
+
+.flow-operation-heading p {
+  padding-bottom: 4px;
+  font-size: 19px;
+  line-height: 1.25;
+  color: var(--ink-secondary);
+  text-align: right;
+}
+
+.flow-operation-heading p span {
+  color: var(--accent);
+}
+
+.flow-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 48px;
+  padding: 7px 16px;
+  border-left: 3px solid var(--accent);
+  background: var(--accent-soft);
+}
+
+.flow-action code {
+  font-size: 20px;
+}
+
+.flow-stages {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  min-height: 0;
+  list-style: none;
+}
+
+.flow-stages li {
+  position: relative;
+  min-width: 0;
+  padding: 15px 12px 10px 0;
+  border-top: 1px solid var(--rule-strong);
+  border-right: 1px solid var(--rule);
+}
+
+.flow-stages li:not(:first-child) {
+  padding-left: 17px;
+}
+
+.flow-stages li:last-child {
+  border-right: 0;
+}
+
+.flow-stages li:not(:last-child)::after {
+  position: absolute;
+  right: 0;
+  top: 42%;
+  z-index: 1;
+  padding: 0 2px;
+  background: var(--paper);
+  color: var(--accent);
+  content: "→";
+  font-size: 27px;
+}
+
+.flow-stages h3 {
+  margin-top: 18px;
+  font-size: 27px;
+  line-height: 1.08;
+}
+
+.flow-stages p {
+  margin-top: 14px;
+  font-size: 20px;
+  line-height: 1.25;
+  color: var(--ink-secondary);
+}
+
+.flow-stages p code {
+  font-size: 18px;
+}
+
+.flow-feedback {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 14px 0 8px;
+  border-top: 1px solid var(--ink);
+}
+
+.flow-feedback p {
+  font-size: 19px;
+  line-height: 1.3;
+  color: var(--ink-secondary);
+}
+
+.flow-feedback p::before {
+  margin-right: 8px;
+  color: var(--accent);
+  content: "↖";
+  font-size: 21px;
+}
+
+.flow-feedback strong {
+  color: var(--ink);
+}
+
+.flow-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding-top: 13px;
+  border-top: 1px solid var(--ink);
+  font-family: var(--font-mono);
+  font-size: 17px;
+  color: var(--ink-secondary);
+}
+
+.flow-footer strong {
+  color: var(--accent);
+}
+
 .demo-sequence,
 .engineering-footer,
 .roadmap-footer {
@@ -1568,11 +1831,97 @@ code {
   </aside>
 </section>
 
-    <!-- SLIDE 10: WHAT NEXT & QUESTIONS -->
-<section class="slide slide-roadmap" data-index="10" aria-labelledby="slide-10-title">
+    <section class="slide slide-system-flow" data-index="10" aria-labelledby="slide-10-title">
+  <header class="slide-heading flow-heading">
+    <p class="slide-kicker">ReloBot / Inside the demo</p>
+    <h1 class="slide-title" id="slide-10-title">From request to robot motion</h1>
+    <p class="slide-subtitle">Two agent workflows. One physical robot with many control layers.</p>
+  </header>
+
+  <div class="flow-entry">
+    <span class="technical-label">Human / intent</span>
+    <strong>"Change the robot"</strong>
+    <span class="flow-entry-divider" aria-hidden="true"></span>
+    <strong>"Undock, then explore"</strong>
+  </div>
+
+  <div class="flow-body">
+    <section class="flow-design" aria-labelledby="flow-design-title">
+      <span class="technical-label">01 / Development</span>
+      <h2 id="flow-design-title">GSKB</h2>
+      <p class="flow-design-request">Intent <span aria-hidden="true">→</span> AGY terminal</p>
+      <div class="flow-harness" aria-labelledby="flow-harness-title">
+        <h3 class="technical-label" id="flow-harness-title">Harness / constraints</h3>
+        <ul>
+          <li>Skills</li>
+          <li>Instructions</li>
+          <li>Memory</li>
+          <li>Codebase</li>
+        </ul>
+      </div>
+      <ol class="flow-development-steps">
+        <li><span>01</span>Change code</li>
+        <li><span>02</span>Restart containers / rebuild</li>
+        <li><span>03</span>Verify behavior</li>
+      </ol>
+      <p class="flow-design-outcome">Feedback <span aria-hidden="true">↺</span> next iteration</p>
+    </section>
+
+    <section class="flow-operation" aria-labelledby="flow-operation-title">
+      <div class="flow-operation-heading">
+        <div>
+          <span class="technical-label">02 / Robot operation</span>
+          <h2 id="flow-operation-title">Petrovich</h2>
+        </div>
+        <p>Chat WebSocket <span aria-hidden="true">→</span> AGY <span aria-hidden="true">→</span> ros-mcp <span aria-hidden="true">→</span> ROS 2 action</p>
+      </div>
+
+      <div class="flow-action">
+        <span class="technical-label">Undock / physical robot</span>
+        <code>/navigate_to_pose</code>
+      </div>
+
+      <ol class="flow-stages" aria-label="Undock command path through the physical robot">
+        <li>
+          <span class="technical-label">Plan &amp; navigate</span>
+          <h3>Nav2 BT</h3>
+          <p>UndockRobot <span aria-hidden="true">→</span> plan <span aria-hidden="true">→</span> follow</p>
+        </li>
+        <li>
+          <span class="technical-label">Velocity to joints</span>
+          <h3>ROS 2 control</h3>
+          <p><code>/cmd_vel</code> <span aria-hidden="true">→</span> diff drive</p>
+        </li>
+        <li>
+          <span class="technical-label">USB serial</span>
+          <h3>micro-ROS</h3>
+          <p>Joint commands <span aria-hidden="true">→</span> Pico</p>
+        </li>
+        <li>
+          <span class="technical-label">Local loop / 100 Hz</span>
+          <h3>Wheel controller</h3>
+          <p>PI control <span aria-hidden="true">→</span> motors</p>
+        </li>
+      </ol>
+
+      <div class="flow-feedback" aria-label="Sensor and encoder feedback">
+        <p><strong>LiDAR</strong> <code>/scan</code> <span aria-hidden="true">→</span> Nav2 costmaps</p>
+        <p><strong>Encoders</strong> <code>/robot_joint_states</code> <span aria-hidden="true">→</span> odometry</p>
+      </div>
+    </section>
+  </div>
+
+  <footer class="flow-footer">
+    <p><strong>Explore:</strong> <code>/explore/resume</code> <span aria-hidden="true">→</span> Nav2</p>
+    <p><strong>Direct UI controls:</strong> rosbridge <span aria-hidden="true">→</span> ROS 2</p>
+  </footer>
+</section>
+
+    <!-- SLIDE 11: WHAT NEXT & QUESTIONS -->
+<section class="slide slide-roadmap" data-index="11" aria-labelledby="slide-11-title">
   <header class="slide-heading roadmap-heading">
     <p class="slide-kicker">ReloBot / What comes next</p>
-    <h1 class="slide-title" id="slide-10-title">A platform still learning</h1>
+    <h1 class="slide-title" id="slide-11-title">A platform still learning</h1>
     <p class="slide-subtitle">Open code, evolving hardware support, and more capability on the compute already aboard.</p>
   </header>
 
@@ -1703,7 +2052,16 @@ const speakerNotes = {
 Через чат прошу сделать undock, затем explore — если симуляция и навигация готовы, робот начинает ездить по карте. К этому моменту изменение интерфейса, возможно, уже будет готово. Переключаюсь в VS Code и показываю, что именно изменилось; если успели проверить результат, обновляю UI.
 
 Если симуляция или агент задерживаются, не ждём молча: показываю заранее подготовленный экран карты и проверенный diff. Ножи в этом демо не включаем.`,
-  10: `Какой путь дальше? Из этой истории выросла открытая основа для автономных мобильных роботов с дифференциальным приводом. Хочется постепенно делать её более универсальной. Код открыт, многое работает в Docker-контейнерах, но реальному роботу пока нужны конкретные контроллеры, датчики и настройки — полной независимостью от железа это не назвать.
+  10: `После демо давайте посмотрим, что скрывалось за короткими командами. Это схема физического робота: в показанной симуляции вместо Pico и настоящих моторов работали контроллер Gazebo и виртуальные колёса.
+
+Сверху два разных сценария от одного пользователя. ГСКБ — не отдельная команда роботу и не обязательно работа над интерфейсом. Человек формулирует задачу в AGY-терминале, а агент действует внутри харнеса: скиллы задают рабочие процедуры, инструкции и правила — рамки решений, память сохраняет контекст, существующий код и его контракты ограничивают допустимые изменения. Дальше идёт обычный цикл разработки: меняем код, перезапускаем нужные контейнеры и пересобираем узлы, проверяем поведение в симуляции или на роботе, изучаем результат и при необходимости повторяем. Инженер остаётся в контуре проверки.
+
+У Петровича другой путь: просьба в чате проходит через отдельный WebSocket к агенту, который вызывает инструменты ros-mcp. Кнопки самого UI могут посылать ROS 2 actions через rosbridge, но чат через него не проходит.
+
+Для undock Петрович отправляет action /navigate_to_pose с деревом undock_and_turn.xml. Nav2 сначала выполняет UndockRobot, затем строит путь и ведёт робота по нему. Команды скорости /cmd_vel принимает diff_drive_controller; интерфейс TopicBasedSystem превращает их в /robot_joint_commands. micro-ROS agent передаёт команды по USB на Pico колёс: там локальный PI-контур работает на 100 Гц и управляет моторами. Энкодеры возвращают /robot_joint_states для обратной связи и одометрии.
+
+Лидар публикует /scan в costmap Nav2, чтобы навигация учитывала препятствия. Explore — уже другая команда: Петрович публикует /explore/resume, после чего поиск маршрута использует данные карты и лидара. На экране одна просьба, а за ней несколько независимых уровней управления.`,
+  11: `Какой путь дальше? Из этой истории выросла открытая основа для автономных мобильных роботов с дифференциальным приводом. Хочется постепенно делать её более универсальной. Код открыт, многое работает в Docker-контейнерах, но реальному роботу пока нужны конкретные контроллеры, датчики и настройки — полной независимостью от железа это не назвать.
 
 Робот уже умеет говорить — это можно показать отдельно, сейчас времени мало. Дальше учимся смотреть: использовать камеры не просто для картинки, а для понимания мира. Отдельная боль — препятствия ниже высоты установки лидара. Ещё направление — self-healing: обнаруживать сбои и восстанавливаться под контролем человека. И производительность: сначала оптимизируем код, а не просто наращиваем мощность железа.
 

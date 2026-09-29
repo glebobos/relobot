@@ -1,6 +1,6 @@
 # ReloBot: An Engineering Journey
 
-An interview-style account of how a broken mower became a ROS 2 robot, from field testing to Gazebo and the GSKB design workflow. Four media-only opening slides lead into six English story slides with Russian speaker notes. Allow roughly 15–20 minutes for the story and live demo, plus the opener.
+An interview-style account of how a broken mower became a ROS 2 robot, from field testing to Gazebo and the GSKB design workflow. Four media-only opening slides lead into seven English story slides with Russian speaker notes. Allow roughly 15–20 minutes for the story and live demo, plus the opener.
 
 ## Quick Start
 
@@ -47,7 +47,7 @@ docs/presentation/
     │   ├── slides.css              # Custom layouts (Hub & Spoke, Live Demo, Incidents)
     │   └── main.css                # Root stylesheet importing all sub-modules
     ├── js/
-    │   ├── notes.js                # On-screen Russian speaker notes (slides 5–10)
+    │   ├── notes.js                # On-screen Russian speaker notes (slides 5–11)
     │   └── presentation.js         # Keyboard navigation, stopwatch timer, drawer, fullscreen
     └── slides/
         ├── 00_windows_xp.html      # Slide 1: Windows XP video
@@ -59,7 +59,8 @@ docs/presentation/
         ├── 03_software.html        # Slide 7: Synergy, field tests, Gazebo
         ├── 04_intelligence.html    # Slide 8: GSKB vs. code factories
         ├── 05_demo.html            # Slide 9: Gazebo, UI, Petrovich/GSKB live demo
-        └── 06_engineering.html     # Slide 10: Next challenges and questions
+        ├── 05a_system_flow.html    # Slide 10: GSKB development harness and robot control flow
+        └── 06_engineering.html     # Slide 11: Next challenges and questions
 ```
 
 ---
@@ -92,4 +93,4 @@ docs/presentation/
 
 ## Live Demo
 
-From the repository root, start the simulation with `./start_sim.sh up --gui`. Once the stack is ready, slide 9 opens the robot dashboard at `http://localhost/`. The chat is named **Petrovich**; its **GSKB** button opens the AGY terminal. The presentation itself works offline with its local media, but the dashboard and agent require their respective services. Rehearse the workflow and prepare a saved map and code diff for the fallback described in `SPEAKER_NOTES_RU.md`.
+From the repository root, start the simulation with `./start_sim.sh up --gui`. Once the stack is ready, slide 9 opens the robot dashboard at `http://localhost/`. The chat is named **Petrovich**; its **GSKB** button opens the AGY terminal. Slide 10 contrasts the GSKB development loop, bounded by skills, instructions, memory and existing code, with the physical robot's control path; the demo substitutes Gazebo for the Pico wheel controller and motors. The presentation itself works offline with its local media, but the dashboard and agent require their respective services. Rehearse the workflow and prepare a saved map and code diff for the fallback described in `SPEAKER_NOTES_RU.md`.
