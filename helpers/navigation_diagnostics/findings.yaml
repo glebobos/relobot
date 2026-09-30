@@ -1,0 +1,88 @@
+schema_version: 1
+updated: "2026-09-30"
+report: wiki/navigation_baseline_2026-09-30.md
+status: gazebo_accepted_hardware_integrated_not_physically_validated
+
+runtime:
+  profile: ros2_ws/src/nav2/config/coverage_sim.yaml
+  scope: hardware_and_simulation
+  versions: {nav2: "1.1.20", fields2cover: "1.2.1", opennav_coverage: "0.0.1"}
+  controller: relobot/VerifiedMPPIController
+  goal_checker: relobot::OrderedGoalChecker
+  max_speed_m_s: 0.20
+  speed_preference_m_s: 0.18
+  controller_min_radius_m: 0.20
+  planned_min_radius_m: 0.25
+  body_clearance_m: 0.25
+  path_align_goal_cutoff_m: 0.20
+  path_align_orientations: false
+  track_m: 0.295
+  wheel_radius_m: 0.0937
+  firmware_deadband_rad_s: 0.35
+  warning: Reference snapshot only; runtime YAML remains authoritative.
+
+evidence:
+  - id: baseline
+    capture: 20260930T062841Z-coverage-baseline-762833
+    result: Original measurements; not a controlled comparison with later zones.
+  - id: continuous_v1
+    capture: 20260930T075941Z-coverage-continuous-v1-d963f0
+    result: Ingress crawl aborted before coverage; splice and post-filter radius defects identified.
+  - id: continuous_v2
+    capture: 20260930T095107Z-coverage-continuous-v2-705f9b
+    result: Completed 29.64 m route, but ingress and turns still crawled.
+  - id: fast_turns_v3
+    capture: 20260930T110718Z-coverage-fast-turns-v3-dcdb7c
+    result: Accepted Gazebo behavior; 49.76 m route completed.
+    observed_straight_p95_m: 0.03118135
+    observed_max_tracking_m: 0.13716063
+    measured_turn_median_m_s: 0.1991001
+    measured_slower_wheel_min_rad_s: 0.7771172
+    observed_scan_clearance_min_m: 0.71609515
+    incomplete_capture: First 5.12 m already executed; no startup/ingress proof.
+    summary_warning: Original tracking summary is invalid due to late attachment.
+  - id: hardware_integration
+    tests_passed: 86
+    duration_s: 331.62
+    result: Shared profile and clocks verified in isolation; no physical trial.
+  - id: independent_lab
+    tests_passed: 94
+    duration_s: 329.59
+    image: relobot-navigation-lab:latest
+    image_config_id: sha256:f6de6a459fbefa55af1525101c7d1191b4fdfe4ad762e548c564288394cf937c
+    result: Independent five-package build and full suite passed without host install or historical volume.
+    replay: Fast-turns v3 tracking, wheel metrics and 0.035 s command coast reproduced via clean JSON output.
+
+findings:
+  - id: single_ordered_route
+    decision: Keep ingress and coverage in one ordered FollowPath, not waypoint stops.
+  - id: exact_ingress_join
+    decision: Use validated forward Dubins tails; proximity joins can create backward segments.
+  - id: dubins_continuity
+    decision: Use DUBIN/DISCONTINUOUS; installed CONTINUOUS produced a sideways join.
+  - id: post_filter_constraints
+    decision: Reapply constraints after MPPI smoothing and validate the resulting filled footprint sweep.
+  - id: directional_headland
+    decision: Direction-dependent body margins and rounded perimeter avoid excessive uniform insets.
+  - id: ordered_goal_checker
+    decision: Require ordered progress so a closed path cannot complete at its shared start/end.
+  - id: explicit_ordinary_checker
+    decision: Ordinary BTs must specify their original goal checker when multiple checkers are loaded.
+  - id: useful_turn_speed
+    decision: Judge the slower wheel, not base speed; the 0.18 m/s critic is only a soft preference.
+  - id: endpoint_handoff
+    rejected: Cutoff 0.15 m stalled at 0.16 m remaining; 0.25 m missed the closed-loop endpoint by 0.06 m.
+    accepted: Cutoff 0.20 m retained 0.05 m goal tolerance and passed repeated regressions.
+  - id: late_recorder_attachment
+    decision: Seed offline ordered tracking once from manager progress, never global nearest-row projection.
+  - id: world_selection
+    decision: Use garden for live SLAM; empty-world infinite scans produced a zero-sized map.
+
+open_questions:
+  - Loaded wheel minimum, slip and coast behavior remain unmeasured.
+  - Raspberry Pi 20 Hz controller timing remains unverified.
+  - Passive recorder late-attachment initialization remains unfixed; record before Execute.
+  - Two isolated v3 zero commands have an unknown publisher/cause, without sustained crawl.
+  - Direct FollowPath clients and teleoperation are not centrally arbitrated.
+  - Ordinary exploration arc behavior has not been redesigned.
+  - Observed lidar clearance does not prove occluded-space safety or mowed-area completeness.

@@ -2,22 +2,28 @@ from __future__ import annotations
 
 import json
 import math
+import time
+from copy import deepcopy
+from concurrent.futures import ThreadPoolExecutor
+from threading import Event
 from typing import Any
 
 from action_msgs.msg import GoalStatus
 from geometry_msgs.msg import Point32, Pose, PoseStamped, PolygonStamped
-from nav2_msgs.action import NavigateThroughPoses
-from builtin_interfaces.msg import Duration as MsgDuration
 from nav_msgs.msg import OccupancyGrid, Path
 from opennav_coverage_msgs.action import ComputeCoveragePath
 from opennav_coverage_msgs.msg import Coordinate, Coordinates
 import rclpy
 from rclpy.action import ActionClient
+from rclpy.clock import Clock, ClockType
 from rclpy.node import Node
 from rclpy.qos import QoSDurabilityPolicy, QoSProfile
 from std_msgs.msg import String
 
-from frontier_explorer.geometry_utils import flip_quaternion, swath_to_waypoints
+from frontier_explorer.coverage_execution import CoverageExecution
+from frontier_explorer.coverage_path import (
+    FreeSpaceValidator, directional_coverage, validate_forward_path, validate_headland_bounds,
+)
 from frontier_explorer.map_processor import MapProcessor
 
 
@@ -31,17 +37,16 @@ class CoverageManager(Node):
         self.declare_parameter('preview_path_topic', '/coverage/preview_path')
         self.declare_parameter('default_frame_id', 'map')
         self.declare_parameter('compute_coverage_action_name', 'compute_coverage_path')
-        self.declare_parameter('navigate_through_poses_action_name', 'navigate_through_poses')
-        self.declare_parameter(
-            'coverage_bt_xml',
-            '/ros2_ws/install/nav2/share/nav2/behavior_trees/coverage_through_poses.xml',
-        )
-        self.declare_parameter('headland_width', 0.5)
-        self.declare_parameter('path_continuity_type', 'CONTINUOUS')
-        self.declare_parameter('path_type', 'REEDS_SHEPP')
-        self.declare_parameter('turn_point_distance', 0.1)
+        self.declare_parameter('headland_width', 1.5)
+        self.declare_parameter('layout_mode', 'fields2cover')
+        self.declare_parameter('swath_spacing', 0.24)
+        self.declare_parameter('path_continuity_type', 'DISCONTINUOUS')
+        self.declare_parameter('path_type', 'DUBIN')
+        self.declare_parameter('turn_point_distance', 0.03)
+        self.declare_parameter('min_turning_radius', 0.20)
+        self.declare_parameter('clearance', 0.20)
+        self.declare_parameter('footprint', '[[-0.10,-0.245],[-0.10,0.175],[0.51,0.175],[0.51,-0.245]]')
         self.declare_parameter('action_wait_timeout_sec', 5.0)
-        self.declare_parameter('allow_execute_without_fresh_preview', True)
         self.declare_parameter('map_topic', '/map')
         self.declare_parameter('map_contour_epsilon', 0.5)
         self.declare_parameter('map_morph_close_radius', 3)
@@ -56,12 +61,11 @@ class CoverageManager(Node):
         self._path_type = self.get_parameter('path_type').value
         self._turn_point_distance = float(self.get_parameter('turn_point_distance').value)
         self._action_wait_timeout_sec = float(self.get_parameter('action_wait_timeout_sec').value)
-        self._allow_execute_without_fresh_preview = bool(
-            self.get_parameter('allow_execute_without_fresh_preview').value
-        )
+        self._footprint = json.loads(self.get_parameter('footprint').value)
+        self._clearance = float(self.get_parameter('clearance').value)
+        self._min_radius = float(self.get_parameter('min_turning_radius').value)
 
         compute_action_name = self.get_parameter('compute_coverage_action_name').value
-        nav_through_poses_action_name = self.get_parameter('navigate_through_poses_action_name').value
 
         self._status_pub = self.create_publisher(
             String, self.get_parameter('status_topic').value, 10
@@ -94,18 +98,26 @@ class CoverageManager(Node):
             OccupancyGrid,
             self.get_parameter('map_topic').value,
             self._on_map,
-            10,
+            _latched_qos,
         )
 
         self._compute_client = ActionClient(self, ComputeCoveragePath, compute_action_name)
-        self._nav_client = ActionClient(self, NavigateThroughPoses, nav_through_poses_action_name)
 
         self._polygon_msg = PolygonStamped()
         self._obstacle_polygons: list[list[tuple[float, float]]] = []
         self._cached_waypoints: list[PoseStamped] = []
         self._cached_path = Path()
         self._compute_goal_handle = None
-        self._nav_goal_handle = None
+        self._preview_pending = False
+        self._preview_cancel = False
+        self._preview_started = 0.0
+        self._preview_zone = None
+        self._layout_pool = ThreadPoolExecutor(max_workers=1)
+        self._layout_future = None
+        self._layout_cancel = Event()
+        self._last_map_received = 0.0
+        self._execution = CoverageExecution(self, self._publish_status, self._validate_path,
+                             self._footprint, self._clearance, self._min_radius)
         self._state = 'idle'
         self._last_preview_valid = False
         # Counts how many more 1 Hz ticks should republish the cached path.
@@ -135,7 +147,7 @@ class CoverageManager(Node):
             1,
         )
 
-        self.create_timer(1.0, self._republish_state)
+        self.create_timer(1.0, self._republish_state, clock=Clock(clock_type=ClockType.STEADY_TIME))
 
         self._publish_status('idle', 'Coverage manager ready.')
 
@@ -144,11 +156,21 @@ class CoverageManager(Node):
 
     def _on_command(self, msg: String) -> None:
         command = msg.data.strip().lower()
+        if self._busy() and command not in {'cancel', 'stop'}:
+            self._publish_status('busy', 'Cancel the active coverage request before changing it.')
+            return
         if command == 'preview':
             self._start_preview()
             return
         if command == 'execute':
             self._start_execution()
+            return
+        if command == 'resume':
+            remaining = self._execution.remaining_path()
+            if remaining is None or self._execution.phase not in {'blocked', 'canceled'}:
+                self._publish_status('failed', 'No interrupted route is available to resume.')
+            else:
+                self._execution.start(remaining, resuming=True)
             return
         if command in {'cancel', 'stop'}:
             self._cancel_active_goals()
@@ -158,6 +180,8 @@ class CoverageManager(Node):
             return
         if command == 'refresh_map':
             if self._last_map_msg is not None:
+                self._execution.forget()
+                self._last_preview_valid = False
                 self._extract_map_boundary(force=True)
             else:
                 self._publish_status('error', 'No map received yet.')
@@ -211,7 +235,7 @@ class CoverageManager(Node):
 
 
     def _start_preview(self) -> None:
-        if self._compute_goal_handle or self._nav_goal_handle:
+        if self._busy():
             self._publish_status('busy', 'Coverage manager is already handling a request.')
             return
         if len(self._polygon_msg.polygon.points) < 4:
@@ -221,17 +245,26 @@ class CoverageManager(Node):
         if len(self._polygon_msg.polygon.points) < 4:
             self._publish_status('polygon_invalid', 'No map boundary yet. Wait for SLAM map or click Refresh Map.')
             return
-        if not self._compute_client.wait_for_server(timeout_sec=self._action_wait_timeout_sec):
+        if self.get_parameter('layout_mode').value == 'directional':
+            self._start_directional_preview()
+            return
+        try:
+            validate_headland_bounds(
+                [(point.x, point.y) for point in self._polygon_msg.polygon.points], self._headland_width)
+        except ValueError as exc:
+            self._last_preview_valid = False
+            self._cached_path = Path()
+            self._preview_path_pub.publish(Path())
+            self._publish_status('polygon_invalid', str(exc))
+            return
+        if not self._compute_client.server_is_ready():
             self._publish_status('server_unavailable', 'Coverage server action is not available.')
             return
 
         goal = ComputeCoveragePath.Goal()
-        # For a user-drawn custom zone: disable headland so swaths fill the
-        # rectangle exactly, without any inset margin.
-        # For the auto-detected SLAM map: keep headland to avoid driving into walls.
-        goal.generate_headland = not self._custom_polygon_active
+        goal.generate_headland = True
         goal.generate_route = True
-        goal.generate_path = False
+        goal.generate_path = True
         goal.frame_id = self._polygon_msg.header.frame_id or self._default_frame_id
 
         # polygons[0] = outer field boundary
@@ -259,6 +292,13 @@ class CoverageManager(Node):
         goal.path_mode.mode = self._path_type
         goal.path_mode.continuity_mode = self._path_continuity_type
         goal.path_mode.turn_point_distance = float(self._turn_point_distance)
+        goal.route_mode.mode = 'SNAKE'
+        self._preview_zone = [(point.x, point.y) for point in self._polygon_msg.polygon.points]
+        self._last_preview_valid = False
+        self._preview_pending = True
+        self._preview_cancel = False
+        self._execution.forget()
+        self._preview_started = time.monotonic()
 
         self._state = 'planning'
         self._publish_status(
@@ -269,18 +309,79 @@ class CoverageManager(Node):
             obstacle_count=len(self._obstacle_polygons),
         )
 
-        send_future = self._compute_client.send_goal_async(goal)
-        send_future.add_done_callback(self._on_preview_goal_response)
+        try:
+            send_future = self._compute_client.send_goal_async(goal)
+            send_future.add_done_callback(self._on_preview_goal_response)
+        except Exception as exc:
+            self._preview_pending = False
+            self._publish_status('failed', f'Coverage request failed: {exc}')
+
+    def _start_directional_preview(self):
+        self._last_preview_valid = False
+        self._cached_path = Path()
+        self._preview_path_pub.publish(Path())
+        self._execution.forget()
+        if self._last_map_msg is None or time.monotonic() - self._last_map_received > 10.0:
+            self._publish_status('failed', 'A fresh SLAM map is required')
+            return
+        grid = deepcopy(self._last_map_msg)
+        header = deepcopy(self._polygon_msg.header)
+        if header.frame_id != grid.header.frame_id:
+            self._publish_status('failed', 'Coverage polygon and map frames do not match')
+            return
+        self._preview_zone = [(point.x, point.y) for point in self._polygon_msg.polygon.points]
+        zone, holes = deepcopy(self._preview_zone), deepcopy(self._obstacle_polygons)
+        self._preview_cancel = False
+        self._layout_cancel.clear()
+        self._preview_pending = True
+        self._preview_started = time.monotonic()
+        spacing = float(self.get_parameter('swath_spacing').value)
+
+        def compute():
+            validator = FreeSpaceValidator(grid, self._footprint, self._clearance, zone)
+            return directional_coverage(zone, header, validator, self._min_radius, spacing,
+                                         holes, self._layout_cancel.is_set)
+
+        self._layout_future = self._layout_pool.submit(compute)
+        self._publish_status('planning', 'Computing directional rows and a rounded perimeter pass.')
+
+    def _poll_directional_preview(self):
+        if self._layout_future is None or not self._layout_future.done():
+            return
+        future, self._layout_future = self._layout_future, None
+        self._preview_pending = False
+        if self._preview_cancel:
+            self._publish_status('canceled', 'Coverage preview canceled.')
+            return
+        try:
+            path, details = future.result()
+            self._validate_path(path)
+        except Exception as exc:
+            self._publish_status('failed', f'Coverage layout rejected: {exc}')
+            return
+        self._cached_path = path
+        self._last_preview_valid = True
+        self._path_republish_count = 10
+        self._preview_path_pub.publish(path)
+        self._publish_status('preview_ready', 'Directional rows and perimeter ready for inspection.',
+                             waypoint_count=len(path.poses), **details)
+
+    def destroy_node(self):
+        self._layout_cancel.set()
+        self._layout_pool.shutdown(wait=False, cancel_futures=True)
+        return super().destroy_node()
 
     def _on_preview_goal_response(self, future) -> None:
         try:
             goal_handle = future.result()
         except Exception as exc:  # pragma: no cover
+            self._preview_pending = False
             self._compute_goal_handle = None
             self._publish_status('error', f'Coverage preview request failed: {exc}')
             return
 
         if not goal_handle.accepted:
+            self._preview_pending = False
             self._compute_goal_handle = None
             self._publish_status('rejected', 'Coverage preview request was rejected.')
             return
@@ -288,9 +389,15 @@ class CoverageManager(Node):
         self._compute_goal_handle = goal_handle
         result_future = goal_handle.get_result_async()
         result_future.add_done_callback(self._on_preview_result)
+        if self._preview_cancel:
+            goal_handle.cancel_goal_async()
 
     def _on_preview_result(self, future) -> None:
         self._compute_goal_handle = None
+        self._preview_pending = False
+        if self._preview_cancel:
+            self._publish_status('canceled', 'Coverage preview canceled.')
+            return
         try:
             wrapped_result = future.result()
         except Exception as exc:  # pragma: no cover
@@ -312,40 +419,16 @@ class CoverageManager(Node):
             self._publish_status('failed', 'Coverage server returned no swaths.')
             return
 
-        frame_id = self._polygon_msg.header.frame_id or self._default_frame_id
-        endpoint_margin = float(self.get_parameter('swath_endpoint_margin').value)
-        self._cached_waypoints = swath_to_waypoints(
-            result.coverage_path.swaths,
-            frame_id,
-            self.get_clock().now().to_msg(),
-            endpoint_margin,
-        )
-        if self._cached_waypoints:
-            robot_pose = self._get_robot_pose()
-            if robot_pose is not None:
-                start_p = self._cached_waypoints[0].pose.position
-                end_p = self._cached_waypoints[-1].pose.position
-                rob_p = robot_pose.position
-                dist_start = math.hypot(start_p.x - rob_p.x, start_p.y - rob_p.y)
-                dist_end = math.hypot(end_p.x - rob_p.x, end_p.y - rob_p.y)
-                if dist_end < dist_start:
-                    self.get_logger().info(
-                        'Robot is closer to the end of the computed coverage path. Reversing path direction.'
-                    )
-                    self._cached_waypoints.reverse()
-                    for wp in self._cached_waypoints:
-                        wp.pose.orientation = flip_quaternion(wp.pose.orientation)
-
-        # Build a preview path from straight swath lines
-        preview = Path()
-        preview.header.frame_id = frame_id
-        preview.header.stamp = self.get_clock().now().to_msg()
-        for wp in self._cached_waypoints:
-            ps = PoseStamped()
-            ps.header = wp.header
-            ps.pose = wp.pose
-            preview.poses.append(ps)
-        self._cached_path = preview
+        try:
+            if not result.coverage_path.swaths_ordered or not result.coverage_path.contains_turns:
+                raise ValueError('Coverage server did not return ordered swaths with turn geometry')
+            self._validate_path(result.nav_path)
+        except ValueError as exc:
+            self._cached_path = Path()
+            self._preview_path_pub.publish(self._cached_path)
+            self._publish_status('failed', f'Coverage route rejected: {exc}')
+            return
+        self._cached_path = deepcopy(result.nav_path)
         self._path_republish_count = 10
 
         self._preview_path_pub.publish(self._cached_path)
@@ -355,123 +438,49 @@ class CoverageManager(Node):
             'preview_ready',
             'Coverage path ready for inspection or execution.',
             swath_count=len(result.coverage_path.swaths),
-            waypoint_count=len(self._cached_waypoints),
+            waypoint_count=len(self._cached_path.poses),
+            path_length_m=validate_forward_path(self._cached_path, self._min_radius),
         )
 
     def _start_execution(self) -> None:
-        if self._compute_goal_handle or self._nav_goal_handle:
+        if self._busy():
             self._publish_status('busy', 'Coverage manager is already handling a request.')
             return
-        if not self._cached_waypoints:
+        if not self._cached_path.poses:
             self._publish_status('no_preview', 'Preview a coverage path before execution.')
             return
-        if not self._last_preview_valid and not self._allow_execute_without_fresh_preview:
+        if not self._last_preview_valid:
             self._publish_status('stale_preview', 'Preview the current polygon again before execution.')
             return
-        if not self._nav_client.wait_for_server(timeout_sec=self._action_wait_timeout_sec):
-            self._publish_status('server_unavailable', 'NavigateThroughPoses action is not available.')
-            return
+        self._execution.start(self._cached_path)
 
-        stamp = self.get_clock().now().to_msg()
-        execution_waypoints = []
-        for wp in self._cached_waypoints:
-            wp_copy = PoseStamped()
-            wp_copy.header.frame_id = wp.header.frame_id
-            wp_copy.header.stamp = stamp
-            wp_copy.pose = wp.pose
-            execution_waypoints.append(wp_copy)
+    def _busy(self):
+        return self._preview_pending or self._execution.busy
 
-        goal = NavigateThroughPoses.Goal()
-        goal.poses = execution_waypoints
-        bt_xml = self.get_parameter('coverage_bt_xml').value
-        if bt_xml:
-            goal.behavior_tree = str(bt_xml)
-
-        self._state = 'executing'
-        self._publish_status(
-            'executing',
-            'Executing coverage path with Nav2 planner.',
-            waypoint_count=len(goal.poses),
-        )
-
-        send_future = self._nav_client.send_goal_async(
-            goal, feedback_callback=self._on_nav_feedback
-        )
-        send_future.add_done_callback(self._on_execute_goal_response)
-
-    def _on_execute_goal_response(self, future) -> None:
-        try:
-            goal_handle = future.result()
-        except Exception as exc:  # pragma: no cover
-            self._nav_goal_handle = None
-            self._publish_status('error', f'Coverage execution request failed: {exc}')
-            return
-
-        if not goal_handle.accepted:
-            self._nav_goal_handle = None
-            self._publish_status('rejected', 'Coverage execution request was rejected.')
-            return
-
-        self._nav_goal_handle = goal_handle
-        result_future = goal_handle.get_result_async()
-        result_future.add_done_callback(self._on_execute_result)
-
-    def _on_execute_result(self, future) -> None:
-        self._nav_goal_handle = None
-        try:
-            wrapped_result = future.result()
-        except Exception as exc:  # pragma: no cover
-            self._publish_status('error', f'Coverage execution result failed: {exc}')
-            return
-
-        status = wrapped_result.status
-        if status == GoalStatus.STATUS_CANCELED:
-            self._publish_status('canceled', 'Coverage execution canceled.')
-            return
-        if status != GoalStatus.STATUS_SUCCEEDED:
-            self._state = 'failed'
-            self._publish_status('failed', f'Coverage execution failed (status {status}).')
-            return
-
-        # Successfully reached the end of the coverage path
-        self._state = 'completed'
-        self._publish_status('completed', 'Coverage execution completed successfully.')
-
-    def _on_nav_feedback(self, feedback_msg) -> None:
-        feedback = feedback_msg.feedback
-        poses_left = getattr(feedback, 'number_of_poses_remaining', None)
-        dist_left = getattr(feedback, 'distance_remaining', getattr(feedback, 'distance_to_goal', None))
-        extra = {}
-        if dist_left is not None:
-            extra['distance_remaining'] = round(float(dist_left), 2)
-        if poses_left is not None:
-            extra['poses_remaining'] = int(poses_left)
-        self._publish_status(
-            'executing',
-            'Coverage execution in progress.',
-            **extra
-        )
+    def _validate_path(self, path, ingress=False):
+        if self._last_map_msg is None or time.monotonic() - self._last_map_received > 10.0:
+            raise ValueError('A fresh SLAM map is required')
+        if path.header.frame_id != self._last_map_msg.header.frame_id:
+            raise ValueError('Coverage path and map frames do not match')
+        validate_forward_path(path, self._min_radius)
+        zone = None if ingress else self._preview_zone
+        FreeSpaceValidator(self._last_map_msg, self._footprint, self._clearance, zone).check_path(path)
 
     def _cancel_active_goals(self) -> None:
-        canceled = False
-        if self._compute_goal_handle is not None:
-            canceled = True
-            self._compute_goal_handle.cancel_goal_async().add_done_callback(self._on_cancel_done)
-        if self._nav_goal_handle is not None:
-            canceled = True
-            self._nav_goal_handle.cancel_goal_async().add_done_callback(self._on_cancel_done)
-
-        if canceled:
-            self._state = 'cancel_requested'
-            self._publish_status('cancel_requested', 'Canceling active coverage task.')
+        if self._preview_pending:
+            self._preview_cancel = True
+            self._layout_cancel.set()
+            self._publish_status('cancel_requested', 'Canceling coverage preview.')
+            if self._compute_goal_handle:
+                self._compute_goal_handle.cancel_goal_async()
+        elif self._execution.busy:
+            self._execution.cancel()
         else:
             self._publish_status('idle', 'No active coverage task to cancel.')
 
-    def _on_cancel_done(self, _future) -> None:
-        self._publish_status('canceled', 'Coverage task canceled.')
-
     def _clear_cached_state(self) -> None:
         self._cancel_active_goals()
+        self._execution.forget()
         self._polygon_msg = PolygonStamped()
         self._obstacle_polygons = []
         self._cached_waypoints = []
@@ -484,6 +493,9 @@ class CoverageManager(Node):
     def _republish_state(self) -> None:
         """1 Hz keepalive: re-publish cached path for up to 10 s after it changes
         (counter-based) so browsers that connect during planning receive it."""
+        self._poll_directional_preview()
+        if self._preview_pending and not self._preview_cancel and time.monotonic() - self._preview_started > 30.0:
+            self._cancel_active_goals()
         if self._cached_path.poses and self._path_republish_count > 0:
             self._preview_path_pub.publish(self._cached_path)
             self._path_republish_count -= 1
@@ -508,6 +520,11 @@ class CoverageManager(Node):
             return
 
         self._custom_zone_points = [(float(p['x']), float(p['y'])) for p in raw]
+        self._execution.forget()
+        self._polygon_msg = PolygonStamped()
+        self._obstacle_polygons = []
+        self._cached_path = Path()
+        self._preview_path_pub.publish(Path())
         self._custom_polygon_active = True
         self._last_preview_valid = False
 
@@ -542,6 +559,7 @@ class CoverageManager(Node):
 
     def _on_clear_zone(self) -> None:
         """Revert from a custom zone back to SLAM auto-detection."""
+        self._execution.forget()
         self._custom_polygon_active = False
         self._custom_zone_points = None
         self._last_preview_valid = False
@@ -566,6 +584,7 @@ class CoverageManager(Node):
         if h == 0 or w == 0:
             return
         self._last_map_msg = msg
+        self._last_map_received = time.monotonic()
 
     def _extract_map_boundary(self, force: bool = False) -> bool:
         if self._last_map_msg is None:
@@ -601,6 +620,9 @@ class CoverageManager(Node):
         )
 
         if normalized is None:
+            self._polygon_msg = PolygonStamped()
+            self._obstacle_polygons = []
+            self._last_preview_valid = False
             if self._custom_polygon_active:
                 self._publish_status(
                     'polygon_invalid',

@@ -13,6 +13,8 @@
 # limitations under the License.
 
 import os
+import tempfile
+import yaml
 
 from ament_index_python.packages import get_package_share_directory
 
@@ -24,6 +26,33 @@ from launch_ros.actions import LoadComposableNodes
 from launch_ros.actions import Node
 from launch_ros.descriptions import ComposableNode, ParameterFile
 from nav2_common.launch import RewrittenYaml
+
+
+class CoverageTrialParameters(RewrittenYaml):
+    def __init__(self, overlay, namespace, **kwargs):
+        super().__init__(**kwargs)
+        self.overlay = overlay
+        self.namespace = namespace
+
+    def perform(self, context):
+        base = super().perform(context)
+        with open(base) as stream:
+            params = yaml.safe_load(stream)
+        with open(self.overlay) as stream:
+            overrides = yaml.safe_load(stream)
+
+        def merge(target, source):
+            for key, value in source.items():
+                if isinstance(value, dict):
+                    merge(target.setdefault(key, {}), value)
+                else:
+                    target[key] = value
+
+        namespace = self.namespace.perform(context)
+        merge(params.setdefault(namespace, {}) if namespace else params, overrides)
+        with tempfile.NamedTemporaryFile(mode='w', delete=False) as stream:
+            yaml.safe_dump(params, stream)
+            return stream.name
 
 
 def generate_launch_description():
@@ -85,7 +114,9 @@ def generate_launch_description():
         'use_sim_time': use_sim_time,
         'autostart': autostart}
 
-    rewritten_yaml = RewrittenYaml(
+    rewritten_yaml = CoverageTrialParameters(
+            overlay=os.path.join(nav2_dir, 'config', 'coverage_sim.yaml'),
+            namespace=namespace,
             source_file=params_file,
             root_key=namespace,
             param_rewrites=param_substitutions,

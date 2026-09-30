@@ -1,0 +1,5 @@
+<library path="ordered_goal_checker">
+  <class type="relobot::OrderedGoalChecker" base_class_type="nav2_core::GoalChecker">
+    <description>Requires ordered coverage path progress before positional completion.</description>
+  </class>
+</library>

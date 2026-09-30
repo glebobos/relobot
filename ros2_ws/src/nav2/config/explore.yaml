@@ -416,15 +416,12 @@ coverage_manager:
     preview_path_topic: "/coverage/preview_path"
     default_frame_id: "map"
     compute_coverage_action_name: "compute_coverage_path"
-    navigate_through_poses_action_name: "navigate_through_poses"
-    coverage_bt_xml: "/ros2_ws/install/nav2/share/nav2/behavior_trees/coverage_through_poses.xml"
     headland_width: 0.5
     path_continuity_type: "CONTINUOUS"
     path_type: "REEDS_SHEPP"
     turn_point_distance: 0.1
     swath_endpoint_margin: 0.25
     action_wait_timeout_sec: 5.0
-    allow_execute_without_fresh_preview: true
     map_contour_epsilon: 0.05
     # Erode free-space by 0.125 m (5 px @ 0.025 m/px) inward before headland is applied.
     # Total wall clearance = erode (0.125 m) + headland_width (0.5 m) = 0.625 m.

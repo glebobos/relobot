@@ -1,0 +1,50 @@
+diff --git a/nav2_mppi_controller/src/optimizer.cpp b/nav2_mppi_controller/src/optimizer.cpp
+--- a/nav2_mppi_controller/src/optimizer.cpp
++++ b/nav2_mppi_controller/src/optimizer.cpp
+@@ -15,3 +15,4 @@
+ #include "nav2_mppi_controller/optimizer.hpp"
++#include "nav2_mppi_controller/mppi_sequence_validation.hpp"
+ 
+ #include <limits>
+@@ -72,3 +73,4 @@
+   getParam(s.retry_attempt_limit, "retry_attempt_limit", 1);
++  getParam(validate_control_sequence_, "validate_control_sequence", false);
+ 
+   getParam(motion_model_name, "motion_model", std::string("DiffDrive"));
+@@ -145,3 +147,10 @@
+   utils::savitskyGolayFilter(control_sequence_, control_history_, settings_);
++  if (validate_control_sequence_) {
++    applyControlSequenceConstraints();
++    validateForwardSequence(control_sequence_, settings_, robot_pose, costmap_ros_);
++    const unsigned int offset = settings_.shift_control_sequence ? 1 : 0;
++    control_history_[3] = {
++      control_sequence_.vx(offset), control_sequence_.vy(offset), control_sequence_.wz(offset)};
++  }
+   auto control = getControlFromSequenceAsTwist(plan.header.stamp);
+ 
+diff --git a/nav2_mppi_controller/include/nav2_mppi_controller/optimizer.hpp b/nav2_mppi_controller/include/nav2_mppi_controller/optimizer.hpp
+--- a/nav2_mppi_controller/include/nav2_mppi_controller/optimizer.hpp
++++ b/nav2_mppi_controller/include/nav2_mppi_controller/optimizer.hpp
+@@ -283,3 +283,4 @@
+   models::OptimizerSettings settings_;
++  bool validate_control_sequence_{false};
+ 
+   models::State state_;
+diff --git a/nav2_mppi_controller/mppic.xml b/nav2_mppi_controller/mppic.xml
+--- a/nav2_mppi_controller/mppic.xml
++++ b/nav2_mppi_controller/mppic.xml
+@@ -2,3 +2,6 @@
+   <library path="mppi_controller">
++    <class name="relobot/VerifiedMPPIController" type="nav2_mppi_controller::MPPIController" base_class_type="nav2_core::Controller">
++      <description>MPPI with post-filter control-sequence validation support</description>
++    </class>
+     <class type="nav2_mppi_controller::MPPIController" base_class_type="nav2_core::Controller">
+       <description>MPPI Controller for Nav2</description>
+diff --git a/nav2_mppi_controller/CMakeLists.txt b/nav2_mppi_controller/CMakeLists.txt
+--- a/nav2_mppi_controller/CMakeLists.txt
++++ b/nav2_mppi_controller/CMakeLists.txt
+@@ -104,3 +104,4 @@
+ foreach(lib IN LISTS libraries)
++  target_compile_options(${lib} PRIVATE -fno-finite-math-only)
+   target_compile_options(${lib} PUBLIC -fconcepts)
+   target_include_directories(${lib} PUBLIC ${xsimd_INCLUDE_DIRS})  #  ${OpenMP_INCLUDE_DIRS}

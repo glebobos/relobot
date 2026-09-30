@@ -41,11 +41,23 @@ RUN apt-get update && apt-get install -y \
 RUN git clone --branch v1.2.1 --depth 1 https://github.com/Fields2Cover/Fields2Cover.git /opt/fields2cover_src && \
     git clone --branch 0.0.1 --depth 1 https://github.com/open-navigation/opennav_coverage.git /opt/opennav_coverage_src
 
+RUN apt-get update && apt-get install -y libxtensor-dev libxsimd-dev python3-shapely && \
+  rm -rf /var/lib/apt/lists/*
+COPY ./patches /opt/navigation_patches
+RUN git clone --branch 1.1.20 --depth 1 https://github.com/ros-navigation/navigation2.git /opt/nav2_mppi_src && \
+  cd /opt/nav2_mppi_src && git apply --recount /opt/navigation_patches/mppi-sequence.patch && \
+  cp /opt/navigation_patches/mppi_sequence_validation.hpp nav2_mppi_controller/include/nav2_mppi_controller/ && \
+  . /opt/ros/humble/setup.sh && \
+    CMAKE_BUILD_PARALLEL_LEVEL=2 MAKEFLAGS=-j2 colcon build --event-handlers console_direct+ \
+      --base-paths nav2_mppi_controller --build-base /opt/nav2_mppi_build \
+      --install-base /opt/nav2_mppi_install --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF
+
 # Create workspace
 WORKDIR /ros2_ws
 
 # Copy the package
 COPY ./src/nav2 /ros2_ws/src/nav2
+COPY ./src/coverage_geometry /ros2_ws/src/coverage_geometry
 COPY ./src/robot_pose_publisher /ros2_ws/src/robot_pose_publisher
 
 # Source the workspace
@@ -56,10 +68,11 @@ RUN echo '#!/bin/bash\n\
 set -e\n\
 source /opt/ros/humble/setup.bash\n\
 cd /ros2_ws\n\
-if [ "$DEV" = "true" ] || [ ! -f /ros2_ws/install/opennav_coverage_msgs/share/opennav_coverage_msgs/package.xml ]; then\n\
-  colcon build --base-paths /opt/fields2cover_src /opt/opennav_coverage_src /ros2_ws/src --packages-up-to nav2 robot_pose_publisher explore_lite opennav_coverage opennav_coverage_msgs fields2cover --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF -DBUILD_DOC=OFF -DBUILD_TUTORIALS=OFF\n\
+if [ "$DEV" = "true" ] || [ ! -f /ros2_ws/install/opennav_coverage_msgs/share/opennav_coverage_msgs/package.xml ] || [ ! -f /ros2_ws/install/coverage_geometry/share/coverage_geometry/package.xml ]; then\n\
+  colcon build --base-paths /opt/fields2cover_src /opt/opennav_coverage_src /ros2_ws/src --packages-up-to nav2 robot_pose_publisher explore_lite opennav_coverage opennav_coverage_msgs fields2cover --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release -DFields2Cover_DIR=/ros2_ws/build/fields2cover -DBUILD_TESTS=OFF -DBUILD_DOC=OFF -DBUILD_TUTORIALS=OFF\n\
 fi\n\
 source install/setup.bash\n\
+source /opt/nav2_mppi_install/setup.bash\n\
 if [ "${USE_SIM_TIME}" = "true" ]; then\n\
   echo "[ros2_nav2] Simulation mode: waiting for /clock topic..."\n\
   until ros2 topic echo /clock --once > /dev/null 2>&1; do sleep 1; done\n\
