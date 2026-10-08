@@ -23,45 +23,6 @@ def path_from_xyyaw(points, header):
     return path
 
 
-def join_forward_paths(ingress, route, min_radius, validate):
-    from _coverage_geometry import dubins
-    if not ingress.poses or not route.poses or ingress.header.frame_id != route.header.frame_id:
-        raise ValueError('Ingress planner returned an empty path or the wrong frame')
-    target = pose_xy_yaw(route.poses[0].pose)
-    endpoint = pose_xy_yaw(ingress.poses[-1].pose)
-    if math.hypot(endpoint[0] - target[0], endpoint[1] - target[1]) > 0.10:
-        raise ValueError('Ingress endpoint is too far from the requested coverage start')
-    removed = 0.0
-    last_attempt = -1.0
-    for index in range(len(ingress.poses) - 1, -1, -1):
-        start = pose_xy_yaw(ingress.poses[index].pose)
-        if index < len(ingress.poses) - 1:
-            following = pose_xy_yaw(ingress.poses[index + 1].pose)
-            removed += math.hypot(following[0] - start[0], following[1] - start[1])
-        if removed > 1.5:
-            break
-        exact = math.hypot(start[0] - target[0], start[1] - target[1]) < 1e-6 and abs(
-            angle_difference(start[2], target[2])) < 1e-6
-        if not exact and (removed < 0.25 or removed - last_attempt < 0.15):
-            continue
-        last_attempt = removed
-        candidate = deepcopy(ingress)
-        candidate.poses = candidate.poses[:index + 1]
-        try:
-            if not exact:
-                connector = path_from_xyyaw(dubins(start, target, min_radius * 1.25, 0.02), route.header)
-                if validate_forward_path(connector, min_radius) > removed + 0.5:
-                    continue
-                candidate.poses.extend(connector.poses[1:])
-            candidate.poses.extend(deepcopy(route.poses))
-            validate_forward_path(candidate, min_radius)
-            validate(candidate)
-            return candidate
-        except ValueError:
-            continue
-    raise ValueError('No collision-free forward connector reaches the exact coverage start')
-
-
 def pose_xy_yaw(pose):
     position, rotation = pose.position, pose.orientation
     values = (position.x, position.y, rotation.x, rotation.y, rotation.z, rotation.w)
@@ -78,22 +39,130 @@ def angle_difference(first, second):
     return math.atan2(math.sin(first - second), math.cos(first - second))
 
 
-def directional_coverage(points, header, validator, min_radius, spacing=0.24, holes=(), canceled=lambda: False):
-    from _coverage_geometry import dubins
+def work_paths(path, sections=None):
+    if sections is None:
+        return [path]
+    result = []
+    next_index = 0
+    for section in sections:
+        if (not isinstance(section, (list, tuple)) or len(section) != 2
+            or any(type(index) is not int for index in section)
+                or section[0] != next_index or not section[0] < section[1] < len(path.poses)):
+            raise ValueError('Invalid coverage work-section boundaries')
+        start, end = section
+        result.append(Path(header=deepcopy(path.header), poses=path.poses[start:end + 1]))
+        next_index = end + 1
+    if not result or next_index != len(path.poses):
+        raise ValueError('Coverage work sections must include every pose')
+    return result
+
+
+def path_from_swaths(coverage, max_path_points=250000):
+    if not coverage.swaths_ordered or not coverage.swaths:
+        raise ValueError('Coverage server must return ordered work swaths')
+    path = Path(header=deepcopy(coverage.header))
+    sections = []
+    for swath in coverage.swaths:
+        delta_x, delta_y = swath.end.x - swath.start.x, swath.end.y - swath.start.y
+        distance = math.hypot(delta_x, delta_y)
+        if not math.isfinite(distance) or distance < 0.05:
+            raise ValueError('Coverage server returned an invalid work swath')
+        count = math.ceil(distance / 0.03) + 1
+        if len(path.poses) + count > max_path_points:
+            raise ValueError('Coverage exceeds its path point budget')
+        yaw = math.atan2(delta_y, delta_x)
+        work = path_from_xyyaw([(swath.start.x + fraction * delta_x,
+                                swath.start.y + fraction * delta_y, yaw)
+                               for fraction in np.linspace(0.0, 1.0, count)], path.header)
+        start = len(path.poses)
+        path.poses.extend(work.poses)
+        sections.append([start, len(path.poses) - 1])
+    return path, sections
+
+
+class CoveragePlanningLimit(ValueError):
+    pass
+
+
+def split_forward_segments(points, header, validator, min_radius, canceled=lambda: False,
+                           split_on_turn=False, max_length=math.inf):
+    if (len(points) > 3 and math.dist(points[0][:2], points[-1][:2]) < 1e-6
+            and abs(angle_difference(points[0][2], points[-1][2])) < 1e-6):
+        middle = len(points) // 2
+        first, omitted_first = split_forward_segments(
+            points[:middle + 1], header, validator, min_radius, canceled, split_on_turn, max_length)
+        second, omitted_second = split_forward_segments(
+            points[middle:], header, validator, min_radius, canceled, split_on_turn, max_length)
+        return first + second, omitted_first + omitted_second
+    segments = []
+    current = []
+    current_length = 0.0
+    current_turn = None
+    omitted_length = 0.0
+
+    def finish():
+        nonlocal current, current_length, omitted_length
+        if current_length >= 0.20:
+            segments.append(current)
+        else:
+            omitted_length += current_length
+        current, current_length = [], 0.0
+
+    for start, end in zip(points, points[1:]):
+        if canceled():
+            raise CoveragePlanningLimit('Coverage segmentation canceled')
+        distance = math.dist(start[:2], end[:2])
+        turning = abs(angle_difference(end[2], start[2])) > 1e-4
+        pair = path_from_xyyaw([start, end], header)
+        try:
+            validate_forward_path(pair, min_radius, minimum_length=0.0)
+            validator.check_path(pair)
+        except ValueError:
+            finish()
+            omitted_length += distance
+            current_turn = None
+            continue
+        if (current and current_length >= 0.20
+                and (current_length + distance > max_length
+                     or split_on_turn and turning != current_turn)):
+            finish()
+        if not current:
+            current = [start]
+            current_turn = turning
+        current.append(end)
+        current_length += distance
+    finish()
+    return segments, omitted_length
+
+
+def directional_coverage(points, header, validator, min_radius, spacing=0.24, holes=(),
+                         canceled=lambda: False, planning_timeout=120.0,
+                         max_path_points=250000, open_segments=False, work_segment_length=6.0):
     from shapely.affinity import rotate
-    from shapely.geometry import LineString, Polygon
+    from shapely.geometry import LineString, MultiLineString, Polygon
     from shapely.geometry.polygon import orient
 
     field = Polygon(points, holes)
-    if not field.is_valid or field.is_empty or not math.isfinite(spacing) or spacing <= 0.0:
+    if (not field.is_valid or field.is_empty or not math.isfinite(spacing) or spacing <= 0.0
+            or not math.isfinite(min_radius) or min_radius <= 0.0
+            or not math.isfinite(planning_timeout) or planning_timeout <= 0.0
+            or not math.isfinite(work_segment_length) or work_segment_length < 0.20
+            or max_path_points < 2):
         raise ValueError('Coverage needs a valid polygon and positive swath spacing')
-    if field.area > 400.0 or max(field.bounds[2] - field.bounds[0], field.bounds[3] - field.bounds[1]) > 50.0:
-        raise ValueError('Split large fields into zones below 400 square metres and 50 metres across')
-    deadline = time.monotonic() + 20.0
+    deadline = time.monotonic() + planning_timeout
+    started = time.monotonic()
 
     def check_budget():
         if canceled() or time.monotonic() > deadline:
-            raise ValueError('Coverage layout canceled or exceeded its planning time budget')
+            raise CoveragePlanningLimit('Coverage layout canceled or exceeded its planning time budget')
+
+    def checked(poses):
+        check_budget()
+        candidate = path_from_xyyaw(poses, header)
+        length = validate_forward_path(candidate, min_radius)
+        validator.check_path(candidate, canceled=check_budget)
+        return length
+
     rectangle = list(field.minimum_rotated_rectangle.exterior.coords)
     longest = max(zip(rectangle, rectangle[1:]), key=lambda edge: math.dist(*edge))
     angle = math.atan2(longest[1][1] - longest[0][1], longest[1][0] - longest[0][0]) % math.pi
@@ -104,27 +173,34 @@ def directional_coverage(points, header, validator, min_radius, spacing=0.24, ho
     radius = min_radius * 1.25
     side_margin = math.hypot(radius + lateral, longitudinal) - radius + padding
     inner = local.buffer(-side_margin, join_style=2)
-    if inner.is_empty or inner.geom_type != 'Polygon':
-        raise ValueError('Zone has no connected interior after body clearance')
+    if inner.is_empty:
+        raise ValueError('Zone has no interior after body clearance')
     minimum_x, minimum_y, maximum_x, maximum_y = inner.bounds
-    count = math.ceil((maximum_y - minimum_y) / spacing) + 1
-    if count < 4 or count > 120:
-        raise ValueError('Zone needs 4 to 120 feasible rows; resize or split the selected zone')
+    count = max(2, math.ceil((maximum_y - minimum_y) / spacing) + 1)
+    if count > max_path_points:
+        raise CoveragePlanningLimit('Coverage exceeds its path point budget')
     offsets = np.linspace(minimum_y + 1e-4, maximum_y - 1e-4, count)
     actual_spacing = float(offsets[1] - offsets[0])
     stride = math.ceil(2.0 * radius / actual_spacing)
     end_margin = math.hypot(longitudinal, stride * actual_spacing / 2.0 + lateral) + padding
     rows = []
+    short_sections = 0
     for offset in offsets:
+        check_budget()
         section = inner.intersection(LineString([(minimum_x - 1, offset), (maximum_x + 1, offset)]))
-        if section.geom_type != 'LineString' or section.is_empty:
-            raise ValueError('Disconnected rows need separate coverage zones')
-        begin, _, end, _ = section.bounds
-        begin += end_margin - side_margin
-        end -= end_margin - side_margin
-        if end - begin < 0.20:
-            raise ValueError('A row has insufficient length after reserving forward-turn space')
-        rows.append((begin, end, float(offset)))
+        sections = [section] if section.geom_type == 'LineString' else list(getattr(section, 'geoms', ()))
+        row = []
+        for part in sections:
+            if part.is_empty or part.geom_type != 'LineString':
+                continue
+            begin, _, end, _ = part.bounds
+            begin += max(0.0, end_margin - side_margin)
+            end -= max(0.0, end_margin - side_margin)
+            if end - begin < 0.20:
+                short_sections += 1
+                continue
+            row.append((begin, end, float(offset)))
+        rows.append(sorted(row))
 
     cosine, sine = math.cos(angle), math.sin(angle)
 
@@ -132,74 +208,152 @@ def directional_coverage(points, header, validator, min_radius, spacing=0.24, ho
         return (position_x * cosine - position_y * sine,
                 position_x * sine + position_y * cosine, yaw + angle)
 
-    half = len(rows) // 2
-    if len(rows) % 2:
-        ordered = [(index * half) % len(rows) for index in range(len(rows))]
-    else:
-        ordered = [index for lower in range(half - 1, -1, -1) for index in (lower, lower + half)]
-    if any(abs(first - second) < stride for first, second in zip(ordered, ordered[1:])):
-        raise ValueError('Zone is too narrow to separate all forward row turns by two turning radii')
-    poses = []
-    for position, index in enumerate(ordered):
-        check_budget()
-        begin, end, offset = rows[index]
-        if position % 2:
-            begin, end = end, begin
-        yaw = 0.0 if end > begin else math.pi
-        row = [world_pose(float(distance), offset, yaw)
-               for distance in np.linspace(begin, end, math.ceil(abs(end - begin) / 0.03) + 1)]
-        if poses:
-            poses.extend(dubins(poses[-1], row[0], radius, 0.02)[1:])
-        poses.extend(row)
-        if len(poses) > 15000:
-            raise ValueError('Coverage route exceeds the preview point budget; split the zone')
-    path = path_from_xyyaw(poses, header)
-    validate_forward_path(path, min_radius)
-    validator.check_path(path)
-
     border_radius = max(0.4, radius)
     border_margin = math.hypot(border_radius + lateral, longitudinal) - border_radius + padding
     core = local.buffer(-(border_margin + border_radius), join_style=2)
-    if core.is_empty or core.geom_type != 'Polygon' or core.interiors:
-        raise ValueError('Zone cannot fit a connected rounded perimeter pass')
-    boundary = orient(core.buffer(border_radius, resolution=24), sign=1.0)
-    corners = list(boundary.exterior.coords)[:-1]
-    ring = []
-    for index, current in enumerate(corners):
-        previous, following = corners[index - 1], corners[(index + 1) % len(corners)]
-        incoming = math.atan2(current[1] - previous[1], current[0] - previous[0])
-        outgoing = math.atan2(following[1] - current[1], following[0] - current[0])
-        ring.append(world_pose(*current, incoming + angle_difference(outgoing, incoming) / 2.0))
-    candidates = []
-    for index in range(0, len(ring), max(1, len(ring) // 24)):
-        connector = path_from_xyyaw(dubins(poses[-1], ring[index], radius, 0.02), header)
-        try:
-            length = validate_forward_path(connector, min_radius)
-            candidates.append((length, index, connector))
-        except ValueError:
-            continue
-    for _, index, connector in sorted(candidates, key=lambda candidate: candidate[0]):
-        check_budget()
-        candidate = deepcopy(path)
-        candidate.poses.extend(connector.poses[1:])
-        lap = ring[index:] + ring[:index] + [ring[index]]
+    boundaries = []
+    components = [core] if core.geom_type == 'Polygon' else list(getattr(core, 'geoms', ()))
+    for component in components:
+        if not component.is_empty and component.geom_type == 'Polygon':
+            boundaries.append(orient(Polygon(component.exterior).buffer(border_radius, resolution=24), sign=1.0))
+    for interior in local.interiors:
+        expanded = Polygon(interior).buffer(max(0.0, border_margin - border_radius), join_style=2)
+        boundaries.append(orient(expanded.buffer(border_radius, resolution=24), sign=-1.0))
+    rings = []
+    edge_segments = []
+    omitted_boundaries = set()
+    omitted_work_length = 0.0
+    for boundary_index, boundary in enumerate(boundaries):
+        corners = list(boundary.exterior.coords)[:-1]
+        ring = []
+        for index, current in enumerate(corners):
+            previous, following = corners[index - 1], corners[(index + 1) % len(corners)]
+            incoming = math.atan2(current[1] - previous[1], current[0] - previous[0])
+            outgoing = math.atan2(following[1] - current[1], following[0] - current[0])
+            ring.append(world_pose(*current, incoming + angle_difference(outgoing, incoming) / 2.0))
         dense = []
-        for start, end in zip(lap, lap[1:]):
+        for start, end in zip(ring, ring[1:] + ring[:1]):
             for fraction in np.linspace(0.0, 1.0, max(2, math.ceil(math.dist(start[:2], end[:2]) / 0.03) + 1))[:-1]:
                 dense.append((start[0] + fraction * (end[0] - start[0]),
                               start[1] + fraction * (end[1] - start[1]),
                               start[2] + fraction * angle_difference(end[2], start[2])))
-        dense.append(lap[-1])
-        candidate.poses.extend(path_from_xyyaw(dense, header).poses)
-        try:
-            length = validate_forward_path(candidate, min_radius)
-            validator.check_path(candidate)
-            return candidate, dict(swath_count=len(rows), perimeter_passes=1,
-                                   side_margin_m=side_margin, row_end_margin_m=end_margin,
-                                   perimeter_margin_m=border_margin, path_length_m=length)
-        except ValueError:
-            continue
-    raise ValueError('No validated forward connection reaches the rounded perimeter pass')
+        if dense:
+            try:
+                checked(dense + dense[:1])
+                rings.append(dense)
+            except ValueError:
+                check_budget()
+            if open_segments:
+                segments, omitted = split_forward_segments(
+                    dense + dense[:1], header, validator, min_radius,
+                    lambda: check_budget() or False, split_on_turn=True, max_length=work_segment_length)
+                edge_segments.extend((segment, boundary_index) for segment in segments)
+                omitted_work_length += omitted
+                if omitted > 1e-6:
+                    omitted_boundaries.add(boundary_index)
+
+    poses = []
+    work_sections = []
+    swath_count = 0
+    edge_segment_count = 0
+    unconnected_segment_count = 0
+    visited_boundaries = set()
+
+    def append(segment):
+        if len(poses) + len(segment) > max_path_points:
+            raise CoveragePlanningLimit('Coverage exceeds its path point budget; no partial route was accepted')
+        poses.extend(segment)
+
+    def append_work(segment):
+        if (math.dist(segment[0][:2], segment[-1][:2]) < 1e-6
+                and abs(angle_difference(segment[0][2], segment[-1][2])) < 1e-6):
+            parts, omitted = split_forward_segments(
+                segment, header, validator, min_radius, lambda: check_budget() or False,
+                max_length=work_segment_length)
+            if omitted > 1e-6 or not parts:
+                raise ValueError('Closed work section cannot be split without losing work')
+            return all(append_work(part) for part in parts)
+        for candidate in (segment, [(position_x, position_y, yaw + math.pi)
+                                    for position_x, position_y, yaw in reversed(segment)]):
+            try:
+                checked(candidate)
+            except CoveragePlanningLimit:
+                raise
+            except ValueError:
+                check_budget()
+                continue
+            start = len(poses)
+            append(candidate)
+            work_sections.append([start, len(poses) - 1])
+            return True
+        return False
+
+    for position, row_sections in enumerate(rows):
+        check_budget()
+        sections = row_sections if position % 2 == 0 else list(reversed(row_sections))
+        for begin, end, offset in sections:
+            if position % 2:
+                begin, end = end, begin
+            yaw = 0.0 if end > begin else math.pi
+            row = [world_pose(float(distance), offset, yaw)
+                   for distance in np.linspace(begin, end, math.ceil(abs(end - begin) / 0.03) + 1)]
+            if open_segments:
+                segments, omitted = split_forward_segments(
+                    row, header, validator, min_radius, lambda: check_budget() or False,
+                    max_length=work_segment_length)
+                omitted_work_length += omitted
+                for segment in segments:
+                    if append_work(segment):
+                        swath_count += 1
+                    else:
+                        omitted_work_length += sum(math.dist(start[:2], end[:2])
+                                                   for start, end in zip(segment, segment[1:]))
+                continue
+            checked(row)
+            append_work(row)
+            swath_count += 1
+    if not poses and not open_segments:
+        raise ValueError('No swaths fit the footprint and forward-turn constraints')
+    if open_segments:
+        pending = list(edge_segments)
+        while pending:
+            check_budget()
+            if poses:
+                pending.sort(key=lambda item: min(math.dist(poses[-1][:2], item[0][0][:2]),
+                                                  math.dist(poses[-1][:2], item[0][-1][:2])))
+            segment, boundary_index = pending.pop(0)
+            if append_work(segment):
+                edge_segment_count += 1
+                visited_boundaries.add(boundary_index)
+            else:
+                omitted_boundaries.add(boundary_index)
+                omitted_work_length += sum(math.dist(start[:2], end[:2])
+                                           for start, end in zip(segment, segment[1:]))
+        if not poses:
+            raise ValueError('No safe work segment satisfies the footprint and forward-motion constraints')
+    for ring in (() if open_segments else rings):
+        append_work(ring + ring[:1])
+    length = sum(checked(poses[start:end + 1]) for start, end in work_sections)
+    geometry = MultiLineString([[pose[:2] for pose in poses[start:end + 1]]
+                                for start, end in work_sections])
+    strip = geometry.simplify(validator.resolution / 4.0).buffer(
+        spacing / 2.0, resolution=4)
+    estimated_covered_area = strip.intersection(field).area
+    check_budget()
+    return path_from_xyyaw(poses, header), dict(
+        swath_count=swath_count, perimeter_passes=len(visited_boundaries) if open_segments else len(rings),
+        edge_segment_count=edge_segment_count, work_segment_count=len(work_sections),
+        closed_perimeter_count=0 if open_segments else len(rings),
+        unconnected_segment_count=unconnected_segment_count, omitted_work_length_m=omitted_work_length,
+        work_sections=work_sections,
+        open_segments=open_segments, connector_count=0,
+        obstacle_detours=0, side_margin_m=side_margin, row_end_margin_m=end_margin,
+        perimeter_margin_m=border_margin, path_length_m=length,
+        short_section_count=short_sections,
+        omitted_perimeter_count=len(omitted_boundaries) if open_segments else len(boundaries) - len(rings),
+        estimated_covered_area_m2=estimated_covered_area,
+        estimated_uncovered_area_m2=max(0.0, field.area - estimated_covered_area),
+        planning_time_sec=time.monotonic() - started)
 
 
 def validate_headland_bounds(points, headland_width):
@@ -218,7 +372,7 @@ def validate_headland_bounds(points, headland_width):
             'turns need additional space. Draw a larger mapped zone.')
 
 
-def validate_forward_path(path, min_radius):
+def validate_forward_path(path, min_radius, minimum_length=0.05):
     if not path.header.frame_id or len(path.poses) < 2:
         raise ValueError('Coverage path is empty or has no frame')
     if not math.isfinite(min_radius) or min_radius <= 0.0:
@@ -238,13 +392,15 @@ def validate_forward_path(path, min_radius):
                 raise ValueError('Path contains a stationary turn')
             continue
         if abs(turn) / distance > 1.0 / min_radius * 1.02:
-            raise ValueError('Path curvature exceeds the configured turning limit')
+            raise ValueError(f'Path curvature exceeds the configured turning limit: {start} -> {end}; '
+                             f'distance={distance:.6f}, turn={turn:.6f}')
         tangent = math.atan2(delta_y, delta_x)
         midpoint_heading = start[2] + turn / 2.0
-        if abs(angle_difference(tangent, midpoint_heading)) > 0.15:
+        alignment = abs(angle_difference(tangent, midpoint_heading))
+        if alignment > 0.15:
             raise ValueError(f'Path contains reverse motion or a discontinuous connector: {start} -> {end}')
         total += distance
-    if total < 0.05:
+    if total < minimum_length:
         raise ValueError('Coverage path is too short')
     return total
 
@@ -298,13 +454,15 @@ class FreeSpaceValidator:
             raise ValueError('Swept footprint violates obstacle, unknown-space or zone clearance '
                              f'at ({position_x:.3f}, {position_y:.3f}, {yaw:.3f})')
 
-    def check_path(self, path, transform=(0.0, 0.0, 0.0)):
+    def check_path(self, path, transform=(0.0, 0.0, 0.0), canceled=None):
         poses = [pose_xy_yaw(stamped.pose) for stamped in path.poses]
         if not poses:
             raise ValueError('Empty path')
         cosine, sine = math.cos(transform[2]), math.sin(transform[2])
         previous = poses[0]
-        for current in poses:
+        for index, current in enumerate(poses):
+            if canceled is not None and index % 64 == 0:
+                canceled()
             distance = math.hypot(current[0] - previous[0], current[1] - previous[1])
             turn = angle_difference(current[2], previous[2])
             count = max(1, math.ceil((distance + self.radius * abs(turn)) / (self.resolution / 2.0)))

@@ -15,6 +15,73 @@ class MapProcessor:
         """
         self._logger = logger
 
+    def extract_coverage_regions(self, msg, custom_zone_points=None, robot_position=None):
+        from shapely.geometry import Polygon
+        from frontier_explorer.coverage_path import pose_xy_yaw
+
+        resolution = msg.info.resolution
+        width, height = msg.info.width, msg.info.height
+        if (not msg.header.frame_id or not math.isfinite(resolution) or resolution <= 0.0
+                or width < 2 or height < 2 or len(msg.data) != width * height):
+            raise ValueError('Invalid coverage occupancy grid')
+        origin_x, origin_y, yaw = pose_xy_yaw(msg.info.origin)
+        cosine, sine = math.cos(yaw), math.sin(yaw)
+
+        def cells(points):
+            delta = np.asarray(points, dtype=float) - np.asarray([origin_x, origin_y])
+            if not np.isfinite(delta).all():
+                raise ValueError('Non-finite coverage coordinates')
+            return np.floor(delta @ np.asarray([[cosine, -sine], [sine, cosine]]) / resolution).astype(np.int32)
+
+        def world(contour):
+            positions = (contour.reshape(-1, 2).astype(float) + 0.5) * resolution
+            positions = positions @ np.asarray([[cosine, sine], [-sine, cosine]])
+            return (positions + np.asarray([origin_x, origin_y])).tolist()
+
+        free = np.uint8(np.asarray(msg.data).reshape(height, width) == 0)
+        selected = free.copy()
+        if custom_zone_points is not None:
+            if len(custom_zone_points) < 3:
+                raise ValueError('Coverage selection needs at least three points')
+            mask = np.zeros_like(free)
+            cv2.fillPoly(mask, [cells(custom_zone_points)], 1)
+            selected &= mask
+        candidate_count = int(selected.sum())
+        if robot_position is not None:
+            column, row = cells([robot_position])[0]
+            if not (0 <= column < width and 0 <= row < height and free[row, column]):
+                raise ValueError('Robot pose is outside known free space')
+            _, labels = cv2.connectedComponents(free, connectivity=4)
+            selected &= np.uint8(labels == labels[row, column])
+        elif custom_zone_points is None:
+            raise ValueError('A fresh robot pose is required to select reachable full-map coverage')
+        contours, hierarchy = cv2.findContours(selected, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
+        regions = []
+        if hierarchy is not None:
+            for index, contour in enumerate(contours):
+                if hierarchy[0][index][3] != -1 or len(contour) < 3:
+                    continue
+                holes = []
+                child = hierarchy[0][index][2]
+                while child != -1:
+                    if len(contours[child]) >= 3:
+                        holes.append(world(contours[child]))
+                    child = hierarchy[0][child][0]
+                geometry = Polygon(world(contour), holes)
+                if not geometry.is_valid:
+                    geometry = geometry.buffer(0)
+                components = [geometry] if geometry.geom_type == 'Polygon' else list(getattr(geometry, 'geoms', ()))
+                for component in components:
+                    if component.is_empty or component.geom_type != 'Polygon':
+                        continue
+                    polygon = PolygonStamped(header=msg.header)
+                    polygon.polygon.points = [Point32(x=float(position_x), y=float(position_y), z=0.0)
+                                              for position_x, position_y in component.exterior.coords]
+                    regions.append((polygon, [list(interior.coords) for interior in component.interiors]))
+        selected_count = int(selected.sum())
+        return regions, dict(region_count=len(regions), selected_free_area_m2=selected_count * resolution ** 2,
+                             excluded_area_m2=(candidate_count - selected_count) * resolution ** 2)
+
     def extract_boundary_and_obstacles(
         self,
         msg: OccupancyGrid,

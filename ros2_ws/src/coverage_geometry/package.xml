@@ -2,16 +2,14 @@
 <package format="3">
   <name>coverage_geometry</name>
   <version>0.1.0</version>
-  <description>Python access to the installed Fields2Cover Dubins geometry.</description>
+  <description>Ordered goal checking for coverage work paths.</description>
   <maintainer email="user@todo.todo">user</maintainer>
   <license>Apache-2.0</license>
   <buildtool_depend>ament_cmake</buildtool_depend>
-  <buildtool_depend>ament_cmake_python</buildtool_depend>
-  <depend>fields2cover</depend>
   <depend>nav2_controller</depend>
+  <depend>nav2_util</depend>
   <depend>nav_msgs</depend>
   <depend>pluginlib</depend>
   <depend>tf2_geometry_msgs</depend>
-  <build_depend>python3-dev</build_depend>
   <export><build_type>ament_cmake</build_type></export>
 </package>

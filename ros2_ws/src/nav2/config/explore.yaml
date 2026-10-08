@@ -159,24 +159,24 @@ planner_server:
     expected_planner_frequency: 1.0 # Match 1.0 Hz in Behavior Tree (RateController hz=1.0)
     transform_tolerance: 0.5
     GridBased:
-      plugin: "nav2_smac_planner/SmacPlanner2D"
+      plugin: "nav2_smac_planner/SmacPlannerLattice"
       tolerance: 0.5 # Dist-to-goal tolerance if exact goal is near wall/boundary
-      downsample_costmap: false # 2D A* is fast enough (<10ms) without downsampling
-      downsampling_factor: 1
+      lattice_filepath: "/opt/ros/humble/share/nav2_smac_planner/sample_primitives/5cm_resolution/0.5m_turning_radius/diff/output.json"
+      allow_reverse_expansion: false
       allow_unknown: true # Allow traveling to frontiers / unknown boundary for exploration
-      max_iterations: 100000 # Fails in <50ms if goal is blocked, avoids freezing CPU
+      max_iterations: 100000
       max_on_approach_iterations: 1000
       max_planning_time: 2.0 # Max time in s for planner to plan
-      cost_travel_multiplier: 3.0 # Drives path towards the center of corridors/passages and away from obstacles
-      use_final_approach_orientation: false # Aligns the end of path with goal orientation
-      smooth_path: true # Simple and quick smoothing post-processing
-      smoother:
-        max_iterations: 1000
-        w_smooth: 0.2
-        w_data: 0.5
-        tolerance: 1.0e-10
-        do_refinement: true
-        refinement_num: 2
+      cost_penalty: 3.0
+      non_straight_penalty: 1.05
+      change_penalty: 0.0
+      rotation_penalty: 1.5
+      retrospective_penalty: 0.015
+      analytic_expansion_ratio: 3.5
+      analytic_expansion_max_length: 0.0
+      lookup_table_size: 20.0
+      cache_obstacle_heuristic: false
+      smooth_path: false
 
 smoother_server:
   ros__parameters:

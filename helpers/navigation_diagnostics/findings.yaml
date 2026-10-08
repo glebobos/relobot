@@ -1,13 +1,15 @@
 schema_version: 1
-updated: "2026-09-30"
+updated: "2026-10-08"
 report: wiki/navigation_baseline_2026-09-30.md
-status: gazebo_accepted_hardware_integrated_not_physically_validated
+status: stock_mppi_cleanup_rollout_blocked
 
 runtime:
   profile: ros2_ws/src/nav2/config/coverage_sim.yaml
   scope: hardware_and_simulation
   versions: {nav2: "1.1.20", fields2cover: "1.2.1", opennav_coverage: "0.0.1"}
-  controller: relobot/VerifiedMPPIController
+  planner: nav2_smac_planner/SmacPlannerLattice
+  planner_config: ros2_ws/src/nav2/config/explore.yaml
+  controller: nav2_mppi_controller::MPPIController
   goal_checker: relobot::OrderedGoalChecker
   max_speed_m_s: 0.20
   speed_preference_m_s: 0.18
@@ -20,6 +22,290 @@ runtime:
   wheel_radius_m: 0.0937
   firmware_deadband_rad_s: 0.35
   warning: Reference snapshot only; runtime YAML remains authoritative.
+
+humble_dependency_update:
+  date: "2026-10-08"
+  scope: Installed Ubuntu and ROS APT dependencies in the shared ros2_nav2 image only.
+  channel: Official ros2-testing-apt-source 1.3.0~jammy; pre-stable soaking repository.
+  distro: humble
+  platform: linux/amd64
+  status: image_built_package_inventory_verified_manual_trial_pending
+  image: sha256:914088281a4c7cca934d9cb6fb90724a933e9248aca821d95924542c23b078da
+  previous_capture_image: sha256:fa039983e6c1ca33d1b7a3014ad8c86a9cb14a5daafc4db0f1ad8ca176ec3368
+  capture: ros2_ws/log/navigation/20261008T073408Z-goal-loops-21a1b5
+  hypothesis: Fresh external TF with frozen internal footprint matches upstream TF ABBA deadlock; not confirmed by our own backtrace or upgraded trial.
+  upstream_issue: https://github.com/ros2/geometry2/issues/992
+  upstream_fix: https://github.com/ros2/geometry2/pull/990
+  minimum_build_versions: {tf2: "0.25.24", tf2_ros: "0.25.24"}
+  installed_packages:
+    tf2: 0.25.24-1jammy.20260915.203746
+    tf2_ros: 0.25.24-1jammy.20260915.204410
+    nav2_controller: 1.1.20-1jammy.20260915.232401
+    nav2_mppi_controller: 1.1.20-1jammy.20260915.232158
+    nav2_smac_planner: 1.1.20-1jammy.20260915.232226
+    rclcpp: 16.0.21-1jammy.20260907.213403
+    rmw_fastrtps_cpp: 6.2.10-1jammy.20260907.210327
+    fastrtps: 2.6.12-1jammy.20260723.233918
+    slam_toolbox: 2.6.10-1jammy.20260916.003050
+    opennav_docking: 0.0.2-4jammy.20260915.233541
+  source_versions_retained: {fields2cover: "1.2.1", opennav_coverage: "0.0.1"}
+  latest_source_releases_checked: {fields2cover: "2.1.0", opennav_coverage: "0.0.1"}
+  source_exception: Fields2Cover 2.x requires a separate API migration; retain the compatible coverage pair.
+  verification: Docker image build and minimum TF version gates passed; dpkg-query inventory confirmed; dpkg --audit produced no errors.
+  unchanged: [use_composition, controller_tuning, endpoint_tolerances, clearance, freshness, stop_checks]
+  not_run: [workspace_compilation, service_restart, automated_motion_tests, manual_runtime_trial, arm64_validation]
+  operator_rollout: ./start_robot.sh up ros2_nav2 --sim --dev --headless
+
+stock_mppi_cleanup:
+  authorized: Fully stock Humble MPPI with gated rollout; remove proven-unused connectors and Nav2 patches.
+  removed: [private_nav2_overlay, post_filter_sequence_validator, custom_wheel_prediction, filled_footprint_critic_option, instance_local_rng_patch, hybrid_reeds_shepp_patch, exact_connector_extension, signed_motion_sections]
+  retained: [two_controller_profiles, native_velocity_deadband_critic, ordered_goal_checker, fields2cover_swaths, filled_footprint_route_and_current_body_checks, unknown_space_veto, fresh_sensors_and_TF, measured_stops, work_transit_and_resume]
+  native_tuning: {ordinary_path_align_offset: 8, angular_sampling_std: 0.40, regenerate_noises: false}
+  tuning_basis: Upstream horizon_s * max_speed / path_resolution / 3; 3 s * 0.40 m/s / 0.05 m / 3 = 8 points.
+  approved_test_allowances:
+    ordinary_speed_overshoot_m_s: 0.01
+    ordinary_numerical_zero_min_m_s: -0.001
+    ordinary_yaw_speed_overshoot_rad_s: 0.05
+    ordinary_endpoint_yaw_observation_allowance_rad: 0.01
+    work_speed_overshoot_m_s: 0.005
+    minimum_median_work_turn_speed_m_s: 0.13
+    scope: Numerical and performance assertions only; runtime limits, radius and safety checks unchanged.
+  observations: {ordinary_speed_peak_m_s: 0.4083474278450012, ordinary_yaw_speed_peak_rad_s: 1.0348989963531494, work_speed_peak_m_s: 0.20271115005016327, work_finish_turn_median_m_s: 0.13277263939380646}
+  rejected_probes: Native ordinary noise regeneration alone still stalled on the second transfer; wider angular sampling worked but was unnecessary after correcting PathAlign offset.
+  safety_change: Native sampled-trajectory scoring and manager checks do not replace the removed final filtered-sequence validator.
+  fixture_startup_discovery_ms: 5000
+  focused_motion: {passed: 4, failed: 0, duration_s: 86.10}
+  validation: Both clean images built; full isolated suite completed with four failures. Rollout acceptance is not established.
+  full_suite: {passed: 169, failed: 4, duration_s: 708.57}
+  full_suite_scope: Before the Lattice replacement; not acceptance evidence for the current planner.
+  images:
+    production: sha256:34fcc4b550fd0cb581e314485dc409792adcf225fe4af02cc2a7d74903558734
+    lab: sha256:c75ec1b97514a2526294cc22a076459a2e4e638aa26dae6b703073e2f43b9e9c
+  failures:
+    - scenario: recorded_ingress
+      reason: Inner-wheel coasting exceeds the unchanged fraction and continuous-duration gates.
+      measured: {coast_fraction: 0.12031545919249376, longest_coast_s: 0.950, wheel_p05_rad_s: 0.286}
+      required: {coast_fraction_less_than: 0.05, longest_coast_s_less_than: 0.5}
+    - scenario: recorded_turn_ingress
+      reason: Direct work ingress emits negative linear commands and violates the minimum turning radius.
+      negative_command_m_s: -0.0034192842431366444
+    - scenario: closed_perimeter
+      reason: Work command violates the unchanged 0.20 m minimum turning radius.
+      command: {linear_m_s: 0.05274166166782379, angular_rad_s: 0.26978516578674316, radius_m: 0.195495}
+    - scenario: directional_route
+      reason: Managed mission loops and aborts on work section 6; tracking deviation reaches approximately 1.164 m.
+      action_status: 6
+  subsequent_native_probes:
+    - settings: {work_goal_critic_threshold_m: 0.50}
+      result: Directional route still aborts on section 6 before reaching the endpoint region; directional finish passes.
+      tests: {passed: 1, failed: 1, duration_s: 163.83}
+      disposition: Reverted to 0.10 m.
+    - settings: {work_path_align_orientations: true}
+      result: Closed perimeter passes; both recorded cases violate the command envelope and directional route aborts on section 2.
+      tests: {passed: 1, failed: 3, duration_s: 162.86}
+      disposition: Reverted to false.
+  restored_profile_check: {passed: 4, failed: 0, duration_s: 0.77}
+  remaining_gate: Work forward-only/radius, wheel-coasting and complete managed mission acceptance remain unresolved; no thresholds relaxed.
+  frontend: Staged preview-section wiring, segmented rendering and Execute state gates remain required by the work/transit backend; no changes needed for MPPI itself.
+  live_validation: Not run; robot services have not been restarted for this cleanup.
+
+lattice_planner_trial:
+  authorized: Replace GridBased with stock Humble differential-drive Lattice for operator testing; no live restart.
+  plugin: nav2_smac_planner/SmacPlannerLattice
+  source: https://github.com/ros-navigation/navigation2/blob/1.1.20/nav2_smac_planner/src/smac_planner_lattice.cpp
+  primitives: /opt/ros/humble/share/nav2_smac_planner/sample_primitives/5cm_resolution/0.5m_turning_radius/diff/output.json
+  metadata: {motion_model: diff, grid_resolution_m: 0.05, curved_motion_radius_m: 0.5, headings: 16}
+  settings: {allow_reverse_expansion: false, smooth_path: false, rotation_penalty: 5.0, cost_penalty: 3.0, cache_obstacle_heuristic: false, max_planning_time_s: 2.0, tolerance_m: 0.5}
+  retained: [GridBased_action_id, stock_mppi_profiles, work_paths, footprint_and_clearance, freshness, measured_stops]
+  focused_checks: {passed: 6, failed: 0, duration_s: 23.03, scope: "Configuration merge on both clocks/namespaces, package provenance and ordinary cruise."}
+  obstacle_trial:
+    goal_reached: true
+    goal_duration_s: 31.2
+    test: {passed: 0, failed: 1, duration_s: 37.77}
+    failure: Ordinary MPPI emits small reverse commands beyond the existing numerical-zero allowance.
+    minimum_linear_command_m_s: -0.0053166234865784645
+    permitted_minimum_linear_command_m_s: -0.001
+  rejected_probe: Planner post-smoothing enabled; obstacle navigation timed out at 45 s. Disabled in the retained configuration.
+  acceptance: Not established; no tolerance changes, full current-planner suite, ARM timing or live validation.
+
+recorded_goal_loops_manual_trial:
+  capture: ros2_ws/log/navigation/20261008T054535Z-goal-loops-af0039
+  method: Offline read-only SQLite bag decoding inside the network-isolated lab; no ROS replay, tests or service restart.
+  captured_settings: {planner: SmacPlannerLattice, primitive_radius_m: 0.5, rotation_penalty: 5.0, analytic_expansion_max_length_m: 0.0, controller: stock_Humble_MPPI}
+  counts: {monitor_plans: 15, bag_plans: 13, mapped_odometry_messages: 462}
+  limitation: The bag starts later than the JSON monitor; global-costmap center costs use the recorded full snapshot, not reconstructed updates.
+  endpoint: {x_m: 5.7425360810011625, y_m: -0.9264760222285986, yaw_rad: 1.5707963705062866}
+  loop_examples:
+    - {bag_plan: 4, direct_distance_m: 0.2828, path_length_m: 3.0259, signed_turn_rad: -6.2832, median_arc_radius_m: 0.5256}
+    - {bag_plan: 5, direct_distance_m: 0.25, path_length_m: 3.0688, signed_turn_rad: -6.2832, median_arc_radius_m: 0.512}
+  terminal_observations: {closest_endpoint_distance_m: 0.2488405912702265, yaw_error_at_closest_rad: 0.42883820883002954, minimum_yaw_error_inside_xy_tolerance_rad: 0.3351079815789566, yaw_tolerance_rad: 0.25}
+  cost_observation: All plan-center cells for bag plans 3 through 13 have zero cost in the available global-costmap snapshot; this is not a complete footprint or clearance proof.
+  goal_checker_behavior: Humble resets the stateful goal checker on each new controller path; the recorded replans occur approximately every 1.3 s.
+  conclusion: Rings originate in global Lattice paths and persist with analytic connections disabled; MPPI-only or analytic-only explanations are insufficient.
+  next_manual_probe: {rotation_penalty_before: 5.0, rotation_penalty_after: 1.5, scope: Make pure lattice rotations cheaper without changing MPPI or endpoint tolerances.}
+  retained: [primitive_radius_0_5_m, analytic_expansion_max_length_0, forward_only, MPPI_critics, endpoint_tolerances, footprint_clearance, freshness, measured_stops]
+  followup_capture:
+    capture: ros2_ws/log/navigation/20261008T060714Z-goal-loops-12400f
+    confirmed_settings: {rotation_penalty: 1.5, analytic_expansion_max_length_m: 0.0, primitive_radius_m: 0.5, ordinary_MPPI_parameter_changes: 0}
+    counts: {monitor_plans: 13, bag_plans: 10}
+    endpoint: {x_m: -1.0529, y_m: 2.04, yaw_rad: 0.7854}
+    loop_example: {bag_plan: 9, direct_distance_m: 0.495, path_length_m: 2.8427, signed_turn_rad: 5.9614}
+    terminal_observations: {closest_endpoint_distance_m: 0.5077433312719051, samples_inside_xy_tolerance: 0, measured_angular_velocity_rad_s: 0.9996180059366491}
+    action_outcome: NavigateToPose remains EXECUTING in the captured statuses; no recorded SUCCEEDED transition.
+    limitation: Different endpoint and initial heading from the first capture; not a controlled A/B comparison. Bag covers less time than the JSON monitor.
+    conclusion: Reducing rotation penalty alone does not remove global-plan rings in the recorded approach; improvement is not established.
+  acceptance: Not established; awaiting further operator comparison. No automated tests or restarts performed by the assistant.
+
+event_based_replanning_manual_trial:
+  authorized: User approved a BT-only manual Gazebo trial; tests and restarts remain operator-controlled.
+  file: ros2_ws/src/nav2/behavior_trees/navigate_to_pose.xml
+  source: https://github.com/ros-navigation/navigation2/blob/1.1.20/nav2_bt_navigator/behavior_trees/navigate_w_recovery_and_replanning_only_if_path_becomes_invalid.xml
+  policy: Keep the existing path while the goal is unchanged and IsPathValid succeeds; plan on a new goal or invalid path.
+  condition_poll_hz: 1.0
+  nodes: [GlobalUpdatedGoal, IsPathValid, ComputePathToPose]
+  retained: [explicit_goal_checker, contextual_and_global_recoveries, action_cancel, MPPI_profiles, Lattice_primitives, rotation_penalty_1_5, analytic_expansion_max_length_0, endpoint_tolerances, collision_checks]
+  scope: NavigateToPose only; NavigateThroughPoses and coverage-work execution unchanged.
+  rationale: Recorded repeated global rings and Humble goal-checker resets on each new controller path make repeated plan replacement a plausible contributor.
+  verification: XML syntax and editor diagnostics only; no ROS tests, builds or service restarts performed.
+  acceptance: Pending operator comparison and capture; no confirmed looping fix.
+
+ordinary_terminal_handoff_probes:
+  authorized: Test coordinated ordinary MPPI goal/path thresholds; retain endpoint tolerances and all safety gates.
+  source: https://github.com/ros-navigation/navigation2/blob/1.1.20/nav2_mppi_controller/README.md#notes-to-users
+  scope: Shared-profile checks plus to_pose_heading and to_pose_obstacle using the retained stock Lattice planner.
+  coordinated_position_and_heading:
+    thresholds_m: {goal: 1.2, path_follow: 1.2, goal_angle: 0.5, path_angle: 0.5}
+    tests: {passed: 5, failed: 1, duration_s: 41.58}
+    result: Obstacle case passes; heading case fails actual body clearance at (2.818, 0.850, -0.899).
+    disposition: Rejected and reverted.
+  coordinated_position_only:
+    thresholds_m: {goal: 1.2, path_follow: 1.2, goal_angle: 0.25, path_angle: 0.25}
+    tests: {passed: 4, failed: 2, duration_s: 76.55}
+    result: Heading case fails actual body clearance at (2.822, 0.845, -0.860); obstacle case times out at 45 s.
+    disposition: Rejected and reverted.
+  restored_baseline:
+    thresholds_m: {goal: 1.0, path_follow: 0.5, goal_angle: 0.25, path_angle: 0.25}
+    tests: {passed: 4, failed: 2, duration_s: 83.54}
+    result: Heading goal completes without a clearance failure but fails the negative-command gate; obstacle case times out at 45 s.
+    observed_negative_command_m_s: -0.006812050938606262
+    allowed_minimum_command_m_s: -0.001
+  conclusion: No terminal-handoff fix accepted; retain baseline settings and diagnose the remaining Lattice/MPPI interaction.
+  unchanged: [endpoint_tolerances, speed_limits, CostCritic_near_goal_distance, footprint_clearance, coverage_work_profile, Lattice_configuration]
+  live_validation: Not run; no robot restart or live goal.
+
+work_transit_coverage:
+  authorized: Ordinary transfers replace planned reverse connectors.
+  workflow: [NavigateToPose, confirmed_actual_stop, validate_work, CoverageFollowPath, confirmed_actual_stop, next_work]
+  controllers: [FollowPath, CoverageFollowPath]
+  planner: GridBased
+  work: {forward_only: true, max_speed_m_s: 0.20, minimum_controller_radius_m: 0.20, endpoint_xy_tolerance_m: 0.05}
+  transfers: {motion_model: DiffDrive, max_speed_m_s: 0.40, planned_reverse_guaranteed: false}
+  removed: [CoverageIngress, connector_action_bridge, signed_cusp_execution, CoverageManeuverPath, CoverageReversePath]
+  retained: [filled_footprint_collision_checks, unknown_space_veto, fresh_sensors_and_TF, measured_stops, soft_tracking]
+  body_clearance_m: 0.25
+  work_boundaries: Strict contiguous index ranges; retained through Execute, cancel, Resume and recovery.
+  legacy_layout: Ordered Fields2Cover swaths become work; nav_path connectors are not executed.
+  preview: Decimated per-work paths and timestamp-matched preview_sections; transfers not promised.
+  accounting: Work length and covered area exclude virtual transfer lines.
+  evidence:
+    - {check: work_transit_stop_and_cancel_contracts, passed: 12, failed: 0, duration_s: 0.45}
+    - {check: simplified_profile_and_boundaries, passed: 21, failed: 0, duration_s: 3.10}
+    - {check: work_only_layout_and_limits, passed: 27, failed: 0, duration_s: 72.04}
+    - {check: native_three_pass_transfers_and_obstacle_approach, passed: 2, failed: 0, duration_s: 76.90}
+    - {check: legacy_work_and_shared_lifecycle, passed: 18, failed: 0, duration_s: 2.75}
+    - {check: decimated_preview_work_boundaries, passed: 17, failed: 0, duration_s: 2.78}
+  start_policy: Begin work from the actual stopped pose after ordinary Nav2 succeeds; no extra XY/yaw gate.
+  full_suite_before_closed_work_split:
+    completed: false
+    passed: 97
+    failed: 1
+    duration_s: 447.11
+    interrupted: true
+    failed_scenario: directional_route
+  subsequent_evidence:
+    - {check: dense_start_and_lifecycle, passed: 28, failed: 0, duration_s: 0.54}
+    - check: directional_route_before_closed_work_split
+      passed: 0
+      failed: 1
+      duration_s: 324.39
+      result: Work completed on rows; closed perimeter action aborted after looping.
+    - check: directional_route_after_closed_work_split
+      passed: 0
+      failed: 1
+      duration_s: 44.98
+      result: Local footprint clearance guard blocked motion on the second work section.
+      pose: [2.479, 2.207, -1.803]
+  remaining_gate: Full mission acceptance is not established; collision/freshness/stop guards were not relaxed.
+  further_tuning: Paused while discussing pragmatic actual-pose starts; no tighter start tolerances added.
+  browser_validation: Deferred to the user at their request; JavaScript syntax checks passed.
+  live_validation: Not run; no robot or Gazebo restart or live Execute goal by the assistant.
+
+ordinary_approach_coverage:
+  historical_before_ordinary_transfers: true
+  workflow: [NavigateToPose, confirmed_actual_stop, revalidate_coverage, FollowPath]
+  approach: {planner: GridBased, controller: FollowPath, motion_model: DiffDrive, max_speed_m_s: 0.40}
+  coverage: {max_speed_m_s: 0.20, forward_work_primitives: true, internal_reverse_connectors: true}
+  ownership: Own navigation goal UUID is excluded from external-goal preemption checks.
+  handoff: Fresh finite odometry and TF; stable actual stop; collision and route revalidation.
+  tracking: Soft MPPI path critics and warnings; no cancellation for tracking distance alone.
+  warning_only_tracking_cases_m: [0.30, 0.60]
+  approved_ordinary_soft_tuning: {path_angle_cutoff_m: 0.25, goal_angle_handoff_m: 0.25}
+  terminal_progress: Refresh from current TF before accepting successful coverage actions.
+  collision_clearance_m: 0.25
+  evidence:
+    - {check: ownership_and_soft_tracking, passed: 18, failed: 0, duration_s: 0.49}
+    - {check: ordinary_start_and_recovery_contracts, passed: 22, failed: 0, duration_s: 0.45}
+    - {check: separated_approach_reverse_workflow, passed: 10, failed: 0, duration_s: 43.37}
+    - {check: approved_soft_guidance_obstacle_workflow, passed: 5, failed: 0, duration_s: 32.13}
+  full_suite: {passed: 177, failed: 2, duration_s: 698.87}
+  failures:
+    - scenario: to_pose
+      phase: BT activation
+      reason: Spin action server unavailable within 1 s.
+    - scenario: recorded_turn_near_obstacle
+      phase: Ordinary approach
+      reason: Actual swept-footprint clearance check rejected the moving pose.
+      pose: [3.935, 4.365, -1.149]
+  live_validation: Not run; no robot or Gazebo restart or live Execute goal by the assistant.
+  caveats: Isolated deadband model is not physical motor or Raspberry Pi timing acceptance.
+
+reverse_maneuver_development:
+  historical_before_ordinary_approach: true
+  scope: Planned reverse in ingress and connectors; work primitives forward-only.
+  motion_envelopes_m_s: {forward: [0.0, 0.20], reverse: [-0.20, 0.0]}
+  default_blind_backup: disabled
+  safety: Filled swept-footprint vetoes, 0.25 m clearance and measured cusp stops retained.
+  generic_profiles: Shared YAML base; directional overrides; alias-free ROS parameters.
+  wheel_prediction: Optional firmware-deadband model; enabled only for maneuver profiles.
+  work_profile: Accepted tuning restored after common tuning regressed work speeds.
+  approved_maneuver_endpoint_tolerances: {xy_m: 0.15, yaw_rad: 0.20}
+  intermediate_remaining_path_tolerance_m: 0.15
+  tolerance_scope: Intermediate maneuvers only; final work and ordinary navigation unchanged.
+  evidence:
+    - {check: wheel_aware_focused_gate, passed: 8, failed: 1, duration_s: 93.95}
+    - {check: full_suite_before_work_profile_restore, passed: 163, failed: 10, duration_s: 943.80}
+    - {check: restored_work_regressions, passed: 12, failed: 0, duration_s: 340.59}
+    - {check: generic_profile_launch_contract, passed: 4, failed: 0, duration_s: 0.99}
+    - {check: full_suite_before_endpoint_tolerance_expansion, passed: 171, failed: 2, duration_s: 721.17}
+    - {check: approved_endpoint_native_boundaries, passed: 5, failed: 0, duration_s: 8.83}
+    - {check: approved_endpoint_motion_gate, passed: 7, failed: 2, duration_s: 77.79}
+    - {check: approved_endpoint_stop_and_progress_contracts, passed: 12, failed: 0, duration_s: 8.43}
+  blocking_case:
+    name: recorded_turn_near_obstacle
+    reverse_section_length_m: 0.0951247854
+    result: Actual motion stalls below wheel cutoff before cusp yaw convergence; action aborts.
+    after_tolerance_expansion: {xy_error_m: 0.0478, yaw_error_rad: 0.5640, result: blocked}
+  additional_failed_motion_case:
+    name: coverage_reverse_maneuver
+    after_tolerance_expansion: {xy_error_m: 0.7506, result: blocked}
+  additional_full_suite_failure:
+    name: to_pose_turn
+    yaw_error_rad: 0.2500997644
+    required_max_yaw_error_rad: 0.25
+    note: Ordinary profile unchanged; gate retained, not rounded away or relaxed.
+  rejected_tuning_probes: Lower temperature 0.1 and maneuver yaw weight 10 did not fix the stall.
+  pending: [generic_execution_roles, expanded_motion_matrix, full_suite_acceptance, live_and_hardware_validation]
+  rollout: Do not treat historical accepted baseline evidence as acceptance of this development state.
 
 evidence:
   - id: baseline
@@ -53,7 +339,94 @@ evidence:
     result: Independent five-package build and full suite passed without host install or historical volume.
     replay: Fast-turns v3 tracking, wheel metrics and 0.035 s command coast reproduced via clean JSON output.
 
+  - id: obstacle_full_map_implementation
+    tests_passed: 106
+    duration_s: 379.96
+    representative_motion_tests_passed: 1
+    result: Full isolated suite and an additional real MPPI turn from the planner-assisted obstacle route passed; no controller tuning or reversing changes.
+    observed_turn_median_m_s: 0.200
+    observed_inner_wheel_coast_fraction: 0.0
+    deployment: Gazebo garden launched via start_sim.sh; active planner-assisted turns, 120 s planning budget and 0.25 m clearance verified; SLAM map 304x237 at 0.05 m resolution.
+    limits: Full live Gazebo obstacle mission awaits user verification; browser hostname raspberrypi.local did not resolve in the agent browser. No physical trial.
+
 findings:
+  - id: completed_validation_handoff
+    observed: User reported coverage_manager death when cancel-pending guard called done() on a consumed None join_future.
+    cause: Completed ingress/recovery worker was cleared before consuming its result; validation/readiness failure left the executor in validating phase with stop_state pending. Failure after begin_following changed phase could instead leave busy stuck without a submitted action.
+    fix: Completed validation handoff failures finish blocked immediately before any new action is sent; cancel-pending validation treats an already-consumed worker as finished while still waiting for genuinely pending workers or active action results.
+    verification: Five new regressions reproduced four identical NoneType crashes and one stuck-busy case before the fix, then all passed. Nineteen focused tests passed in 19.37 s including pending action acceptance, worker cancellation, retained cursor, rear obstacle refusal and real Nav2 backup-to-forward-replan completion.
+    safety: No new motion on failed handoff, no automatic recovery after operator cancellation, and no early stop confirmation for active or not-yet-accepted actions. Route and ordered cursor remain retained.
+    limits: Live Nav2 was not restarted; the Python fix must be loaded by the user. UI/status snapshot plan is saved separately and not implemented.
+  - id: guarded_coverage_recovery
+    decision: Treat the 0.15 m corridor as a tracking warning, distinguish ingress from work coverage, and validate actual current footprint separately from native predicted-control collision checking.
+    authorization: User explicitly permitted short reverse only as recovery; normal MPPI and work passes stay forward-only.
+    recovery: After confirmed FollowPath abort, permit at most two standard Nav2 BackUp maneuvers of 0.15 m at 0.05 m/s, with fresh inputs and checked rear swept space, then validate and replan forward ingress to retained remaining poses.
+    safety: Operator cancel, stale TF/scan/map, actual-footprint collision, new rear obstacle and exhausted recovery budget are never bypassed. No forced positive speed, blind reverse or unconfirmed action handoff.
+    verification: Unit cases and a real Nav2 BackUp-to-Smac-to-MPPI completion integration pass. Native ordered checker retains progress with 0.30 m warning deviation and refuses immediate closed-loop completion.
+    full_suite_tests_passed: 152
+    full_suite_duration_s: 565.77
+    builds: Production image rebuilt via start_robot.sh and isolated lab rebuilt from that image before the complete suite; running robot services were not restarted.
+    limits: User restart and live/hardware recovery rollout still pending; existing offline analyzer rejects multi-path recovery captures and must not be presented as complete recovered mission analysis.
+  - id: native_collision_diagnostics
+    decision: Report current-versus-predicted pose, step/time, frame, cell/world coordinates and lethal/unknown/out-of-map kind only on rejection; predicates and padding remain unchanged.
+    evidence: Focused native tests reject occupied current pose, future occupied/unknown cells and predicted out-of-map footprints with their corresponding classifications.
+    capture: 20261006T105219Z-coverage-collision-890d49
+    capture_limits: Host wrapper lacked directory write permission; container-side recorder saved bag/samples/events/parameters without run.json. Analyzer rejected the missing manifest; no fabricated provenance added.
+    observed: During the bounded recorded simulation attempt the robot advanced 7.48 m, then was stopped by the former corridor gate, not a native collision error; observed scan clearance minimum 0.636 m is not occluded-space safety proof.
+  - id: coverage_gradual_ingress
+    decision: Reuse one CoverageIngress Hybrid planner with 0.50 m searched turning radius and 2.50 m analytic expansion length for controller-compatible startup and searched transits.
+    evidence: Live recording confirmed MPPI commands reached the drive, wheel feedback and odometry moved, but the initial turn went opposite the nominal arc and was canceled by the 0.15 m corridor guard. The recorded-start synthetic near-obstacle regression passes with the gradual searched ingress at 0.192 m/s median turn speed and zero below-deadband wheel intervals.
+    safety: Coverage work geometry, Ackermann/controller radius, critic weights, 0.20 m/s speed, 0.25 m body clearance, freshness and progress/corridor gates remain unchanged.
+    full_suite_tests_passed: 139
+    full_suite_duration_s: 582.48
+    rejected: Test-only orientation alignment, soft-cost weight reduction and native densification alone did not resolve the difficult startup; none were applied to the runtime profile. Two different-radius Hybrid plugins were avoided because the pinned search shares static motion tables.
+    limits: Awaiting user restart and complete live Gazebo validation; loaded hardware remains unverified.
+  - id: coverage_execute_recovery
+    decision: Preserve partial mission metadata across Execute revalidation and expose backend can_execute for manual retry after temporary blocks; no automatic movement recovery.
+    verification: Focused metadata, stale/valid-preview and cancellation tests pass; ten frontend state-gate checks pass.
+    rollout: Code and profile ready; user will restart the stack and perform the live coverage trial. Agent did not restart services for this change.
+  - id: coverage_callback_load
+    decision: Use latest-only scan/costmap QoS, cache only byte-and-geometry-equivalent costmap validators, and avoid dense canonical route copying on the ROS Execute callback.
+    evidence: A separate observer measured scan age 0.02-0.15 s while the busy manager rejected its scan timestamp. Host UDP buffer ceilings were already 64 MiB and sampled logs did not establish transport overflow. Snapshot/cache/copy and unchanged stale/future timestamp limits are covered by focused tests.
+    safety: Preserve all freshness and filled-footprint validation; fresh data never triggers automatic motion.
+  - id: ordinary_navigation_mppi
+    decision: Use a separate VerifiedMPPI DiffDrive FollowPath profile for ordinary navigation; leave coverage geometry, CoverageFollowPath and shared safety/control parameters unchanged.
+    source: Independently configured; the historical MPPI profile was explicitly rejected as a tuning baseline.
+    parameters: {max_speed_m_s: 0.40, smoother_ceiling_m_s: 0.50, max_yaw_rad_s: 1.0, horizon_s: 3.0, model_dt_s: 0.05, path_align_weight: 6.0, final_yaw_distance_m: 0.25}
+    safety: No reverse/lateral motion, filled-footprint post-filter validation enabled, no positive speed floor and no coverage velocity-deadband preference.
+    verification: Eleven focused shared-profile and real Nav2 navigation tests pass at the 0.40 m/s target, including at least 0.35 m/s observed cruise, wheel deadband, initial rotation, final yaw, obstacle detour, cancellation and stop checks. Coverage controller/checker and planners/costmaps structurally compared unchanged; only the smoother speed ceiling was subsequently raised.
+    rejected: GoalAngle activation at 0.5 m aligned too early and stalled before XY tolerance; 0.25 m handoff passes.
+    full_suite_tests_passed: 120
+    full_suite_duration_s: 574.84
+    deployment: User restarted the simulation with the rebuilt Nav2 image; direct DDS query confirms VerifiedMPPI DiffDrive FollowPath at 0.40 m/s with sequence validation enabled, and unchanged Ackermann CoverageFollowPath at 0.20 m/s.
+    limits: Full live navigation trials, loaded motors and Raspberry Pi timing are not established by isolated tests.
+  - id: mppi_instance_local_sampling
+    decision: Isolate std::mt19937 per MPPI NoiseGenerator, retaining the default algorithm/seed, without changing coverage parameters or acceptance thresholds.
+    cause: Both pinned MPPI instances otherwise consume the same xtensor process-wide RNG; a second ordinary MPPI changed the deterministic coverage sample sequence.
+    evidence: Before isolation the unchanged coverage finish-speed test repeatedly produced 0.134-0.135 m/s and failed its 0.14 m/s gate; a test-only RPP ordinary instance passed at 0.165 m/s. After native isolation the coverage gate passes at 0.155 m/s and a direct interleaved-generator regression passes.
+    rollout: Production and isolated lab images rebuilt; restarted simulation container image matches the new production image identity and the complete 120-test suite passes.
+  - id: open_work_segments
+    decision: Split rows and boundary geometry into open straight/arc work segments, targeting 6 m maximum length, without waypoint stops or mandatory perimeter closure.
+    safety: Occupied and unknown cells remain forbidden; every segment and transit retains filled-footprint and forward-only validation. Resource exhaustion rejects the preview rather than returning truncated success.
+    partial_coverage: Retry forward directions and deferred rows, report unconnected segments and omitted length, and retain other reachable work in one continuous FollowPath.
+    verification: Focused open-mode, cancellation, resource-limit and exact shared-endpoint tests pass; real Smac preview and representative MPPI motion pass with the existing command and wheel-deadband gates.
+    full_suite_tests_passed: 113
+    full_suite_duration_s: 410.59
+    final_circle_refinement_tests_passed: 9
+    final_preview_compatibility_tests_passed: 7
+    synthetic_work_segments: 82
+    synthetic_unconnected_segments: 0
+    observed_turn_median_m_s: 0.200
+    observed_inner_wheel_coast_fraction: 0.0
+    deployment: Simulation Nav2 restarted after observing no active navigation goal; direct DDS parameter query confirms open_segments=true, work_segment_length_m=6.0 and clearance=0.25.
+    limits: Complete live Gazebo open-segment execution and physical trials remain unverified. The canceled experiment to ignore obstacles below 1 m was not implemented.
+  - id: obstacle_full_map_preview
+    decision: Preserve raw map topology, split obstacle-interrupted rows, and use validated perimeter detours or asynchronous CoverageIngress transitions with exact directed endpoints.
+    verification: Focused isolated geometry tests cover a central obstacle and 30x30, 60x10 and 36x36 m fields; a real Smac synthetic full-map obstacle preview passes without publishing motion.
+    limits: Live Gazebo obstacle execution and physical trials are not yet established for this generator.
+  - id: straight_clearance_not_turn_sweep
+    decision: Planner-assisted straight-side margins use lateral body extent and conservative raster/lattice allowance; preserve 0.25 m clearance and larger corner/row-end reservations.
+    limits: Nominal uncovered work-strip estimates are not measured mowing coverage; forward-only turns still leave physically constrained areas.
   - id: single_ordered_route
     decision: Keep ingress and coverage in one ordered FollowPath, not waypoint stops.
   - id: exact_ingress_join

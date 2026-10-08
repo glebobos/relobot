@@ -8,7 +8,6 @@ if [[ "${1:-}" == "_container" ]]; then
     set +u
     source /opt/ros/humble/setup.bash
     source /lab/install/setup.bash
-    source /opt/nav2_mppi_install/setup.bash
     export PYTHONPATH="/repo/ros2_ws/src/nav2:${PYTHONPATH:-}"
     set -u
     exec "$@"

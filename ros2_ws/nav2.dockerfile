@@ -1,10 +1,13 @@
 FROM ros:humble
 
 # Install additional dependencies
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y ros2-testing-apt-source && \
+  apt-get update && apt-get upgrade -y --with-new-pkgs && \
+  apt-get install -y \
     git \
     ros-humble-navigation2 \
     ros-humble-nav2-bringup \
+    ros-humble-nav2-mppi-controller \
     ros-humble-nav2-msgs \
     ros-humble-geometry-msgs \
     ros-humble-sensor-msgs \
@@ -19,6 +22,9 @@ RUN apt-get update && apt-get install -y \
     ros-humble-tf2-geometry-msgs \
     ros-humble-apriltag \
     ros-humble-apriltag-ros \
+    && dpkg-query -W ros-humble-tf2 ros-humble-tf2-ros \
+    && dpkg --compare-versions "$(dpkg-query -W -f='${Version}' ros-humble-tf2)" ge 0.25.24 \
+    && dpkg --compare-versions "$(dpkg-query -W -f='${Version}' ros-humble-tf2-ros)" ge 0.25.24 \
     && rm -rf /var/lib/apt/lists/*
 
 # Install coverage build prerequisites in a separate layer so Docker can reuse
@@ -41,16 +47,8 @@ RUN apt-get update && apt-get install -y \
 RUN git clone --branch v1.2.1 --depth 1 https://github.com/Fields2Cover/Fields2Cover.git /opt/fields2cover_src && \
     git clone --branch 0.0.1 --depth 1 https://github.com/open-navigation/opennav_coverage.git /opt/opennav_coverage_src
 
-RUN apt-get update && apt-get install -y libxtensor-dev libxsimd-dev python3-shapely && \
+RUN apt-get update && apt-get install -y python3-shapely && \
   rm -rf /var/lib/apt/lists/*
-COPY ./patches /opt/navigation_patches
-RUN git clone --branch 1.1.20 --depth 1 https://github.com/ros-navigation/navigation2.git /opt/nav2_mppi_src && \
-  cd /opt/nav2_mppi_src && git apply --recount /opt/navigation_patches/mppi-sequence.patch && \
-  cp /opt/navigation_patches/mppi_sequence_validation.hpp nav2_mppi_controller/include/nav2_mppi_controller/ && \
-  . /opt/ros/humble/setup.sh && \
-    CMAKE_BUILD_PARALLEL_LEVEL=2 MAKEFLAGS=-j2 colcon build --event-handlers console_direct+ \
-      --base-paths nav2_mppi_controller --build-base /opt/nav2_mppi_build \
-      --install-base /opt/nav2_mppi_install --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF
 
 # Create workspace
 WORKDIR /ros2_ws
@@ -72,7 +70,6 @@ if [ "$DEV" = "true" ] || [ ! -f /ros2_ws/install/opennav_coverage_msgs/share/op
   colcon build --base-paths /opt/fields2cover_src /opt/opennav_coverage_src /ros2_ws/src --packages-up-to nav2 robot_pose_publisher explore_lite opennav_coverage opennav_coverage_msgs fields2cover --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release -DFields2Cover_DIR=/ros2_ws/build/fields2cover -DBUILD_TESTS=OFF -DBUILD_DOC=OFF -DBUILD_TUTORIALS=OFF\n\
 fi\n\
 source install/setup.bash\n\
-source /opt/nav2_mppi_install/setup.bash\n\
 if [ "${USE_SIM_TIME}" = "true" ]; then\n\
   echo "[ros2_nav2] Simulation mode: waiting for /clock topic..."\n\
   until ros2 topic echo /clock --once > /dev/null 2>&1; do sleep 1; done\n\

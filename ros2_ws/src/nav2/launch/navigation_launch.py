@@ -28,6 +28,11 @@ from launch_ros.descriptions import ComposableNode, ParameterFile
 from nav2_common.launch import RewrittenYaml
 
 
+class RosParametersDumper(yaml.SafeDumper):
+    def ignore_aliases(self, data):
+        return True
+
+
 class CoverageTrialParameters(RewrittenYaml):
     def __init__(self, overlay, namespace, **kwargs):
         super().__init__(**kwargs)
@@ -51,7 +56,7 @@ class CoverageTrialParameters(RewrittenYaml):
         namespace = self.namespace.perform(context)
         merge(params.setdefault(namespace, {}) if namespace else params, overrides)
         with tempfile.NamedTemporaryFile(mode='w', delete=False) as stream:
-            yaml.safe_dump(params, stream)
+            yaml.dump(params, stream, Dumper=RosParametersDumper)
             return stream.name
 
 

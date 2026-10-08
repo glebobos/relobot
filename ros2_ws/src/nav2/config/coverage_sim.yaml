@@ -4,14 +4,86 @@ controller_server:
     failure_tolerance: 0.0
     controller_plugins: [FollowPath, CoverageFollowPath]
     goal_checker_plugins: [goal_checker, coverage_goal_checker]
+    FollowPath:
+      plugin: nav2_mppi_controller::MPPIController
+      motion_model: DiffDrive
+      time_steps: 60
+      model_dt: 0.05
+      batch_size: 1000
+      iteration_count: 1
+      vx_max: 0.40
+      vx_min: 0.0
+      vy_max: 0.0
+      wz_max: 1.0
+      vx_std: 0.20
+      vy_std: 0.0
+      wz_std: 0.40
+      temperature: 0.3
+      gamma: 0.015
+      prune_distance: 1.6
+      max_robot_pose_search_dist: 1.0
+      transform_tolerance: 0.2
+      visualize: false
+      reset_period: 1.0
+      retry_attempt_limit: 1
+      critics: [ConstraintCritic, CostCritic, GoalCritic, GoalAngleCritic, PathAlignCritic, PathFollowCritic, PathAngleCritic, PreferForwardCritic]
+      ConstraintCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 4.0
+      CostCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 3.81
+        consider_footprint: true
+        critical_cost: 300.0
+        collision_cost: 1000000.0
+        near_goal_distance: 0.0
+      GoalCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 5.0
+        threshold_to_consider: 1.0
+      GoalAngleCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 3.0
+        threshold_to_consider: 0.25
+      PathAlignCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 6.0
+        max_path_occupancy_ratio: 0.05
+        trajectory_point_step: 3
+        threshold_to_consider: 0.5
+        offset_from_furthest: 8
+        use_path_orientations: false
+      PathFollowCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 5.0
+        offset_from_furthest: 6
+        threshold_to_consider: 0.5
+      PathAngleCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 2.0
+        offset_from_furthest: 4
+        threshold_to_consider: 0.25
+        max_angle_to_furthest: 1.0
+        forward_preference: true
+      PreferForwardCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 5.0
+        threshold_to_consider: 0.5
     coverage_goal_checker:
       plugin: relobot::OrderedGoalChecker
       stateful: true
       xy_goal_tolerance: 0.05
       yaw_goal_tolerance: 3.141592653589793
     CoverageFollowPath:
-      plugin: relobot/VerifiedMPPIController
-      validate_control_sequence: true
+      plugin: nav2_mppi_controller::MPPIController
       motion_model: Ackermann
       AckermannConstraints:
         min_turning_r: 0.20
@@ -95,21 +167,7 @@ bt_navigator:
 
 planner_server:
   ros__parameters:
-    planner_plugins: [GridBased, CoverageIngress]
-    CoverageIngress:
-      plugin: nav2_smac_planner/SmacPlannerHybrid
-      motion_model_for_search: DUBIN
-      minimum_turning_radius: 0.25
-      angle_quantization_bins: 72
-      tolerance: 0.01
-      allow_unknown: false
-      max_planning_time: 2.0
-      max_iterations: 100000
-      smooth_path: false
-      analytic_expansion_ratio: 3.5
-      analytic_expansion_max_length: 1.5
-      cost_penalty: 2.0
-      cache_obstacle_heuristic: false
+    planner_plugins: [GridBased]
 
 global_costmap:
   global_costmap:
@@ -138,8 +196,8 @@ velocity_smoother:
   ros__parameters:
     smoothing_frequency: 20.0
     scale_velocities: true
-    max_velocity: [0.30, 0.0, 1.5]
-    min_velocity: [0.0, 0.0, -1.5]
+    max_velocity: [0.50, 0.0, 1.5]
+    min_velocity: [-0.20, 0.0, -1.5]
     max_accel: [0.4, 0.0, 2.0]
     max_decel: [-0.8, 0.0, -3.0]
     deadband_velocity: [0.0, 0.0, 0.0]
@@ -158,6 +216,16 @@ coverage_manager:
   ros__parameters:
     layout_mode: directional
     swath_spacing: 0.24
+    open_segments: true
+    work_segment_length_m: 6.0
+    motion_odom_topic: /odometry/filtered
+    recovery_enabled: true
+    recovery_backup_enabled: false
+    recovery_max_attempts: 2
+    recovery_backup_distance: 0.15
+    recovery_backup_speed: 0.05
+    planning_timeout_sec: 120.0
+    max_path_points: 250000
     headland_width: 1.5
     min_turning_radius: 0.20
     clearance: 0.25
