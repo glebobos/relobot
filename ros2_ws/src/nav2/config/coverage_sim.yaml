@@ -21,7 +21,7 @@ controller_server:
       temperature: 0.3
       gamma: 0.015
       prune_distance: 1.6
-      max_robot_pose_search_dist: 1.0
+      max_robot_pose_search_dist: 2.5
       transform_tolerance: 0.2
       visualize: false
       reset_period: 1.0

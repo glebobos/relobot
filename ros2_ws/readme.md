@@ -91,6 +91,34 @@ built. The unused exact-connector Python extension has also been removed;
 `coverage_geometry` retains the ordered goal checker. Fields2Cover and opennav
 coverage remain available for legacy ordered-swath planning.
 
+### Ordinary Search-Window Gazebo Trial (2026-10-08)
+
+Ordinary `FollowPath.max_robot_pose_search_dist` is now 2.5 m rather than 1.0 m.
+The short parallel-row fixture reproduced an intermediate local-goal stall with
+the 1.0 m search window; 2.5 m lets path association advance through the U-turn.
+The bound is retained, not replaced by an unlimited nearest-point search.
+Coverage work keeps its 0.6 m window and 1.2 m pruning; ordinary pruning remains
+1.6 m. Both speed profiles, critics, endpoint tolerances and safeguards are
+unchanged. No experimental ordinary deadband critic is deployed.
+
+This is an operator-authorized manual Gazebo trial, not full hardware acceptance.
+The configuration is shared with hardware, so loading this checkout there also
+changes the ordinary window. Isolated missions completed, but the existing
+-0.001 m/s ordinary numerical command floor still has small violations; neither
+that threshold nor physical reverse-motion acceptance has been relaxed.
+
+Load the configuration and record before Execute, in separate terminals:
+
+```bash
+./start_robot.sh up --sim --dev --headless
+python3 helpers/navigation_diagnostics/record.py --label coverage-search-2p5 --duration 300
+```
+
+Wait for `Navigation recording active` before repeating the same coverage zone.
+Ctrl-C ends recording only; use the robot's stop/cancel control for motion.
+No services were restarted by the assistant for this change. See the exact
+[trial evidence](../helpers/navigation_diagnostics/findings.yaml).
+
 ### Humble Dependency Update (2026-10-08)
 
 The shared `ros2_nav2` image uses the official `ros2-testing-apt-source`

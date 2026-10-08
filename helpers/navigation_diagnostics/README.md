@@ -91,6 +91,42 @@ events/samples, logs and SQLite bag plus bag metadata. Captures may expose maps,
 robot descriptions and local paths; inspect before sharing. Git-tracked reports
 and small fixtures are not a backup of local recordings.
 
+### Loaded-Wheel Deadband Measurements
+
+Use standard wheels firmware, disabled blades, an attended clear test area and
+an available stop control. Start capture before any operator-commanded motion:
+
+```bash
+python3 helpers/navigation_diagnostics/record.py --label loaded-wheel-deadband --duration 300
+```
+
+The recorder already captures `/cmd_vel_nav`, `/cmd_vel`,
+`/robot_joint_commands`, `/robot_joint_states`, `/joint_states`, odometry,
+TF and coverage/action status. Keep the bag enabled: sampled JSON contains
+joint velocities, while full encoder positions are retained in the bag.
+Confirm `controller_sim_time: false` in the hardware capture metadata.
+Recording is passive; it does not start services or issue movement commands.
+
+Do not use `start_wheel_calibration.sh` for this loaded navigation experiment:
+that launcher stops the stack and invokes a direct PWM forward/reverse sweep,
+not measurement through the standard velocity controller. Do not flash or
+change firmware coefficients as part of the deadband trial.
+
+Compare sustained wheel targets with encoder position increments over adequate
+measurement windows, rather than interpreting one filtered velocity sample as
+a stall. Distinguish the firmware's configured 0.35 rad/s deadband from the
+minimum stable speed observed under load. Preserve ordinary/work speed limits,
+acceleration, clearance and stop checks; no deadband candidate is deployed yet.
+
+The [current firmware](../../pico_ware_wheels_microros/src/main.cpp#L25) uses
+60 counts per wheel revolution. At a 0.0937 m wheel radius, one wheel tick is
+approximately 9.8 mm of rim travel. The signed tick accumulator uses the last
+commanded drive direction, not an independently measured encoder direction.
+Consequently, these encoders and their derived odometry cannot independently
+certify a 2 mm reverse-motion bound. A smaller physical displacement limit
+requires external measurement with verified resolution and uncertainty;
+absence of ticks or smooth EKF output is not proof of zero movement.
+
 ## Offline Analysis
 
 Select an explicit capture ID; there is no implicit latest-run selection:

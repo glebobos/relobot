@@ -184,8 +184,11 @@ def test_scan_timestamp_guard_preserves_limits_and_reports_age(scan_nanoseconds,
 
 def test_ingress_waits_for_stop_then_submits_only_the_coverage_route():
     from copy import deepcopy
+    from rclpy.time import Time
     from test_coverage_path import make_path
     executor = CoverageExecution.__new__(CoverageExecution)
+    executor.node = Mock()
+    executor.node.get_clock.return_value.now.return_value = Time(nanoseconds=1_000_000_000)
     executor.request_id = 1
     executor.handle = Mock()
     executor.stop_state = None
@@ -212,9 +215,13 @@ def test_ingress_waits_for_stop_then_submits_only_the_coverage_route():
     sent_goal = executor.send.call_args.args[1]
     assert sent_goal.controller_id == 'CoverageFollowPath'
     assert sent_goal.goal_checker_id == 'coverage_goal_checker'
-    assert sent_goal.path.poses == route_before.poses
+    assert [stamped.pose for stamped in sent_goal.path.poses] == [
+        stamped.pose for stamped in route_before.poses]
+    assert sent_goal.path.header.stamp == Time(nanoseconds=1_000_000_000).to_msg()
+    assert all(stamped.header.stamp == sent_goal.path.header.stamp
+               for stamped in sent_goal.path.poses)
     assert executor.route == route_before
-    executor.validate.assert_called_once_with(sent_goal.path, ingress=True)
+    executor.validate.assert_called_once_with(route_before, ingress=True)
 
 
 @pytest.mark.parametrize('deviation', [0.30, 0.60])
@@ -392,7 +399,8 @@ def test_work_sections_wait_for_actual_stop_before_ordinary_transit(remaining_di
     executor.guard()
     assert executor.send.call_args.args[1].controller_id == 'CoverageFollowPath'
     assert executor.send.call_args.args[1].goal_checker_id == 'coverage_goal_checker'
-    assert executor.plan_pub.publish.call_args.args[0].poses == executor.route.poses[2:4]
+    assert [stamped.pose for stamped in executor.plan_pub.publish.call_args.args[0].poses] == [
+        stamped.pose for stamped in executor.route.poses[2:4]]
     assert executor.section_offset == pytest.approx(0.5)
     complete_motion_section(executor, remaining_distance)
     assert executor.phase == 'waiting_work_stop'
@@ -418,11 +426,40 @@ def test_operator_cancel_at_work_stop_never_starts_next_section():
 
 def test_work_sections_never_send_transit_geometry_to_coverage():
     executor = segmented_executor()
-    assert executor.send.call_args.args[1].path.poses == executor.route.poses[:2]
+    assert [stamped.pose for stamped in executor.send.call_args.args[1].path.poses] == [
+        stamped.pose for stamped in executor.route.poses[:2]]
     assert executor.tracker.length == pytest.approx(0.5)
     assert executor.total_work_length == pytest.approx(2.0)
     assert executor.report.call_args_list[-2].kwargs['distance_remaining'] == pytest.approx(2.0)
     assert executor.remaining_work_sections() == [[0, 1], [2, 3], [4, 5]]
+
+
+@pytest.mark.parametrize('section_index', [0, 1])
+def test_work_sections_refresh_all_stamps_without_mutating_route(section_index):
+    from copy import deepcopy
+    from rclpy.time import Time
+    executor = segmented_executor()
+    route_before = deepcopy(executor.route)
+    first_path = executor.send.call_args.args[1].path
+    first_path_before = deepcopy(first_path)
+    executor.section_index = section_index
+    start, end, _ = executor.sections[section_index]
+    executor.robot_pose.return_value = executor.route.poses[start]
+    now = Time(nanoseconds=2_000_000_000)
+    executor.node.get_clock.return_value.now.return_value = now
+    executor.send_motion_section()
+    sent_path = executor.send.call_args.args[1].path
+    assert sent_path.header.stamp == now.to_msg()
+    assert all(stamped.header.stamp == now.to_msg() for stamped in sent_path.poses)
+    assert sent_path.header.frame_id == executor.route.header.frame_id
+    assert [stamped.pose for stamped in sent_path.poses] == [
+        stamped.pose for stamped in executor.route.poses[start:end + 1]]
+    assert all(stamped is not original for stamped, original in zip(
+        sent_path.poses, executor.route.poses[start:end + 1]))
+    assert executor.plan_pub.publish.call_args.args[0] == sent_path
+    assert executor.control_plan_pub.publish.call_args.args[0] == sent_path
+    assert executor.route == route_before
+    assert first_path == first_path_before
 
 
 def test_work_stop_does_not_confirm_stop_from_one_odom_sample():
@@ -592,6 +629,7 @@ def test_canceled_large_ingress_validation_cannot_send_follow_path(phase, worker
 ])
 def test_failed_validation_handoff_blocks_without_crashing_or_sending_motion(phase, failure):
     from concurrent.futures import Future
+    from rclpy.time import Time
     from test_coverage_path import make_path
     executor = CoverageExecution.__new__(CoverageExecution)
     executor.busy = True
@@ -600,7 +638,7 @@ def test_failed_validation_handoff_blocks_without_crashing_or_sending_motion(pha
     executor.handle = None
     executor.cancel_sent = False
     executor.node = Mock()
-    executor.node.get_clock.return_value.now.return_value.nanoseconds = 100
+    executor.node.get_clock.return_value.now.return_value = Time(nanoseconds=100)
     executor.last_ros_time = 99
     executor.started = time.monotonic()
     executor.cursor = 1
@@ -907,6 +945,8 @@ def test_coverage_profile_is_shared_without_changing_clock(use_sim_time, namespa
     for costmap in ('global_costmap', 'local_costmap'):
         assert lattice['grid_resolution'] == loaded[costmap][costmap]['ros__parameters']['resolution']
     work = controller['CoverageFollowPath']
+    assert work['max_robot_pose_search_dist'] == 0.6
+    assert work['prune_distance'] == 1.2
     assert work['GoalCritic']['threshold_to_consider'] == 0.10
     assert work['PathFollowCritic']['threshold_to_consider'] == 0.10
     assert work['VelocityDeadbandCritic']['deadband_velocities'] == [0.18, 0.0, 0.0]
@@ -923,6 +963,10 @@ def test_coverage_profile_is_shared_without_changing_clock(use_sim_time, namespa
     assert controller['FollowPath']['motion_model'] == 'DiffDrive'
     assert controller['FollowPath']['vx_min'] == 0.0
     assert controller['FollowPath']['vx_max'] == 0.40
+    assert controller['FollowPath']['max_robot_pose_search_dist'] == 2.5
+    assert controller['FollowPath']['prune_distance'] == 1.6
+    assert controller['FollowPath']['PathFollowCritic']['threshold_to_consider'] == 0.5
+    assert 'VelocityDeadbandCritic' not in controller['FollowPath']['critics']
     assert (loaded['velocity_smoother']['ros__parameters']['max_velocity'][0]
             >= controller['FollowPath']['vx_max'])
     assert loaded['velocity_smoother']['ros__parameters']['min_velocity'][0] == -0.20
@@ -1231,7 +1275,7 @@ def test_real_coverage_server_returns_a_valid_forward_route(tmp_path, zone_size)
         rclpy.shutdown()
 
 
-@pytest.mark.parametrize('navigation', [None, 'to_pose', 'through_poses', 'to_pose_turn', 'to_pose_heading', 'to_pose_obstacle', 'to_pose_cancel', 'to_pose_cruise', 'to_pose_params', 'recorded_ingress', 'recorded_turn_ingress', 'recorded_turn_near_obstacle', 'closed_perimeter', 'directional_route', 'directional_finish', 'long_rows', 'coverage_preview', 'coverage_preview_motion', 'coverage_backup_recovery', 'coverage_transfers'])
+@pytest.mark.parametrize('navigation', [None, 'to_pose', 'through_poses', 'to_pose_turn', 'to_pose_heading', 'to_pose_obstacle', 'to_pose_cancel', 'to_pose_cruise', 'to_pose_params', 'recorded_ingress', 'recorded_turn_ingress', 'recorded_turn_near_obstacle', 'closed_perimeter', 'directional_route', 'directional_finish', 'long_rows', 'coverage_preview', 'coverage_preview_motion', 'coverage_backup_recovery', 'coverage_transfers', 'coverage_transfers_deadband', 'coverage_parallel_rows', 'coverage_parallel_rows_deadband', 'coverage_parallel_rows_linear_deadband', 'coverage_parallel_rows_path_follow_handoff', 'coverage_parallel_rows_diagnostics', 'coverage_parallel_rows_search_window', 'to_pose_deadband', 'to_pose_turn_deadband', 'to_pose_heading_deadband', 'to_pose_obstacle_deadband', 'to_pose_cancel_deadband', 'to_pose_cruise_deadband', 'coverage_transfers_search_window', 'to_pose_turn_search_window', 'to_pose_heading_search_window', 'to_pose_obstacle_search_window'])
 def test_installed_controller_and_ingress_on_synthetic_robot(tmp_path, navigation):
     from geometry_msgs.msg import TransformStamped, Twist
     from lifecycle_msgs.srv import ChangeState
@@ -1245,9 +1289,25 @@ def test_installed_controller_and_ingress_on_synthetic_robot(tmp_path, navigatio
     from frontier_explorer.coverage_path import pose_xy_yaw, validate_forward_path, work_paths
     from test_coverage_path import make_grid, make_path
 
+    deadband_trial = navigation is not None and navigation.endswith('_deadband')
+    linear_deadband_trial = navigation is not None and navigation.endswith('_linear_deadband')
+    path_follow_handoff_trial = navigation is not None and navigation.endswith('_path_follow_handoff')
+    search_window_trial = navigation is not None and navigation.endswith('_search_window')
+    diagnostic_trial = navigation in ('coverage_parallel_rows_diagnostics',
+                                     'coverage_parallel_rows_search_window')
+    if deadband_trial:
+        navigation = navigation.removesuffix(
+            '_linear_deadband' if linear_deadband_trial else '_deadband')
+    elif path_follow_handoff_trial:
+        navigation = navigation.removesuffix('_path_follow_handoff')
+    elif search_window_trial:
+        navigation = navigation.removesuffix('_search_window')
+    elif diagnostic_trial:
+        navigation = 'coverage_parallel_rows'
     ordinary_navigation = navigation == 'through_poses' or str(navigation).startswith('to_pose')
     managed_approach = navigation in ('coverage_backup_recovery', 'coverage_transfers',
-                                      'recorded_turn_near_obstacle', 'directional_route')
+                                      'coverage_parallel_rows', 'recorded_turn_near_obstacle',
+                                      'directional_route')
     synthetic_sim_time = managed_approach
     replay_path = None
     replay_sections = None
@@ -1298,6 +1358,29 @@ def test_installed_controller_and_ingress_on_synthetic_robot(tmp_path, navigatio
     config = params.perform(context)
     with open(config) as stream:
         loaded = yaml.safe_load(stream)
+    if search_window_trial:
+        ordinary = loaded['controller_server']['ros__parameters']['FollowPath']
+        assert 'VelocityDeadbandCritic' not in ordinary['critics']
+        ordinary['max_robot_pose_search_dist'] = 2.5
+        print('Ordinary path search-window trial: 2.5 m, no deadband critic', flush=True)
+    if diagnostic_trial:
+        ordinary = loaded['controller_server']['ros__parameters']['FollowPath']
+        ordinary['visualize'] = True
+        ordinary['TrajectoryVisualizer'] = dict(trajectory_step=1000, time_step=59)
+    if path_follow_handoff_trial:
+        ordinary = loaded['controller_server']['ros__parameters']['FollowPath']
+        assert 'VelocityDeadbandCritic' not in ordinary['critics']
+        ordinary['PathFollowCritic']['threshold_to_consider'] = 0.25
+        print('Ordinary PathFollow handoff trial: threshold 0.25 m, no deadband critic', flush=True)
+    if deadband_trial:
+        ordinary = loaded['controller_server']['ros__parameters']['FollowPath']
+        ordinary['critics'].append('VelocityDeadbandCritic')
+        wheel_linear_deadband = 0.35 * 0.0937
+        ordinary['VelocityDeadbandCritic'] = dict(
+            enabled=True, cost_power=1, cost_weight=35.0,
+            deadband_velocities=[wheel_linear_deadband, 0.0,
+                                 0.0 if linear_deadband_trial else
+                                 2.0 * wheel_linear_deadband / 0.295])
     clearance = loaded['coverage_manager']['ros__parameters']['clearance']
     if ordinary_navigation or managed_approach:
         navigator = loaded['bt_navigator']['ros__parameters']
@@ -1373,6 +1456,8 @@ def test_installed_controller_and_ingress_on_synthetic_robot(tmp_path, navigatio
     position = [2.0, 2.0, 0.0]
     if navigation == 'to_pose_turn':
         position[2] = math.pi / 2.0
+    if navigation == 'coverage_parallel_rows':
+        position[:] = (3.0, 2.0, math.pi / 2.0)
     if replay_path:
         from frontier_explorer.coverage_path import pose_xy_yaw
         position[:] = pose_xy_yaw(replay_path.poses[0].pose)
@@ -1388,7 +1473,52 @@ def test_installed_controller_and_ingress_on_synthetic_robot(tmp_path, navigatio
     raw_commands = []
     raw_roles = []
     coverage_owner = [None]
+    plans = []
+    node.create_subscription(PathMessage, '/plan', plans.append, 10)
+    diagnostic_samples = []
+    optimal_trajectory = []
+    diagnostic_started = time.monotonic()
+    if diagnostic_trial:
+        from visualization_msgs.msg import MarkerArray
+
+        def observe_trajectories(message):
+            optimal_trajectory[:] = [(marker.pose.position.x, marker.pose.position.y)
+                                     for marker in message.markers
+                                     if marker.ns == 'Optimal Trajectory']
+
+        def observe_local_path(message):
+            owner = coverage_owner[0]
+            if (owner is None or owner.section_index != 1 or owner.phase != 'navigating_ingress'
+                    or not message.poses):
+                return
+            elapsed = time.monotonic() - diagnostic_started
+            if diagnostic_samples and elapsed - diagnostic_samples[-1]['elapsed_s'] < 1.0:
+                return
+            points = [pose_xy_yaw(stamped.pose) for stamped in message.poses]
+            endpoint_distance = math.dist(position[:2], points[-1][:2])
+            ordinary = loaded['controller_server']['ros__parameters']['FollowPath']
+            distance_gates = {
+                critic: endpoint_distance < ordinary[critic]['threshold_to_consider']
+                for critic in ('GoalCritic', 'GoalAngleCritic')}
+            distance_gates.update({
+                critic: endpoint_distance >= ordinary[critic]['threshold_to_consider']
+                for critic in ('PathAlignCritic', 'PathFollowCritic', 'PathAngleCritic')})
+            diagnostic_samples.append(dict(
+                elapsed_s=elapsed, position=tuple(position), frame=message.header.frame_id,
+                local_path=points, local_endpoint_distance_m=endpoint_distance,
+                local_length_m=sum(math.dist(first[:2], second[:2])
+                                   for first, second in zip(points, points[1:])),
+                critic_distance_gates=distance_gates,
+                optimal_trajectory=list(optimal_trajectory), command=raw_commands[-1]
+                    if raw_commands else None,
+                limitations='Distance gates only; additional critic conditions and costs are not observed.'))
+
+        node.create_subscription(MarkerArray, '/trajectories', observe_trajectories, 1)
+        node.create_subscription(PathMessage, '/transformed_global_plan', observe_local_path, 1)
     observed_positions = []
+    motion_metrics = dict(reverse_distance_m=0.0, reverse_episode_s=0.0,
+                          longest_reverse_s=0.0)
+    wheel_deadband = 0.0 if navigation == 'coverage_parallel_rows' else 0.35
     if ordinary_navigation or managed_approach:
         from frontier_explorer.coverage_path import FreeSpaceValidator
         from test_coverage_path import FOOTPRINT
@@ -1399,8 +1529,8 @@ def test_installed_controller_and_ingress_on_synthetic_robot(tmp_path, navigatio
         command_times.append(time.monotonic())
         left = (velocity[0] - 0.295 * velocity[1] / 2.0) / 0.0937
         right = (velocity[0] + 0.295 * velocity[1] / 2.0) / 0.0937
-        left = left if abs(left) >= 0.35 else 0.0
-        right = right if abs(right) >= 0.35 else 0.0
+        left = left if abs(left) >= wheel_deadband else 0.0
+        right = right if abs(right) >= wheel_deadband else 0.0
         velocity[:] = [(left + right) * 0.0937 / 2.0, (right - left) * 0.0937 / 0.295]
     node.create_subscription(Twist, '/cmd_vel', command, 10)
 
@@ -1414,6 +1544,13 @@ def test_installed_controller_and_ingress_on_synthetic_robot(tmp_path, navigatio
         now = time.monotonic()
         elapsed = min(now - last[0], 0.1)
         last[0] = now
+        if velocity[0] < -0.001:
+            motion_metrics['reverse_distance_m'] -= velocity[0] * elapsed
+            motion_metrics['reverse_episode_s'] += elapsed
+            motion_metrics['longest_reverse_s'] = max(
+                motion_metrics['longest_reverse_s'], motion_metrics['reverse_episode_s'])
+        else:
+            motion_metrics['reverse_episode_s'] = 0.0
         position[0] += velocity[0] * math.cos(position[2]) * elapsed
         position[1] += velocity[0] * math.sin(position[2]) * elapsed
         position[2] += velocity[1] * elapsed
@@ -1530,6 +1667,10 @@ def test_installed_controller_and_ingress_on_synthetic_robot(tmp_path, navigatio
                           if not math.isfinite(linear) or not math.isfinite(angular)
                           or linear < -0.001 or linear > maximum_linear + 0.01
                           or abs(angular) > 1.0 + 0.05]
+            if deadband_trial:
+                print(f'Deadband {navigation}: minimum linear command='
+                      f'{min(linear for linear, angular in commands + raw_commands):.6f} m/s; '
+                      f'measured motion={motion_metrics}', flush=True)
             assert not violations, f'Ordinary MPPI command envelope violations: {violations[:10]}'
             stop_deadline = time.monotonic() + 2.0
             while commands[-1] != (0.0, 0.0) and time.monotonic() < stop_deadline:
@@ -1606,6 +1747,15 @@ def test_installed_controller_and_ingress_on_synthetic_robot(tmp_path, navigatio
                         route_sections = None
                     elif navigation == 'directional_route':
                         route, route_sections = replay_path, replay_sections
+                    elif navigation == 'coverage_parallel_rows':
+                        row_length = 2.5908778585735166
+                        row_points = 88
+                        points = [(3.0, 2.0 + row_length * index / (row_points - 1),
+                                   math.pi / 2.0) for index in range(row_points)]
+                        points.extend((2.75, 2.0 + row_length * (1.0 - index / (row_points - 1)),
+                                       -math.pi / 2.0) for index in range(row_points))
+                        route = make_path(points)
+                        route_sections = [[0, row_points - 1], [row_points, 2 * row_points - 1]]
                     for work in work_paths(route, route_sections):
                         validate_forward_path(work, 0.20)
                     coverage.start(route, work_sections=route_sections)
@@ -1621,6 +1771,8 @@ def test_installed_controller_and_ingress_on_synthetic_robot(tmp_path, navigatio
                 switches = []
                 previous_section = coverage.section_index
                 phases = [coverage.phase]
+                phase_started = time.monotonic()
+                phase_times = [(coverage.phase, 0.0)]
                 work_handoffs = []
                 coverage_command_start = None
                 handoff_motion = None
@@ -1629,6 +1781,7 @@ def test_installed_controller_and_ingress_on_synthetic_robot(tmp_path, navigatio
                     executor.spin_once(timeout_sec=0.02)
                     if phases[-1] != coverage.phase:
                         phases.append(coverage.phase)
+                        phase_times.append((coverage.phase, time.monotonic() - phase_started))
                         if coverage.phase == 'following':
                             start = coverage.sections[coverage.section_index][0]
                             work_handoffs.append(dict(section=coverage.section_index, position=tuple(position),
@@ -1639,12 +1792,29 @@ def test_installed_controller_and_ingress_on_synthetic_robot(tmp_path, navigatio
                     if coverage.section_index != previous_section:
                         switches.append((coverage.motion_linear, coverage.motion_angular))
                         previous_section = coverage.section_index
+                if diagnostic_trial:
+                    import json
+                    for sample in diagnostic_samples:
+                        print('MPPI_LOCAL_DIAGNOSTIC ' + json.dumps(sample), flush=True)
+                    assert diagnostic_samples, 'No ordinary MPPI transformed-path diagnostics received'
+                    assert any(sample['optimal_trajectory'] for sample in diagnostic_samples), (
+                        'No ordinary MPPI optimal trajectory received')
                 if coverage.phase != 'completed':
                     pytest.fail(str(dict(
                         phase=coverage.phase, position=position, section=coverage.section_index,
                         endpoint=pose_xy_yaw((coverage.execution_path.poses[
                             coverage.sections[coverage.section_index][1]] if coverage.execution_path
                             else coverage.route.poses[0]).pose), phases=phases,
+                        phase_times=phase_times,
+                        ingress_target=pose_xy_yaw(coverage.route.poses[
+                            coverage.sections[coverage.section_index][0]].pose),
+                        planner_endpoint=pose_xy_yaw(plans[-1].poses[-1].pose)
+                            if plans and plans[-1].poses else None,
+                        planner_path_length_m=sum(math.dist(
+                            pose_xy_yaw(first.pose)[:2], pose_xy_yaw(second.pose)[:2])
+                            for first, second in zip(plans[-1].poses, plans[-1].poses[1:]))
+                            if plans else None,
+                        measured_motion=tuple(velocity),
                         raw_tail=raw_commands[-5:], cursor=coverage.cursor,
                         last_status=coverage.report.call_args, work_handoffs=work_handoffs,
                         section_progress=getattr(coverage.section_tracker, 'progress', None),
@@ -1659,7 +1829,21 @@ def test_installed_controller_and_ingress_on_synthetic_robot(tmp_path, navigatio
                 if navigation == 'coverage_backup_recovery':
                     assert any(linear < -0.03 for linear, angular in commands)
                 assert any(linear > 0.10 for linear, angular in commands)
-                if navigation in ('coverage_transfers', 'directional_route'):
+                if deadband_trial or path_follow_handoff_trial or search_window_trial:
+                    transit_commands = [
+                        command for command, role in zip(raw_commands, raw_roles)
+                        if role == 'navigating_ingress']
+                    maximum_linear = loaded['controller_server']['ros__parameters']['FollowPath']['vx_max']
+                    violations = [
+                        (linear, angular) for linear, angular in transit_commands
+                        if not math.isfinite(linear) or not math.isfinite(angular)
+                        or linear < -0.001 or linear > maximum_linear + 0.01
+                        or abs(angular) > 1.0 + 0.05]
+                    print(
+                        f'Coverage controller trial completed {len(route_sections)} sections; '
+                        f'phase times={phase_times}; final pose={position}; '
+                        f'measured motion={motion_metrics}', flush=True)
+                if navigation in ('coverage_transfers', 'coverage_parallel_rows', 'directional_route'):
                     assert switches
                     assert all(linear <= 0.02 and angular <= 0.05 for linear, angular in switches)
                     assert 'waiting_work_stop' in phases
@@ -1676,12 +1860,15 @@ def test_installed_controller_and_ingress_on_synthetic_robot(tmp_path, navigatio
                     assert all(linear >= -1e-6 for linear, angular in raw_commands)
                 else:
                     assert math.dist(position[:2], pose_xy_yaw(coverage.route.poses[-1].pose)[:2]) < 0.10
-                if navigation != 'directional_route':
+                if navigation not in ('directional_route', 'coverage_parallel_rows'):
                     assert position[0] > 2.9
                 stop_deadline = time.monotonic() + 2.0
                 while commands[-1] != (0.0, 0.0) and time.monotonic() < stop_deadline:
                     executor.spin_once(timeout_sec=0.02)
                 assert commands[-1] == (0.0, 0.0)
+                if deadband_trial or path_follow_handoff_trial or search_window_trial:
+                    assert not violations, (
+                        f'Ordinary transit command envelope violations: {violations[:10]}')
             finally:
                 if manager._execution.busy:
                     manager._execution.cancel()
@@ -1824,7 +2011,7 @@ def test_installed_controller_and_ingress_on_synthetic_robot(tmp_path, navigatio
         while commands[-1] != (0.0, 0.0) and time.monotonic() < stop_deadline:
             rclpy.spin_once(node, timeout_sec=0.02)
         assert commands[-1] == (0.0, 0.0), 'Completion or cancellation did not stop the robot'
-    except Exception:
+    except (Exception, pytest.fail.Exception):
         for log in logs:
             log.flush()
             print(Path(log.name).read_text()[-12000:])

@@ -23,6 +23,340 @@ runtime:
   firmware_deadband_rad_s: 0.35
   warning: Reference snapshot only; runtime YAML remains authoritative.
 
+coverage_row_transition_tests:
+  date: "2026-10-08"
+  status: ordinary_search_window_manual_gazebo_trial_pending
+  reported_symptom: Operator observes first work line followed by a turn toward the next row and a stop.
+  production_image: sha256:914088281a4c7cca934d9cb6fb90724a933e9248aca821d95924542c23b078da
+  lab_image: sha256:15b120965f5c271e9296c80a2af1bffcec8850defc947ce04c76ec57ec803460
+  isolation: network_mode none; ROS_DOMAIN_ID 73; source mount read-only; no live goals or service restarts.
+  unit_tests:
+    passed: 17
+    failed: 0
+    duration_s: 0.77
+    selection: work_sections or work_stop or ingress_waits_for_stop or failed_validation_handoff or operator_cancel_after_ordinary
+    fixture_repairs: Use real ROS Time values and compare work geometry independently of refreshed timestamps.
+    new_regression: First and next work sections stamp both Path and poses freshly without mutating cached route or previously submitted path.
+  parallel_row_regression:
+    requested: Full coverage straight work line followed by ordinary turn to the parallel return line; not a standalone turn test.
+    scenarios: [coverage_parallel_rows, coverage_parallel_rows_deadband, coverage_parallel_rows_linear_deadband, coverage_parallel_rows_path_follow_handoff, coverage_parallel_rows_diagnostics, coverage_parallel_rows_search_window]
+    command: bash helpers/navigation_diagnostics/lab.sh test -k coverage_parallel_rows
+    geometry:
+      work_lines: 2
+      row_length_m: 2.5908778585735166
+      row_spacing_m: 0.25
+      poses_per_line: 88
+      first_start: [3.0, 2.0, 1.5707963267948966]
+      first_end: [3.0, 4.590877858573517, 1.5707963267948966]
+      second_start: [2.75, 4.590877858573517, -1.5707963267948966]
+      second_end: [2.75, 2.0, -1.5707963267948966]
+    model: Ideal wheel response without the synthetic 0.35 rad/s motor cutoff, matching the zero-requested-command mechanism observed in Gazebo.
+    baseline:
+      status: failed_stalled_on_second_row_ingress
+      completed_work_lines: 1
+      phase: navigating_ingress
+      section_index: 1
+      cursor: 88
+      position: [2.9619264706986907, 5.121257397104531, 3.769755311761161]
+      command_at_end: [0.00029345607617869973, -0.000015413854271173477]
+      transit_plan_length_m: 2.323955727036537
+      progress_failures_observed: 2
+      mission_budget_s: 90.0
+    candidate:
+      status: both_work_lines_completed_ordinary_command_floor_failed
+      initial_completion_after_s: 49.44098395999754
+      verification_completion_after_s: 47.57772257399847
+      verification_ingress_duration_s: 7.903939133997489
+      verification_final_pose: [2.7440373258228234, 2.0444022403134188, 4.666015308336851]
+      verified_before_remaining_failure: [work_forward_speed_envelope, work_turn_radius_envelope, current_body_clearance, confirmed_handoff_stops, final_endpoint_distance, final_zero_command]
+      lowest_ordinary_command_m_s: -0.004590820055454969
+      unchanged_ordinary_minimum_m_s: -0.001
+      measured_reverse_distance_m: 0.000823113520075508
+      longest_reverse_episode_s: 0.13993678400220233
+      verification_duration_s: 57.81
+    linear_only_trial:
+      authorized: Test linear-only ordinary VelocityDeadbandCritic on the existing parallel-row mission; retain all runtime speed limits and acceptance assertions.
+      command: bash helpers/navigation_diagnostics/lab.sh test -k coverage_parallel_rows_linear_deadband
+      parameters: {enabled: true, cost_power: 1, cost_weight: 35.0, deadband_velocities: [0.032795, 0.0, 0.0]}
+      result: {passed: 0, failed: 1, duration_s: 100.14}
+      status: rejected_stalled_on_second_row_ingress
+      completed_work_lines: 1
+      phase: navigating_ingress
+      section_index: 1
+      cursor: 88
+      ingress_started_after_s: 24.772424355000112
+      mission_budget_s: 90.0
+      position: [2.9648634113248424, 5.1279199113144625, 3.765364830081461]
+      measured_motion: [0.0, 0.00000000034924596548080444]
+      final_raw_command: [0.0, 0.00000000034924596548080444]
+      transit_plan_length_m: 2.323955727036537
+      progress_failures_observed: 2
+      loaded_parameters_confirmed: Server log confirms ordinary deadband_velocity [0.032795,0,0]; coverage profile remains [0.18,0,0].
+      cause_of_test_failure: Mission remains active at its time budget, not an ordinary numerical command envelope assertion.
+      log: /tmp/relobot-parallel-rows-linear-deadband.log
+      conclusion: Linear-only penalty with weight 35 does not remove the reproduced zero-command transit stall; do not promote this candidate or disable progress/freshness/collision safeguards as a substitute for actual movement.
+      promoted_to_runtime: false
+    path_follow_handoff_trial:
+      authorized: Change only ordinary PathFollowCritic threshold from 0.50 to 0.25 m; no deadband, speed, goal tolerance or safety changes.
+      command: bash helpers/navigation_diagnostics/lab.sh test -k coverage_parallel_rows_path_follow_handoff
+      ordinary_threshold_to_consider_m: 0.25
+      ordinary_deadband_critic_enabled: false
+      result: {passed: 0, failed: 1, duration_s: 99.90}
+      status: rejected_stalled_on_second_row_ingress
+      completed_work_lines: 1
+      phase: navigating_ingress
+      section_index: 1
+      cursor: 88
+      ingress_started_after_s: 24.775321969002107
+      mission_budget_s: 90.0
+      position: [2.9708305372099115, 5.130006163751439, 3.7703716494324717]
+      final_raw_command: [0.0004808976373169571, -0.0000333139905706048]
+      transit_plan_length_m: 2.323955727036537
+      progress_failures_observed: 2
+      cause_of_test_failure: Mission remains active at its time budget, before any ordinary command-envelope acceptance assertion.
+      log: /tmp/relobot-parallel-rows-path-follow-handoff.log
+      conclusion: Extending PathFollow guidance alone does not remove the stall; the proposed handoff-gap explanation is insufficient as a single-parameter fix.
+      next_diagnostic: Inspect transformed local path and critic activation/scoring around the stalled pose before changing further weights or suppressing progress failure.
+      promoted_to_runtime: false
+    local_path_diagnostic:
+      command: bash helpers/navigation_diagnostics/lab.sh test -k coverage_parallel_rows_diagnostics
+      result: {passed: 0, failed: 1, duration_s: 99.97}
+      status: stall_reproduced_native_local_path_and_optimal_trajectory_observed
+      control_tuning_changes: none
+      diagnostic_parameters: {visualize: true, TrajectoryVisualizer: {trajectory_step: 1000, time_step: 59}}
+      topics: [/transformed_global_plan, /trajectories]
+      samples: 57
+      sampling: At most one snapshot per second during ordinary ingress to the second work section.
+      local_frame: odom
+      frame_basis: Synthetic map-to-odom transform is identity; compare robot and local-path coordinates directly in this fixture only.
+      early_stall:
+        elapsed_since_fixture_start_s: 37.50341747800121
+        position: [2.9692029932026194, 5.127702285524064, 3.7195346266352587]
+        local_path_points: 41
+        local_path_length_m: 1.579342566104599
+        local_start: [3.129719971563219, 4.5836899486733955, 0.16556829214096072]
+        local_end: [2.978620001355111, 5.1446999362811425, -2.287803713475363]
+        local_endpoint_distance_m: 0.019431936954500958
+        actual_planner_endpoint_distance_m: 0.6042473194992767
+        bounded_1m_nearest_index: 0
+        bounded_1m_nearest_distance_m: 0.5671993679366564
+        nearest_local_index: 40
+        nearest_local_arc_m: 1.579342566104599
+        nearest_local_distance_m: 0.019431936954500958
+      stationary_snapshot:
+        elapsed_since_fixture_start_s: 42.65147845700267
+        command: [0.00027158926241099834, -0.00006658839993178844]
+        local_endpoint_distance_m: 0.021250248974760737
+        local_endpoint_yaw_error_rad: 0.00633074844588435
+        actual_planner_endpoint_distance_m: 0.602488484081113
+        actual_planner_endpoint_yaw_error_rad: 0.723338147051231
+        critic_distance_gates: {GoalCritic: true, GoalAngleCritic: true, PathAlignCritic: false, PathFollowCritic: false, PathAngleCritic: false}
+        optimal_trajectory_points: 60
+        optimal_trajectory_length_m: 0.10695013442112589
+      source_parameters: {max_robot_pose_search_dist: 1.0, prune_distance: 1.6, GoalCritic_threshold: 1.0, GoalAngleCritic_threshold: 0.25, PathAlignCritic_threshold: 0.5, PathFollowCritic_threshold: 0.5, PathAngleCritic_threshold: 0.25}
+      mechanism: Bounded closest-point search remains on an early part of the U-path while the robot reaches the end of the 1.6 m crop. MPPI sees that intermediate endpoint as its local goal, enabling goal critics and disabling path critics although the actual action endpoint remains approximately 0.60 m away.
+      evidence_limit: Closest-point comparison is an offline reconstruction over the published local-path snapshot, not an instrumented internal index. Distance-gate conditions are inferred from pinned Humble code; actual critic costs and candidate-batch-dependent conditions are not measured.
+      log: /tmp/relobot-parallel-rows-mppi-diagnostics.log
+      next_discriminating_trial: Test ordinary max_robot_pose_search_dist 1.0 to 2.5 m for the short parallel-row transit, preserving ordered work tracking and all current motion/safety gates; do not globally remove the bound.
+      promoted_to_runtime: false
+    search_window_trial:
+      authorized: Change only ordinary max_robot_pose_search_dist from 1.0 to 2.5 m; no critic, deadband, speed, tolerance or safety changes.
+      command: bash helpers/navigation_diagnostics/lab.sh test -k coverage_parallel_rows_search_window
+      ordinary_search_distance_m: 2.5
+      ordinary_prune_distance_m: 1.6
+      ordinary_deadband_critic_enabled: false
+      result: {passed: 0, failed: 1, duration_s: 59.18}
+      status: both_rows_completed_artificial_goal_stall_removed_numerical_floor_pending
+      completed_work_lines: 2
+      completion_after_s: 48.706177157997445
+      second_ingress_duration_s: 8.502264787002786
+      progress_failures_observed: 0
+      final_pose: [2.7456544165124357, 2.041172991229638, 4.684979555563208]
+      verified_before_remaining_failure: [work_forward_speed_envelope, work_turn_radius_envelope, current_body_clearance, confirmed_handoff_stops, final_endpoint_distance, final_zero_command]
+      lowest_ordinary_command_m_s: -0.007388833444565535
+      unchanged_ordinary_minimum_m_s: -0.001
+      measured_reverse_distance_m: 0.0005226393077248392
+      longest_reverse_episode_s: 0.16029011399950832
+      local_diagnostic_samples: 7
+      corrected_local_target:
+        elapsed_since_fixture_start_s: 35.7421328599994
+        local_start: [2.8750000428408384, 4.975000074133277, -2.034444157277243]
+        local_end: [2.7250000406056643, 4.5750000681728125, -1.570796314870016]
+        local_points: 13
+        local_length_m: 0.4399468741644025
+        local_endpoint_distance_m: 0.42969142024847773
+        observation: Native local path advances onto the return branch and reaches the actual planner endpoint instead of settling at the intermediate crop endpoint.
+      navigation_followup:
+        command: bash helpers/navigation_diagnostics/lab.sh test -k 'search_window and not parallel_rows'
+        result: {passed: 3, failed: 1, duration_s: 113.79}
+        passed: [to_pose_turn_search_window, to_pose_heading_search_window, to_pose_obstacle_search_window]
+        coverage_transfers:
+          completed_work_sections: 3
+          completion_after_s: 52.691873101000965
+          remaining_failure: Ordinary transit command -0.0012388306204229593 m/s versus unchanged -0.001 floor; mission and work/clearance/stop gates completed.
+          measured_reverse_distance_m: 0.00007415485735648588
+          longest_reverse_episode_s: 0.05985875400074292
+      logs: [/tmp/relobot-parallel-rows-search-window.log, /tmp/relobot-search-window-navigation-gates.log]
+      conclusion: Increased bounded ordinary path association window removes the reproduced artificial-local-goal stall without deadband critics or speed changes; remaining acceptance failures are ordinary numerical negative-command undershoots, not failed navigation.
+      limitations: Wider association can select a later branch on loops; ordered coverage work tracker is unchanged, but a live recorded trial and loaded-hardware smoothness remain unverified. Existing -0.001 numerical floor is not relaxed.
+      promoted_to_runtime: true
+      runtime_trial_authorized: Operator explicitly requested loading the 2.5 m ordinary window for a manual Gazebo check.
+      rollout_status: shared_config_changed_manual_gazebo_trial_pending_not_hardware_acceptance
+      profile_validation: {passed: 4, failed: 0, duration_s: 0.89}
+      operator_start: ./start_robot.sh up --sim --dev --headless
+      operator_capture: python3 helpers/navigation_diagnostics/record.py --label coverage-search-2p5 --duration 300
+      services_restarted_by_assistant: false
+    comparison_result: {passed: 0, failed: 2, duration_s: 157.93}
+    candidate_verification_result: {passed: 0, failed: 1, duration_s: 57.81}
+    logs: [/tmp/relobot-coverage-parallel-rows.log, /tmp/relobot-parallel-rows-candidate-gates.log]
+    conclusion: Full coverage reproduces the straight-to-parallel transition stall without a simulated motor deadband. Native ordinary deadband critic restores both-row completion but still fails the unmodified ordinary numerical command floor.
+    limitation: Geometry is based on the capture; free-space synthetic map and newly generated lattice path are not an exact replay of recorded SLAM and costmaps. Physical smoothness remains unverified.
+    promoted_to_runtime: true
+    promoted_variant: ordinary_search_window_2_5_m_only_manual_gazebo_trial
+    deadband_candidates_promoted: false
+  integration:
+    scenario: coverage_transfers
+    command: bash helpers/navigation_diagnostics/lab.sh test -k coverage_transfers
+    attempts: [{passed: 0, failed: 1, duration_s: 99.22}, {passed: 0, failed: 1, duration_s: 98.80}]
+    completed_work_sections: 2
+    stopped_section_index: 2
+    stopped_phase: navigating_ingress
+    phase_sequence: [navigating_ingress, waiting_ingress_stop, following, waiting_work_stop, navigating_ingress, waiting_ingress_stop, following, waiting_work_stop, navigating_ingress]
+    ingress_started_after_s: 38.398
+    mission_test_budget_s: 90.0
+    final_position: [1.6202152184194405, 3.6063986988952155, -5.430260753153267]
+    ingress_target: [2.0, 3.8, 0.0]
+    planner_endpoint: [1.9750000294297934, 3.7750000562518835, 0.0]
+    measured_motion: [0.0, 0.0]
+    final_raw_command: [0.0, -0.03750153258442879]
+    wheel_deadband_model_rad_s: 0.35
+    observation: Ordinary MPPI emits sub-deadband turn commands; the synthetic wheels remain stopped and controller progress fails twice during the third ingress.
+    diagnostics_added: Preserve server logs for pytest.fail and report phase timings, ingress target, planner endpoint and measured motion.
+    log: /tmp/relobot-coverage-transfers.log
+  manual_log:
+    endpoint_pending_utc: ["2026-10-08T09:50:48Z", "2026-10-08T09:51:24Z"]
+    follow_path_canceled_utc: "2026-10-08T09:51:42Z"
+    limitation: Coverage status publisher is volatile and event-driven; late subscription cannot recover the reason. No current capture exists under ros2_ws/log/navigation.
+    conclusion: Manual symptom is not proven identical to the isolated third-ingress stall; capture the status/action/TF/odometry timeline before the next operator run.
+  recorded_manual_row_stop:
+    capture: ros2_ws/log/navigation/20261008T120019Z-coverage-row-stop-0c52cd
+    image: sha256:914088281a4c7cca934d9cb6fb90724a933e9248aca821d95924542c23b078da
+    use_sim_time: true
+    clock: All 1332 sampled clock states advancing; no reset or paused-clock observation.
+    first_work:
+      section_index: 0
+      path_points: 88
+      path_length_m: 2.5908778585735166
+      started_ros_s: 176.97
+      succeeded_ros_s: 190.775
+      follow_path_status: 4
+    second_work_transit:
+      section_index: 1
+      phase: navigating_ingress
+      started_ros_s: 191.65
+      follow_path_aborted_ros_s: [214.375, 235.335, 256.535, 277.725, 300.575]
+      server_reason: Failed to make progress
+      navigate_to_pose_at_capture_end: executing
+      second_work_submitted: false
+      guard_cancel_observed: false
+      final_event: Recorder stopped by operator; not a recorded robot stop command.
+    transit_plan:
+      points: 59
+      length_m: 2.2499597222999888
+      start: [-0.5541809890419245, 4.040450816974044, 1.5707963705062866]
+      end: [-0.8041809927672148, 4.040450816974044, -1.5707963148700164]
+      endpoint_separation_m: 0.2500000037252903
+      publications: 1
+    stalled_motion:
+      ros_interval_s: [220.0, 235.0]
+      command_linear_m_s_approximately: 0.0
+      command_angular_range_rad_s: [-0.0000013310927897691727, 0.00003691529855132103]
+      actual_wheels: Joint-state velocities converge to zero while matching nearly zero commands; this is not evidence of rejected effective motor commands.
+      pose_map_at_ros_300_s: [-0.7112017613599511, 4.3962339959183305, -2.3152687501243427]
+      planner_endpoint_error_m: 0.3677319783385555
+      planner_endpoint_yaw_error_rad: 0.7444724352543264
+      endpoint_check_basis: Map pose composed from odometry with the nearest recorded map-to-odom transform; transform stamp difference approximately 0.02 s, not an interpolated ground-truth pose.
+    freshness:
+      odom_base_transforms: 3901
+      odom_base_max_receipt_age_s: 0.03
+      map_odom_transforms: 3955
+      local_footprints: 1312
+      distinct_footprint_stamps: 1311
+      max_footprint_receipt_age_s: 0.05
+      stalled_window_max_odom_stamp_age_s: 0.055
+      frozen_tf_evidence: false
+    active_profile:
+      ordinary_speed_max_m_s: 0.40
+      coverage_speed_max_m_s: 0.20
+      ordinary_xy_tolerance_m: 0.25
+      ordinary_yaw_tolerance_rad: 0.25
+      progress_radius_m: 0.20
+      progress_timeout_s: 20.0
+      ordinary_deadband_critic_enabled: false
+    conclusion: First work completes; ordinary MPPI converges to nearly zero commands during the short row-to-row 180-degree transit, causing repeated progress failures. No second work action or coverage guard failure explains this capture.
+    limitation: Bag does not contain critic scores or predicted control trajectories; the exact scoring cause is not established. Physical deadband calibration cannot by itself fix a controller requesting zero movement.
+    next_discriminating_check: Reproduce this 0.25 m endpoint-offset turn with its approximately 2.25 m lattice path in the isolated test, before treating the generic three-row deadband result as acceptance for this capture.
+  ordinary_deadband_trial:
+    authorized: Test native VelocityDeadbandCritic on ordinary FollowPath only; do not reduce speed or add output command clamps.
+    status: candidate_not_promoted_command_tolerance_approval_required
+    scope: Temporary parameters generated by test_coverage_execution.py; production coverage_sim.yaml unchanged.
+    parameters:
+      enabled: true
+      cost_power: 1
+      cost_weight: 35.0
+      deadband_velocities: [0.032795, 0.0, 0.22233898305084744]
+    basis: Linear threshold equals wheel deadband 0.35 rad/s times wheel radius 0.0937 m; pure-turn threshold equals twice that linear threshold divided by track 0.295 m.
+    upstream: https://github.com/ros-navigation/navigation2/blob/1.1.20/nav2_mppi_controller/src/critics/velocity_deadband_critic.cpp
+    initial_transfer: {passed: 1, failed: 0, duration_s: 63.82, completed_sections: 3}
+    initial_scope: Existing work/clearance/endpoint/stop gates passed; the additional ordinary-transit command-envelope assertion was added afterward.
+    regression_gates: {passed: 4, failed: 3, duration_s: 166.82}
+    passed_scenarios: [to_pose_deadband, to_pose_obstacle_deadband, to_pose_cancel_deadband, to_pose_cruise_deadband]
+    failed_scenarios: [coverage_transfers_deadband, to_pose_turn_deadband, to_pose_heading_deadband]
+    failed_gate: Small negative ordinary linear commands violate unchanged -0.001 m/s numerical-zero floor; all three work sections and both ordinary turn/heading goals completed.
+    worst_observed_heading_command_m_s: -0.011994446627795696
+    measured_motion_followup:
+      passed: 0
+      failed: 2
+      duration_s: 109.98
+      coverage_transfers:
+        completed_sections: 3
+        completion_after_s: 87.79761616299947
+        third_ingress_duration_s: 40.90175018700029
+        reverse_distance_m: 0.0012291793623983272
+        longest_reverse_s: 0.15906684599758592
+        final_pose: [2.9574068163286436, 3.8120751675506326, 0.044555919006903054]
+      to_pose_heading:
+        reverse_distance_m: 0.00024895980229153625
+        longest_reverse_s: 0.10025816099732765
+      measurement: Integrate signed modeled velocity after applying the existing wheel deadband; count linear motion below -0.001 m/s.
+    logs: [/tmp/relobot-coverage-deadband-trial.log, /tmp/relobot-ordinary-deadband-gates.log, /tmp/relobot-deadband-reverse-motion.log]
+    proposed_acceptance_not_approved:
+      ordinary_command_min_m_s: -0.015
+      maximum_reverse_episode_s: 0.2
+      maximum_cumulative_reverse_distance_m: 0.002
+      scope: Ordinary navigation numerical/transient acceptance only; not a commanded reverse mode or relaxation of coverage forward-only behavior.
+    preserved: [ordinary_speed_0_40_m_s, coverage_speed_0_20_m_s, acceleration_limits, smoother, coverage_profile, endpoint_tolerances, clearance, freshness, stop_checks]
+    limitations: Third ingress remains slow and physical jerk/loaded-wheel behavior is unverified; native critic also penalizes zero velocities and is not a hard wheel-aware command guarantee.
+  runtime_changes: Ordinary FollowPath max_robot_pose_search_dist 1.0 to 2.5 m in shared coverage_sim.yaml, authorized for a recorded manual Gazebo trial; no service restart or live motion sent.
+  unchanged: [controller_tuning, planner_primitives, endpoint_tolerances, clearance, freshness, stop_checks, recovery_policy]
+
+loaded_wheel_measurement_readiness:
+  date: "2026-10-08"
+  status: passive_recorder_verified_waiting_for_hardware_environment
+  recorder_tests: {passed: 5, failed: 0, duration_s: 0.64}
+  selection: recorder_has_no_motion_publishers or host_recorder_uses_controller_clock
+  environment_observed: No running Docker containers on this workspace host.
+  command: python3 helpers/navigation_diagnostics/record.py --label loaded-wheel-deadband --duration 300
+  existing_capture_topics: [/cmd_vel_nav, /cmd_vel, /robot_joint_commands, /robot_joint_states, /joint_states, /odometry/filtered, /tf, /coverage/status]
+  bag_required: Full encoder positions are in the bag; sampled JSON only stores joint velocities.
+  firmware_counts_per_revolution: 60
+  wheel_radius_m: 0.0937
+  approximate_wheel_tick_travel_m: 0.009812241055
+  direction_limitation: Signed encoder velocity and position use last commanded drive direction, not independently measured direction.
+  physical_acceptance_limitation: The proposed 2 mm bound is simulation-only evidence and cannot be certified by these encoders or their derived odometry. External measurement and agreed uncertainty are required.
+  excluded: [direct_pwm_calibration_sweep, firmware_flashing, automatic_motion, runtime_deadband_promotion, speed_reduction, tolerance_relaxation]
+  operator_preconditions: Standard firmware; hardware clock; disabled blades; clear attended area; available stop control; record before manual motion.
+
 humble_dependency_update:
   date: "2026-10-08"
   scope: Installed Ubuntu and ROS APT dependencies in the shared ros2_nav2 image only.
