@@ -2,7 +2,7 @@ FROM ros:humble
 
 # Install additional dependencies
 RUN apt-get update && apt-get install -y ros2-testing-apt-source && \
-  apt-get update && apt-get upgrade -y --with-new-pkgs && \
+  apt-get update && \
   apt-get install -y \
     git \
     ros-humble-navigation2 \
@@ -11,6 +11,7 @@ RUN apt-get update && apt-get install -y ros2-testing-apt-source && \
     ros-humble-nav2-msgs \
     ros-humble-geometry-msgs \
     ros-humble-sensor-msgs \
+    ros-humble-tf2 \
     ros-humble-tf2-ros \
     ros-humble-rclcpp \
     ros-humble-rclcpp-action \
