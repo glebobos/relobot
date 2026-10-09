@@ -89,7 +89,7 @@ controller_server:
         min_turning_r: 0.20
       time_steps: 60
       model_dt: 0.05
-      batch_size: 300
+      batch_size: 1000
       iteration_count: 1
       vx_max: 0.20
       vx_min: 0.0
