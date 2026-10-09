@@ -617,6 +617,7 @@ class CoverageExecution:
         timer = getattr(self, 'timer', None)
         if timer is not None:
             timer.cancel()
+            self.node.destroy_timer(timer)
             self.timer = None
 
     def finish(self, state, reason):

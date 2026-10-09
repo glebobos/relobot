@@ -49,6 +49,42 @@ def test_pending_cancel_is_sent_when_goal_is_accepted(phase):
     assert executor.phase == 'canceled'
 
 
+def test_guard_timer_is_destroyed_and_restarts_after_completion():
+    import rclpy
+    rclpy.init()
+    node = rclpy.create_node('coverage_guard_timer_test')
+    executor = CoverageExecution.__new__(CoverageExecution)
+    executor.node = node
+    executor.timer = None
+    executor.cursor = 0
+    executor.report = Mock()
+    executor.plan_pub = Mock()
+    executor.guard = Mock(side_effect=lambda: executor.finish('completed', 'Done'))
+    try:
+        assert not list(node.timers)
+        for cycle in range(10):
+            executor.busy = True
+            executor.guard.reset_mock()
+            executor.start_guard_timer()
+            timer = executor.timer
+            executor.start_guard_timer()
+            assert executor.timer is timer
+            assert len(list(node.timers)) == 1
+            assert not timer.is_canceled()
+            deadline = time.monotonic() + 2.0
+            while executor.busy and time.monotonic() < deadline:
+                rclpy.spin_once(node, timeout_sec=0.05)
+            executor.guard.assert_called_once()
+            assert not executor.busy, f'Guard did not finish cycle {cycle}'
+            assert executor.phase == 'completed'
+            assert executor.timer is None
+            assert not list(node.timers)
+            executor.stop_guard_timer()
+    finally:
+        node.destroy_node()
+        rclpy.shutdown()
+
+
 def test_stale_goal_response_is_canceled_without_replacing_current_handle():
     executor = CoverageExecution.__new__(CoverageExecution)
     executor.request_id = 2
@@ -1041,6 +1077,8 @@ def test_coverage_profile_is_shared_without_changing_clock(use_sim_time, namespa
     for costmap in ('global_costmap', 'local_costmap'):
         assert lattice['grid_resolution'] == loaded[costmap][costmap]['ros__parameters']['resolution']
     work = controller['CoverageFollowPath']
+    assert controller['FollowPath']['batch_size'] == 300
+    assert work['batch_size'] == 1000
     assert work['max_robot_pose_search_dist'] == 0.6
     assert work['prune_distance'] == 1.2
     assert work['GoalCritic']['threshold_to_consider'] == 0.10
@@ -1959,7 +1997,11 @@ def test_installed_controller_and_ingress_on_synthetic_robot(tmp_path, navigatio
                     assert phases.count('navigating_ingress') == len(route_sections)
                     assert all(math.isfinite(linear) and math.isfinite(angular)
                                and -1e-6 <= linear <= 0.20 + 0.005
-                               for linear, angular in coverage_commands), coverage_commands[-10:]
+                               for linear, angular in coverage_commands), (
+                        f'Work linear command range: '
+                        f'{min(linear for linear, angular in coverage_commands):.9f} to '
+                        f'{max(linear for linear, angular in coverage_commands):.9f} m/s; '
+                        f'last commands={coverage_commands[-10:]}')
                     assert all(math.isfinite(linear) and math.isfinite(angular)
                                and abs(linear) <= 0.20 + 0.005 and abs(angular) <= abs(linear) / 0.20 + 1e-6
                                for linear, angular in coverage_commands), coverage_commands[-10:]
