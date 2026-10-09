@@ -1,0 +1,20 @@
+name: relobot-navigation-lab
+
+services:
+  lab:
+    image: relobot-navigation-lab:latest
+    build:
+      context: ../..
+      dockerfile: helpers/navigation_diagnostics/Dockerfile
+      args:
+        NAVIGATION_BASE_IMAGE: ${NAVIGATION_BASE_IMAGE:-ros2_ws-ros2_nav2:latest}
+    network_mode: none
+    working_dir: /repo
+    volumes:
+      - ../..:/repo:ro
+    environment:
+      ROS_DOMAIN_ID: "73"
+      ROS_LOCALHOST_ONLY: "1"
+      RCUTILS_LOGGING_USE_STDOUT: "0"
+      PYTHONDONTWRITEBYTECODE: "1"
+    entrypoint: ["/bin/bash", "/repo/helpers/navigation_diagnostics/lab.sh", "_container"]

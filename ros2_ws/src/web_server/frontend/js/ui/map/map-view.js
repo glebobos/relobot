@@ -43,6 +43,7 @@ export class MapView {
         this.interactionHandler.init();
         this.rosAdapter = new MapRosAdapter({
             previewPath: message => this.overlays.renderPreviewPath(message),
+            previewSections: message => this.overlays.renderPreviewSections(message),
             controllerPlan: message => this.overlays.renderControllerPath(message),
             mapPolygon: message => this.overlays.renderMapPolygon(message),
             obstacles: message => this.overlays.renderObstacles(message),

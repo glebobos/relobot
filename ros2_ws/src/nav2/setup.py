@@ -16,6 +16,7 @@ setup(
         ('share/' + package_name + '/launch', ['launch/navigation_launch.py']),
         ('share/' + package_name + '/config', [
             'config/explore.yaml',
+            'config/coverage_sim.yaml',
             'config/slam_toolbox_config.yaml',
             'config/explore_lite_params.yaml',
             'config/robot_pose_publisher.yaml',
@@ -34,6 +35,7 @@ setup(
         'console_scripts': [
             'coverage_manager = frontier_explorer.coverage_manager:main',
             'coverage_preview_test = frontier_explorer.coverage_preview_test:main',
+            'navigation_diagnostics = frontier_explorer.navigation_diagnostics:main',
             'apriltag_manager = docking.apriltag_manager:main',
         ],
     },

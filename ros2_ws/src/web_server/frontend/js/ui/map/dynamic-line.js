@@ -17,7 +17,9 @@ export class DynamicLine {
             opacity: options.opacity ?? 1.0,
         });
 
-        this.line = new THREE.Line(this.geometry, this.material);
+        this.segmented = options.segmented ?? false;
+        this.line = this.segmented ? new THREE.LineSegments(this.geometry, this.material)
+            : new THREE.Line(this.geometry, this.material);
         this.line.frustumCulled = false;
     }
 
@@ -28,6 +30,16 @@ export class DynamicLine {
     }
 
     updatePoints(points) {
+        if (this.segmented && points.length > this.maxPoints) {
+            this.geometry.dispose();
+            this.geometry = new THREE.BufferGeometry();
+            this.maxPoints = Math.max(points.length, this.maxPoints * 2);
+            this.positions = new Float32Array(this.maxPoints * 3);
+            this.positionAttr = new THREE.BufferAttribute(this.positions, 3);
+            this.positionAttr.setUsage(THREE.DynamicDrawUsage);
+            this.geometry.setAttribute('position', this.positionAttr);
+            this.line.geometry = this.geometry;
+        }
         const count = Math.min(points.length, this.maxPoints);
         const array = this.positionAttr.array;
         for (let i = 0; i < count; i++) {

@@ -128,10 +128,10 @@ controller_server:
       lookahead_time: 1.2             # Lookahead scaling with speed (s)
       transform_tolerance: 0.2
       use_velocity_scaled_lookahead_dist: true
-      min_approach_linear_velocity: 0.18 # Anti-stall: maintains motor torque on grass right up to goal
+      min_approach_linear_velocity: 0.3 # Anti-stall: maintains motor torque on grass right up to goal
       approach_velocity_scaling_dist: 0.40
       max_robot_pose_search_dist: 5.0 # Increased from 2.5 to 5.0m to prevent path loss and orbiting
-      allow_reversing: false          # Front swivel caster jams/scrubs if driven in reverse on grass
+      allow_reversing: true          # Front swivel caster jams/scrubs if driven in reverse on grass
 
       # Turn-in-place & heading alignment for sharp turns along the path
       use_rotate_to_heading: true
@@ -159,24 +159,24 @@ planner_server:
     expected_planner_frequency: 1.0 # Match 1.0 Hz in Behavior Tree (RateController hz=1.0)
     transform_tolerance: 0.5
     GridBased:
-      plugin: "nav2_smac_planner/SmacPlanner2D"
+      plugin: "nav2_smac_planner/SmacPlannerLattice"
       tolerance: 0.5 # Dist-to-goal tolerance if exact goal is near wall/boundary
-      downsample_costmap: false # 2D A* is fast enough (<10ms) without downsampling
-      downsampling_factor: 1
+      lattice_filepath: "/opt/ros/humble/share/nav2_smac_planner/sample_primitives/5cm_resolution/0.5m_turning_radius/diff/output.json"
+      allow_reverse_expansion: false
       allow_unknown: true # Allow traveling to frontiers / unknown boundary for exploration
-      max_iterations: 100000 # Fails in <50ms if goal is blocked, avoids freezing CPU
+      max_iterations: 100000
       max_on_approach_iterations: 1000
       max_planning_time: 2.0 # Max time in s for planner to plan
-      cost_travel_multiplier: 3.0 # Drives path towards the center of corridors/passages and away from obstacles
-      use_final_approach_orientation: false # Aligns the end of path with goal orientation
-      smooth_path: true # Simple and quick smoothing post-processing
-      smoother:
-        max_iterations: 1000
-        w_smooth: 0.2
-        w_data: 0.5
-        tolerance: 1.0e-10
-        do_refinement: true
-        refinement_num: 2
+      cost_penalty: 3.0
+      non_straight_penalty: 1.05
+      change_penalty: 0.0
+      rotation_penalty: 1.5
+      retrospective_penalty: 0.015
+      analytic_expansion_ratio: 3.5
+      analytic_expansion_max_length: 0.0
+      lookup_table_size: 20.0
+      cache_obstacle_heuristic: false
+      smooth_path: false
 
 smoother_server:
   ros__parameters:
@@ -216,7 +216,7 @@ behavior_server:
     transform_tolerance: 0.2
     simulate_ahead_time: 2.0
     max_rotational_vel: 1.5  # Match diff_drive_controller
-    min_rotational_vel: 0.22  # Above hardware angular floor: 0.35 rad/s × (0.095/0.16) ≈ 0.208 rad/s
+    min_rotational_vel: 0.40  # Raised from 0.22 to keep wheel speed > 0.79 rad/s (well above deadband)
     rotational_acc_lim: 4.5  # Match diff drive limits
 
 # BT Navigator parameters
@@ -347,7 +347,7 @@ docking_server:
     apriltag_dock:
       plugin: 'opennav_docking::SimpleChargingDock'
       docking_threshold: 0.05
-      staging_x_offset: -0.80  # 80cm staging distance before dock
+      staging_x_offset: -1.0 # 120cm staging distance before dock
       staging_yaw_offset: 0.0
       use_external_detection_pose: true  # Use AprilTag detection
       use_battery_status: false  # No battery feedback = non-charging mode
@@ -416,15 +416,12 @@ coverage_manager:
     preview_path_topic: "/coverage/preview_path"
     default_frame_id: "map"
     compute_coverage_action_name: "compute_coverage_path"
-    navigate_through_poses_action_name: "navigate_through_poses"
-    coverage_bt_xml: "/ros2_ws/install/nav2/share/nav2/behavior_trees/coverage_through_poses.xml"
     headland_width: 0.5
     path_continuity_type: "CONTINUOUS"
     path_type: "REEDS_SHEPP"
     turn_point_distance: 0.1
     swath_endpoint_margin: 0.25
     action_wait_timeout_sec: 5.0
-    allow_execute_without_fresh_preview: true
     map_contour_epsilon: 0.05
     # Erode free-space by 0.125 m (5 px @ 0.025 m/px) inward before headland is applied.
     # Total wall clearance = erode (0.125 m) + headland_width (0.5 m) = 0.625 m.
