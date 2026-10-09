@@ -83,6 +83,7 @@ class CoverageExecution:
         self.local = None
         self.local_grid = None
         self.local_config = None
+        self.pending_local_grid = None
         self.local_received = 0.0
         self.scan_received = 0.0
         self.scan_stamp = Time()
@@ -127,7 +128,14 @@ class CoverageExecution:
         self.motion_angular = abs(message.twist.twist.angular.z)
 
     def on_costmap(self, message):
-        received = time.monotonic()
+        self.local_stamp = Time.from_msg(message.header.stamp)
+        self.local_received = time.monotonic()
+        if not self.busy:
+            self.pending_local_grid = message
+            return
+        self.prepare_local_costmap(message)
+
+    def prepare_local_costmap(self, message):
         previous = getattr(self, 'local_grid', None)
         config = (self.footprint, self.clearance)
         unchanged = (self.local is not None and previous is not None
@@ -138,14 +146,13 @@ class CoverageExecution:
                      and previous.info.resolution == message.info.resolution
                      and previous.info.origin == message.info.origin
                      and previous.data == message.data)
+        self.pending_local_grid = None
         try:
             if not unchanged:
                 self.local = FreeSpaceValidator(message, self.footprint, self.clearance,
                                                 occupied_threshold=100)
                 self.local_config = (deepcopy(self.footprint), self.clearance)
             self.local_grid = message
-            self.local_stamp = Time.from_msg(message.header.stamp)
-            self.local_received = received
         except ValueError:
             self.local = None
             self.local_grid = None
@@ -165,7 +172,9 @@ class CoverageExecution:
         return result
 
     def ready(self):
-        if self.local is None or time.monotonic() - self.local_received > 1.0:
+        pending = getattr(self, 'pending_local_grid', None)
+        if ((self.local is None and pending is None)
+                or time.monotonic() - self.local_received > 1.0):
             raise ValueError('Waiting for a fresh full local costmap')
         if time.monotonic() - self.scan_received > 1.0:
             raise ValueError('Laser scan is stale')
@@ -178,6 +187,10 @@ class CoverageExecution:
             raise ValueError('Local costmap timestamp is stale')
         if any(self.other_navigation.values()):
             raise ValueError('Stop exploration and other navigation before starting coverage')
+        if pending is not None:
+            self.prepare_local_costmap(pending)
+        if self.local is None:
+            raise ValueError('Waiting for a fresh full local costmap')
 
     def start(self, route, resuming=False, work_sections=None):
         if self.busy:

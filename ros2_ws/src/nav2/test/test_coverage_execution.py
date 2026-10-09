@@ -100,6 +100,7 @@ def test_costmap_reuses_only_identical_validated_geometry(monkeypatch, changed):
     constructor = Mock(return_value=Mock())
     monkeypatch.setattr(module, 'FreeSpaceValidator', constructor)
     executor = CoverageExecution.__new__(CoverageExecution)
+    executor.busy = True
     executor.local = None
     executor.footprint = FOOTPRINT
     executor.clearance = 0.25
@@ -120,6 +121,101 @@ def test_costmap_reuses_only_identical_validated_geometry(monkeypatch, changed):
         executor.clearance = 0.30
     executor.on_costmap(third)
     assert constructor.call_count == 2
+
+
+def test_idle_costmap_does_not_compare_or_validate_grid(monkeypatch):
+    from test_coverage_path import make_grid, FOOTPRINT
+    import frontier_explorer.coverage_execution as module
+
+    class UncomparedData:
+        def __eq__(self, other):
+            raise AssertionError('Idle callback compared the grid contents')
+
+    constructor = Mock()
+    monkeypatch.setattr(module, 'FreeSpaceValidator', constructor)
+    executor = CoverageExecution.__new__(CoverageExecution)
+    executor.busy = False
+    executor.local = Mock()
+    executor.footprint = FOOTPRINT
+    executor.clearance = 0.25
+    grid = make_grid()
+    first = SimpleNamespace(header=grid.header, info=grid.info, data=UncomparedData())
+    executor.local_grid = first
+    executor.local_config = (FOOTPRINT, 0.25)
+    latest = SimpleNamespace(header=grid.header, info=grid.info, data=UncomparedData())
+    executor.on_costmap(first)
+    executor.on_costmap(latest)
+    constructor.assert_not_called()
+    assert executor.local_grid is first
+    assert executor.pending_local_grid is latest
+    assert time.monotonic() - executor.local_received < 1.0
+
+
+@pytest.mark.parametrize('invalid', [False, True])
+def test_ready_validates_latest_idle_costmap_before_motion(monkeypatch, invalid):
+    from copy import deepcopy
+    from rclpy.time import Time
+    from test_coverage_path import make_grid, FOOTPRINT
+    import frontier_explorer.coverage_execution as module
+    validator = Mock()
+    constructor = Mock(return_value=validator, side_effect=ValueError('Invalid grid') if invalid else None)
+    monkeypatch.setattr(module, 'FreeSpaceValidator', constructor)
+    executor = CoverageExecution.__new__(CoverageExecution)
+    executor.busy = False
+    executor.local = Mock()
+    executor.footprint = FOOTPRINT
+    executor.clearance = 0.25
+    executor.node = Mock()
+    executor.node.get_clock.return_value.now.return_value = Time(nanoseconds=2_000_000_000)
+    executor.scan_received = time.monotonic()
+    executor.scan_stamp = Time(nanoseconds=2_000_000_000)
+    executor.other_navigation = {}
+    first = make_grid()
+    first.header.stamp.sec = 1
+    latest = deepcopy(first)
+    latest.header.stamp.sec = 2
+    latest.data[5000] = 100
+    executor.on_costmap(first)
+    executor.on_costmap(latest)
+    constructor.assert_not_called()
+    if invalid:
+        with pytest.raises(ValueError, match='fresh full local costmap'):
+            executor.ready()
+        assert executor.local is None
+    else:
+        executor.ready()
+        assert executor.local is validator
+        assert executor.local_grid is latest
+        executor.ready()
+    constructor.assert_called_once_with(latest, FOOTPRINT, 0.25, occupied_threshold=100)
+    assert executor.pending_local_grid is None
+
+
+@pytest.mark.parametrize('stale', ['reception', 'timestamp'])
+def test_ready_rejects_stale_idle_costmap_without_validation(monkeypatch, stale):
+    from rclpy.time import Time
+    from test_coverage_path import make_grid, FOOTPRINT
+    import frontier_explorer.coverage_execution as module
+    constructor = Mock()
+    monkeypatch.setattr(module, 'FreeSpaceValidator', constructor)
+    executor = CoverageExecution.__new__(CoverageExecution)
+    executor.busy = False
+    executor.local = Mock()
+    executor.footprint = FOOTPRINT
+    executor.clearance = 0.25
+    executor.node = Mock()
+    executor.node.get_clock.return_value.now.return_value = Time(nanoseconds=2_000_000_000)
+    executor.scan_received = time.monotonic()
+    executor.scan_stamp = Time(nanoseconds=2_000_000_000)
+    executor.other_navigation = {}
+    grid = make_grid()
+    grid.header.stamp.sec = 2 if stale == 'reception' else 0
+    executor.on_costmap(grid)
+    if stale == 'reception':
+        executor.local_received -= 2.0
+    with pytest.raises(ValueError, match='costmap'):
+        executor.ready()
+    constructor.assert_not_called()
 
 
 def test_dense_coverage_start_does_not_copy_route_on_ros_callback(monkeypatch):
@@ -1275,7 +1371,7 @@ def test_real_coverage_server_returns_a_valid_forward_route(tmp_path, zone_size)
         rclpy.shutdown()
 
 
-@pytest.mark.parametrize('navigation', [None, 'to_pose', 'through_poses', 'to_pose_turn', 'to_pose_heading', 'to_pose_obstacle', 'to_pose_cancel', 'to_pose_cruise', 'to_pose_params', 'recorded_ingress', 'recorded_turn_ingress', 'recorded_turn_near_obstacle', 'closed_perimeter', 'directional_route', 'directional_finish', 'long_rows', 'coverage_preview', 'coverage_preview_motion', 'coverage_backup_recovery', 'coverage_transfers', 'coverage_transfers_deadband', 'coverage_parallel_rows', 'coverage_parallel_rows_deadband', 'coverage_parallel_rows_linear_deadband', 'coverage_parallel_rows_path_follow_handoff', 'coverage_parallel_rows_diagnostics', 'coverage_parallel_rows_search_window', 'to_pose_deadband', 'to_pose_turn_deadband', 'to_pose_heading_deadband', 'to_pose_obstacle_deadband', 'to_pose_cancel_deadband', 'to_pose_cruise_deadband', 'coverage_transfers_search_window', 'to_pose_turn_search_window', 'to_pose_heading_search_window', 'to_pose_obstacle_search_window'])
+@pytest.mark.parametrize('navigation', [None, 'to_pose', 'through_poses', 'to_pose_turn', 'to_pose_heading', 'to_pose_obstacle', 'to_pose_cancel', 'to_pose_cruise', 'to_pose_params', 'recorded_ingress', 'recorded_turn_ingress', 'recorded_turn_near_obstacle', 'closed_perimeter', 'directional_route', 'directional_finish', 'long_rows', 'coverage_preview', 'coverage_preview_motion', 'coverage_backup_recovery', 'coverage_transfers', 'coverage_transfers_deadband', 'coverage_parallel_rows', 'coverage_parallel_rows_deadband', 'coverage_parallel_rows_linear_deadband', 'coverage_parallel_rows_path_follow_handoff', 'coverage_parallel_rows_diagnostics', 'coverage_parallel_rows_search_window', 'to_pose_deadband', 'to_pose_turn_deadband', 'to_pose_heading_deadband', 'to_pose_obstacle_deadband', 'to_pose_cancel_deadband', 'to_pose_cruise_deadband', 'coverage_transfers_search_window', 'to_pose_turn_search_window', 'to_pose_heading_search_window', 'to_pose_obstacle_search_window', 'coverage_transfers_batch300', 'coverage_transfers_batch1000', 'coverage_transfers_work_batch1000'])
 def test_installed_controller_and_ingress_on_synthetic_robot(tmp_path, navigation):
     from geometry_msgs.msg import TransformStamped, Twist
     from lifecycle_msgs.srv import ChangeState
@@ -1293,9 +1389,17 @@ def test_installed_controller_and_ingress_on_synthetic_robot(tmp_path, navigatio
     linear_deadband_trial = navigation is not None and navigation.endswith('_linear_deadband')
     path_follow_handoff_trial = navigation is not None and navigation.endswith('_path_follow_handoff')
     search_window_trial = navigation is not None and navigation.endswith('_search_window')
+    batch_sizes = {
+        'coverage_transfers_batch300': (300, 300),
+        'coverage_transfers_batch1000': (1000, 1000),
+        'coverage_transfers_work_batch1000': (300, 1000),
+    }.get(navigation)
+    batch_trial = batch_sizes is not None
     diagnostic_trial = navigation in ('coverage_parallel_rows_diagnostics',
                                      'coverage_parallel_rows_search_window')
-    if deadband_trial:
+    if batch_trial:
+        navigation = 'coverage_transfers'
+    elif deadband_trial:
         navigation = navigation.removesuffix(
             '_linear_deadband' if linear_deadband_trial else '_deadband')
     elif path_follow_handoff_trial:
@@ -1358,6 +1462,11 @@ def test_installed_controller_and_ingress_on_synthetic_robot(tmp_path, navigatio
     config = params.perform(context)
     with open(config) as stream:
         loaded = yaml.safe_load(stream)
+    if batch_trial:
+        controllers = loaded['controller_server']['ros__parameters']
+        for controller_id, batch_size in zip(('FollowPath', 'CoverageFollowPath'), batch_sizes):
+            controllers[controller_id]['batch_size'] = batch_size
+        print(f'Coverage batch trial: ordinary={batch_sizes[0]}, work={batch_sizes[1]}', flush=True)
     if search_window_trial:
         ordinary = loaded['controller_server']['ros__parameters']['FollowPath']
         assert 'VelocityDeadbandCritic' not in ordinary['critics']
@@ -1829,7 +1938,7 @@ def test_installed_controller_and_ingress_on_synthetic_robot(tmp_path, navigatio
                 if navigation == 'coverage_backup_recovery':
                     assert any(linear < -0.03 for linear, angular in commands)
                 assert any(linear > 0.10 for linear, angular in commands)
-                if deadband_trial or path_follow_handoff_trial or search_window_trial:
+                if deadband_trial or path_follow_handoff_trial or search_window_trial or batch_trial:
                     transit_commands = [
                         command for command, role in zip(raw_commands, raw_roles)
                         if role == 'navigating_ingress']
@@ -1866,7 +1975,7 @@ def test_installed_controller_and_ingress_on_synthetic_robot(tmp_path, navigatio
                 while commands[-1] != (0.0, 0.0) and time.monotonic() < stop_deadline:
                     executor.spin_once(timeout_sec=0.02)
                 assert commands[-1] == (0.0, 0.0)
-                if deadband_trial or path_follow_handoff_trial or search_window_trial:
+                if deadband_trial or path_follow_handoff_trial or search_window_trial or batch_trial:
                     assert not violations, (
                         f'Ordinary transit command envelope violations: {violations[:10]}')
             finally:
