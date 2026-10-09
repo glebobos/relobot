@@ -9,7 +9,7 @@ from threading import Event
 from typing import Any
 
 from action_msgs.msg import GoalStatus
-from geometry_msgs.msg import Point32, Pose, PoseStamped, PolygonStamped
+from geometry_msgs.msg import Point32, PoseStamped, PolygonStamped
 from nav_msgs.msg import OccupancyGrid, Path
 from opennav_coverage_msgs.action import ComputeCoveragePath
 from opennav_coverage_msgs.msg import Coordinate, Coordinates
@@ -164,20 +164,9 @@ class CoverageManager(Node):
         # normally handles this for a single reconnect, but rosbridge may
         # subscribe with VOLATILE QoS and miss the latched sample; the timer
         # acts as a fallback keepalive.
-        self._last_robot_pose: Pose | None = None
-        self.create_subscription(
-            PoseStamped,
-            '/robot_pose',
-            self._on_robot_pose,
-            1,
-        )
-
         self.create_timer(1.0, self._republish_state, clock=Clock(clock_type=ClockType.STEADY_TIME))
 
         self._publish_status('idle', 'Coverage manager ready.')
-
-    def _on_robot_pose(self, msg: PoseStamped) -> None:
-        self._last_robot_pose = msg.pose
 
     def _on_command(self, msg: String) -> None:
         command = msg.data.strip().lower()
@@ -881,12 +870,6 @@ class CoverageManager(Node):
                 obstacle_count=len(self._obstacle_polygons),
             )
         return True
-
-    def _get_robot_pose(self) -> Pose | None:
-        if self._last_robot_pose is not None:
-            return self._last_robot_pose
-        self.get_logger().warn('No /robot_pose received yet')
-        return None
 
     def _publish_status(self, state: str, message: str, **extra: Any) -> None:
         self._state = state

@@ -105,7 +105,7 @@ class CoverageExecution:
         for action in ('navigate_to_pose', 'navigate_through_poses'):
             node.create_subscription(GoalStatusArray, f'/{action}/_action/status',
                                      lambda msg, name=action: self.on_navigation(name, msg), qos)
-        self.timer = node.create_timer(0.2, self.guard, clock=Clock(clock_type=ClockType.STEADY_TIME))
+        self.timer = None
 
     def on_navigation(self, name, message):
         self.other_navigation[name] = any(
@@ -218,6 +218,7 @@ class CoverageExecution:
         self.execution_path = None
         self.cursor = 0
         self.busy = True
+        self.start_guard_timer()
         self.recovery_attempts = 0
         self.stop_state = None
         self.cancel_sent = False
@@ -605,8 +606,22 @@ class CoverageExecution:
         except Exception:
             self.cancel_sent = False
 
+    def start_guard_timer(self):
+        if getattr(self, 'timer', None) is None:
+            node = getattr(self, 'node', None)
+            if node is not None:
+                self.timer = node.create_timer(
+                    0.2, self.guard, clock=Clock(clock_type=ClockType.STEADY_TIME))
+
+    def stop_guard_timer(self):
+        timer = getattr(self, 'timer', None)
+        if timer is not None:
+            timer.cancel()
+            self.timer = None
+
     def finish(self, state, reason):
         self.busy = False
+        self.stop_guard_timer()
         self.phase = state
         self.handle = None
         self.plan_pub.publish(Path())
@@ -618,6 +633,7 @@ class CoverageExecution:
     def forget(self):
         if self.busy:
             raise ValueError('Cannot discard an active execution')
+        self.stop_guard_timer()
         self.route = self.execution_path = self.tracker = None
         self.sections = []
         self.work_sections = None
@@ -627,6 +643,7 @@ class CoverageExecution:
         self.plan_pub.publish(Path())
 
     def close(self):
+        self.stop_guard_timer()
         self.join_pool.shutdown(wait=False, cancel_futures=True)
 
     def remaining_path(self):
