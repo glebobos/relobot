@@ -72,32 +72,18 @@ def generate_launch_description():
     # Set GZ resource path for models/worlds
     worlds_path = os.path.join(pkg_relobot_gazebo, 'worlds')
     pkg_models_path = os.path.join(pkg_relobot_gazebo, 'models')
-    src_models_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'models'))
-    resource_paths = [src_models_path, pkg_models_path, worlds_path]
-    for env_var in ('GZ_SIM_RESOURCE_PATH', 'IGN_GAZEBO_RESOURCE_PATH', 'GAZEBO_MODEL_PATH'):
-        val = os.environ.get(env_var, '')
-        if val:
-            resource_paths.append(val)
+    resource_paths = [pkg_models_path, worlds_path]
+    if os.environ.get('GZ_SIM_RESOURCE_PATH'):
+        resource_paths.append(os.environ['GZ_SIM_RESOURCE_PATH'])
     combined_resource_path = ':'.join(resource_paths)
 
     # Export directly to process environment so all spawned children inherit it
     os.environ['GZ_SIM_RESOURCE_PATH'] = combined_resource_path
-    os.environ['IGN_GAZEBO_RESOURCE_PATH'] = combined_resource_path
-    os.environ['GAZEBO_MODEL_PATH'] = combined_resource_path
 
     gz_resource_path = SetEnvironmentVariable(
         name='GZ_SIM_RESOURCE_PATH',
         value=combined_resource_path
     )
-    ign_resource_path = SetEnvironmentVariable(
-        name='IGN_GAZEBO_RESOURCE_PATH',
-        value=combined_resource_path
-    )
-    gazebo_model_path = SetEnvironmentVariable(
-        name='GAZEBO_MODEL_PATH',
-        value=combined_resource_path
-    )
-
     # World path substitution
     world_path = PathJoinSubstitution([
         pkg_relobot_gazebo,
@@ -165,17 +151,21 @@ def generate_launch_description():
     )
 
     # Standard ROS 2 Controller Spawners
+    controller_config = os.path.join(pkg_relobot_gazebo, 'config', 'gazebo_controllers.yaml')
     joint_state_broadcaster_spawner = Node(
         package='controller_manager',
         executable='spawner',
-        arguments=['joint_state_broadcaster', '--controller-manager', '/controller_manager', '--controller-manager-timeout', '30'],
+        arguments=['joint_state_broadcaster', '--controller-manager', '/controller_manager',
+               '--controller-manager-timeout', '30', '--param-file', controller_config],
         parameters=[{'use_sim_time': use_sim_time_arg}],
     )
 
     diff_drive_controller_spawner = Node(
         package='controller_manager',
         executable='spawner',
-        arguments=['diff_drive_controller', '--controller-manager', '/controller_manager', '--controller-manager-timeout', '30'],
+        arguments=['diff_drive_controller', '--controller-manager', '/controller_manager',
+               '--controller-manager-timeout', '30', '--param-file', controller_config,
+               '--controller-ros-args', '--ros-args --remap ~/cmd_vel:=/cmd_vel'],
         parameters=[{'use_sim_time': use_sim_time_arg}],
     )
 
@@ -259,8 +249,6 @@ def generate_launch_description():
         declare_yaw_cmd,
         declare_web_video_cmd,
         gz_resource_path,
-        ign_resource_path,
-        gazebo_model_path,
         gz_sim,
         robot_state_publisher_node,
         delayed_spawn_robot,

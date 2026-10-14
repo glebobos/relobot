@@ -448,7 +448,7 @@ class CoverageManager(Node):
         except Exception as exc:
             self._preview_pending = False
             self._pending_execution = None
-            self.get_logger().warn(f'Coverage layout rejected: {exc}')
+            self.get_logger().warning(f'Coverage layout rejected: {exc}')
             self._publish_status('failed', f'Coverage layout rejected: {exc}')
             return
         self._preview_pending = False
@@ -877,7 +877,7 @@ class CoverageManager(Node):
         payload.update(extra)
         payload['can_execute'] = bool(self._last_preview_valid and self._cached_path.poses and not self._busy())
         if state in ('blocked', 'failed', 'stale_preview', 'no_preview'):
-            self.get_logger().warn(f'{state}: {message}')
+            self.get_logger().warning(f'{state}: {message}')
         self._status_pub.publish(String(data=json.dumps(payload)))
 
 

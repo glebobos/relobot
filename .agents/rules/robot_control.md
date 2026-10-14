@@ -95,10 +95,13 @@ DO NOT call `get_actions`, `get_action_details`, `get_parameters`, `get_topics`,
      ```json
      {
        "topic": "/cmd_vel",
-       "msg_type": "geometry_msgs/msg/Twist",
+       "msg_type": "geometry_msgs/msg/TwistStamped",
        "msg": {
-         "linear": { "x": 0.0, "y": 0.0, "z": 0.0 },
-         "angular": { "x": 0.0, "y": 0.0, "z": 0.0 }
+         "header": { "frame_id": "base_link" },
+         "twist": {
+           "linear": { "x": 0.0, "y": 0.0, "z": 0.0 },
+           "angular": { "x": 0.0, "y": 0.0, "z": 0.0 }
+         }
        }
      }
      ```

@@ -60,6 +60,7 @@ docker run -ti \
     --network=host \
     --ipc=host \
     --privileged \
+    -v /tmp:/tmp \
     -v /tmp/.X11-unix:/tmp/.X11-unix \
     -v /dev/shm:/dev/shm \
     -v "$SCRIPT_DIR/.rviz2:/root/.rviz2" \
@@ -69,9 +70,8 @@ docker run -ti \
     -e DISPLAY="$DISPLAY" \
     -e WAYLAND_DISPLAY="$WAYLAND_DISPLAY" \
     -e QT_X11_NO_MITSHM=1 \
-    -e FASTDDS_DEFAULT_PROFILES_FILE=/ros2_ws/fastdds_localhost.xml \
-    -e FASTRTPS_DEFAULT_PROFILES_FILE=/ros2_ws/fastdds_localhost.xml \
+    -e RMW_IMPLEMENTATION=rmw_zenoh_cpp \
     ros2_ws-ros2_gazebo_sim:latest \
-    bash -c "source /opt/ros/humble/setup.bash && source /ros2_ws/install/setup.bash 2>/dev/null || true && rviz2 ${RVIZ_CONFIG_OPTS[*]} ${RVIZ_ARGS[*]}"
+    bash -c "source /opt/ros/lyrical/setup.bash && source /opt/relobot/simulation/install/setup.bash 2>/dev/null || true && rviz2 ${RVIZ_CONFIG_OPTS[*]} ${RVIZ_ARGS[*]}"
 
 echo "RViz2 container stopped."

@@ -189,7 +189,7 @@ class AprilTagManager(Node):
             if self._apriltag_uid is not None or self._loading:
                 return
             if not self._load_cli.service_is_ready():
-                self.get_logger().warn('LoadNode service not ready yet — retrying in 1 s')
+                self.get_logger().warning('LoadNode service not ready yet — retrying in 1 s')
                 if self._retry_timer is None:
                     self._retry_timer = self.create_timer(1.0, self._try_load)
                 return
@@ -293,7 +293,7 @@ class AprilTagManager(Node):
                 try:
                     self._tf_listener.unregister()
                 except Exception as e:
-                    self.get_logger().warn(f'Error unregistering TransformListener: {e}')
+                    self.get_logger().warning(f'Error unregistering TransformListener: {e}')
                 self._tf_listener = None
                 self._tf_buffer.clear()
 
@@ -334,7 +334,7 @@ class AprilTagManager(Node):
                     self._last_pose.header.stamp = now.to_msg()
                     self._dock_pub.publish(self._last_pose)
                 else:
-                    self.get_logger().warn(
+                    self.get_logger().warning(
                         f'[AprilTag] Tag {self._tag_frame} LOST (>5.0s without detection).')
                     self._last_pose = None
                     self._last_detected_time = None

@@ -110,31 +110,31 @@ All ROS2 tools must be run **inside** the containers via `docker compose exec`. 
 ```bash
 # General pattern (run from the repo root):
 # NOTE: `bash -c` does not load .bashrc, so you MUST source ROS2 setup first.
-docker compose -f ros2_ws/docker-compose.yml exec <service_name> bash -c "source /opt/ros/humble/setup.bash && <command>"
+docker compose -f ros2_ws/docker-compose.yml exec <service_name> bash -c "source /opt/ros/lyrical/setup.bash && <command>"
 ```
 
 ### Common checks
 ```bash
 # List active topics
-docker compose -f ros2_ws/docker-compose.yml exec ros2_nav2 bash -c "source /opt/ros/humble/setup.bash && ros2 topic list"
+docker compose -f ros2_ws/docker-compose.yml exec ros2_nav2 bash -c "source /opt/ros/lyrical/setup.bash && ros2 topic list"
 
 # Echo a topic
-docker compose -f ros2_ws/docker-compose.yml exec ros2_nav2 bash -c "source /opt/ros/humble/setup.bash && ros2 topic echo /scan --once"
+docker compose -f ros2_ws/docker-compose.yml exec ros2_nav2 bash -c "source /opt/ros/lyrical/setup.bash && ros2 topic echo /scan --once"
 
 # List running nodes
-docker compose -f ros2_ws/docker-compose.yml exec ros2_nav2 bash -c "source /opt/ros/humble/setup.bash && ros2 node list"
+docker compose -f ros2_ws/docker-compose.yml exec ros2_nav2 bash -c "source /opt/ros/lyrical/setup.bash && ros2 node list"
 
 # Check node parameters
-docker compose -f ros2_ws/docker-compose.yml exec ros2_nav2 bash -c "source /opt/ros/humble/setup.bash && ros2 param list /bt_navigator"
+docker compose -f ros2_ws/docker-compose.yml exec ros2_nav2 bash -c "source /opt/ros/lyrical/setup.bash && ros2 param list /bt_navigator"
 
 # Find an installed shared library (.so) — no sourcing needed
-docker compose -f ros2_ws/docker-compose.yml exec ros2_nav2 find /opt/ros/humble -name "libsome_plugin.so"
+docker compose -f ros2_ws/docker-compose.yml exec ros2_nav2 find /opt/ros/lyrical -name "libsome_plugin.so"
 
 # List files from an apt package — no sourcing needed
-docker compose -f ros2_ws/docker-compose.yml exec ros2_nav2 dpkg -L ros-humble-some-package
+docker compose -f ros2_ws/docker-compose.yml exec ros2_nav2 dpkg -L ros-lyrical-some-package
 
 # Check installed BT XMLs — no sourcing needed
-docker compose -f ros2_ws/docker-compose.yml exec ros2_nav2 ls /opt/ros/humble/share/nav2_bt_navigator/behavior_trees/
+docker compose -f ros2_ws/docker-compose.yml exec ros2_nav2 ls /opt/ros/lyrical/share/nav2_bt_navigator/behavior_trees/
 
 # Interactive shell (sources automatically via .bashrc)
 docker compose -f ros2_ws/docker-compose.yml exec ros2_nav2 bash
@@ -143,6 +143,6 @@ docker compose -f ros2_ws/docker-compose.yml exec ros2_nav2 bash
 ## Style & Conventions
 - **Language**: Python (preferred for logic), C++ (for performance), or Rust (e.g. `rosbridge_rust`).
 - **Rust Guidelines**: Follow `.agents/skills/rust-skills/` rules and idioms when writing, optimizing, or refactoring Rust code.
-- **ROS2**: Use ROS2 Humble.
+- **ROS2**: Use ROS2 Lyrical (with `rmw_zenoh_cpp`).
 - **Communication**: Use ROS2 topics/services. Do NOT bypass ROS2 unless necessary.
 - **Hardware**: Access hardware via `/dev/` mapped devices in `docker-compose.yml`.

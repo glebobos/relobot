@@ -1,4 +1,7 @@
-FROM ros:humble-ros-base
+FROM ros:lyrical-ros-base-resolute@sha256:f79cd486fa218596747c45d00ca42101b0303fc6d94ed5adb72145cd6f54b86c
+
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+ENV DEBIAN_FRONTEND=noninteractive RMW_IMPLEMENTATION=rmw_zenoh_cpp
 
 # Install rosbridge server, build dependencies for Rust node, and standard messages
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -6,10 +9,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     clang \
     libclang-dev \
-    ros-humble-rosbridge-server \
-    ros-humble-nav2-msgs \
-    ros-humble-opennav-docking-msgs \
-    ros-humble-slam-toolbox && \
+    ros-lyrical-rmw-zenoh-cpp \
+    ros-lyrical-rosbridge-server \
+    ros-lyrical-nav2-msgs \
+    ros-lyrical-slam-toolbox \
+    ros-lyrical-web-video-server && \
     rm -rf /var/lib/apt/lists/*
 
 # Install Rust toolchain
@@ -20,45 +24,48 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 WORKDIR /ros2_ws
 
 # Startup script to build / run both bridges
-RUN echo '#!/bin/bash\n\
-set -e\n\
-trap "kill \$(jobs -p) 2>/dev/null; wait" SIGTERM SIGINT EXIT\n\
-source /opt/ros/humble/setup.bash\n\
-cd /ros2_ws\n\
-if [ "$DEV" = "true" ] && [ ! -d "/ros2_ws/install/explore_lite_msgs" ]; then\n\
-  colcon build --packages-select explore_lite_msgs --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release\n\
-fi\n\
-source install/setup.bash\n\
-\n\
-# Test & build Rust bridge\n\
-if [ "$DEV" = "true" ]; then\n\
-  echo "Testing & building rosbridge_rust..."\n\
-  cd /ros2_ws/src/rosbridge_rust\n\
-  cargo test\n\
-  cargo build --release\n\
-  cd /ros2_ws\n\
-fi\n\
-\n\
-# Launch Python rosbridge on port 9091 in the background\n\
-ros2 launch /ros2_ws/src/rosbridge_webvideo_launch.py &\n\
-PYTHON_PID=$!\n\
-\n\
-# Wait for Python backend to initialize\n\
-for i in $(seq 1 30); do\n\
-  curl -s 127.0.0.1:9091 >/dev/null && break\n\
-  sleep 1\n\
-done\n\
-\n\
-# Run the Rust WebSocket server/proxy on port 9090 in the background\n\
-/ros2_ws/src/rosbridge_rust/target/release/rosbridge_rust &\n\
-RUST_PID=$!\n\
-\n\
-# Wait for either process to exit\n\
-wait -n\n\
-\n\
-# If one exited, kill the other and exit\n\
-kill $PYTHON_PID $RUST_PID 2>/dev/null || true\n\
-exit 1' > /start.sh && \
-chmod +x /start.sh
+RUN printf '%s\n' \
+    '#!/bin/bash' \
+    'set -e' \
+    'trap "kill \$(jobs -p) 2>/dev/null; wait" SIGTERM SIGINT EXIT' \
+    'source /opt/ros/lyrical/setup.bash' \
+    'cd /ros2_ws' \
+    'if [ "$DEV" = "true" ] && [ ! -d "/ros2_ws/install/explore_lite_msgs" ]; then' \
+    '  colcon build --packages-select explore_lite_msgs --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release' \
+    'fi' \
+    'if [ -f install/setup.bash ]; then' \
+    '  source install/setup.bash' \
+    'fi' \
+    '' \
+    '# Test & build Rust bridge' \
+    'if [ "$DEV" = "true" ]; then' \
+    '  echo "Testing & building rosbridge_rust..."' \
+    '  cd /ros2_ws/src/rosbridge_rust' \
+    '  cargo test' \
+    '  cargo build --release' \
+    '  cd /ros2_ws' \
+    'fi' \
+    '' \
+    '# Launch Python rosbridge on port 9091 in the background' \
+    'ros2 launch /ros2_ws/src/rosbridge_webvideo_launch.py &' \
+    'PYTHON_PID=$!' \
+    '' \
+    '# Wait for Python backend to initialize' \
+    'for i in $(seq 1 30); do' \
+    '  curl -s 127.0.0.1:9091 >/dev/null && break' \
+    '  sleep 1' \
+    'done' \
+    '' \
+    '# Run the Rust WebSocket server/proxy on port 9090 in the background' \
+    '/ros2_ws/src/rosbridge_rust/target/release/rosbridge_rust &' \
+    'RUST_PID=$!' \
+    '' \
+    '# Wait for either process to exit' \
+    'wait -n' \
+    '' \
+    '# If one exited, kill the other and exit' \
+    'kill $PYTHON_PID $RUST_PID 2>/dev/null || true' \
+    'exit 1' > /start.sh && \
+    chmod +x /start.sh
 
 CMD ["/start.sh"]

@@ -3,7 +3,7 @@
 #include <limits>
 #include <mutex>
 #include "nav2_controller/plugins/simple_goal_checker.hpp"
-#include "nav2_util/node_utils.hpp"
+#include "nav2_ros_common/lifecycle_node.hpp"
 #include "nav_msgs/msg/path.hpp"
 #include "pluginlib/class_list_macros.hpp"
 #include "rclcpp/rclcpp.hpp"
@@ -15,20 +15,18 @@ class OrderedGoalChecker : public nav2_controller::SimpleGoalChecker
 {
 public:
   void initialize(
-    const rclcpp_lifecycle::LifecycleNode::WeakPtr & parent, const std::string & name,
+    const nav2::LifecycleNode::WeakPtr & parent, const std::string & name,
     const std::shared_ptr<nav2_costmap_2d::Costmap2DROS> costmap) override
   {
     SimpleGoalChecker::initialize(parent, name, costmap);
     costmap_ = costmap;
     auto node = parent.lock();
-    nav2_util::declare_parameter_if_not_declared(
-      node, name + ".path_topic", rclcpp::ParameterValue(std::string("/coverage/execution_path")));
-    std::string path_topic;
-    node->get_parameter(name + ".path_topic", path_topic);
-    subscription_ = parent.lock()->create_subscription<nav_msgs::msg::Path>(
-      path_topic, rclcpp::QoS(1).transient_local(),
+    const auto path_topic = node->declare_or_get_parameter(
+      name + ".path_topic", std::string("/coverage/execution_path"));
+    subscription_ = node->create_subscription<nav_msgs::msg::Path>(
+      path_topic,
       [this](nav_msgs::msg::Path::ConstSharedPtr path) {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::lock_guard<std::mutex> lock(path_mutex_);
         path_ = *path;
         cumulative_.assign(path_.poses.size(), 0.0);
         for (size_t index = 1; index < path_.poses.size(); ++index) {
@@ -38,22 +36,28 @@ public:
         }
         progress_ = 0.0;
         cursor_ = 0;
-      });
+      }, rclcpp::QoS(1).transient_local());
   }
 
   void reset() override
   {
-    std::lock_guard<std::mutex> lock(mutex_);
     SimpleGoalChecker::reset();
+    std::lock_guard<std::mutex> lock(path_mutex_);
     progress_ = 0.0;
     cursor_ = 0;
   }
 
-  bool isGoalReached(
+  bool isGoalXYReached(
     const geometry_msgs::msg::Pose & query, const geometry_msgs::msg::Pose & goal,
-    const geometry_msgs::msg::Twist & velocity) override
+    const geometry_msgs::msg::Twist & velocity,
+    const nav_msgs::msg::Path & transformed_global_plan) override
   {
-    std::lock_guard<std::mutex> lock(mutex_);
+    geometry_msgs::msg::Pose pose_tolerance;
+    geometry_msgs::msg::Twist velocity_tolerance;
+    double path_length_tolerance;
+    SimpleGoalChecker::getTolerances(pose_tolerance, velocity_tolerance, path_length_tolerance);
+    const double xy_tolerance = pose_tolerance.position.x;
+    std::lock_guard<std::mutex> lock(path_mutex_);
     if (path_.poses.size() < 2 || path_.header.frame_id.empty()) {
       RCLCPP_WARN_THROTTLE(
         costmap_->get_logger(), *costmap_->get_clock(), 2000,
@@ -117,8 +121,8 @@ public:
     progress_ = std::max(progress_, best_progress);
     cursor_ = std::max(cursor_, best_index);
     const double remaining = cumulative_.back() - progress_;
-    const bool reached = remaining <= std::max(0.12, xy_goal_tolerance_) &&
-      SimpleGoalChecker::isGoalReached(query, goal, velocity);
+    const bool reached = remaining <= std::max(0.12, xy_tolerance) &&
+      SimpleGoalChecker::isGoalXYReached(query, goal, velocity, transformed_global_plan);
     const double path_endpoint_distance = std::hypot(
       robot.pose.position.x - target.x, robot.pose.position.y - target.y);
     if (!reached && path_endpoint_distance <= 0.15) {
@@ -128,19 +132,19 @@ public:
         "ordered remaining %.3f m, xy tolerance %.3f m",
         path_endpoint_distance,
         std::hypot(query.position.x - goal.position.x, query.position.y - goal.position.y),
-        remaining, xy_goal_tolerance_);
+        remaining, xy_tolerance);
     }
     return reached;
   }
 
 private:
   std::shared_ptr<nav2_costmap_2d::Costmap2DROS> costmap_;
-  rclcpp::Subscription<nav_msgs::msg::Path>::SharedPtr subscription_;
+  nav2::Subscription<nav_msgs::msg::Path>::SharedPtr subscription_;
   nav_msgs::msg::Path path_;
   std::vector<double> cumulative_;
   double progress_{0.0};
   size_t cursor_{0};
-  std::mutex mutex_;
+  std::mutex path_mutex_;
 };
 }
 PLUGINLIB_EXPORT_CLASS(relobot::OrderedGoalChecker, nav2_core::GoalChecker)

@@ -1,82 +1,63 @@
-FROM ros:humble
+FROM ros:lyrical-ros-base-resolute@sha256:f79cd486fa218596747c45d00ca42101b0303fc6d94ed5adb72145cd6f54b86c AS dependencies
 
-# Install additional dependencies
-RUN apt-get update && apt-get install -y ros2-testing-apt-source && \
-  apt-get update && \
-  apt-get install -y \
-    git \
-    ros-humble-navigation2 \
-    ros-humble-nav2-bringup \
-    ros-humble-nav2-mppi-controller \
-    ros-humble-nav2-msgs \
-    ros-humble-geometry-msgs \
-    ros-humble-sensor-msgs \
-    ros-humble-tf2 \
-    ros-humble-tf2-ros \
-    ros-humble-rclcpp \
-    ros-humble-rclcpp-action \
-    ros-humble-nav2-costmap-2d \
-    ros-humble-nav2-util \
-    ros-humble-opennav-docking \
-    ros-humble-opennav-docking-core \
-    ros-humble-opennav-docking-bt \
-    ros-humble-tf2-geometry-msgs \
-    ros-humble-apriltag \
-    ros-humble-apriltag-ros \
-    && dpkg-query -W ros-humble-tf2 ros-humble-tf2-ros \
-    && dpkg --compare-versions "$(dpkg-query -W -f='${Version}' ros-humble-tf2)" ge 0.25.24 \
-    && dpkg --compare-versions "$(dpkg-query -W -f='${Version}' ros-humble-tf2-ros)" ge 0.25.24 \
-    && rm -rf /var/lib/apt/lists/*
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+ENV DEBIAN_FRONTEND=noninteractive RMW_IMPLEMENTATION=rmw_zenoh_cpp
 
-# Install coverage build prerequisites in a separate layer so Docker can reuse
-# the heavier ROS package layer when only coverage integration changes.
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    ca-certificates \
-    cmake \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
-    libeigen3-dev \
     libgdal-dev \
-    libgeos-dev \
-    python3-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-RUN apt-get update && apt-get install -y \
     python3-opencv \
+    python3-pytest \
+    python3-shapely \
+    ros-lyrical-rmw-zenoh-cpp \
+    ros-lyrical-navigation2 \
+    ros-lyrical-nav2-bringup \
+    ros-lyrical-fields2cover \
+    ros-lyrical-ortools-vendor \
+    ros-lyrical-opennav-docking \
+    ros-lyrical-opennav-docking-core \
+    ros-lyrical-opennav-docking-bt \
+    ros-lyrical-apriltag-ros \
+    ros-lyrical-slam-toolbox \
+    ros-lyrical-robot-localization \
+    && mkdir -p /opt/relobot \
+    && dpkg-query -W -f='${Package}=${Version}\n' > /opt/relobot/navigation-packages.txt \
     && rm -rf /var/lib/apt/lists/*
 
-RUN git clone --branch v1.2.1 --depth 1 https://github.com/Fields2Cover/Fields2Cover.git /opt/fields2cover_src && \
-    git clone --branch 0.0.1 --depth 1 https://github.com/open-navigation/opennav_coverage.git /opt/opennav_coverage_src
+FROM dependencies AS runtime
 
-RUN apt-get update && apt-get install -y python3-shapely && \
-  rm -rf /var/lib/apt/lists/*
+ARG OPENNAV_COVERAGE_REVISION=29c96cf0a6d2e565beaea510d4d482d9d37bc5de
+COPY patches/opennav_coverage_lyrical.patch /opt/relobot/opennav_coverage_lyrical.patch
+RUN git clone --no-checkout https://github.com/open-navigation/opennav_coverage.git /opt/opennav_coverage && \
+    git -C /opt/opennav_coverage checkout --detach "${OPENNAV_COVERAGE_REVISION}" && \
+    git -C /opt/opennav_coverage apply /opt/relobot/opennav_coverage_lyrical.patch
 
-# Create workspace
-WORKDIR /ros2_ws
+WORKDIR /opt/relobot/navigation
+COPY src/nav2 src/nav2
+COPY src/coverage_geometry src/coverage_geometry
+COPY src/robot_pose_publisher src/robot_pose_publisher
+COPY src/explore_lite src/explore_lite
+COPY src/explore_lite_msgs src/explore_lite_msgs
+RUN source /opt/ros/lyrical/setup.bash && \
+    colcon build --base-paths src /opt/opennav_coverage \
+      --packages-up-to nav2 robot_pose_publisher explore_lite opennav_coverage \
+      --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF && \
+    rm -rf build log
 
-# Copy the package
-COPY ./src/nav2 /ros2_ws/src/nav2
-COPY ./src/coverage_geometry /ros2_ws/src/coverage_geometry
-COPY ./src/robot_pose_publisher /ros2_ws/src/robot_pose_publisher
-
-# Source the workspace
-RUN echo "source /opt/ros/humble/setup.bash" >> /root/.bashrc
-
-# Create development script
-RUN echo '#!/bin/bash\n\
-set -e\n\
-source /opt/ros/humble/setup.bash\n\
-cd /ros2_ws\n\
-if [ "$DEV" = "true" ] || [ ! -f /ros2_ws/install/opennav_coverage_msgs/share/opennav_coverage_msgs/package.xml ] || [ ! -f /ros2_ws/install/coverage_geometry/share/coverage_geometry/package.xml ]; then\n\
-  colcon build --base-paths /opt/fields2cover_src /opt/opennav_coverage_src /ros2_ws/src --packages-up-to nav2 robot_pose_publisher explore_lite opennav_coverage opennav_coverage_msgs fields2cover --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release -DFields2Cover_DIR=/ros2_ws/build/fields2cover -DBUILD_TESTS=OFF -DBUILD_DOC=OFF -DBUILD_TUTORIALS=OFF\n\
-fi\n\
-source install/setup.bash\n\
-if [ "${USE_SIM_TIME}" = "true" ]; then\n\
-  echo "[ros2_nav2] Simulation mode: waiting for /clock topic..."\n\
-  until ros2 topic echo /clock --once > /dev/null 2>&1; do sleep 1; done\n\
-  echo "[ros2_nav2] Clock received! Starting navigation..."\n\
-fi\n\
-ros2 launch nav2 navigation_launch.py use_sim_time:="${USE_SIM_TIME:-false}"' > /start_dev.sh && \
-chmod +x /start_dev.sh
+RUN printf '%s\n' \
+    '#!/bin/bash' \
+    'set -eo pipefail' \
+    'source /opt/ros/lyrical/setup.bash' \
+    'if [[ "${DEV:-false}" == "true" ]]; then' \
+    '  colcon --log-base /tmp/relobot-navigation/log build --base-paths /ros2_ws/src /opt/opennav_coverage --packages-up-to nav2 robot_pose_publisher explore_lite opennav_coverage --build-base /tmp/relobot-navigation/build --install-base /tmp/relobot-navigation/install --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF' \
+    '  source /tmp/relobot-navigation/install/setup.bash' \
+    'else' \
+    '  source /opt/relobot/navigation/install/setup.bash' \
+    'fi' \
+    'if [[ "${USE_SIM_TIME:-false}" == "true" ]]; then' \
+    '  timeout 60 ros2 topic echo /clock rosgraph_msgs/msg/Clock --once --no-daemon > /dev/null' \
+    'fi' \
+    'exec ros2 launch nav2 navigation_launch.py use_sim_time:="${USE_SIM_TIME:-false}"' \
+    > /start_dev.sh && chmod +x /start_dev.sh
 
 CMD ["/start_dev.sh"]

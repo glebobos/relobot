@@ -206,9 +206,6 @@
   <gazebo>
     <plugin filename="gz_ros2_control-system" name="gz_ros2_control::GazeboSimROS2ControlPlugin">
       <parameters>$(find relobot_gazebo)/config/gazebo_controllers.yaml</parameters>
-      <ros>
-        <remapping>/diff_drive_controller/cmd_vel_unstamped:=/cmd_vel</remapping>
-      </ros>
     </plugin>
   </gazebo>
 
