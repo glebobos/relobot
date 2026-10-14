@@ -49,7 +49,7 @@ class CoverageExecution:
         self.ingress_goal_id = None
         self.follower = ActionClient(node, FollowPath, 'follow_path')
         self.backup = ActionClient(node, BackUp, 'backup')
-        self.tf = Buffer()
+        self.tf = Buffer(node=node)
         self.listener = TransformListener(self.tf, node)
         self.plan_pub = node.create_publisher(Path, '/coverage/execution_path',
             QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL))

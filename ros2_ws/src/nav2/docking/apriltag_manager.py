@@ -100,7 +100,7 @@ class AprilTagManager(Node):
         self._retry_timer = None
 
         # --- In-Process Dock Pose Publishing (Zero subprocess) ---
-        self._tf_buffer = tf2_ros.Buffer(cache_time=rclpy.duration.Duration(seconds=5.0))
+        self._tf_buffer = tf2_ros.Buffer(cache_time=rclpy.duration.Duration(seconds=5.0), node=self)
         self._tf_listener: tf2_ros.TransformListener | None = None
         self._dock_pub = self.create_publisher(PoseStamped, '/detected_dock_pose', 1)
         self._dock_timer = None
