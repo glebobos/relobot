@@ -15,9 +15,10 @@ diff_drive_controller:
     wheel_separation: 0.295
     wheel_radius: 0.0937
 
+    publish_rate: 30.0
     enable_odom_tf: false
-    # odom_frame_id: "odom"
-    # base_frame_id: "base_link"
+    odom_frame_id: "odom"
+    base_frame_id: "base_link"
 
     cmd_vel_timeout: 0.0
     pose_covariance_diagonal: [0.2, 0.2, 9999.0, 9999.0, 9999.0, 0.2]

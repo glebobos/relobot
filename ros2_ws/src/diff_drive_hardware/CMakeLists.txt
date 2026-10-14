@@ -19,8 +19,13 @@ project(diff_drive_hardware)
 find_package(ament_cmake REQUIRED)
 
 install(
-  DIRECTORY config launch
+  DIRECTORY config launch scripts
   DESTINATION share/${PROJECT_NAME}
+)
+
+install(
+  PROGRAMS scripts/uros_bridge.py
+  DESTINATION lib/${PROJECT_NAME}
 )
 
 ament_package()

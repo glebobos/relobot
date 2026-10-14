@@ -31,7 +31,13 @@ RUN printf '%s\n' \
     'source /opt/ros/lyrical/setup.bash' \
     'cd /ros2_ws' \
     'if [ "$DEV" = "true" ] && [ ! -d "/ros2_ws/install/explore_lite_msgs" ]; then' \
-    '  colcon build --packages-select explore_lite_msgs --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release' \
+    '  for i in $(seq 1 30); do' \
+    '    [ -d "/ros2_ws/install/explore_lite_msgs" ] && break' \
+    '    sleep 2' \
+    '  done' \
+    '  if [ ! -d "/ros2_ws/install/explore_lite_msgs" ]; then' \
+    '    colcon build --packages-select explore_lite_msgs --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release' \
+    '  fi' \
     'fi' \
     'if [ -f install/setup.bash ]; then' \
     '  source install/setup.bash' \

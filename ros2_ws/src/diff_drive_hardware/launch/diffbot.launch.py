@@ -15,7 +15,7 @@
 import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import Shutdown
+from launch.actions import ExecuteProcess, Shutdown
 from launch.substitutions import Command, FindExecutable, PathJoinSubstitution
 from launch_ros.parameter_descriptions import ParameterValue
 
@@ -36,12 +36,10 @@ def generate_launch_description():
 
     robot_description = {"robot_description": ParameterValue(robot_description_content, value_type=str)}
 
-    robot_controllers = PathJoinSubstitution(
-        [
-            FindPackageShare("diff_drive_hardware"),
-            "config",
-            "diffbot_controllers.yaml",
-        ]
+    robot_controllers = os.path.join(
+        get_package_share_directory("diff_drive_hardware"),
+        "config",
+        "diffbot_controllers.yaml",
     )
 
     # EKF configuration for robot_localization
@@ -87,6 +85,17 @@ def generate_launch_description():
         name='imu_micro_ros_agent',
         arguments=['multiserial', '--devs', ' '.join(serial_devs), '-b', '115200'],
         output='screen',
+        additional_env={
+            'RMW_IMPLEMENTATION': 'rmw_fastrtps_cpp',
+            'FASTRTPS_DEFAULT_PROFILES_FILE': '/ros2_ws/fastdds_localhost.xml',
+        },
+        on_exit=Shutdown(),
+    )
+
+    uros_bridge_script = '/ros2_ws/src/diff_drive_hardware/scripts/uros_bridge.py'
+    uros_bridge_node = ExecuteProcess(
+        cmd=['python3', uros_bridge_script],
+        output='screen',
         on_exit=Shutdown(),
     )
 
@@ -95,9 +104,6 @@ def generate_launch_description():
         executable="ros2_control_node",
         parameters=[robot_description, robot_controllers],
         output="both",
-        remappings=[
-            ("diff_drive_controller/cmd_vel_unstamped", "cmd_vel"),
-        ],
         on_exit=Shutdown(),
     )
 
@@ -111,13 +117,24 @@ def generate_launch_description():
     joint_state_broadcaster_spawner = Node(
         package="controller_manager",
         executable="spawner",
-        arguments=["joint_state_broadcaster", "--controller-manager", "/controller_manager", "--controller-manager-timeout", "30"],
+        arguments=[
+            "joint_state_broadcaster",
+            "--controller-manager", "/controller_manager",
+            "--controller-manager-timeout", "30",
+            "--param-file", robot_controllers,
+        ],
     )
 
     robot_controller_spawner = Node(
         package="controller_manager",
         executable="spawner",
-        arguments=["diff_drive_controller", "--controller-manager", "/controller_manager", "--controller-manager-timeout", "30"],
+        arguments=[
+            "diff_drive_controller",
+            "--controller-manager", "/controller_manager",
+            "--controller-manager-timeout", "30",
+            "--param-file", robot_controllers,
+            "--controller-ros-args", "--ros-args --remap ~/cmd_vel:=/cmd_vel",
+        ],
     )
 
     ekf_node = Node(
@@ -130,6 +147,7 @@ def generate_launch_description():
 
     nodes = [
         micro_ros_agent,
+        uros_bridge_node,
         control_node,
         robot_state_pub_node,
         joint_state_broadcaster_spawner,

@@ -140,6 +140,7 @@ services:
       - /dev/:/dev/
     environment:
       <<: *ros-env
+      FASTRTPS_DEFAULT_PROFILES_FILE: /ros2_ws/fastdds_localhost.xml
     network_mode: host
     ipc: host 
     privileged: true
