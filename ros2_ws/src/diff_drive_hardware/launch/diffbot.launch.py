@@ -92,9 +92,10 @@ def generate_launch_description():
         on_exit=Shutdown(),
     )
 
-    uros_bridge_script = '/ros2_ws/src/diff_drive_hardware/scripts/uros_bridge.py'
-    uros_bridge_node = ExecuteProcess(
-        cmd=['python3', uros_bridge_script],
+    uros_bridge_node = Node(
+        package='diff_drive_hardware',
+        executable='uros_bridge',
+        name='uros_bridge',
         output='screen',
         on_exit=Shutdown(),
     )
