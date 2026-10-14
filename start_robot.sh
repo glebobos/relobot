@@ -15,6 +15,9 @@
 # limitations under the License.
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROS2_WS_DIR="${SCRIPT_DIR}/ros2_ws"
+
 # Parse arguments
 COMMAND=""
 SERVICE=""
@@ -54,16 +57,19 @@ while [[ $# -gt 0 ]]; do
         --world)
             if [[ -n "$2" && ! "$2" =~ ^-- ]]; then
                 SIM_WORLD="$2"
-                if [[ "$SIM_WORLD" == obstacles ]]; then
-                    SIM_WORLD="obstacle"
+                if [[ "$SIM_WORLD" == obstacles || "$SIM_WORLD" == obstacle ]]; then
+                    SIM_WORLD="obstacle_world.sdf"
+                elif [[ "$SIM_WORLD" =~ \.sdf$ ]]; then
+                    SIM_WORLD="$SIM_WORLD"
+                elif [[ "$SIM_WORLD" =~ _world$ ]]; then
+                    SIM_WORLD="${SIM_WORLD}.sdf"
+                else
+                    SIM_WORLD="${SIM_WORLD}_world.sdf"
                 fi
-                # If user passed short name like 'garden', append '_world.sdf'
-                if [[ ! "$SIM_WORLD" =~ \.sdf$ ]]; then
-                    if [[ "$SIM_WORLD" =~ _world$ ]]; then
-                        SIM_WORLD="${SIM_WORLD}.sdf"
-                    else
-                        SIM_WORLD="${SIM_WORLD}_world.sdf"
-                    fi
+                if [[ ! -f "${SCRIPT_DIR}/ros2_ws/src/relobot_gazebo/worlds/${SIM_WORLD}" ]]; then
+                    echo "Error: World '${SIM_WORLD}' not found in ros2_ws/src/relobot_gazebo/worlds/"
+                    echo "Available worlds: garden, obstacles, empty (e.g. garden_world.sdf, obstacle_world.sdf, empty_world.sdf)"
+                    exit 1
                 fi
                 shift 2
             else
@@ -106,8 +112,6 @@ if [ -z "$COMMAND" ]; then
     exit 1
 fi
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROS2_WS_DIR="${SCRIPT_DIR}/ros2_ws"
 cd "${ROS2_WS_DIR}"
 
 export DEV="${DEV}"

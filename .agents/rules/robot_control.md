@@ -18,7 +18,7 @@ DO NOT call `get_actions`, `get_action_details`, `get_parameters`, `get_topics`,
      ```json
      {
        "action_name": "/dock_robot",
-       "action_type": "opennav_docking_msgs/action/DockRobot",
+       "action_type": "nav2_msgs/action/DockRobot",
        "goal": {
          "use_dock_id": true,
          "dock_id": "home_dock",
@@ -38,7 +38,7 @@ DO NOT call `get_actions`, `get_action_details`, `get_parameters`, `get_topics`,
        "action_name": "/navigate_to_pose",
        "action_type": "nav2_msgs/action/NavigateToPose",
        "goal": {
-         "behavior_tree": "/ros2_ws/install/nav2/share/nav2/behavior_trees/undock_and_turn.xml",
+         "behavior_tree": "/ros2_ws/src/nav2/behavior_trees/undock_and_turn.xml",
          "pose": {
            "header": { "frame_id": "map" },
            "pose": {
