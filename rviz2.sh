@@ -72,6 +72,6 @@ docker run -ti \
     -e QT_X11_NO_MITSHM=1 \
     -e RMW_IMPLEMENTATION=rmw_zenoh_cpp \
     ros2_ws-ros2_gazebo_sim:latest \
-    bash -c "source /opt/ros/lyrical/setup.bash && source /opt/relobot/simulation/install/setup.bash 2>/dev/null || true && rviz2 ${RVIZ_CONFIG_OPTS[*]} ${RVIZ_ARGS[*]}"
+    bash -c "source /opt/ros/lyrical/setup.bash && source /ros2_ws/install/setup.bash 2>/dev/null || true && rviz2 ${RVIZ_CONFIG_OPTS[*]} ${RVIZ_ARGS[*]}"
 
 echo "RViz2 container stopped."

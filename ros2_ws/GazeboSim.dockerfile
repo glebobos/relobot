@@ -30,27 +30,22 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 FROM dependencies AS runtime
 
-WORKDIR /opt/relobot/simulation
-COPY src/diff_drive_hardware src/diff_drive_hardware
-COPY src/relobot_gazebo src/relobot_gazebo
-RUN source /opt/ros/lyrical/setup.bash && \
-    colcon build --packages-select diff_drive_hardware relobot_gazebo \
-      --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF && \
-    rm -rf build log
+WORKDIR /ros2_ws
 
 ENV QT_X11_NO_MITSHM=1
+RUN echo "source /opt/ros/lyrical/setup.bash" >> /root/.bashrc
+
 RUN printf '%s\n' \
     '#!/bin/bash' \
     'set -eo pipefail' \
     'source /opt/ros/lyrical/setup.bash' \
-    'if [[ "${DEV:-false}" == "true" ]]; then' \
-    '  colcon --log-base /tmp/relobot-simulation/log build --base-paths /ros2_ws/src/diff_drive_hardware /ros2_ws/src/relobot_gazebo --packages-select diff_drive_hardware relobot_gazebo --build-base /tmp/relobot-simulation/build --install-base /tmp/relobot-simulation/install --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF' \
-    '  source /tmp/relobot-simulation/install/setup.bash' \
-    'else' \
-    '  source /opt/relobot/simulation/install/setup.bash' \
-    'fi' \
+    'cd /ros2_ws' \
     'if [[ -d /usr/lib/wsl/lib ]]; then export LD_LIBRARY_PATH="/usr/lib/wsl/lib:${LD_LIBRARY_PATH:-}"; fi' \
     'if [[ ! -e /dev/dxg && ! -e /dev/dri && -z "${NVIDIA_VISIBLE_DEVICES:-}" ]]; then export LIBGL_ALWAYS_SOFTWARE=1; fi' \
+    'if [ "$DEV" = "true" ] || [ ! -f /ros2_ws/install/relobot_gazebo/share/relobot_gazebo/package.xml ]; then' \
+    '  colcon build --packages-select diff_drive_hardware relobot_gazebo --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF' \
+    'fi' \
+    'source install/setup.bash' \
     'exec ros2 launch relobot_gazebo gazebo_sim.launch.py world:="${SIM_WORLD:-garden_world.sdf}" gui:="${SIM_GUI:-true}" use_sim_time:=true' \
     > /start_sim.sh && chmod +x /start_sim.sh
 

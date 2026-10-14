@@ -7,23 +7,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-lyrical-rmw-zenoh-cpp \
     && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /opt/relobot/lidar
-COPY src/ldlidar src/ldlidar
-RUN source /opt/ros/lyrical/setup.bash && \
-    colcon build --packages-select ldlidar \
-      --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF && \
-    rm -rf build log
+WORKDIR /ros2_ws
+
+RUN echo "source /opt/ros/lyrical/setup.bash" >> /root/.bashrc
 
 RUN printf '%s\n' \
     '#!/bin/bash' \
-  'set -eo pipefail' \
+    'set -eo pipefail' \
     'source /opt/ros/lyrical/setup.bash' \
-    'if [[ "${DEV:-false}" == "true" ]]; then' \
-    '  colcon --log-base /tmp/relobot-lidar/log build --base-paths /ros2_ws/src/ldlidar --packages-select ldlidar --build-base /tmp/relobot-lidar/build --install-base /tmp/relobot-lidar/install --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF' \
-    '  source /tmp/relobot-lidar/install/setup.bash' \
-    'else' \
-    '  source /opt/relobot/lidar/install/setup.bash' \
+    'cd /ros2_ws' \
+    'if [ "$DEV" = "true" ] || [ ! -f /ros2_ws/install/ldlidar/share/ldlidar/package.xml ]; then' \
+    '  colcon build --packages-select ldlidar --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF' \
     'fi' \
+    'source install/setup.bash' \
     'exec ros2 launch ldlidar stl27l.launch.py' \
     > /start_dev.sh && chmod +x /start_dev.sh
 

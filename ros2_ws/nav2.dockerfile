@@ -32,28 +32,19 @@ RUN git clone --no-checkout https://github.com/open-navigation/opennav_coverage.
     git -C /opt/opennav_coverage checkout --detach "${OPENNAV_COVERAGE_REVISION}" && \
     git -C /opt/opennav_coverage apply /opt/relobot/opennav_coverage_lyrical.patch
 
-WORKDIR /opt/relobot/navigation
-COPY src/nav2 src/nav2
-COPY src/coverage_geometry src/coverage_geometry
-COPY src/robot_pose_publisher src/robot_pose_publisher
-COPY src/explore_lite src/explore_lite
-COPY src/explore_lite_msgs src/explore_lite_msgs
-RUN source /opt/ros/lyrical/setup.bash && \
-    colcon build --base-paths src /opt/opennav_coverage \
-      --packages-up-to nav2 robot_pose_publisher explore_lite opennav_coverage \
-      --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF && \
-    rm -rf build log
+WORKDIR /ros2_ws
+
+RUN echo "source /opt/ros/lyrical/setup.bash" >> /root/.bashrc
 
 RUN printf '%s\n' \
     '#!/bin/bash' \
     'set -eo pipefail' \
     'source /opt/ros/lyrical/setup.bash' \
-    'if [[ "${DEV:-false}" == "true" ]]; then' \
-    '  colcon --log-base /tmp/relobot-navigation/log build --base-paths /ros2_ws/src /opt/opennav_coverage --packages-up-to nav2 robot_pose_publisher explore_lite opennav_coverage --build-base /tmp/relobot-navigation/build --install-base /tmp/relobot-navigation/install --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF' \
-    '  source /tmp/relobot-navigation/install/setup.bash' \
-    'else' \
-    '  source /opt/relobot/navigation/install/setup.bash' \
+    'cd /ros2_ws' \
+    'if [ "$DEV" = "true" ] || [ ! -f /ros2_ws/install/opennav_coverage_msgs/share/opennav_coverage_msgs/package.xml ] || [ ! -f /ros2_ws/install/coverage_geometry/share/coverage_geometry/package.xml ]; then' \
+    '  colcon build --base-paths /ros2_ws/src /opt/opennav_coverage --packages-up-to nav2 robot_pose_publisher explore_lite opennav_coverage --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF' \
     'fi' \
+    'source install/setup.bash' \
     'if [[ "${USE_SIM_TIME:-false}" == "true" ]]; then' \
     '  timeout 60 ros2 topic echo /clock rosgraph_msgs/msg/Clock --once --no-daemon > /dev/null' \
     'fi' \
