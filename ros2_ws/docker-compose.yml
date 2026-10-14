@@ -42,6 +42,8 @@ services:
     volumes:
       - .:/ros2_ws/
       - /tmp:/tmp
+      - cargo_registry:/root/.cargo/registry
+      - cargo_git:/root/.cargo/git
     environment:
       <<: *ros-env
       PYTHONDONTWRITEBYTECODE: 1
@@ -204,3 +206,7 @@ services:
     entrypoint: /bin/sh /scripts/certbot_entrypoint.sh
     network_mode: host
     restart: "no"
+
+volumes:
+  cargo_registry:
+  cargo_git:

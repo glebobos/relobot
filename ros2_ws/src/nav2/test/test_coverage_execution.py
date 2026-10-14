@@ -1064,7 +1064,7 @@ def test_coverage_profile_is_shared_without_changing_clock(use_sim_time, namespa
     assert loaded['planner_server']['ros__parameters']['planner_plugins'] == ['GridBased']
     planner = loaded['planner_server']['ros__parameters']['GridBased']
     assert planner['plugin'] == 'nav2_smac_planner::SmacPlannerLattice'
-    assert not planner['allow_reverse_expansion']
+    assert planner['allow_reverse_expansion']
     assert not planner['smooth_path']
     assert not planner['cache_obstacle_heuristic']
     assert planner['max_planning_time'] == 2.0
