@@ -241,12 +241,14 @@ export class ControlPanel {
         }
 
         const busy = ['planning', 'executing', 'cancel_requested'].includes(status.state);
-        const isError = ['failed', 'error', 'rejected', 'server_unavailable'].includes(status.state);
-        const previewReady = ['preview_ready', 'completed', 'executing'].includes(status.state);
+        const isError = ['failed', 'error', 'rejected', 'server_unavailable', 'blocked', 'polygon_invalid', 'stale_preview'].includes(status.state);
+        const previewReady = typeof status.can_execute === 'boolean'
+            ? status.can_execute
+            : ['preview_ready', 'completed', 'executing'].includes(status.state);
 
         if (this.coveragePreviewBtn) this.coveragePreviewBtn.disabled = busy;
         if (this.coverageExecuteBtn) {
-            this.coverageExecuteBtn.disabled = busy && status.state !== 'executing';
+            this.coverageExecuteBtn.disabled = status.state !== 'executing' && (busy || !previewReady);
             this.coverageExecuteBtn.classList.toggle('is-active', status.state === 'executing');
         }
         if (this.coverageStopBtn) this.coverageStopBtn.disabled = false;

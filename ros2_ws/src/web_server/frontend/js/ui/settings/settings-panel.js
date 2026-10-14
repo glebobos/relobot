@@ -162,6 +162,14 @@ export class SettingsPanel {
     }
 
     addLog(msg) {
+        // Prevent identical back-to-back duplicate log lines within 50ms
+        const now = Date.now();
+        if (this._lastLogMsg === msg && (now - (this._lastLogTime || 0)) < 50) {
+            return;
+        }
+        this._lastLogMsg = msg;
+        this._lastLogTime = now;
+
         const time = new Date().toISOString().slice(11, 19);
         const logLine = `[${time}] ${msg}\n`;
         this.logBuffer.push(logLine);
@@ -181,6 +189,10 @@ export class SettingsPanel {
     }
 
     subscribeRosout() {
+        if (this.rosoutSubscription) {
+            console.log('[SettingsPanel] Already subscribed to /rosout, skipping');
+            return;
+        }
         try {
             this.rosoutSubscription = rosService.subscribe(TOPICS.ROSOUT, MSG_TYPES.LOG, (msg) => {
                 let levelStr = 'INFO';

@@ -38,7 +38,9 @@ export class MapOverlayRenderer {
         [this.previewLayer, this.polygonLayer, this.obstacleLayer, this.zoneLayer, this.targetLayer, this.controllerPlanLayer]
             .forEach(layer => this.scene.add(layer));
 
-        this.previewLine = new DynamicLine(0xd17a00, 5000, 1);
+        this.previewLine = new DynamicLine(0xd17a00, 5000, 1, { segmented: true });
+        this.previewMessage = null;
+        this.previewSections = null;
         this.polygonLine = new DynamicLine(0x1a6fcc, 5000, 1);
         this.zoneLine = new DynamicLine(0x00e676, 100, 1);
         this.controllerPlanLine = new DynamicLine(0x00e5ff, 5000, 2, { transparent: true, opacity: 1.0 });
@@ -74,17 +76,56 @@ export class MapOverlayRenderer {
         this.controllerPlanActive = true;
     }
 
-    renderPreviewPath(message) {
-        const points = message?.poses
-            ?.map(pose => pose?.pose?.position)
-            .filter(finitePoint)
-            .map(point => new THREE.Vector3(point.x, point.y, 0.05)) || [];
-        if (points.length < 2 || !validCoordinates(points)) {
-            if (points.length >= 2) console.warn('[MapOverlayRenderer] Rejected invalid preview path.');
+    renderPreviewSections(message) {
+        try {
+            this.previewSections = JSON.parse(message.data);
+        } catch {
             this.previewLine.clear();
             return;
         }
-        this.previewLine.updatePoints(points);
+        this.renderPreviewPath(this.previewMessage);
+    }
+
+    renderPreviewPath(message) {
+        this.previewMessage = message;
+        const poses = message?.poses || [];
+        const points = poses.map(pose => pose?.pose?.position);
+        if (points.length < 2 || !points.every(finitePoint) || !validCoordinates(points)) {
+            this.previewLine.clear();
+            return;
+        }
+        const stamp = message.header?.stamp;
+        if (this.previewSections && (this.previewSections.stamp?.[0] !== stamp?.sec
+                || this.previewSections.stamp?.[1] !== stamp?.nanosec)) {
+            this.previewLine.clear();
+            return;
+        }
+        const sections = this.previewSections?.work_sections || [[0, points.length - 1]];
+        const segments = [];
+        let nextIndex = 0;
+        if (!Array.isArray(sections)) {
+            this.previewLine.clear();
+            return;
+        }
+        for (const section of sections) {
+            if (!Array.isArray(section) || section.length !== 2 || !section.every(Number.isInteger)
+                    || section[0] !== nextIndex || section[1] <= section[0] || section[1] >= points.length) {
+                this.previewLine.clear();
+                return;
+            }
+            const [start, end] = section;
+            for (let index = start; index < end; index++) {
+                for (const point of [points[index], points[index + 1]]) {
+                    segments.push(new THREE.Vector3(point.x, point.y, 0.05));
+                }
+            }
+            nextIndex = end + 1;
+        }
+        if (nextIndex !== points.length) {
+            this.previewLine.clear();
+            return;
+        }
+        this.previewLine.updatePoints(segments);
     }
 
     renderMapPolygon(message) {

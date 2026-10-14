@@ -101,7 +101,7 @@ class AprilTagManager(Node):
 
         # --- In-Process Dock Pose Publishing (Zero subprocess) ---
         self._tf_buffer = tf2_ros.Buffer(cache_time=rclpy.duration.Duration(seconds=5.0))
-        self._tf_listener = tf2_ros.TransformListener(self._tf_buffer, self)
+        self._tf_listener: tf2_ros.TransformListener | None = None
         self._dock_pub = self.create_publisher(PoseStamped, '/detected_dock_pose', 1)
         self._dock_timer = None
         self._last_pose: PoseStamped | None = None
@@ -270,6 +270,10 @@ class AprilTagManager(Node):
     # ------------------------------------------------------------------
     def _start_dock_pose_publisher(self):
         with self._lock:
+            if self._tf_listener is None:
+                self.get_logger().info('Attaching TransformListener for active docking...')
+                self._tf_listener = tf2_ros.TransformListener(self._tf_buffer, self)
+
             if self._dock_timer is not None:
                 return
             rate = max(self._publish_rate, 1.0)
@@ -279,15 +283,27 @@ class AprilTagManager(Node):
 
     def _stop_dock_pose_publisher(self):
         with self._lock:
-            if self._dock_timer is None:
-                return
-            self.get_logger().info('Deactivating dock pose publisher...')
-            self._dock_timer.cancel()
-            self._dock_timer = None
+            if self._dock_timer is not None:
+                self.get_logger().info('Deactivating dock pose publisher...')
+                self._dock_timer.cancel()
+                self._dock_timer = None
+
+            if self._tf_listener is not None:
+                self.get_logger().info('Detaching TransformListener (returning to idle)...')
+                try:
+                    self._tf_listener.unregister()
+                except Exception as e:
+                    self.get_logger().warn(f'Error unregistering TransformListener: {e}')
+                self._tf_listener = None
+                self._tf_buffer.clear()
+
             self._last_pose = None
             self._last_detected_time = None
 
     def _publish_dock_pose(self):
+        with self._lock:
+            if self._tf_listener is None:
+                return
         now = self.get_clock().now()
         try:
             t = self._tf_buffer.lookup_transform(

@@ -12,6 +12,7 @@ class RosService {
         this._minBackoffMs = 500;
         this._maxBackoffMs = 5000;
         this._managedSubscriptions = new Set();
+        this._hasConnectedOnce = false;
         
         // Initialize Ros instance
         this.ros = new Ros({ url: this.url });
@@ -34,7 +35,11 @@ class RosService {
                 this._stableTimer = null;
             }, 5000);
 
-            this._resubscribeAll();
+            if (this._hasConnectedOnce) {
+                this._resubscribeAll();
+            } else {
+                this._hasConnectedOnce = true;
+            }
         });
 
         this.ros.on('error', (e) => {
@@ -76,8 +81,16 @@ class RosService {
         console.log(`[RosService] Re-hydrating ${this._managedSubscriptions.size} active subscriptions...`);
         for (const entry of this._managedSubscriptions) {
             try {
-                // Re-create a fresh Topic instance bound to the reconnected Ros instance
-                // to avoid stale socket/subscription state in roslibjs across reconnects
+                // 1. Clean up old topic instance and listeners to prevent duplicate callbacks
+                if (entry.topic) {
+                    try {
+                        entry.topic.unsubscribe(entry.callback);
+                        if (typeof entry.topic.removeAllListeners === 'function') {
+                            entry.topic.removeAllListeners();
+                        }
+                    } catch (_) {}
+                }
+                // 2. Re-create a fresh Topic instance bound to the reconnected Ros instance
                 entry.topic = this.createTopic(entry.name, entry.messageType, entry.options);
                 entry.topic.subscribe(entry.callback);
                 console.log(`[RosService] Resubscribed: ${entry.name} [${entry.messageType}]`);
@@ -117,7 +130,7 @@ class RosService {
         const entry = { name, messageType, options, callback, topic };
         this._managedSubscriptions.add(entry);
 
-        return new RosSubscription(topic, callback, () => {
+        return new RosSubscription(entry, () => {
             this._managedSubscriptions.delete(entry);
             console.log(`[RosService] Unsubscribed from "${name}"`);
         });

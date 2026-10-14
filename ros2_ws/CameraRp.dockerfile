@@ -21,6 +21,8 @@ RUN apt-get update && apt-get install -y \
     ros-humble-image-view \
     ros-humble-web-video-server \
     ros-humble-image-proc \
+    ros-humble-compressed-image-transport \
+    ros-humble-image-transport-plugins \
     && rm -rf /var/lib/apt/lists/*
 
 # Install newer meson via pip (required for libcamera build)

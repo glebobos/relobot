@@ -44,6 +44,7 @@ export const TOPICS = {
     COVERAGE_COMMAND: '/coverage/command',
     COVERAGE_STATUS: '/coverage/status',
     COVERAGE_PREVIEW_PATH: '/coverage/preview_path',
+    COVERAGE_PREVIEW_SECTIONS: '/coverage/preview_sections',
     COVERAGE_POLYGON_ACTIVE: '/coverage/polygon_active',
     COVERAGE_OBSTACLES_ACTIVE: '/coverage/obstacles_active',
 
