@@ -1,42 +1,54 @@
-FROM microros/micro-ros-agent:humble AS micro_ros_stage
+FROM ros:lyrical-ros-base-resolute@sha256:f79cd486fa218596747c45d00ca42101b0303fc6d94ed5adb72145cd6f54b86c
 
-FROM ros:humble
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+ENV DEBIAN_FRONTEND=noninteractive RMW_IMPLEMENTATION=rmw_zenoh_cpp
 
-# Install additional dependencies
-RUN apt-get update && apt-get install -y \
-    ros-humble-ros2launch \
-    ros-humble-ros2-control \
-    ros-humble-ros2-controllers \
-    ros-humble-controller-manager \
-    ros-humble-realtime-tools \
-    ros-humble-topic-based-ros2-control \
-    ros-humble-xacro \
-    ros-humble-joint-state-publisher \
-    ros-humble-robot-state-publisher \
-    ros-humble-robot-localization \
+# Install build dependencies and ROS2 control / localization packages
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    cmake \
+    build-essential \
+    ros-lyrical-rmw-zenoh-cpp \
+    ros-lyrical-rmw-fastrtps-cpp \
+    ros-lyrical-ros2launch \
+    ros-lyrical-ros2-control \
+    ros-lyrical-ros2-controllers \
+    ros-lyrical-controller-manager \
+    ros-lyrical-realtime-tools \
+    ros-lyrical-xacro \
+    ros-lyrical-joint-state-publisher \
+    ros-lyrical-robot-state-publisher \
+    ros-lyrical-robot-localization \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy micro-ros-agent from official image
-COPY --from=micro_ros_stage /uros_ws /uros_ws
+# Build micro-ROS agent and topic_based_ros2_control for Lyrical
+WORKDIR /opt/uros_ws/src
+RUN git clone -b rolling https://github.com/micro-ROS/micro_ros_msgs.git && \
+    git clone -b rolling https://github.com/micro-ROS/micro-ROS-Agent.git && \
+    git clone https://github.com/PickNikRobotics/topic_based_ros2_control.git
 
-# Create workspace
+WORKDIR /opt/uros_ws
+RUN . /opt/ros/lyrical/setup.sh && \
+    colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF && \
+    echo "source /opt/uros_ws/install/setup.bash" >> /root/.bashrc
+
+# Workspace setup
 WORKDIR /ros2_ws
+RUN echo "source /opt/ros/lyrical/setup.bash" >> /root/.bashrc
 
-# Source the workspace
-RUN echo "source /opt/ros/humble/setup.bash" >> /root/.bashrc
-
-# Create development script
-RUN echo '#!/bin/bash\n\
-set -e\n\
-source /opt/ros/humble/setup.bash\n\
-source /uros_ws/install/local_setup.bash\n\
-cd /ros2_ws\n\
-if [ "$DEV" = "true" ]; then\n\
-  colcon build --packages-select diff_drive_hardware\n\
-fi\n\
-source install/setup.bash\n\
-ros2 launch diff_drive_hardware diffbot.launch.py' > /start_dev.sh && \
-chmod +x /start_dev.sh
+# Development startup script
+RUN printf '%s\n' \
+    '#!/bin/bash' \
+    'set -eo pipefail' \
+    'source /opt/ros/lyrical/setup.bash' \
+    'source /opt/uros_ws/install/setup.bash' \
+    'cd /ros2_ws' \
+    'if [ "$DEV" = "true" ] || [ ! -f /ros2_ws/install/diff_drive_hardware/share/diff_drive_hardware/package.xml ]; then' \
+    '  colcon build --packages-select diff_drive_hardware --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF' \
+    'fi' \
+    'source install/setup.bash' \
+    'exec ros2 launch diff_drive_hardware diffbot.launch.py' \
+    > /start_dev.sh && chmod +x /start_dev.sh
 
 EXPOSE 5000
 

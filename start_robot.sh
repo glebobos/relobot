@@ -15,6 +15,9 @@
 # limitations under the License.
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROS2_WS_DIR="${SCRIPT_DIR}/ros2_ws"
+
 # Parse arguments
 COMMAND=""
 SERVICE=""
@@ -22,9 +25,15 @@ DEV=false
 SIM=false
 SIM_GUI=true
 SIM_WORLD="garden_world.sdf"
+WSLG=false
+DETACH=false
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
+        -d|--detach)
+            DETACH=true
+            shift
+            ;;
         --dev)
             DEV=true
             shift
@@ -41,16 +50,26 @@ while [[ $# -gt 0 ]]; do
             SIM_GUI=true
             shift
             ;;
+        --wslg)
+            WSLG=true
+            shift
+            ;;
         --world)
             if [[ -n "$2" && ! "$2" =~ ^-- ]]; then
                 SIM_WORLD="$2"
-                # If user passed short name like 'garden', append '_world.sdf'
-                if [[ ! "$SIM_WORLD" =~ \.sdf$ ]]; then
-                    if [[ "$SIM_WORLD" =~ _world$ ]]; then
-                        SIM_WORLD="${SIM_WORLD}.sdf"
-                    else
-                        SIM_WORLD="${SIM_WORLD}_world.sdf"
-                    fi
+                if [[ "$SIM_WORLD" == obstacles || "$SIM_WORLD" == obstacle ]]; then
+                    SIM_WORLD="obstacle_world.sdf"
+                elif [[ "$SIM_WORLD" =~ \.sdf$ ]]; then
+                    SIM_WORLD="$SIM_WORLD"
+                elif [[ "$SIM_WORLD" =~ _world$ ]]; then
+                    SIM_WORLD="${SIM_WORLD}.sdf"
+                else
+                    SIM_WORLD="${SIM_WORLD}_world.sdf"
+                fi
+                if [[ ! -f "${SCRIPT_DIR}/ros2_ws/src/relobot_gazebo/worlds/${SIM_WORLD}" ]]; then
+                    echo "Error: World '${SIM_WORLD}' not found in ros2_ws/src/relobot_gazebo/worlds/"
+                    echo "Available worlds: garden, obstacles, empty (e.g. garden_world.sdf, obstacle_world.sdf, empty_world.sdf)"
+                    exit 1
                 fi
                 shift 2
             else
@@ -87,17 +106,28 @@ if [ -z "$COMMAND" ]; then
     echo "  --sim          - Run in Gazebo simulation mode (swaps hardware drivers for Gazebo)"
     echo "  --gui          - Launch Gazebo 3D GUI (default in sim mode)"
     echo "  --headless     - Run Gazebo in headless mode (no GUI window)"
+    echo "  --wslg         - Enable WSLg devices and libraries (requires --sim --gui)"
     echo "  --world <name> - Specify world: garden (default), obstacles, empty"
     echo "  --dev          - Enable development mode (rebuilds ROS2 packages on startup)"
     exit 1
 fi
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROS2_WS_DIR="${SCRIPT_DIR}/ros2_ws"
 cd "${ROS2_WS_DIR}"
 
 export DEV="${DEV}"
 export RELOBOT_HOST_DIR="${SCRIPT_DIR}"
+COMPOSE=(docker compose -f docker-compose.yml)
+if [[ "$WSLG" = true ]]; then
+    if [[ "$SIM" != true || "$SIM_GUI" != true ]]; then
+        echo "Error: --wslg requires --sim --gui"
+        exit 1
+    fi
+    if [[ ! -e /dev/dxg || ! -d /mnt/wslg || ! -d /usr/lib/wsl/lib ]]; then
+        echo "Error: --wslg requires /dev/dxg, /mnt/wslg and /usr/lib/wsl/lib"
+        exit 1
+    fi
+    COMPOSE+=(-f docker-compose.wslg.yml)
+fi
 
 if [ "$SIM" = true ]; then
     export COMPOSE_PROFILES="sim"
@@ -107,13 +137,11 @@ if [ "$SIM" = true ]; then
     export SIM_GUI="${SIM_GUI}"
     
     # Configure X11 / WSLg display permissions for Docker
-    if [ "$SIM_GUI" = true ]; then
+    if [[ "$SIM_GUI" = true && "$COMMAND" = up ]]; then
         if command -v xhost &>/dev/null; then
-            xhost +local:docker 2>/dev/null || true
-            xhost + 2>/dev/null || true
+            xhost +SI:localuser:root 2>/dev/null || true
         fi
         export DISPLAY="${DISPLAY:-:0}"
-        export WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-wayland-0}"
     fi
 
     echo "=========================================================="
@@ -133,19 +161,6 @@ else
     echo "=========================================================="
 fi
 
-# Function to clean up stale FastDDS shared memory and semaphore segments
-cleanup_fastdds_shm() {
-    if [ -d /dev/shm ]; then
-        if sudo -n true 2>/dev/null; then
-            sudo rm -f /dev/shm/fastrtps_* /dev/shm/sem.fastrtps_* 2>/dev/null || true
-        else
-            rm -f /dev/shm/fastrtps_* /dev/shm/sem.fastrtps_* 2>/dev/null || true
-            # Clean up root-owned shared memory files via Docker without requiring sudo password
-            docker run --rm --ipc=host busybox sh -c "rm -f /dev/shm/fastrtps_* /dev/shm/sem.fastrtps_*" 2>/dev/null || true
-        fi
-    fi
-}
-
 if [ "$COMMAND" == "up" ]; then
     # Pre-flight check: FastDDS host socket buffer limits
     RMEM_MAX=$(sysctl -n net.core.rmem_max 2>/dev/null || echo 0)
@@ -155,39 +170,38 @@ if [ "$COMMAND" == "up" ]; then
         echo -e "\033[33m  echo -e 'net.core.rmem_max = 67108864\\nnet.core.rmem_default = 33554432\\nnet.core.wmem_max = 67108864\\nnet.core.wmem_default = 33554432' | sudo tee /etc/sysctl.d/99-ros2-fastdds.conf && sudo sysctl --system\033[0m"
     fi
 
-    # Clean up any leftover SHM segments from crashed runs to prevent memory exhaustion
-    cleanup_fastdds_shm
+    UP_ARGS=(--remove-orphans)
+    if [ "$DETACH" = true ]; then
+        UP_ARGS+=(-d)
+    fi
 
     if [ -z "$SERVICE" ]; then
-        docker compose --profile "${COMPOSE_PROFILES}" up --remove-orphans
+        "${COMPOSE[@]}" --profile "${COMPOSE_PROFILES}" up "${UP_ARGS[@]}"
     else
-        docker compose --profile "${COMPOSE_PROFILES}" up --remove-orphans "${SERVICE}"
+        "${COMPOSE[@]}" --profile "${COMPOSE_PROFILES}" up "${UP_ARGS[@]}" "${SERVICE}"
     fi
 
 elif [ "$COMMAND" == "down" ]; then
     echo "Stopping all services..."
-    docker compose --profile hardware --profile sim down --remove-orphans
-    # Clean up FastDDS shared memory segments after stopping containers
-    cleanup_fastdds_shm
-    echo "Cleaned up FastDDS shared memory segments."
+    "${COMPOSE[@]}" --profile hardware --profile sim down --remove-orphans
     echo "All ReloBot services stopped."
 
 elif [ "$COMMAND" == "build" ]; then
     if [ -z "$SERVICE" ]; then
-        docker compose --profile "${COMPOSE_PROFILES}" build
+        "${COMPOSE[@]}" --profile "${COMPOSE_PROFILES}" build
     else
-        docker compose --profile "${COMPOSE_PROFILES}" build "${SERVICE}"
+        "${COMPOSE[@]}" --profile "${COMPOSE_PROFILES}" build "${SERVICE}"
     fi
 
 elif [ "$COMMAND" == "logs" ]; then
     if [ -z "$SERVICE" ]; then
-        docker compose --profile "${COMPOSE_PROFILES}" logs -f
+        "${COMPOSE[@]}" --profile "${COMPOSE_PROFILES}" logs -f
     else
-        docker compose --profile "${COMPOSE_PROFILES}" logs -f "${SERVICE}"
+        "${COMPOSE[@]}" --profile "${COMPOSE_PROFILES}" logs -f "${SERVICE}"
     fi
 
 elif [ "$COMMAND" == "ps" ]; then
-    docker compose --profile "${COMPOSE_PROFILES}" ps
+    "${COMPOSE[@]}" --profile "${COMPOSE_PROFILES}" ps
 
 else
     echo "Error: Invalid command '$COMMAND'"

@@ -19,7 +19,7 @@ class GamepadService {
 
     init() {
         // Create topics
-        this.cmdVelTopic = rosService.createTopic(TOPICS.CMD_VEL, MSG_TYPES.TWIST);
+        this.cmdVelTopic = rosService.createTopic(TOPICS.CMD_VEL, MSG_TYPES.TWIST_STAMPED);
         this.knifeRpmTopic = rosService.createTopic(TOPICS.CMD_KNIVES, MSG_TYPES.FLOAT32);
 
         // Publish knife RPM at a fixed interval (200ms)
@@ -55,8 +55,14 @@ class GamepadService {
     publishTwist(linear, angular) {
         if (!this.cmdVelTopic) return;
         this.cmdVelTopic.publish({
-            linear: { x: linear, y: 0, z: 0 },
-            angular: { x: 0, y: 0, z: angular },
+            header: {
+                frame_id: 'base_link',
+                stamp: { sec: 0, nanosec: 0 },
+            },
+            twist: {
+                linear: { x: linear, y: 0, z: 0 },
+                angular: { x: 0, y: 0, z: angular },
+            },
         });
     }
 

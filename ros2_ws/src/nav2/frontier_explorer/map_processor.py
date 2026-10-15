@@ -114,12 +114,12 @@ class MapProcessor:
         # Check for invalid map parameters (e.g. SLAM glitches with extremely large values or NaNs)
         if not (math.isfinite(origin_x) and math.isfinite(origin_y) and math.isfinite(res)):
             if self._logger:
-                self._logger.warn("Map processor: Non-finite origin coordinates or resolution. Skipping map processing.")
+                self._logger.warning("Map processor: Non-finite origin coordinates or resolution. Skipping map processing.")
             return None, []
 
         if abs(origin_x) > 100.0 or abs(origin_y) > 100.0 or res <= 0.0 or res > 10.0:
             if self._logger:
-                self._logger.warn(
+                self._logger.warning(
                     f"Map processor: Map params exceed reasonable bounds. "
                     f"origin: ({origin_x:.1f}, {origin_y:.1f}), res: {res:.4f}. Skipping map processing."
                 )
@@ -191,7 +191,7 @@ class MapProcessor:
                     break
             else:
                 if self._logger:
-                    self._logger.warn(
+                    self._logger.warning(
                         'Map contour simplification produced fewer than 3 vertices; skipping polygon update.'
                     )
                 return None, []
@@ -209,7 +209,7 @@ class MapProcessor:
             y_coord = origin_y + row * res
             if abs(x_coord) > 100.0 or abs(y_coord) > 100.0:
                 if self._logger:
-                    self._logger.warn(f"Map processor: Extracted boundary point ({x_coord:.1f}, {y_coord:.1f}) exceeds reasonable bounds. Skipping.")
+                    self._logger.warning(f"Map processor: Extracted boundary point ({x_coord:.1f}, {y_coord:.1f}) exceeds reasonable bounds. Skipping.")
                 return None, []
             poly.polygon.points.append(Point32(
                 x=x_coord,

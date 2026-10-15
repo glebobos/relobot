@@ -347,6 +347,8 @@ def test_ingress_waits_for_stop_then_submits_only_the_coverage_route():
     sent_goal = executor.send.call_args.args[1]
     assert sent_goal.controller_id == 'CoverageFollowPath'
     assert sent_goal.goal_checker_id == 'coverage_goal_checker'
+    assert sent_goal.progress_checker_id == 'progress_checker'
+    assert sent_goal.path_handler_id == 'CoveragePathHandler'
     assert [stamped.pose for stamped in sent_goal.path.poses] == [
         stamped.pose for stamped in route_before.poses]
     assert sent_goal.path.header.stamp == Time(nanoseconds=1_000_000_000).to_msg()
@@ -379,7 +381,7 @@ def test_coverage_tracking_deviation_warns_without_fabricating_a_return_path(dev
     transform.rotation.w = 1.0
     executor.tf.lookup_transform.return_value.transform = transform
     executor.check_horizon()
-    executor.node.get_logger.return_value.warn.assert_called_once()
+    executor.node.get_logger.return_value.warning.assert_called_once()
     checked_path = executor.local.check_path.call_args.args[0]
     assert len(checked_path.poses) == 1
     assert checked_path.poses[0].pose.position.y == 2.0 + deviation
@@ -1042,9 +1044,7 @@ def test_coverage_profile_is_shared_without_changing_clock(use_sim_time, namespa
     spec.loader.exec_module(module)
     context = LaunchContext()
     context.launch_configurations.update(use_sim_time=use_sim_time, namespace=namespace)
-    params = module.CoverageTrialParameters(
-        overlay=str(root / 'config/coverage_sim.yaml'),
-        namespace=LaunchConfiguration('namespace'),
+    params = module.RewrittenYaml(
         source_file=str(root / 'config/explore.yaml'), root_key=LaunchConfiguration('namespace'),
         param_rewrites={'use_sim_time': LaunchConfiguration('use_sim_time')}, convert_types=True)
     with open(params.perform(context)) as stream:
@@ -1055,7 +1055,7 @@ def test_coverage_profile_is_shared_without_changing_clock(use_sim_time, namespa
     assert controller['use_sim_time'] == (use_sim_time == 'true')
     assert 'CoverageFollowPath' in controller['controller_plugins']
     assert loaded['local_costmap']['local_costmap']['ros__parameters']['footprint'].startswith('[[')
-    assert controller['CoverageFollowPath']['motion_model'] == 'Ackermann'
+    assert controller['CoverageFollowPath']['motion_model'] == 'ackermann'
     assert controller['CoverageFollowPath']['vx_min'] == 0.0
     assert controller['CoverageFollowPath']['vx_max'] == 0.20
     assert controller['controller_plugins'] == ['FollowPath', 'CoverageFollowPath']
@@ -1063,8 +1063,8 @@ def test_coverage_profile_is_shared_without_changing_clock(use_sim_time, namespa
     assert not loaded['coverage_manager']['ros__parameters']['recovery_backup_enabled']
     assert loaded['planner_server']['ros__parameters']['planner_plugins'] == ['GridBased']
     planner = loaded['planner_server']['ros__parameters']['GridBased']
-    assert planner['plugin'] == 'nav2_smac_planner/SmacPlannerLattice'
-    assert not planner['allow_reverse_expansion']
+    assert planner['plugin'] == 'nav2_smac_planner::SmacPlannerLattice'
+    assert planner['allow_reverse_expansion']
     assert not planner['smooth_path']
     assert not planner['cache_obstacle_heuristic']
     assert planner['max_planning_time'] == 2.0
@@ -1079,8 +1079,8 @@ def test_coverage_profile_is_shared_without_changing_clock(use_sim_time, namespa
     work = controller['CoverageFollowPath']
     assert controller['FollowPath']['batch_size'] == 300
     assert work['batch_size'] == 1000
-    assert work['max_robot_pose_search_dist'] == 0.6
-    assert work['prune_distance'] == 1.2
+    assert controller['CoveragePathHandler']['max_robot_pose_search_dist'] == 0.6
+    assert controller['CoveragePathHandler']['prune_distance'] == 1.2
     assert work['GoalCritic']['threshold_to_consider'] == 0.10
     assert work['PathFollowCritic']['threshold_to_consider'] == 0.10
     assert work['VelocityDeadbandCritic']['deadband_velocities'] == [0.18, 0.0, 0.0]
@@ -1091,14 +1091,18 @@ def test_coverage_profile_is_shared_without_changing_clock(use_sim_time, namespa
         assert {'validate_control_sequence', 'wheel_radius', 'wheel_separation',
                 'wheel_minimum_velocity'}.isdisjoint(profile)
         assert 'consider_filled_footprint' not in profile['CostCritic']
-    assert work['AckermannConstraints']['min_turning_r'] == 0.20
+    assert work['ackermann']['plugin'] == 'mppi::AckermannMotionModel'
+    assert work['ackermann']['min_turning_r'] == 0.20
     assert loaded['coverage_manager']['ros__parameters']['path_type'] == 'DUBIN'
     assert loaded['coverage_manager']['ros__parameters']['clearance'] == 0.25
-    assert controller['FollowPath']['motion_model'] == 'DiffDrive'
+    assert controller['FollowPath']['motion_model'] == 'diff_drive'
+    assert controller['FollowPath']['diff_drive']['plugin'] == 'mppi::DiffDriveMotionModel'
     assert controller['FollowPath']['vx_min'] == 0.0
     assert controller['FollowPath']['vx_max'] == 0.40
-    assert controller['FollowPath']['max_robot_pose_search_dist'] == 2.5
-    assert controller['FollowPath']['prune_distance'] == 1.6
+    assert controller['PathHandler']['max_robot_pose_search_dist'] == 2.5
+    assert controller['PathHandler']['prune_distance'] == 1.6
+    assert controller['path_handler_plugins'] == ['PathHandler', 'CoveragePathHandler']
+    assert controller['progress_checker_plugins'] == ['progress_checker']
     assert controller['FollowPath']['PathFollowCritic']['threshold_to_consider'] == 0.5
     assert 'VelocityDeadbandCritic' not in controller['FollowPath']['critics']
     assert (loaded['velocity_smoother']['ros__parameters']['max_velocity'][0]
@@ -1121,10 +1125,12 @@ project(ordered_warning_progress LANGUAGES CXX)
 find_package(ament_cmake REQUIRED)
 find_package(nav2_controller REQUIRED)
 find_package(nav2_costmap_2d REQUIRED)
+find_package(nav2_ros_common REQUIRED)
 find_package(pluginlib REQUIRED)
 add_executable(ordered_probe ordered_probe.cpp)
-target_compile_features(ordered_probe PRIVATE cxx_std_17)
-ament_target_dependencies(ordered_probe nav2_controller nav2_costmap_2d pluginlib)
+target_compile_features(ordered_probe PRIVATE cxx_std_20)
+target_link_libraries(ordered_probe ${nav2_controller_TARGETS}
+    nav2_costmap_2d::nav2_costmap_2d_core nav2_ros_common::nav2_ros_common pluginlib::pluginlib)
 ''')
         (tmp_path / 'ordered_probe.cpp').write_text(f'#include "{implementation}"\n' + '''
 #include "rclcpp/rclcpp.hpp"
@@ -1135,10 +1141,11 @@ ament_target_dependencies(ordered_probe nav2_controller nav2_costmap_2d pluginli
 int main(int argc, char ** argv)
 {
     rclcpp::init(argc, argv);
-    auto costmap = std::make_shared<nav2_costmap_2d::Costmap2DROS>("ordered_probe");
-    costmap->set_parameter(rclcpp::Parameter("plugins", std::vector<std::string>{}));
+    rclcpp::NodeOptions options;
+    options.parameter_overrides({rclcpp::Parameter("plugins", std::vector<std::string>{})});
+    auto costmap = std::make_shared<nav2_costmap_2d::Costmap2DROS>("ordered_probe", "/", false, options);
     costmap->configure();
-    auto node = std::make_shared<rclcpp_lifecycle::LifecycleNode>("ordered_checker_probe");
+    auto node = std::make_shared<nav2::LifecycleNode>("ordered_checker_probe");
     relobot::OrderedGoalChecker checker;
     checker.initialize(node, "goal", costmap);
     auto publisher = node->create_publisher<nav_msgs::msg::Path>("/coverage/execution_path", rclcpp::QoS(1).transient_local());
@@ -1162,15 +1169,18 @@ int main(int argc, char ** argv)
         rclcpp::spin_some(node->get_node_base_interface());
     }
     auto goal = path.poses.back().pose;
+    nav_msgs::msg::Path local_plan;
+    local_plan.header = path.header;
+    local_plan.poses = {path.poses.back()};
     geometry_msgs::msg::Twist stopped;
     for (int index = 0; index < 40; ++index) {
         auto robot = path.poses[index].pose;
         robot.position.y += 0.30;
-        if (checker.isGoalReached(robot, goal, stopped)) {
+        if (checker.isGoalReached(robot, goal, stopped, local_plan)) {
             throw std::runtime_error("Tracking warning caused premature completion");
         }
     }
-    if (!checker.isGoalReached(goal, goal, stopped)) {
+    if (!checker.isGoalReached(goal, goal, stopped, local_plan)) {
         throw std::runtime_error("Ordered progress was lost during nonfatal deviation");
     }
     path.poses.push_back(path.poses.front());
@@ -1180,8 +1190,12 @@ int main(int argc, char ** argv)
         rclcpp::spin_some(node->get_node_base_interface());
     }
     checker.reset();
-    if (checker.isGoalReached(path.poses.front().pose, path.poses.back().pose, stopped)) {
+    local_plan.poses = {path.poses.back()};
+    if (checker.isGoalReached(path.poses.front().pose, path.poses.back().pose, stopped, local_plan)) {
         throw std::runtime_error("Closed route completed at its shared start/end");
+    }
+    if (checker.isGoalXYReached(path.poses.front().pose, path.poses.back().pose, stopped, local_plan)) {
+        throw std::runtime_error("XY-only check bypassed ordered traversal");
     }
     node->declare_parameter<std::string>("reverse_goal.path_topic", "/coverage/control_path");
     node->declare_parameter<double>("reverse_goal.xy_goal_tolerance", 0.15);
@@ -1200,35 +1214,36 @@ int main(int argc, char ** argv)
         path.poses.push_back(stamped);
     }
     control_publisher->publish(path);
+    local_plan.poses = {path.poses.back()};
     const auto reverse_deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(300);
     while (std::chrono::steady_clock::now() < reverse_deadline) {
         rclcpp::spin_some(node->get_node_base_interface());
     }
     for (size_t index = 0; index < 14; ++index) {
-        if (reverse_checker.isGoalReached(path.poses[index].pose, path.poses.back().pose, stopped)) {
+        if (reverse_checker.isGoalReached(path.poses[index].pose, path.poses.back().pose, stopped, local_plan)) {
             throw std::runtime_error("Reverse section completed outside its position tolerance");
         }
     }
     auto near_goal = path.poses.back().pose;
     near_goal.position.x += 0.16;
-    if (reverse_checker.isGoalReached(near_goal, path.poses.back().pose, stopped)) {
+    if (reverse_checker.isGoalReached(near_goal, path.poses.back().pose, stopped, local_plan)) {
         throw std::runtime_error("Reverse section accepted a 16 cm endpoint error");
     }
     near_goal.position.x = path.poses.back().pose.position.x + 0.14;
     near_goal.orientation.z = std::sin(0.21 * 0.5);
     near_goal.orientation.w = std::cos(0.21 * 0.5);
-    if (reverse_checker.isGoalReached(near_goal, path.poses.back().pose, stopped)) {
+    if (reverse_checker.isGoalReached(near_goal, path.poses.back().pose, stopped, local_plan)) {
         throw std::runtime_error("Reverse section accepted a yaw error beyond 0.20 radians");
     }
     near_goal.orientation.z = std::sin(0.19 * 0.5);
     near_goal.orientation.w = std::cos(0.19 * 0.5);
-    if (!reverse_checker.isGoalReached(near_goal, path.poses.back().pose, stopped)) {
+    if (!reverse_checker.isGoalReached(near_goal, path.poses.back().pose, stopped, local_plan)) {
         throw std::runtime_error("Ordered progress vetoed the configured 15 cm endpoint tolerance");
     }
     for (size_t index = 0; index + 1 < path.poses.size(); ++index) {
-        reverse_checker.isGoalReached(path.poses[index].pose, path.poses.back().pose, stopped);
+        reverse_checker.isGoalReached(path.poses[index].pose, path.poses.back().pose, stopped, local_plan);
     }
-    if (!reverse_checker.isGoalReached(path.poses.back().pose, path.poses.back().pose, stopped)) {
+    if (!reverse_checker.isGoalReached(path.poses.back().pose, path.poses.back().pose, stopped, local_plan)) {
         throw std::runtime_error("Reverse section did not complete on its configured control path");
     }
     costmap->cleanup();
@@ -1248,13 +1263,13 @@ def test_navigation_uses_packaged_mppi_and_smac():
     import xml.etree.ElementTree as element_tree
     from ament_index_python.packages import get_package_prefix, get_package_share_directory
     for package_name in ('nav2_mppi_controller', 'nav2_smac_planner'):
-        assert get_package_prefix(package_name) == '/opt/ros/humble'
+        assert get_package_prefix(package_name) == '/opt/ros/lyrical'
     plugins = element_tree.parse(Path(get_package_share_directory('nav2_mppi_controller')) / 'mppic.xml')
     assert [plugin.attrib for plugin in plugins.findall('.//class')] == [
         {'type': 'nav2_mppi_controller::MPPIController', 'base_class_type': 'nav2_core::Controller'}]
     lattice_plugins = element_tree.parse(
         Path(get_package_share_directory('nav2_smac_planner')) / 'smac_plugin_lattice.xml')
-    assert any(plugin.attrib['name'] == 'nav2_smac_planner/SmacPlannerLattice'
+    assert any(plugin.attrib['type'] == 'nav2_smac_planner::SmacPlannerLattice'
                for plugin in lattice_plugins.findall('.//class'))
 
 
@@ -1300,31 +1315,36 @@ def test_start_requires_ready_sensors_and_valid_route_on_both_clocks(use_sim_tim
 def test_ordinary_navigation_explicitly_selects_original_goal_checker(navigation):
     import xml.etree.ElementTree as element_tree
     root = Path(__file__).resolve().parents[1]
-    with (root / 'config/coverage_sim.yaml').open() as stream:
+    with (root / 'config/explore.yaml').open() as stream:
         params = yaml.safe_load(stream)
     configured = params['bt_navigator']['ros__parameters'][f'default_nav_{navigation}_bt_xml']
     tree = element_tree.parse(root / 'behavior_trees' / Path(configured).name)
-    installed = Path('/opt/ros/humble/share/nav2_bt_navigator/behavior_trees')
-    original = element_tree.parse(installed / f'navigate_{navigation}_w_replanning_and_recovery.xml')
+    assert tree.getroot().attrib['BTCPP_format'] == '4'
     if navigation == 'to_pose':
-        reference = element_tree.parse(
-            installed / 'navigate_w_recovery_and_replanning_only_if_path_becomes_invalid.xml')
         guard = tree.find('.//Fallback[@name="FallbackComputePathToPose"]')
-        expected_guard = reference.find('.//Fallback[@name="FallbackComputePathToPose"]')
-        assert guard is not None and expected_guard is not None
-        assert [(node.tag, node.attrib) for node in guard.iter()] == [
-            (node.tag, node.attrib) for node in expected_guard.iter()]
-        planning = tree.find('.//RecoveryNode[@name="ComputePathToPose"]')
+        assert guard is not None
+        assert guard.find('.//GlobalUpdatedGoal') is not None
+        assert guard.find('.//ValidatePath').attrib['path'] == '{path}'
         compute = guard.find('ComputePathToPose')
-        assert planning is not None and compute is not None
-        planning.remove(guard)
-        planning.insert(0, compute)
+    else:
+        compute = tree.find('.//ComputePathThroughPoses')
+        passed = tree.find('.//RemovePassedGoals')
+        assert passed.attrib['input_waypoint_statuses'] == '{waypoint_statuses}'
+        assert passed.attrib['output_waypoint_statuses'] == '{waypoint_statuses}'
+    assert compute.attrib['planner_id'] == 'GridBased'
+    assert compute.attrib['error_code_id'] == '{compute_path_error_code}'
+    assert compute.attrib['error_msg'] == '{compute_path_error_msg}'
     assert len(list(tree.iter('FollowPath'))) == 1
     for follow in tree.iter('FollowPath'):
-        assert follow.attrib.pop('goal_checker_id') == 'goal_checker'
+        assert follow.attrib['goal_checker_id'] == 'goal_checker'
         assert follow.attrib['controller_id'] == 'FollowPath'
-    assert [(node.tag, node.attrib) for node in tree.iter()] == [
-        (node.tag, node.attrib) for node in original.iter()]
+        assert follow.attrib['path_handler_id'] == 'PathHandler'
+        assert follow.attrib['progress_checker_id'] == 'progress_checker'
+        assert follow.attrib['error_code_id'] == '{follow_path_error_code}'
+        assert follow.attrib['error_msg'] == '{follow_path_error_msg}'
+    recovery = tree.find('.//RoundRobin')
+    assert recovery.attrib['wrap_around'] == 'true'
+    assert [child.tag for child in recovery] == ['Sequence', 'Spin', 'Wait', 'BackUp']
 
 
 @pytest.mark.parametrize('zone_size', [(8.0, 8.0), (2.7, 4.45)])
@@ -1338,7 +1358,7 @@ def test_real_coverage_server_returns_a_valid_forward_route(tmp_path, zone_size)
     from test_coverage_path import FOOTPRINT, make_grid
 
     root = Path(__file__).resolve().parents[1]
-    with (root / 'config/coverage_sim.yaml').open() as stream:
+    with (root / 'config/explore.yaml').open() as stream:
         params = yaml.safe_load(stream)
     params = {'coverage_server': params['coverage_server']}
     params['coverage_server']['ros__parameters']['use_sim_time'] = False
@@ -1411,7 +1431,7 @@ def test_real_coverage_server_returns_a_valid_forward_route(tmp_path, zone_size)
 
 @pytest.mark.parametrize('navigation', [None, 'to_pose', 'through_poses', 'to_pose_turn', 'to_pose_heading', 'to_pose_obstacle', 'to_pose_cancel', 'to_pose_cruise', 'to_pose_params', 'recorded_ingress', 'recorded_turn_ingress', 'recorded_turn_near_obstacle', 'closed_perimeter', 'directional_route', 'directional_finish', 'long_rows', 'coverage_preview', 'coverage_preview_motion', 'coverage_backup_recovery', 'coverage_transfers', 'coverage_transfers_deadband', 'coverage_parallel_rows', 'coverage_parallel_rows_deadband', 'coverage_parallel_rows_linear_deadband', 'coverage_parallel_rows_path_follow_handoff', 'coverage_parallel_rows_diagnostics', 'coverage_parallel_rows_search_window', 'to_pose_deadband', 'to_pose_turn_deadband', 'to_pose_heading_deadband', 'to_pose_obstacle_deadband', 'to_pose_cancel_deadband', 'to_pose_cruise_deadband', 'coverage_transfers_search_window', 'to_pose_turn_search_window', 'to_pose_heading_search_window', 'to_pose_obstacle_search_window', 'coverage_transfers_batch300', 'coverage_transfers_batch1000', 'coverage_transfers_work_batch1000'])
 def test_installed_controller_and_ingress_on_synthetic_robot(tmp_path, navigation):
-    from geometry_msgs.msg import TransformStamped, Twist
+    from geometry_msgs.msg import TransformStamped, TwistStamped
     from lifecycle_msgs.srv import ChangeState
     from nav2_msgs.action import ComputePathToPose, FollowPath, NavigateToPose, NavigateThroughPoses
     from nav_msgs.msg import OccupancyGrid, Odometry
@@ -1493,9 +1513,8 @@ def test_installed_controller_and_ingress_on_synthetic_robot(tmp_path, navigatio
     spec.loader.exec_module(module)
     context = LaunchContext()
     context.launch_configurations.update(use_sim_time=str(synthetic_sim_time).lower(), namespace='')
-    params = module.CoverageTrialParameters(
-        overlay=str(root / 'config/coverage_sim.yaml'),
-        namespace=LaunchConfiguration('namespace'), source_file=str(root / 'config/explore.yaml'),
+    params = module.RewrittenYaml(
+        source_file=str(root / 'config/explore.yaml'),
         param_rewrites={'use_sim_time': str(synthetic_sim_time).lower()}, convert_types=True)
     config = params.perform(context)
     with open(config) as stream:
@@ -1671,7 +1690,7 @@ def test_installed_controller_and_ingress_on_synthetic_robot(tmp_path, navigatio
         from test_coverage_path import FOOTPRINT
         motion_validator = FreeSpaceValidator(grid, FOOTPRINT, clearance)
     def command(message):
-        velocity[:] = [message.linear.x, message.angular.z]
+        velocity[:] = [message.twist.linear.x, message.twist.angular.z]
         commands.append(tuple(velocity))
         command_times.append(time.monotonic())
         left = (velocity[0] - 0.295 * velocity[1] / 2.0) / 0.0937
@@ -1679,13 +1698,13 @@ def test_installed_controller_and_ingress_on_synthetic_robot(tmp_path, navigatio
         left = left if abs(left) >= wheel_deadband else 0.0
         right = right if abs(right) >= wheel_deadband else 0.0
         velocity[:] = [(left + right) * 0.0937 / 2.0, (right - left) * 0.0937 / 0.295]
-    node.create_subscription(Twist, '/cmd_vel', command, 10)
+    node.create_subscription(TwistStamped, '/cmd_vel', command, 10)
 
     def raw_command(message):
-        raw_commands.append((message.linear.x, message.angular.z))
+        raw_commands.append((message.twist.linear.x, message.twist.angular.z))
         raw_roles.append(coverage_owner[0].phase if coverage_owner[0] is not None else None)
 
-    node.create_subscription(Twist, '/cmd_vel_nav', raw_command, 10)
+    node.create_subscription(TwistStamped, '/cmd_vel_nav', raw_command, 10)
     last = [time.monotonic()]
     def update_pose():
         now = time.monotonic()
@@ -1777,7 +1796,8 @@ def test_installed_controller_and_ingress_on_synthetic_robot(tmp_path, navigatio
             if kind == 'to_pose':
                 goal.pose = poses[-1]
             else:
-                goal.poses = poses
+                goal.poses.header = poses[0].header
+                goal.poses.goals = poses
             handle = await_future(node, client.send_goal_async(goal))
             assert handle.accepted
             result_future = handle.get_result_async()
@@ -2101,6 +2121,8 @@ def test_installed_controller_and_ingress_on_synthetic_robot(tmp_path, navigatio
         goal = FollowPath.Goal()
         goal.path = replay_path if replay_path else make_path(points)
         goal.controller_id, goal.goal_checker_id = 'CoverageFollowPath', 'coverage_goal_checker'
+        goal.progress_checker_id = 'progress_checker'
+        goal.path_handler_id = 'CoveragePathHandler'
         path_pub.publish(goal.path)
         handle = await_future(node, follower.send_goal_async(goal))
         assert handle.accepted

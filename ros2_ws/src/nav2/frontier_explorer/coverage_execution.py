@@ -49,7 +49,7 @@ class CoverageExecution:
         self.ingress_goal_id = None
         self.follower = ActionClient(node, FollowPath, 'follow_path')
         self.backup = ActionClient(node, BackUp, 'backup')
-        self.tf = Buffer()
+        self.tf = Buffer(node=node)
         self.listener = TransformListener(self.tf, node)
         self.plan_pub = node.create_publisher(Path, '/coverage/execution_path',
             QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL))
@@ -466,6 +466,8 @@ class CoverageExecution:
         goal.path = path
         goal.controller_id = 'CoverageFollowPath'
         goal.goal_checker_id = 'coverage_goal_checker'
+        goal.progress_checker_id = 'progress_checker'
+        goal.path_handler_id = 'CoveragePathHandler'
         self.report('executing', 'Following the validated work section.', phase=self.phase,
                     path_points=len(path.poses), path_length_m=self.tracker.length,
                     motion_direction='forward',
@@ -517,7 +519,7 @@ class CoverageExecution:
         tracking_warning = not tracking['tracking_valid'] or tracking['path_distance_m'] > 0.15
         if tracking_warning and time.monotonic() - getattr(self, 'last_tracking_warning', 0.0) >= 2.0:
             self.last_tracking_warning = time.monotonic()
-            self.node.get_logger().warn(
+            self.node.get_logger().warning(
                 f"Coverage tracking deviation: {tracking['path_distance_m']:.3f} m; "
                 'MPPI collision checking remains active')
         if tracking['tracking_valid']:

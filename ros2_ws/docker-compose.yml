@@ -3,13 +3,23 @@ x-ros-env: &ros-env
   PYTHONUNBUFFERED: 1
   OPENBLAS_NUM_THREADS: 1
   OMP_NUM_THREADS: 2
-  FASTDDS_DEFAULT_PROFILES_FILE: ${FASTDDS_DEFAULT_PROFILES_FILE:-/ros2_ws/fastdds_localhost.xml}
-  FASTRTPS_DEFAULT_PROFILES_FILE: ${FASTRTPS_DEFAULT_PROFILES_FILE:-/ros2_ws/fastdds_localhost.xml}
+  RMW_IMPLEMENTATION: rmw_zenoh_cpp
 
 services:
   # ==========================================================
   # Core Services (Active in BOTH Hardware and Simulation)
   # ==========================================================
+  ros2_zenoh_router:
+    build:
+      context: .
+      dockerfile: ZenohRouter.dockerfile
+    container_name: ros2_zenoh_router
+    volumes:
+      - /tmp:/tmp
+    network_mode: host
+    ipc: host
+    restart: unless-stopped
+
   ros2_frontend:
     image: nginx:alpine
     container_name: ros2_frontend
@@ -31,6 +41,9 @@ services:
     ipc: host
     volumes:
       - .:/ros2_ws/
+      - /tmp:/tmp
+      - cargo_registry:/root/.cargo/registry
+      - cargo_git:/root/.cargo/git
     environment:
       <<: *ros-env
       PYTHONDONTWRITEBYTECODE: 1
@@ -45,6 +58,7 @@ services:
     ipc: host
     volumes:
       - .:/ros2_ws/
+      - /tmp:/tmp
     devices:
       - /dev/:/dev/
     environment:
@@ -70,6 +84,7 @@ services:
       - /usr/local/bin:/host_usr_local_bin:ro
       - /snap/bin:/host_snap_bin:ro
       - /run/user/1000/pulse:/run/user/1000/pulse
+      - /tmp:/tmp
       - /var/run/docker.sock:/var/run/docker.sock
       - /etc/ssl/certs:/etc/ssl/certs:ro
       - ${HOME}/.cache/uv:/root/.cache/uv
@@ -100,6 +115,7 @@ services:
     container_name: ros2_lidar
     volumes:
       - .:/ros2_ws/
+      - /tmp:/tmp
     devices:
       - /dev/:/dev/
     environment:
@@ -119,10 +135,12 @@ services:
       - .:/ros2_ws/
       - ../helpers:/ros2_ws/helpers
       - /dev/serial/by-id:/dev/serial/by-id:ro
+      - /tmp:/tmp
     devices:
       - /dev/:/dev/
     environment:
       <<: *ros-env
+      FASTRTPS_DEFAULT_PROFILES_FILE: /ros2_ws/fastdds_localhost.xml
     network_mode: host
     ipc: host 
     privileged: true
@@ -137,6 +155,7 @@ services:
     volumes:
       - .:/ros2_ws/
       - /var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket
+      - /tmp:/tmp
     devices:
       - /dev/:/dev/
     environment:
@@ -157,21 +176,13 @@ services:
     container_name: ros2_gazebo_sim
     volumes:
       - .:/ros2_ws/
-      - /tmp/.X11-unix:/tmp/.X11-unix:rw
-      - /mnt/wslg:/mnt/wslg:ro
-      - /usr/lib/wsl/lib:/usr/lib/wsl/lib:ro
-      - /dev/shm:/dev/shm
+      - /tmp:/tmp
     environment:
       <<: *ros-env
       SIM_WORLD: ${SIM_WORLD:-garden_world.sdf}
       SIM_GUI: ${SIM_GUI:-true}
       DISPLAY: ${DISPLAY:-:0}
-      WAYLAND_DISPLAY: ${WAYLAND_DISPLAY:-wayland-0}
-      XDG_RUNTIME_DIR: ${XDG_RUNTIME_DIR:-/mnt/wslg/runtime-dir}
-      LD_LIBRARY_PATH: /usr/lib/wsl/lib
       QT_X11_NO_MITSHM: 1
-    devices:
-      - /dev/dxg:/dev/dxg
     network_mode: host
     ipc: host
     privileged: true
@@ -196,3 +207,7 @@ services:
     entrypoint: /bin/sh /scripts/certbot_entrypoint.sh
     network_mode: host
     restart: "no"
+
+volumes:
+  cargo_registry:
+  cargo_git:

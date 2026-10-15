@@ -12,15 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.10)
 project(diff_drive_hardware)
 
 # Find dependencies
 find_package(ament_cmake REQUIRED)
+find_package(rclcpp REQUIRED)
+
+add_executable(uros_bridge src/uros_bridge.cpp)
+target_link_libraries(uros_bridge rclcpp::rclcpp)
 
 install(
   DIRECTORY config launch
   DESTINATION share/${PROJECT_NAME}
+)
+
+install(
+  TARGETS uros_bridge
+  DESTINATION lib/${PROJECT_NAME}
 )
 
 ament_package()

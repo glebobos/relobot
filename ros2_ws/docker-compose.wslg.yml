@@ -1,0 +1,11 @@
+services:
+  ros2_gazebo_sim:
+    volumes:
+      - /mnt/wslg:/mnt/wslg:ro
+      - /usr/lib/wsl/lib:/usr/lib/wsl/lib:ro
+    devices:
+      - /dev/dxg:/dev/dxg
+    environment:
+      WAYLAND_DISPLAY: ${WAYLAND_DISPLAY:-wayland-0}
+      XDG_RUNTIME_DIR: /mnt/wslg/runtime-dir
+      LD_LIBRARY_PATH: /usr/lib/wsl/lib
