@@ -1,0 +1,8 @@
+cmake_minimum_required(VERSION 3.13)
+project(picoros_command_probe_tests C)
+set(CMAKE_C_STANDARD 11)
+enable_testing()
+add_executable(command_probe_test command_probe_test.c ../common/command_probe.c)
+target_include_directories(command_probe_test PRIVATE ../common)
+target_compile_options(command_probe_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+add_test(NAME command_probe COMMAND command_probe_test)

@@ -12,6 +12,7 @@ ReloBot is a ROS2-based robotics platform running on Raspberry Pi 5.
 - `README.md`: High-level repository overview.
 - `FLASHING.md`: Detailed guide for building, flashing, and monitoring micro-ROS firmwares.
 - `.agents/skills/rust-skills/`: Comprehensive Rust guidelines & best practices ([SKILL.md](file:///home/glebos/projects/relobot/.agents/skills/rust-skills/SKILL.md)) for writing, reviewing, and refactoring Rust components (e.g. `rosbridge_rust`).
+- [pico_firmware/README.md](pico_firmware/README.md): Shared foundation for new Pico-ROS firmware: SDK/FreeRTOS, USB/Zenoh, startup and board profiles. Reuse it instead of copying platform setup per controller; only spare KAmod RP2040 is currently hardware-validated. Existing production micro-ROS controllers are not migrated automatically.
 - `pico_ware_*/`: Microcontroller C/C++ micro-ROS firmwares:
     - [pico_ware_wheels_microros/README.md](file:///home/admin/projects/relobot/pico_ware_wheels_microros/README.md): Differential drive motor control, Cytron MD13S pinout, and PI/feedforward tuning.
     - [pico_ware_knives_microros/README.md](file:///home/admin/projects/relobot/pico_ware_knives_microros/README.md): Mower blade motor driver micro-ROS node.
@@ -21,6 +22,9 @@ ReloBot is a ROS2-based robotics platform running on Raspberry Pi 5.
     - [helpers/wheel_calibration/README.md](file:///home/admin/projects/relobot/helpers/wheel_calibration/README.md): Wheel velocity calibration sweep & linear regression constants.
     - [helpers/camera_calibration/README.md](file:///home/admin/projects/relobot/helpers/camera_calibration/README.md): Fisheye camera calibration guide.
     - [helpers/cpu_profiler/README.md](file:///home/admin/projects/relobot/helpers/cpu_profiler/README.md): ROS 2 & Docker container CPU/Memory statistical profiler.
+    - [helpers/picoros_poc/README.md](file:///home/admin/projects/relobot/helpers/picoros_poc/README.md): Reproducible Pico-ROS to `rmw_zenoh_cpp` host compatibility proof.
+    - [helpers/rmw_zenoh_pico_spike/README.md](file:///home/admin/projects/relobot/helpers/rmw_zenoh_pico_spike/README.md): Isolated RP2040 `rclc` over Zenoh-Pico USB serial feasibility build.
+    - [wiki/rmw_zenoh_pico_robot_validation.md](file:///home/admin/projects/relobot/wiki/rmw_zenoh_pico_robot_validation.md): Physical robot validation, USB identification, flashing, recovery tests, and production gates for the RP2040 Zenoh spike.
 - `ros2_ws/`: The main ROS2 workspace (`src/`, `docker-compose.yml`, Dockerfiles).
     - [ros2_ws/readme.md](file:///home/admin/projects/relobot/ros2_ws/readme.md): ROS2 nodes architecture.
     - [ros2_ws/src/web_server/README.md](file:///home/admin/projects/relobot/ros2_ws/src/web_server/README.md): Web frontend server details.

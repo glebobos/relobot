@@ -1,0 +1,24 @@
+diff --git a/src/picoros.c b/src/picoros.c
+--- a/src/picoros.c
++++ b/src/picoros.c
+@@ -249,7 +249,9 @@ static void get_data_handler(z_loaned_reply_t *reply, void *ctx){
+ 
+ /* Public functions ----------------------------------------------------------*/
+ 
++extern void picoros_diagnostic_stage(unsigned int stage);
+ picoros_res_t picoros_interface_init(picoros_interface_t* ifx) {
++    picoros_diagnostic_stage(1);
+     z_result_t res = Z_OK;
+     z_owned_config_t config;
+     z_config_default(&config);
+@@ -265,8 +267,10 @@ picoros_res_t picoros_interface_init(picoros_interface_t* ifx) {
+     }
+ 
+     _PR_LOG("Opening Zenoh session...\r\n");
++    picoros_diagnostic_stage(2);
+     if ((res = z_open(&s_wrapper, z_config_move(&config), NULL)) != Z_OK) {
+         _PR_LOG("Unable to open Zenoh session! Error:%d\n", res);
+         return PICOROS_NOT_READY;
+     }
++    picoros_diagnostic_stage(6);
+     _PR_LOG("Zenoh setup finished!\r\n");

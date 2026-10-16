@@ -1,0 +1,23 @@
+diff --git a/io/zenoh-links/zenoh-link-serial/src/unicast.rs b/io/zenoh-links/zenoh-link-serial/src/unicast.rs
+--- a/io/zenoh-links/zenoh-link-serial/src/unicast.rs
++++ b/io/zenoh-links/zenoh-link-serial/src/unicast.rs
+@@ -430,6 +430,7 @@ async fn accept_read_task(
+ 
+         tracing::trace!("Creating Serial listener on device {src_path:?}, with baudrate {baud_rate} and exclusive set as {exclusive}");
+         if release_on_close {
++            link.unset_port();
+             let port = ZSerial::new(src_path.clone(), baud_rate, exclusive).map_err(|e| {
+                 zerror!(
+                     "Can not create a new Serial link bound to {:?}: {}",
+@@ -448,7 +449,10 @@ async fn accept_read_task(
+             link.clear_buffers()?;
+         }
+ 
+-        while link.get_port_mut()?.accept().await.is_err() {
++        while let Err(error) = link.get_port_mut()?.accept().await {
++            if release_on_close {
++                return Err(error.into());
++            }
+             //Waiting to be ready, if not sleep some time.
+             tokio::time::sleep(Duration::from_micros(*SERIAL_ACCEPT_THROTTLE_TIME)).await;
+         }

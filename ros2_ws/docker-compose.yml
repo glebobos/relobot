@@ -14,8 +14,13 @@ services:
       context: .
       dockerfile: ZenohRouter.dockerfile
     container_name: ros2_zenoh_router
+    environment:
+      - ZENOH_ROUTER_CONFIG_URI
     volumes:
       - /tmp:/tmp
+      - /dev:/hostdev:ro
+    device_cgroup_rules:
+      - "c 166:* rwm"
     network_mode: host
     ipc: host
     restart: unless-stopped

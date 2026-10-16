@@ -1,0 +1,34 @@
+diff --git a/src/picoros.h b/src/picoros.h
+--- a/src/picoros.h
++++ b/src/picoros.h
+@@ -277,6 +277,10 @@ picoros_res_t picoros_single_threaded_loop(picoros_interface_t* ifx);
+  */
+ bool picoros_interface_is_up(void);
+ 
++#ifdef PICOROS_CONNECTIVITY
++const z_loaned_session_t *picoros_interface_session(void);
++#endif
++
+ /**
+  * @brief Close the network interface
+  * @ingroup interface
+diff --git a/src/picoros.c b/src/picoros.c
+--- a/src/picoros.c
++++ b/src/picoros.c
+@@ -315,6 +315,16 @@ bool picoros_interface_is_up(void) {
+     || zp_lease_task_is_running(z_session_loan(&s_wrapper)) );
+ }
+ 
++#ifdef PICOROS_CONNECTIVITY
++const z_loaned_session_t *picoros_interface_session(void) {
++    if (!z_internal_session_check(&s_wrapper)) {
++        return NULL;
++    }
++    const z_loaned_session_t *session = z_session_loan(&s_wrapper);
++    return z_session_is_closed(session) ? NULL : session;
++}
++#endif
++
+ void picoros_interface_close(void) {
+     z_close(z_session_loan_mut(&s_wrapper), NULL);
+     z_session_drop(z_session_move(&s_wrapper));

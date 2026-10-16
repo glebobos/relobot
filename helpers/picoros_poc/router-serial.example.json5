@@ -1,0 +1,18 @@
+{
+  mode: "router",
+  listen: {
+    endpoints: [
+      "tcp/[::]:7447",
+      "serial//hostdev/serial/by-id/REPLACE_WITH_BOARD_SYMLINK#baudrate=115200",
+    ],
+  },
+  scouting: {
+    multicast: {
+      enabled: false,
+    },
+    gossip: {
+      enabled: true,
+      multihop: false,
+    },
+  },
+}

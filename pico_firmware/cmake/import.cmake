@@ -1,0 +1,17 @@
+include_guard(GLOBAL)
+
+get_filename_component(RELOBOT_PICO_ROOT "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
+set(RELOBOT_PICO_BOARD "kamod_rp2040" CACHE STRING "ReloBot hardware profile")
+if(NOT RELOBOT_PICO_BOARD STREQUAL "kamod_rp2040")
+    message(FATAL_ERROR "Unsupported ReloBot board: ${RELOBOT_PICO_BOARD}; only kamod_rp2040 is implemented")
+endif()
+include("${RELOBOT_PICO_ROOT}/boards/${RELOBOT_PICO_BOARD}/board.cmake")
+
+if(NOT EXISTS "${PICOROS_SOURCE}/src/picoros.h")
+    message(FATAL_ERROR "PICOROS_SOURCE must point to the prepared, pinned Pico-ROS checkout")
+endif()
+if(NOT DEFINED PICO_SDK_PATH)
+    set(PICO_SDK_PATH "$ENV{PICO_SDK_PATH}")
+endif()
+include("${PICO_SDK_PATH}/external/pico_sdk_import.cmake")
+include("${PICOROS_SOURCE}/thirdparty/zenoh-pico/examples/rpi_pico/FreeRTOS_Kernel_import.cmake")

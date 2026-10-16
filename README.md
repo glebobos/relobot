@@ -8,6 +8,13 @@
 
 ReloBot is a robotics platform built on ROS2 Humble that integrates differential-drive wheels, cutting blades (knives), IMU, power monitoring, and a camera for navigation. All microcontrollers run C micro-ROS firmware over USB CDC, communicating directly with the ROS2 graph. High-level navigation uses Nav2 with a LiDAR-based EKF stack.
 
+New Pico-ROS applications use the [shared firmware foundation](pico_firmware/README.md)
+for SDK/FreeRTOS, USB/Zenoh and startup, with separate board profiles and
+application logic. Its [spare KAmod validation](wiki/picoros_zenoh_production_readiness.md#shared-foundation-hardware-regression-2026-10-16)
+passes typed ROS traffic and one same-boot router recovery. Existing production
+micro-ROS controllers remain unchanged; other boards require their own profiles
+and validation before migration.
+
 ## System Architecture
 
 | Component | Hardware | Firmware | ROS2 interface |
