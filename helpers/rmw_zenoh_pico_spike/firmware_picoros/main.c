@@ -19,6 +19,8 @@
 #define PROBE_TASK_PRIORITY (APP_TASK_PRIORITY + 1)
 
 static command_probe_t probe;
+static TaskHandle_t probe_task_handle;
+static TaskHandle_t app_task_handle;
 static unsigned int diagnostic_stage;
 static bool ready;
 static uint32_t publish_errors;
@@ -61,6 +63,10 @@ static picoros_publisher_t publishers[] = {
     {.topic = {.name = "picoros_usb_spike/transport_opened", .type = "std_msgs::msg::dds_::Float32"}},
     {.topic = {.name = "picoros_usb_spike/transport_closed", .type = "std_msgs::msg::dds_::Float32"}},
 #endif
+    {.topic = {.name = "picoros_usb_spike/heap_free", .type = "std_msgs::msg::dds_::Float32"}},
+    {.topic = {.name = "picoros_usb_spike/heap_min_ever", .type = "std_msgs::msg::dds_::Float32"}},
+    {.topic = {.name = "picoros_usb_spike/stack_app_words", .type = "std_msgs::msg::dds_::Float32"}},
+    {.topic = {.name = "picoros_usb_spike/stack_probe_words", .type = "std_msgs::msg::dds_::Float32"}},
 };
 
 void picoros_diagnostic_stage(unsigned int stage)
@@ -201,7 +207,13 @@ static void app_task(void *argument)
 #ifdef PICOROS_CONNECTIVITY
             connected ? 1.0f : 0.0f, (float)opened, (float)closed,
 #endif
+            (float)xPortGetFreeHeapSize(),
+            (float)xPortGetMinimumEverFreeHeapSize(),
+            (float)uxTaskGetStackHighWaterMark(NULL),
+            probe_task_handle != NULL ? (float)uxTaskGetStackHighWaterMark(probe_task_handle) : 0.0f,
         };
+        _Static_assert(sizeof(values) / sizeof(values[0]) == sizeof(publishers) / sizeof(publishers[0]),
+                       "values array size must match publishers array size");
         for (size_t index = 0; index < sizeof(publishers) / sizeof(publishers[0]); ++index) {
             uint8_t payload[FLOAT32_CDR_SIZE];
             if (!float32_codec_encode(values[index], payload)) {
@@ -221,9 +233,9 @@ int main(void)
     relobot_board_init();
     relobot_board_led_set(32, 0, 32);
     if (xTaskCreate(probe_task, "command_probe", configMINIMAL_STACK_SIZE,
-                    NULL, PROBE_TASK_PRIORITY, NULL) != pdPASS ||
+                    NULL, PROBE_TASK_PRIORITY, &probe_task_handle) != pdPASS ||
         xTaskCreate(app_task, "picoros_usb", APP_TASK_STACK_WORDS,
-                    NULL, APP_TASK_PRIORITY, NULL) != pdPASS) {
+                    NULL, APP_TASK_PRIORITY, &app_task_handle) != pdPASS) {
         relobot_board_led_set(32, 0, 0);
         for (;;) {
             tight_loop_contents();

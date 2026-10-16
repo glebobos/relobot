@@ -28,6 +28,34 @@ passed or removed from the evidence. The known event defect remains recorded.
 No new reconnect mechanism, safety policy, memory instrumentation or SMP
 change is introduced. The migration plan remains unchanged.
 
+## Single-core baseline and resource measurement, 2026-10-16
+
+A minimal diagnostic telemetry set was added to [main.c](../helpers/rmw_zenoh_pico_spike/firmware_picoros/main.c) (`heap_free`, `heap_min_ever`, `stack_app_words`, `stack_probe_words`), without adding a new health, reconnect supervisor, or custom ROS protocol. The instrumented firmware was verified with unit tests (4/4 startup, 6/6 host regression) and flashed to the spare KAmod RP2040.
+
+Flashed and canonical `picoros_usb_connectivity.uf2` SHA-256:
+`608a255f4671b22c16566c82803ac18866ba490fd319b3f4280a65e5e2d120c9`.
+
+### Static footprint (ELF breakdown)
+- Flash (`text`): **153,168 bytes**
+- RAM (`data`): **0 bytes**
+- RAM (`bss`): **141,020 bytes** (includes 128 KiB = 131,072 bytes FreeRTOS heap + 9,948 bytes static state)
+- Total static RAM: **141,020 bytes** (~53.4% of RP2040 264 KiB SRAM)
+
+### Hardware regression & load baseline (300 commands @ 10 Hz, 30 s duration)
+The standard regression check passed (sequence 1):
+`PASS: typed roundtrip, timeout, duplicate/older sequence and invalid-value checks.`
+
+Under sustained 10 Hz bidirectional command traffic using [benchmark_baseline.py](../helpers/rmw_zenoh_pico_spike/benchmark_baseline.py):
+| Metric | Measured value | Notes |
+| --- | --- | --- |
+| Commands processed | 300 sent / 301 final ack | Zero rejected or dropped valid commands; all 300 accepted. |
+| Roundtrip Latency (min / median / max) | 12.26 ms / 63.56 ms / 116.65 ms | Mean 63.88 ms, p95 109.87 ms, stddev 28.86 ms (bounded by 100 ms telemetry tick). |
+| FreeRTOS Heap (total / min-ever free) | 131,072 B total / 17,160 B min-ever free | Peak usage: 113,912 B (86.91% of heap); safety margin: 17,160 B (13.09%). |
+| App task stack (`picoros_usb`) | 32,768 B alloc / 4,820 B peak used | Headroom: 27,948 B (peak used: 14.71%). Over-allocated by ~24 KiB. |
+| Probe task stack (`command_probe`) | 2,048 B alloc / 152 B peak used | Headroom: 1,896 B (peak used: 7.42%). |
+| Telemetry stability | 0 publish errors | Continuity intact across full duration. |
+| Command cessation timeout | 3.06 s observed | `active` dropped to 0.0 and `timeouts` incremented after commands stopped. |
+
 ## Shared foundation hardware regression, 2026-10-16
 
 The user authorized flashing the new shared-foundation build to the spare,
