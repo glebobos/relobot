@@ -11,17 +11,18 @@ services:
   # Core Services (Active in BOTH Hardware and Simulation)
   # ==========================================================
   ros2_zenoh_router:
+    image: ${ZENOH_ROUTER_IMAGE:-relobot-zenoh-router:local}
     build:
-      context: .
-      dockerfile: ZenohRouter.dockerfile
+      context: ..
+      dockerfile: ros2_ws/ZenohRouter.dockerfile
     container_name: ros2_zenoh_router
     environment:
-      ZENOH_ROUTER_CONFIG_URI: /etc/zenoh_router_config.json5
-      RUST_LOG: "info,zenoh_link_serial=debug,zenoh_transport=debug"
+      RUST_LOG: ${ZENOH_ROUTER_RUST_LOG:-info}
+      PICO_KNIVES_ENABLED: ${PICO_KNIVES_ENABLED:-true}
     volumes:
-      - ./zenoh_router_config.json5:/etc/zenoh_router_config.json5:ro
       - /tmp:/tmp
       - /dev:/hostdev:ro,rslave
+      - ./zenoh_devices.json:/etc/relobot/zenoh_devices.json:ro
     device_cgroup_rules:
       - "c 166:* rwm"
     network_mode: host
@@ -149,6 +150,7 @@ services:
     environment:
       <<: *ros-env
       FASTRTPS_DEFAULT_PROFILES_FILE: /ros2_ws/fastdds_localhost.xml
+      PICO_KNIVES_ENABLED: ${PICO_KNIVES_ENABLED:-true}
     depends_on:
       ros2_zenoh_router:
         condition: service_started
@@ -192,6 +194,7 @@ services:
       <<: *ros-env
       SIM_WORLD: ${SIM_WORLD:-garden_world.sdf}
       SIM_GUI: ${SIM_GUI:-true}
+      SIM_KNIVES_MOCK: ${SIM_KNIVES_MOCK:-true}
       DISPLAY: ${DISPLAY:-:0}
       QT_X11_NO_MITSHM: 1
     network_mode: host

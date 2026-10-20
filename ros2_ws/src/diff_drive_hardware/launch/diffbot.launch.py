@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
 import os
+import subprocess
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import ExecuteProcess, Shutdown
@@ -21,6 +23,14 @@ from launch_ros.parameter_descriptions import ParameterValue
 
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
+
+
+def micro_ros_serial_devices():
+    return json.loads(subprocess.check_output([
+        'python3', '/ros2_ws/zenoh_devices.py', 'micro-ros-devices',
+        '--native-enabled', os.environ.get('PICO_KNIVES_ENABLED', 'true'),
+    ], text=True))
+
 
 def generate_launch_description():
     # Get URDF via xacro
@@ -56,31 +66,7 @@ def generate_launch_description():
         'robot_state_publisher.yaml'
     )
 
-    # Micro-ROS agent — multiserial with persistent hardware symlinks discovery
-    import glob
-    by_id_devs = sorted(
-        glob.glob('/dev/serial/by-id/usb-*Pico*') +
-        glob.glob('/dev/serial/by-id/usb-*ReloBot*')
-    )
-    # Exclude devices migrated to native Zenoh-Pico firmware (e.g. knives controller)
-    zenoh_pico_devs = {
-        '/dev/serial/by-id/usb-Raspberry_Pi_Pico_4150323038323712-if00',
-    }
-    by_id_devs = [d for d in by_id_devs if d not in zenoh_pico_devs]
-    if by_id_devs:
-        serial_devs = by_id_devs
-    else:
-        # Fallback for environments where by-id symlinks are unavailable (e.g. mock/test)
-        serial_devs = sorted(glob.glob('/dev/ttyACM*'))
-
-    # Also include any valid explicit TTY_* overrides from environment
-    for k, v in os.environ.items():
-        if k.startswith('TTY_') and v and os.path.exists(v):
-            if v not in serial_devs:
-                serial_devs.append(v)
-
-    if not serial_devs:
-        serial_devs = ['/dev/ttyACM0']
+    serial_devs = micro_ros_serial_devices()
 
     print(f"[DiffBot Launch] Active Micro-ROS serial devices: {serial_devs}")
 
@@ -95,7 +81,7 @@ def generate_launch_description():
             'FASTRTPS_DEFAULT_PROFILES_FILE': '/ros2_ws/fastdds_localhost.xml',
         },
         on_exit=Shutdown(),
-    )
+    ) if serial_devs else None
 
     uros_bridge_node = Node(
         package='diff_drive_hardware',
@@ -152,7 +138,6 @@ def generate_launch_description():
     )
 
     nodes = [
-        micro_ros_agent,
         uros_bridge_node,
         control_node,
         robot_state_pub_node,
@@ -160,5 +145,7 @@ def generate_launch_description():
         robot_controller_spawner,
         ekf_node,
     ]
+    if micro_ros_agent is not None:
+        nodes.insert(0, micro_ros_agent)
 
     return LaunchDescription(nodes)

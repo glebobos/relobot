@@ -225,3 +225,173 @@ configuration passes **4/4**. No change was made to the pinned dependency or
 the MCU image. These results explain the event-reporting defect, not USB
 recovery performance; the subsequent single candidate router restart is
 recorded in the [host experiment](../host_router/README.md#single-candidate-router-restart-2026-10-16).
+
+## Knives integration regressions
+
+The following isolated checks do not access USB hardware or restart services.
+Run from the repository root; all compilation and execution happens in Docker.
+Build the unified router image with `./start_robot.sh build ros2_zenoh_router`
+before running its configuration regression.
+
+```bash
+docker run --rm --network none --entrypoint bash \
+  -v "$PWD:/project:ro" relobot_pico_ware_wheels_microros:latest -lc '
+    set -e
+    cmake -S /project/pico_firmware/tests -B /tmp/runtime-tests
+    cmake --build /tmp/runtime-tests -j2
+    ctest --test-dir /tmp/runtime-tests --output-on-failure
+    cmake -S /project/pico_ware_knives_picoros/tests -B /tmp/knives-tests
+    cmake --build /tmp/knives-tests -j2
+    ctest --test-dir /tmp/knives-tests --output-on-failure
+    python3 -B /project/helpers/rmw_zenoh_pico_spike/host_tests/knives_serial_selection_test.py
+  '
+
+docker run --rm --network none --entrypoint bash \
+  -v "$PWD:/project:ro" relobot-zenoh-router:local -lc '
+    source /opt/ros/lyrical/setup.bash
+    python3 -B /project/helpers/rmw_zenoh_pico_spike/host_tests/router_config_regression.py \
+      --router-startup /usr/local/bin/start_zenoh_router.sh
+  '
+```
+
+The command-state test covers zero-first arming after boot/disarm/timeout,
+late-command rejection, timeout boundary, finite-value clamping, NaN/Inf
+rejection without timeout refresh, zero/reverse commands and millisecond
+wraparound. Control tests include the actual firmware control code with mocked
+GPIO/PWM/time: timeout cuts outputs without braking, control gaps and encoder
+loss latch off, braking is bounded, boot coasting cannot drive reverse PWM,
+coasting telemetry continues, and malloc/stack fault hooks cut outputs before
+requesting reset. A separate bench compile verifies that missing encoder pulses
+do not trip the motor-only guard. These ten CTests do not prove electrical or
+mechanical safety, real interrupt behavior or hardware watchdog timing.
+Runtime tests verify retry only on
+`PICOROS_NOT_READY`, not on unexpected initialization errors. Serial selection
+tests execute the shared JSON/USB helper without importing ROS launch and verify
+that the launch file delegates to it:
+native devices cannot reenter the agent through raw tty aliases or `TTY_*`
+overrides, missing native identity fails closed, and no device means no agent.
+Invalid by-id paths and locator/config fragments are rejected before selection.
+The hardware launcher selects native knives without an extra flag and validates
+the [JSON registry](../../../ros2_ws/zenoh_devices.json) before `up`, without
+requiring shell exports. JSON schema, duplicate keys/identities, baud rates,
+disabled entries and multi-device listener/exclusion behavior are covered.
+Ordinary simulation ignores hardware configuration;
+explicit `--sim --picoros-knives` disables only the knives mock. Management
+commands work without a USB identity. These mode selections, one-file Compose
+invocation, and the router startup's TCP/serial/default-mode configuration are
+covered without opening a physical device.
+
+### UI disconnect and re-arm
+
+Run the UI logic tests offline with the Node built-in runner:
+
+```bash
+docker run --rm --network none -v "$PWD:/project:ro" -w /project \
+  node:22-bookworm-slim node --test \
+  helpers/rmw_zenoh_pico_spike/host_tests/knives_ui_safety_test.mjs
+```
+
+Nine cases exercise the actual gamepad service with mocked browser/ROS objects:
+zero-first startup, offline/error/close target and cruise clearing, held-button
+release, deliberate slider restart, non-finite inputs, hidden-page input,
+transport send failure and cleanup. The tenth case is skipped unless the
+real ROSLIB module is provided. For this dependency-level check, install only
+the frontend's pinned ROSLIB 2.1.0 in the disposable container, not the workspace:
+
+```bash
+docker run --rm --entrypoint sh -v "$PWD:/project:ro" -w /project \
+  node:22-bookworm-slim -c '
+    npm install --prefix /tmp/ui-test --ignore-scripts --no-audit --no-fund roslib@2.1.0 &&
+    ROSLIB_TEST_MODULE=file:///tmp/ui-test/node_modules/roslib/dist/RosLib.js \
+      node --test helpers/rmw_zenoh_pico_spike/host_tests/knives_ui_safety_test.mjs
+  '
+```
+
+All ten pass on 2026-10-20, including two re-advertisement cycles with the real
+`Topic` class. Its transport is still mocked: no browser, live WebSocket,
+rosbridge, USB or MCU is contacted. No publish operation may queue offline;
+the unrelated cmd_vel topic may queue advertisement metadata, not motion.
+The native knives publisher uses `reconnect_on_close=false`, which resets its
+advertised state on close; the first post-recovery zero advertises it again.
+
+### Independent DDS transport diagnosis
+
+[`dds_loopback_smoke.py`](./dds_loopback_smoke.py) creates two independent
+FastDDS processes, not a sender listening to itself. It publishes only under
+`/relobot_test/dds_coexistence/`, defaults to test domain 211, and verifies
+delivery to a sensor-data QoS subscriber. No robot command topics are used.
+Use an unused test domain; no USB access or running-service restart is needed:
+
+```bash
+docker run --rm --network host --ipc host --entrypoint bash \
+  -e FASTDDS_DEFAULT_PROFILES_FILE=/project/ros2_ws/fastdds_localhost.xml \
+  -v "$PWD:/project:ro" ros2_ws-ros2_gazebo_sim:latest -c '
+    source /opt/ros/lyrical/setup.bash &&
+    timeout --kill-after=3s 25s python3 -B \
+      /project/helpers/rmw_zenoh_pico_spike/host_tests/dds_loopback_smoke.py
+  '
+```
+
+Nonzero exit means independent delivery failed; do not waive it as a bridge
+pass. For a middleware-default isolated control, use `--network none`, remove
+`--ipc host` and omit `FASTDDS_DEFAULT_PROFILES_FILE`. The
+`--role sender|receiver --probe-id <shared_test_id>` options also
+support two disposable containers on the same test domain. This is only
+DDS transport diagnosis, not an agent/bridge/full-robot qualification.
+
+On 2026-10-20, the WSL2 host's defaults pass three consecutive five-second
+isolated-network/private-IPC trials (50, 49, 49 received of 50 sent) and two
+isolated-network/host-IPC trials (49, 50 of 50). Host networking fails with
+either IPC mode, so shared IPC alone does not explain the failure. Explicit
+loopback/unicast XML has individual passing runs, but repeated trials fail.
+No experimental XML, SHM/UDP buffer tuning or host firewall change is retained.
+The host-network mechanism and real Pi/agent/bridge coexistence remain open;
+this is not a diagnosis of serial throughput, MCU stacks or router crashes.
+
+The router regression reads the actual Compose override, substitutes only its
+test device with a container-local PTY, and compares the real router's full debug
+configuration against the installed ROS baseline. Only listen endpoints may
+differ. ROS timeouts/session limits, lease, TX queue sizes and SHM policy are
+also checked explicitly. Forced process cleanup is reported separately; this
+is not a traffic, graceful-shutdown or physical recovery qualification.
+
+The Gazebo launch test evaluates the real ROS launch condition without starting
+Gazebo or ROS nodes. Ordinary simulation retains the mock; the hybrid override
+disables it:
+
+```bash
+docker run --rm --network none --entrypoint bash \
+  -v "$PWD:/project:ro" ros2_ws-ros2_gazebo_sim:latest -lc '
+    source /opt/ros/lyrical/setup.bash
+    python3 -B /project/helpers/rmw_zenoh_pico_spike/host_tests/knives_gazebo_launch_test.py
+  '
+```
+
+For the forward rollout sequence and configuration, see the
+[knives runbook](../../../pico_ware_knives_picoros/README.md) and the
+[real-robot preparation gates](../../../PICO_NEXT_STEPS.md).
+
+### Physical knives bench acceptance
+
+Only run this after explicitly approving the spare-board flash and confirming
+that the installed KAmod firmware is the **no-actuator bench build**. It sends
+knives RPM commands, including non-finite and out-of-range values. Never use it
+with a motor-enabled controller. Start the hybrid Gazebo/router configuration
+first, without other command publishers or the Gazebo knives mock.
+
+```bash
+docker compose -f ros2_ws/docker-compose.yml exec -T ros2_gazebo_sim bash -c \
+  'source /opt/ros/lyrical/setup.bash; timeout --kill-after=5s 120s python3 -B - --confirm-bench --duration 30 --report /tmp/knives-hardware-acceptance.json' \
+  < helpers/rmw_zenoh_pico_spike/host_tests/knives_hardware_acceptance.py
+```
+
+This checks graph ownership, 30 seconds of continuous commands, RPM telemetry
+rate, local command timeout, zero-first re-arm (nonzero alone stays rejected
+after expiry), negative/zero/clamped commands, NaN/Inf rejection
+without timeout refresh, resource diagnostics and the publication error counter.
+Clock and scan messages must also be observed so an idle simulation cannot pass
+as a loaded Gazebo trial. It sends a zero target on exit and writes JSON results.
+The `--confirm-bench` flag is an explicit operator assertion, not automatic proof
+of firmware identity or electrical safety. It does not perform flashing,
+hotplug/router recovery, measure individual command delivery rates, or qualify
+the rest of the full robot stack.

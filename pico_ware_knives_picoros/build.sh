@@ -6,6 +6,15 @@ repo_root="$(cd -- "${script_dir}/.." && pwd)"
 
 readonly BUILDER_IMAGE="relobot_pico_ware_wheels_microros:latest"
 readonly SPIKE_BUILD="${repo_root}/helpers/rmw_zenoh_pico_spike/build"
+board="${1:-kamod_rp2040}"
+mode="${2:-bench}"
+if [[ $# -gt 2 || ! "$board" =~ ^(kamod_rp2040|xiao_rp2040)$ ||
+      ! "$mode" =~ ^(bench|motor)$ || ( "$mode" = motor && "$board" != xiao_rp2040 ) ]]; then
+    echo "Usage: $0 [kamod_rp2040|xiao_rp2040] [bench|motor]; motor requires xiao_rp2040" >&2
+    exit 1
+fi
+bench=ON
+if [[ "$mode" = motor ]]; then bench=OFF; fi
 
 if [[ ! -f "${SPIKE_BUILD}/libmicroros/libmicroros.a" ||
       ! -d "${SPIKE_BUILD}/FreeRTOS-Kernel/.git" ||
@@ -14,23 +23,28 @@ if [[ ! -f "${SPIKE_BUILD}/libmicroros/libmicroros.a" ||
     exit 1
 fi
 
-echo "==> Building Knives Pico-ROS firmware..."
-docker run --rm --user root --entrypoint bash \
-    -v "${repo_root}:/project" \
+echo "==> Building Knives Pico-ROS firmware: ${board}, ${mode}"
+mkdir -p "${script_dir}/build"
+docker run --rm --network none --user "$(id -u):$(id -g)" --entrypoint bash \
+    -v "${repo_root}:/project:ro" \
+    -v "${script_dir}/build:/output" \
+    -e KNIVES_BOARD="$board" -e KNIVES_MODE="$mode" -e KNIVES_BENCH="$bench" \
     -e PICO_SDK_PATH=/project/helpers/rmw_zenoh_pico_spike/build/pico-sdk \
     -e FREERTOS_KERNEL_PATH=/project/helpers/rmw_zenoh_pico_spike/build/FreeRTOS-Kernel \
     "${BUILDER_IMAGE}" \
-    -lc 'cmake -S /project/pico_ware_knives_picoros \
-               -B /project/pico_ware_knives_picoros/build \
-               -DPICOROS_SOURCE=/project/helpers/rmw_zenoh_pico_spike/build/picoros \
+    -lc 'set -euo pipefail
+         cp -a /project/helpers/rmw_zenoh_pico_spike/build/picoros /tmp/picoros
+         cmake -S /project/pico_ware_knives_picoros \
+               -B "/output/${KNIVES_BOARD}-${KNIVES_MODE}" \
+               -DPICOROS_SOURCE=/tmp/picoros \
                -DRELOBOT_ROS_TYPES_PATH=/project/helpers/rmw_zenoh_pico_spike/build/libmicroros \
-               -DRELOBOT_PICO_BOARD=xiao_rp2040 \
+               -DRELOBOT_PICO_BOARD="$KNIVES_BOARD" \
+               -DRELOBOT_KNIVES_BENCH="$KNIVES_BENCH" \
                -DRELOBOT_PICOROS_USB_POLL=ON \
                -DCMAKE_BUILD_TYPE=Release &&
-         cmake --build /project/pico_ware_knives_picoros/build --target picoros_knives -j2'
+         cmake --build "/output/${KNIVES_BOARD}-${KNIVES_MODE}" --target picoros_knives -j2'
 
 echo "==> Copying UF2 artifact..."
-if [[ -f "${script_dir}/build/picoros_knives.uf2" ]]; then
-    cp "${script_dir}/build/picoros_knives.uf2" "${script_dir}/picoros_knives.uf2"
-    echo "✅ Success: Created ${script_dir}/picoros_knives.uf2"
-fi
+artifact="${script_dir}/picoros_knives_${board}_${mode}.uf2"
+cp "${script_dir}/build/${board}-${mode}/picoros_knives.uf2" "$artifact"
+echo "==> Created ${artifact} (not flashed)"

@@ -6,7 +6,7 @@
 
 ## Overview
 
-ReloBot is a robotics platform built on ROS2 Humble that integrates differential-drive wheels, cutting blades (knives), IMU, power monitoring, and a camera for navigation. All microcontrollers run C micro-ROS firmware over USB CDC, communicating directly with the ROS2 graph. High-level navigation uses Nav2 with a LiDAR-based EKF stack.
+ReloBot is a robotics platform built on ROS2 Lyrical that integrates differential-drive wheels, cutting blades (knives), IMU, power monitoring, and a camera for navigation. Wheels, IMU and power controllers use micro-ROS over USB CDC through the DDS/Zenoh bridge; the knives rollout selects native Pico-ROS through the common Zenoh router. High-level navigation uses Nav2 with a LiDAR-based EKF stack.
 
 New Pico-ROS applications use the [shared firmware foundation](pico_firmware/README.md)
 for SDK/FreeRTOS, USB/Zenoh and startup, with separate board profiles and
@@ -20,7 +20,7 @@ and validation before migration.
 | Component | Hardware | Firmware | ROS2 interface |
 | :--- | :--- | :--- | :--- |
 | **Wheels** | XIAO RP2040 | `pico_ware_wheels_microros` | `/robot_joint_commands` + `/robot_joint_states` (JointState) |
-| **Knives** | XIAO RP2040 | `pico_ware_knives_microros` | `knives/set_rpm` + `knives/current_rpm` (Float32) |
+| **Knives** | XIAO RP2040 | `pico_ware_knives_picoros` (qualification pending) | `knives/set_rpm` + `knives/current_rpm` (Float32) |
 | **IMU** | RPi Pico RP2040 | `pico_ware_imu_microros` | `/imu/data` (Imu) |
 | **Power** | RPi Pico 2 RP2350 | `pico_ware_ina226_microros` | `/battery_state` |
 | **LiDAR** | USB | `ldlidar` | `/scan` |
@@ -131,6 +131,19 @@ To configure and enable 5 GHz WiFi:
 
 ### Start the stack
 
+Hardware startup now selects native Pico-ROS knives through the single Zenoh
+router. Before the approved rollout, build and qualify the serial-capable image
+with `./start_robot.sh build ros2_zenoh_router` and set
+`devices.knives.serial_by_id` in [ros2_ws/zenoh_devices.json](ros2_ws/zenoh_devices.json)
+to the exact `usb-...` name from `ls -1 /dev/serial/by-id/` (not a full path).
+Device configuration is read automatically: no shell exports or environment
+file are required. The checked-in identity is empty and must be filled before
+hardware/hybrid startup. See the
+[knives deployment settings and pending production gates](pico_ware_knives_picoros/README.md#router-and-startup-settings).
+Wheels, IMU and power monitoring retain micro-ROS through the existing bridge.
+Ordinary `--sim` needs no USB board; add `--picoros-knives` only for an explicit
+physical-board/Gazebo test. No separate knives Compose file is used.
+
 ```bash
 ./start_robot.sh up
 ```
@@ -213,6 +226,11 @@ For questions or support, please open an issue on the GitHub repository.
 ## Raspberry Pi 5 Autostart Configuration
 
 To configure ReloBot to automatically start when the Raspberry Pi 5 boots up:
+
+After the firmware/image qualification, configure the verified USB by-id name
+in [ros2_ws/zenoh_devices.json](ros2_ws/zenoh_devices.json). Manual and systemd
+startup read the same repository file automatically; no `EnvironmentFile` or
+shell exports are needed for device selection.
 
 1. Create a systemd service file:
    ```bash

@@ -1,5 +1,5 @@
 ARG ROUTER_IMAGE=ros2_ws-ros2_zenoh_router:latest
-FROM rust:1.88.0-bookworm@sha256:4727898c104ecd2e22d780925832502faee9fe4e70581b8572af081370b315a0 AS builder
+FROM rust:1.88.0-bookworm@sha256:af306cfa71d987911a781c37b59d7d67d934f49684058f96cf72079c3626bfe0 AS builder
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ENV CARGO_NET_GIT_FETCH_WITH_CLI=true CARGO_BUILD_JOBS=6 RUSTUP_TOOLCHAIN=1.93.0

@@ -26,8 +26,19 @@
 #define configSUPPORT_DYNAMIC_ALLOCATION 1
 #define configTOTAL_HEAP_SIZE (128 * 1024)
 #define configAPPLICATION_ALLOCATED_HEAP 0
+/* Opt-in hardened fault handling, shared by any app on this platform (not
+ * knives-specific despite the historical name of the symbol below). An app
+ * that defines RELOBOT_FIRMWARE_FAULT_HOOKS must also provide noreturn
+ * relobot_fault(), vApplicationMallocFailedHook() and
+ * vApplicationStackOverflowHook(); otherwise it silently falls back to
+ * plain assert()-based handling. */
+#if defined(RELOBOT_FIRMWARE_FAULT_HOOKS)
+#define configCHECK_FOR_STACK_OVERFLOW 2
+#define configUSE_MALLOC_FAILED_HOOK 1
+#else
 #define configCHECK_FOR_STACK_OVERFLOW 0
 #define configUSE_MALLOC_FAILED_HOOK 0
+#endif
 #define configUSE_DAEMON_TASK_STARTUP_HOOK 0
 #define configGENERATE_RUN_TIME_STATS 0
 #define configUSE_TRACE_FACILITY 1
@@ -53,8 +64,19 @@
 #define configSUPPORT_PICO_SYNC_INTEROP 1
 #define configSUPPORT_PICO_TIME_INTEROP 1
 
+#if defined(RELOBOT_FIRMWARE_FAULT_HOOKS)
+#ifdef __cplusplus
+extern "C" {
+#endif
+void relobot_fault(void) __attribute__((noreturn));
+#ifdef __cplusplus
+}
+#endif
+#define configASSERT(condition) do { if (!(condition)) relobot_fault(); } while (0)
+#else
 #include <assert.h>
 #define configASSERT(x) assert(x)
+#endif
 
 #define INCLUDE_vTaskPrioritySet 1
 #define INCLUDE_uxTaskPriorityGet 1

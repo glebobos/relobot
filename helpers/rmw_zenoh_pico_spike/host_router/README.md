@@ -1,10 +1,18 @@
 # Isolated host serial accept experiment
 
-This is an **opt-in laboratory candidate**, not a production router update.
+This directory retains the **laboratory comparison build and historical evidence**.
+The ordinary [deployment Dockerfile](../../../ros2_ws/ZenohRouter.dockerfile)
+now includes the same pinned serial/hotplug patch. Production startup uses one
+image and one router service; it does not select a knives-specific Compose file.
+The deployment image still needs final-image and ARM64 hardware qualification.
+
+The original experiment was an **opt-in laboratory candidate**.
 It changes only the pinned Zenoh serial listener's error path. The isolated
 tests below must not replace a running hardware router. Separately approved
 single spare-board host-only trials are recorded at the end of this document.
-No Pico firmware, production Compose, udev rules, or device mounts are changed.
+Those isolated trials did not change Pico firmware, production Compose, udev
+rules, or device mounts. The historical image IDs below describe those trials,
+not a newly qualified deployment image.
 
 ## Source and change
 
@@ -18,8 +26,13 @@ No Pico firmware, production Compose, udev rules, or device mounts are changed.
 - Rust: 1.93.0, explicitly selected to match the pinned Zenoh C toolchain.
 - Cargo uses the committed lockfile, existing default features plus
   `shared-memory,unstable,zenoh/transport_serial`, matching the ROS vendor flags.
-- Builder base is pinned to its x86-64 manifest. This is **not** a Raspberry Pi
-  image or proof of a build on ARM64.
+- Builder base is pinned to the official multi-architecture index
+  `sha256:af306cfa71d987911a781c37b59d7d67d934f49684058f96cf72079c3626bfe0`.
+  It selects the unchanged tested amd64 manifest
+  `sha256:4727898c104ecd2e22d780925832502faee9fe4e70581b8572af081370b315a0`
+  or arm64 manifest
+  `sha256:8aa70d1416cf5b1cff4b95ec6c57f1c5e4e649a3b53d616a26695cda6fbb46bc`.
+  This removes the x86-only build restriction, **not** the ARM64 validation gate.
 
 The [patch](./zenoh-serial-accept.patch) returns an `accept()` error to the
 existing outer retry loop when the default `release_on_close=true` applies.
@@ -52,6 +65,47 @@ docker build --progress=plain \
 Before a hardware trial, compare the generated C headers and exported ABI
 against the installed library and verify that the runtime executable is
 unchanged. Passing a descriptor test alone is not an ABI or ROS traffic check.
+
+### ARM64 deployment build
+
+Build the deployment image natively on the Pi or on a builder with an actual
+ARM64 worker:
+
+```bash
+./start_robot.sh build ros2_zenoh_router
+docker image inspect relobot-zenoh-router:local --format '{{.Id}} {{.Architecture}}'
+```
+
+The ordinary Compose build uses the repository root as its context and reuses
+this directory's patch without duplicating it. The
+development host currently advertises only amd64 execution; no ARM64 build or
+runtime qualification is recorded. Do not install privileged emulation or
+silently reuse the x86 candidate image ID.
+
+For a separate baseline-versus-patch laboratory comparison only, first retain
+an unmodified ROS router on that architecture and record its
+immutable local image ID (or registry digest). BuildKit does not accept a bare
+local image ID in `FROM`; retain a unique local tag derived from that ID, or
+pass a published `repository@sha256:...` reference:
+
+```bash
+base_id=$(docker image inspect ros2_ws-ros2_zenoh_router:latest --format '{{.Id}}')
+test "$(docker image inspect "$base_id" --format '{{.Architecture}}')" = arm64
+base="relobot-zenoh-base:arm64-${base_id#sha256:}"
+docker tag "$base_id" "$base"
+docker build --platform linux/arm64 --progress=plain --target candidate \
+  --build-arg ROUTER_IMAGE="$base" \
+  -t relobot-zenoh-serial-accept:arm64-candidate \
+  helpers/rmw_zenoh_pico_spike/host_router
+docker image inspect relobot-zenoh-serial-accept:arm64-candidate \
+  --format '{{.Id}} {{.Architecture}}'
+```
+
+Keep this separate tag. Record the installed ROS vendor version, generated
+`candidate.sha256`, ABI comparison and PTY/stock-ROS traffic tests on the Pi
+before selecting a deployment image as `ZENOH_ROUTER_IMAGE`. The index pin, source
+commits and `cargo --locked` make inputs explicit; they do not pin every Debian
+package in the runtime base. Pin and retain that base image for reproducibility.
 
 ## PTY regression matrix
 

@@ -6,6 +6,9 @@ class GamepadService {
         this.cmdVelTopic = null;
         this.knifeRpmTopic = null;
         this.knifeCurrentRpm = 0.0;
+        this.knifeReleaseRequired = true;
+        this.knifeStopPending = true;
+        this.driveReleaseRequired = true;
         this.cruiseActive = false;
         this.cruiseRpm = 0.0;
         this.cruiseBtnWasPressed = false;
@@ -20,7 +23,15 @@ class GamepadService {
     init() {
         // Create topics
         this.cmdVelTopic = rosService.createTopic(TOPICS.CMD_VEL, MSG_TYPES.TWIST_STAMPED);
-        this.knifeRpmTopic = rosService.createTopic(TOPICS.CMD_KNIVES, MSG_TYPES.FLOAT32);
+        this.knifeRpmTopic = rosService.createTopic(TOPICS.CMD_KNIVES, MSG_TYPES.FLOAT32, {
+            reconnect_on_close: false,
+            queue_size: 1,
+        });
+
+        this.rosConnectionHandler = () => this.stopMotion();
+        for (const event of ['connection', 'error', 'close']) {
+            rosService.ros.on(event, this.rosConnectionHandler);
+        }
 
         // Publish knife RPM at a fixed interval (200ms)
         this.rpmPublishInterval = setInterval(() => this.publishRpm(this.knifeCurrentRpm), 200);
@@ -53,7 +64,7 @@ class GamepadService {
     }
 
     publishTwist(linear, angular) {
-        if (!this.cmdVelTopic) return;
+        if (!this.cmdVelTopic || !rosService.isConnected) return;
         this.cmdVelTopic.publish({
             header: {
                 frame_id: 'base_link',
@@ -67,8 +78,10 @@ class GamepadService {
     }
 
     publishRpm(rpm) {
-        if (!this.knifeRpmTopic) return;
-        this.knifeRpmTopic.publish({ data: rpm });
+        if (!this.knifeRpmTopic || !rosService.isConnected || !Number.isFinite(rpm)) return;
+        if (rpm !== 0 && document.visibilityState !== 'visible') return;
+        this.knifeRpmTopic.publish({ data: this.knifeStopPending ? 0 : rpm });
+        this.knifeStopPending = false;
     }
 
     computeTwist(turn, drive) {
@@ -92,9 +105,13 @@ class GamepadService {
     }
 
     setKnifeRpm(rpm, overrideCruise = false) {
+        const canOperate = rosService.isConnected && document.visibilityState === 'visible';
+        if (!Number.isFinite(rpm) || !canOperate) rpm = 0;
         this.knifeCurrentRpm = rpm;
         if (overrideCruise) {
             this.cruiseActive = false;
+            this.cruiseRpm = 0;
+            if (canOperate) this.knifeReleaseRequired = false;
         }
         if (this.onKnifeUpdateCallback) {
             this.onKnifeUpdateCallback(this.knifeCurrentRpm);
@@ -102,12 +119,22 @@ class GamepadService {
     }
 
     processKnife(knifeVal, cruiseBtnVal) {
+        if (!Number.isFinite(knifeVal)) knifeVal = 0;
+        if (!Number.isFinite(cruiseBtnVal)) cruiseBtnVal = 0;
         const rawRpm = knifeVal <= 0.05
             ? 0.0
             : CFG.knifeMinRpm + knifeVal * (CFG.knifeMaxRpm - CFG.knifeMinRpm);
         const currentRpm = (CFG.invertKnife && rawRpm !== 0) ? -rawRpm : rawRpm;
         const knifeIsActive = knifeVal > 0.05;
         const cruiseBtnIsPressed = cruiseBtnVal > 0.5;
+        if (!rosService.isConnected || document.visibilityState !== 'visible') return;
+        if (this.knifeReleaseRequired) {
+            if (!knifeIsActive && !cruiseBtnIsPressed) {
+                this.knifeReleaseRequired = false;
+                this.cruiseBtnWasPressed = false;
+            }
+            return;
+        }
         const justPressed = cruiseBtnIsPressed && !this.cruiseBtnWasPressed;
         this.cruiseBtnWasPressed = cruiseBtnIsPressed;
 
@@ -144,11 +171,19 @@ class GamepadService {
 
         this.processKnife(buttons[CFG.knifeButton] ?? 0, buttons[CFG.cruiseButton] ?? 0);
 
+        const turn = processedAxes[CFG.turnAxis] ?? 0;
+        const drive = processedAxes[CFG.driveAxis] ?? 0;
+
+        if (this.driveReleaseRequired) {
+            if (Math.abs(turn) < 1e-5 && Math.abs(drive) < 1e-5) {
+                this.driveReleaseRequired = false;
+            }
+            return;
+        }
+
         if (now - this.lastGamepadSent > 100) {
             const isZeroNow = this.isAllZero(processedAxes, buttons);
             if (!isZeroNow || (isZeroNow && this.lastSentNonZero)) {
-                const turn = processedAxes[CFG.turnAxis] ?? 0;
-                const drive = processedAxes[CFG.driveAxis] ?? 0;
                 const { linear, angular } = this.computeTwist(turn, drive);
                 this.publishTwist(linear, angular);
                 this.lastSentNonZero = !isZeroNow;
@@ -163,15 +198,23 @@ class GamepadService {
     }
 
     stopMotion() {
-        this.publishTwist(0, 0);
         this.lastSentNonZero = false;
         this.cruiseActive = false;
-        this.setKnifeRpm(0, true);
+        this.cruiseRpm = 0;
+        this.knifeReleaseRequired = true;
+        this.knifeStopPending = true;
+        this.driveReleaseRequired = true;
+        this.cruiseBtnWasPressed = false;
+        this.setKnifeRpm(0);
+        this.publishTwist(0, 0);
         this.publishRpm(0);
     }
 
     destroy() {
         this.stopMotion();
+        for (const event of ['connection', 'error', 'close']) {
+            rosService.ros.removeListener(event, this.rosConnectionHandler);
+        }
         window.removeEventListener('gamepadconnected', this.gamepadConnectedHandler);
         window.removeEventListener('gamepaddisconnected', this.gamepadDisconnectedHandler);
         window.removeEventListener('blur', this.blurHandler);

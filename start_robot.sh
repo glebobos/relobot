@@ -27,6 +27,7 @@ SIM_GUI=true
 SIM_WORLD="garden_world.sdf"
 WSLG=false
 DETACH=false
+PICOROS_KNIVES=false
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -40,6 +41,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --sim)
             SIM=true
+            shift
+            ;;
+        --picoros-knives)
+            PICOROS_KNIVES=true
             shift
             ;;
         --headless)
@@ -104,6 +109,7 @@ if [ -z "$COMMAND" ]; then
     echo ""
     echo "Options:"
     echo "  --sim          - Run in Gazebo simulation mode (swaps hardware drivers for Gazebo)"
+    echo "  --picoros-knives - Connect a physical Pico-ROS knives board in simulation (default on hardware)"
     echo "  --gui          - Launch Gazebo 3D GUI (default in sim mode)"
     echo "  --headless     - Run Gazebo in headless mode (no GUI window)"
     echo "  --wslg         - Enable WSLg devices and libraries (requires --sim --gui)"
@@ -117,6 +123,16 @@ cd "${ROS2_WS_DIR}"
 export DEV="${DEV}"
 export RELOBOT_HOST_DIR="${SCRIPT_DIR}"
 COMPOSE=(docker compose -f docker-compose.yml)
+if [[ "$SIM" != true || "$PICOROS_KNIVES" = true ]]; then
+    export PICO_KNIVES_ENABLED=true
+    export SIM_KNIVES_MOCK=false
+    if [[ "$COMMAND" = up ]]; then
+        python3 "${ROS2_WS_DIR}/zenoh_devices.py" validate
+    fi
+else
+    export PICO_KNIVES_ENABLED=false
+    export SIM_KNIVES_MOCK=true
+fi
 if [[ "$WSLG" = true ]]; then
     if [[ "$SIM" != true || "$SIM_GUI" != true ]]; then
         echo "Error: --wslg requires --sim --gui"
@@ -208,4 +224,3 @@ else
     echo "Usage: $0 {up|down|build|logs|ps} [service] [--sim] [--dev] [--gui|--headless] [--world <name>]"
     exit 1
 fi
-
