@@ -4,6 +4,7 @@ x-ros-env: &ros-env
   OPENBLAS_NUM_THREADS: 1
   OMP_NUM_THREADS: 2
   RMW_IMPLEMENTATION: rmw_zenoh_cpp
+  ZENOH_ROUTER_CHECK_ATTEMPTS: 25
 
 services:
   # ==========================================================
@@ -15,10 +16,12 @@ services:
       dockerfile: ZenohRouter.dockerfile
     container_name: ros2_zenoh_router
     environment:
-      - ZENOH_ROUTER_CONFIG_URI
+      ZENOH_ROUTER_CONFIG_URI: /etc/zenoh_router_config.json5
+      RUST_LOG: "info,zenoh_link_serial=debug,zenoh_transport=debug"
     volumes:
+      - ./zenoh_router_config.json5:/etc/zenoh_router_config.json5:ro
       - /tmp:/tmp
-      - /dev:/hostdev:ro
+      - /dev:/hostdev:ro,rslave
     device_cgroup_rules:
       - "c 166:* rwm"
     network_mode: host
@@ -146,6 +149,9 @@ services:
     environment:
       <<: *ros-env
       FASTRTPS_DEFAULT_PROFILES_FILE: /ros2_ws/fastdds_localhost.xml
+    depends_on:
+      ros2_zenoh_router:
+        condition: service_started
     network_mode: host
     ipc: host 
     privileged: true

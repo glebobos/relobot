@@ -12,9 +12,9 @@ picoros_res_t relobot_picoros_init(void)
     picoros_res_t status;
     do {
         status = picoros_interface_init(&interface);
-        if (status == PICOROS_NOT_READY) {
+        if (status != PICOROS_OK) {
             vTaskDelay(pdMS_TO_TICKS(1000));
         }
-    } while (status == PICOROS_NOT_READY);
+    } while (status != PICOROS_OK);
     return status;
 }

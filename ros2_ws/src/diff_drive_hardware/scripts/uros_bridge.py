@@ -40,9 +40,7 @@ TOPIC_SPECS = [
     (2, "/battery_voltage", "std_msgs.msg", "Float32", "pico_to_zenoh"),
     (3, "/charger_voltage", "std_msgs.msg", "Float32", "pico_to_zenoh"),
     (4, "/on_dock", "std_msgs.msg", "Bool", "pico_to_zenoh"),
-    (5, "/knives/current_rpm", "std_msgs.msg", "Float32", "pico_to_zenoh"),
     (6, "/robot_joint_commands", "sensor_msgs.msg", "JointState", "zenoh_to_pico"),
-    (7, "/knives/set_rpm", "std_msgs.msg", "Float32", "zenoh_to_pico"),
 ]
 
 

@@ -62,6 +62,11 @@ def generate_launch_description():
         glob.glob('/dev/serial/by-id/usb-*Pico*') +
         glob.glob('/dev/serial/by-id/usb-*ReloBot*')
     )
+    # Exclude devices migrated to native Zenoh-Pico firmware (e.g. knives controller)
+    zenoh_pico_devs = {
+        '/dev/serial/by-id/usb-Raspberry_Pi_Pico_4150323038323712-if00',
+    }
+    by_id_devs = [d for d in by_id_devs if d not in zenoh_pico_devs]
     if by_id_devs:
         serial_devs = by_id_devs
     else:

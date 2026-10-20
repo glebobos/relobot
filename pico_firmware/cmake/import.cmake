@@ -2,8 +2,8 @@ include_guard(GLOBAL)
 
 get_filename_component(RELOBOT_PICO_ROOT "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
 set(RELOBOT_PICO_BOARD "kamod_rp2040" CACHE STRING "ReloBot hardware profile")
-if(NOT RELOBOT_PICO_BOARD STREQUAL "kamod_rp2040")
-    message(FATAL_ERROR "Unsupported ReloBot board: ${RELOBOT_PICO_BOARD}; only kamod_rp2040 is implemented")
+if(NOT EXISTS "${RELOBOT_PICO_ROOT}/boards/${RELOBOT_PICO_BOARD}/board.cmake")
+    message(FATAL_ERROR "Unsupported ReloBot board profile: ${RELOBOT_PICO_BOARD}")
 endif()
 include("${RELOBOT_PICO_ROOT}/boards/${RELOBOT_PICO_BOARD}/board.cmake")
 

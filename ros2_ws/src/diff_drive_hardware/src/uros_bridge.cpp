@@ -42,9 +42,7 @@ static const std::vector<TopicBridge> TOPICS = {
     {2, "/battery_voltage", "std_msgs/msg/Float32", true},
     {3, "/charger_voltage", "std_msgs/msg/Float32", true},
     {4, "/on_dock", "std_msgs/msg/Bool", true},
-    {5, "/knives/current_rpm", "std_msgs/msg/Float32", true},
     {6, "/robot_joint_commands", "sensor_msgs/msg/JointState", false},
-    {7, "/knives/set_rpm", "std_msgs/msg/Float32", false},
 };
 
 static pid_t g_child_pid = -1;
@@ -98,7 +96,11 @@ static void run_worker(const std::string& mode, int sock, int argc, char** argv)
     rclcpp::QoS reliable_qos(10);
     reliable_qos.reliable();
 
-    std::vector<std::shared_ptr<rclcpp::GenericPublisher>> publishers(TOPICS.size(), nullptr);
+    size_t max_id = 0;
+    for (const auto& t : TOPICS) {
+        if (t.id > max_id) max_id = t.id;
+    }
+    std::vector<std::shared_ptr<rclcpp::GenericPublisher>> publishers(max_id + 1, nullptr);
     std::vector<std::shared_ptr<rclcpp::GenericSubscription>> subscriptions;
 
     for (const auto& topic : TOPICS) {
