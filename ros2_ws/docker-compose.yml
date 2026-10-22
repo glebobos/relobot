@@ -5,6 +5,9 @@ x-ros-env: &ros-env
   OMP_NUM_THREADS: 2
   RMW_IMPLEMENTATION: rmw_zenoh_cpp
   ZENOH_ROUTER_CHECK_ATTEMPTS: 25
+  ZENOH_SHM_ALLOC_SIZE: ${ZENOH_SHM_ALLOC_SIZE:-16777216}
+  ZENOH_SHM_MESSAGE_SIZE_THRESHOLD: ${ZENOH_SHM_MESSAGE_SIZE_THRESHOLD:-512}
+  ZENOH_CONFIG_OVERRIDE: ${ZENOH_SESSION_CONFIG_OVERRIDE:-transport/shared_memory/enabled=true;transport/shared_memory/mode="lazy";transport/shared_memory/transport_optimization/enabled=true;transport/shared_memory/transport_optimization/pool_size=16777216;transport/shared_memory/transport_optimization/message_size_threshold=512}
 
 services:
   # ==========================================================
@@ -19,10 +22,14 @@ services:
     environment:
       RUST_LOG: ${ZENOH_ROUTER_RUST_LOG:-info}
       PICO_KNIVES_ENABLED: ${PICO_KNIVES_ENABLED:-true}
+      ZENOH_SHM_ALLOC_SIZE: ${ZENOH_SHM_ALLOC_SIZE:-16777216}
+      ZENOH_SHM_MESSAGE_SIZE_THRESHOLD: ${ZENOH_SHM_MESSAGE_SIZE_THRESHOLD:-512}
     volumes:
       - /tmp:/tmp
       - /dev:/hostdev:ro,rslave
       - ./zenoh_devices.json:/etc/relobot/zenoh_devices.json:ro
+      - ./start_zenoh_router.sh:/usr/local/bin/start_zenoh_router.sh:ro
+      - ./zenoh_devices.py:/usr/local/bin/zenoh_devices.py:ro
     device_cgroup_rules:
       - "c 166:* rwm"
     network_mode: host
@@ -149,7 +156,6 @@ services:
       - /dev/:/dev/
     environment:
       <<: *ros-env
-      FASTRTPS_DEFAULT_PROFILES_FILE: /ros2_ws/fastdds_localhost.xml
       PICO_KNIVES_ENABLED: ${PICO_KNIVES_ENABLED:-true}
     depends_on:
       ros2_zenoh_router:
