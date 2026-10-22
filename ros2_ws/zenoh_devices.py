@@ -50,8 +50,8 @@ def load_devices(config=DEFAULT_CONFIG):
             raise ValueError(f'{name}: duplicate serial_by_id: {identity}')
         identities.add(identity)
         devices[name] = {'serial_by_id': identity, 'baudrate': baudrate}
-    if 'knives' not in devices:
-        raise ValueError('native knives mode requires an enabled "knives" device')
+    if not devices:
+        raise ValueError('native Pico-ROS mode requires at least one enabled device')
     return devices
 
 

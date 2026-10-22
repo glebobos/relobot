@@ -68,11 +68,18 @@ class DeviceConfigTest(ConfigFixture):
                 self.config.write_text(json.dumps(value))
                 DEVICES.load_devices(self.config)
 
-    def test_missing_or_disabled_knives_is_rejected(self):
+    def test_empty_device_set_is_rejected(self):
         for entries in ({}, {'knives': device_entry(enabled=False)}):
-            with self.subTest(entries=entries), self.assertRaisesRegex(ValueError, 'knives'):
+            with self.subTest(entries=entries), \
+                    self.assertRaisesRegex(ValueError, 'at least one enabled device'):
                 self.write_devices(entries)
                 DEVICES.load_devices(self.config)
+
+    def test_non_knives_device_is_accepted_alone(self):
+        self.write_devices({'ina226': device_entry(SECOND)})
+        self.assertEqual(DEVICES.load_devices(self.config), {
+            'ina226': {'serial_by_id': os.path.basename(SECOND), 'baudrate': 115200},
+        })
 
     def test_duplicate_device_identity_is_rejected(self):
         self.write_devices({'knives': device_entry(), 'second': device_entry()})

@@ -13,11 +13,14 @@ ReloBot is a ROS2-based robotics platform running on Raspberry Pi 5.
 - `FLASHING.md`: Detailed guide for building, flashing, and monitoring micro-ROS firmwares.
 - `.agents/skills/rust-skills/`: Comprehensive Rust guidelines & best practices ([SKILL.md](file:///home/glebos/projects/relobot/.agents/skills/rust-skills/SKILL.md)) for writing, reviewing, and refactoring Rust components (e.g. `rosbridge_rust`).
 - [pico_firmware/README.md](pico_firmware/README.md): Shared foundation for new Pico-ROS firmware: SDK/FreeRTOS, USB/Zenoh, startup and board profiles. Reuse it instead of copying platform setup per controller; only spare KAmod RP2040 is currently hardware-validated. Existing production micro-ROS controllers are not migrated automatically.
-- `pico_ware_*/`: Microcontroller C/C++ micro-ROS firmwares:
+- `pico_ware_*_microros/`: Microcontroller C/C++ micro-ROS firmwares:
     - [pico_ware_wheels_microros/README.md](file:///home/admin/projects/relobot/pico_ware_wheels_microros/README.md): Differential drive motor control, Cytron MD13S pinout, and PI/feedforward tuning.
     - [pico_ware_knives_microros/README.md](file:///home/admin/projects/relobot/pico_ware_knives_microros/README.md): Mower blade motor driver micro-ROS node.
     - [pico_ware_imu_microros/README.md](file:///home/admin/projects/relobot/pico_ware_imu_microros/README.md): IMU sensor micro-ROS node.
     - [pico_ware_ina226_microros/README.md](file:///home/admin/projects/relobot/pico_ware_ina226_microros/README.md): Power & voltage monitoring micro-ROS node.
+- `pico_ware_*_picoros/`: Native Pico-ROS (Zenoh) firmwares:
+    - [pico_ware_knives_picoros/README.md](pico_ware_knives_picoros/README.md): Knives motor driver native Pico-ROS node.
+    - [pico_ware_ina226_picoros/README.md](pico_ware_ina226_picoros/README.md): INA226 power & dock monitoring native Pico-ROS node.
 - `helpers/`: Utility tools and calibration procedures:
     - [helpers/wheel_calibration/README.md](file:///home/admin/projects/relobot/helpers/wheel_calibration/README.md): Wheel velocity calibration sweep & linear regression constants.
     - [helpers/camera_calibration/README.md](file:///home/admin/projects/relobot/helpers/camera_calibration/README.md): Fisheye camera calibration guide.
