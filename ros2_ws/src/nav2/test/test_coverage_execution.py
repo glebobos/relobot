@@ -118,11 +118,24 @@ def test_coverage_sensor_subscriptions_keep_only_latest_snapshot():
     rclpy.init()
     manager = CoverageManager()
     try:
+        # In idle, sensor subscriptions are detached to eliminate CPU consumption
+        idle_topics = {s.topic_name for s in manager.subscriptions}
+        assert '/scan' not in idle_topics
+        assert '/local_costmap/costmap' not in idle_topics
+
+        # When execution sensors are attached, verify QoS profile
+        manager._execution.attach_sensors()
         profiles = {subscription.topic_name: subscription.qos_profile for subscription in manager.subscriptions}
         for topic in ('/scan', '/local_costmap/costmap'):
             assert profiles[topic].depth == 1
             assert profiles[topic].history == HistoryPolicy.KEEP_LAST
             assert profiles[topic].reliability == ReliabilityPolicy.BEST_EFFORT
+
+        # When detached, subscriptions are cleanly removed
+        manager._execution.detach_sensors()
+        detached_topics = {s.topic_name for s in manager.subscriptions}
+        assert '/scan' not in detached_topics
+        assert '/local_costmap/costmap' not in detached_topics
     finally:
         manager.destroy_node()
         rclpy.shutdown()
