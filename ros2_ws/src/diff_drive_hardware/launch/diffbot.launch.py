@@ -12,24 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import json
 import os
-import subprocess
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import ExecuteProcess, Shutdown
+from launch.actions import ExecuteProcess, RegisterEventHandler, Shutdown
+from launch.event_handlers import OnProcessExit
 from launch.substitutions import Command, FindExecutable, PathJoinSubstitution
 from launch_ros.parameter_descriptions import ParameterValue
 
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
-
-
-def micro_ros_serial_devices():
-    return json.loads(subprocess.check_output([
-        'python3', '/ros2_ws/zenoh_devices.py', 'micro-ros-devices',
-        '--native-enabled', os.environ.get('PICO_KNIVES_ENABLED', 'true'),
-    ], text=True))
 
 
 def generate_launch_description():
@@ -64,31 +56,6 @@ def generate_launch_description():
         get_package_share_directory('diff_drive_hardware'),
         'config',
         'robot_state_publisher.yaml'
-    )
-
-    serial_devs = micro_ros_serial_devices()
-
-    print(f"[DiffBot Launch] Active Micro-ROS serial devices: {serial_devs}")
-
-    micro_ros_agent = Node(
-        package='micro_ros_agent',
-        executable='micro_ros_agent',
-        name='imu_micro_ros_agent',
-        arguments=['multiserial', '--devs', ' '.join(serial_devs), '-b', '115200'],
-        output='screen',
-        additional_env={
-            'RMW_IMPLEMENTATION': 'rmw_fastrtps_cpp',
-            'FASTRTPS_DEFAULT_PROFILES_FILE': '/ros2_ws/fastdds_localhost.xml',
-        },
-        on_exit=Shutdown(),
-    ) if serial_devs else None
-
-    uros_bridge_node = Node(
-        package='diff_drive_hardware',
-        executable='uros_bridge',
-        name='uros_bridge',
-        output='screen',
-        on_exit=Shutdown(),
     )
 
     control_node = Node(
@@ -129,6 +96,19 @@ def generate_launch_description():
         ],
     )
 
+    init_cmd_vel_cmd = ExecuteProcess(
+        cmd=['ros2', 'topic', 'pub', '--once', '/cmd_vel', 'geometry_msgs/msg/TwistStamped',
+             '{header: {frame_id: "base_link"}, twist: {linear: {x: 0.0}, angular: {z: 0.0}}}'],
+        output='log',
+    )
+
+    delay_init_cmd_vel = RegisterEventHandler(
+        event_handler=OnProcessExit(
+            target_action=robot_controller_spawner,
+            on_exit=[init_cmd_vel_cmd],
+        )
+    )
+
     ekf_node = Node(
         package='robot_localization',
         executable='ekf_node',
@@ -138,14 +118,12 @@ def generate_launch_description():
     )
 
     nodes = [
-        uros_bridge_node,
         control_node,
         robot_state_pub_node,
         joint_state_broadcaster_spawner,
         robot_controller_spawner,
+        delay_init_cmd_vel,
         ekf_node,
     ]
-    if micro_ros_agent is not None:
-        nodes.insert(0, micro_ros_agent)
 
     return LaunchDescription(nodes)
