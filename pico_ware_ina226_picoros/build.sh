@@ -8,9 +8,9 @@ readonly BUILDER_IMAGE="relobot_pico_ware_wheels_microros:latest"
 readonly SPIKE_BUILD="${repo_root}/helpers/rmw_zenoh_pico_spike/build"
 board="${1:-kamod_rp2040}"
 mode="${2:-bench}"
-if [[ $# -gt 2 || ! "$board" =~ ^(kamod_rp2040|pico|xiao_rp2040)$ ||
+if [[ $# -gt 2 || ! "$board" =~ ^(kamod_rp2040|pico|xiao_rp2040|xiao_rp2350)$ ||
       ! "$mode" =~ ^(bench|sensor)$ ]]; then
-    echo "Usage: $0 [kamod_rp2040|pico|xiao_rp2040] [bench|sensor]" >&2
+    echo "Usage: $0 [kamod_rp2040|pico|xiao_rp2040|xiao_rp2350] [bench|sensor]" >&2
     exit 1
 fi
 bench=ON

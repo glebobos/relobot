@@ -125,7 +125,7 @@ picotool load -x your_firmware.uf2
 | **WHEELS** | Seeeduino XIAO | RP2040 | `/dev/ttyACM0` |
 | **KNIVES** | Seeeduino XIAO | RP2040 | `/dev/ttyACM3` |
 | **IMU** | RPi Pico | RP2040 | `/dev/ttyACM4` |
-| **INA226** | RPi Pico 2 | **RP2350** | `/dev/ttyACM2` |
+| **INA226** | Seeed XIAO | **RP2350** | `/dev/ttyACM2` |
 
 ---
 

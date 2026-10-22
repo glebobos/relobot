@@ -32,10 +32,11 @@ RUN git clone https://github.com/raspberrypi/picotool.git /tmp/picotool && \
     rm -rf /tmp/picotool
 
 # Clone the micro-ROS RP2040 SDK (Humble branch)
-# NOTE: The precompiled libmicroros.a targets Cortex-M0+ (RP2040).
-# RP2350 is Cortex-M33. If linking fails with ABI errors, rebuild the library
-# using: docker run -it --rm -v $(pwd):/project microros/micro_ros_static_library_builder:humble
-# with PICO_BOARD=pico2 and appropriate -mcpu=cortex-m33 flags.
+# NOTE: The actual board is a Seeed XIAO RP2350 (Cortex-M33), built with
+# PICO_BOARD=seeed_xiao_rp2350 in build.sh. The precompiled libmicroros.a
+# here targets Cortex-M0+ (RP2040); this was verified to link cleanly
+# against the RP2350 (rp2350-arm-s) application build, so no ABI rebuild
+# of the micro-ROS library was needed.
 WORKDIR /project
 RUN git clone --branch autoupdate_micro_ros_rpipico_humble https://github.com/micro-ROS/micro_ros_raspberrypi_pico_sdk.git .
 

@@ -1,6 +1,6 @@
 # INA226 RP2350 micro-ROS firmware
 
-This package contains the RP2350 (Pico 2) firmware for power monitoring using the INA226 sensor, publishing over micro-ROS.
+This package contains the RP2350 (Seeed Studio XIAO RP2350) firmware for power monitoring using the INA226 sensor, publishing over micro-ROS.
 
 ## Build & Flashing
 

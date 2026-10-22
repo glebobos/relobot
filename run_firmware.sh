@@ -21,7 +21,7 @@ Targets:
   wheels_calibration  pico_wheels_calibration.uf2 (XIAO RP2040)
   knives              pico_knives_microros.uf2 (XIAO RP2040)
   imu                 pico_imu_microros.uf2 (RPi Pico RP2040)
-  ina226              pico_ina226_microros.uf2 (RPi Pico 2 RP2350)
+  ina226              pico_ina226_microros.uf2 (Seeed XIAO RP2350)
 
 Options:
   --port <device>     Explicitly specify serial port (e.g. /dev/ttyACM0)

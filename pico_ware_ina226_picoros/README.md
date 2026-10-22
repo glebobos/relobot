@@ -16,6 +16,7 @@ Publishes battery voltage, charger voltage, and docking detection status directl
 | Parameter | Value | Notes |
 | --- | --- | --- |
 | Controller | RP2040 (`pico`, `kamod_rp2040`, `xiao_rp2040`) | Single-core FreeRTOS |
+| Controller | RP2350 (`xiao_rp2350` — Seeed XIAO RP2350, the actual INA226 board) | Single-core FreeRTOS; same I2C wiring (GPIO6/7) as the micro-ROS firmware this replaces; cross-build-verified only, see note below |
 | I2C Peripheral | `i2c1` | 400 kHz Fast-mode |
 | SDA Pin | GPIO 6 | Pull-up enabled |
 | SCL Pin | GPIO 7 | Pull-up enabled |
@@ -38,9 +39,28 @@ Reuse the [shared firmware platform](../pico_firmware/README.md) and its prepare
 
 # Build sensor firmware for Seeed Studio XIAO RP2040
 ./pico_ware_ina226_picoros/build.sh xiao_rp2040 sensor
+
+# Build sensor firmware for Seeed XIAO RP2350 — the actual INA226 board.
+# Same I2C wiring (GPIO6/7) as pico_ware_ina226_microros. Cross-build
+# verified only; not yet flashed or validated on physical hardware.
+./pico_ware_ina226_picoros/build.sh xiao_rp2350 sensor
 ```
 
 Outputs are `picoros_ina226_<board>_<mode>.uf2` in the firmware directory. Neither command flashes the board automatically.
+
+**`xiao_rp2350` status**: this profile cross-compiles successfully (both
+`bench` and `sensor` modes) inside the same Docker toolchain used for the
+RP2040 boards, but that only proves the build, not the hardware. The onboard
+status LED is the single WS2812 NeoPixel on GPIO22 (power-enabled via
+GPIO23, per Seeed's pin map and the pico-sdk `seeed_xiao_rp2350.h` board
+header) — unlike XIAO RP2040, this board has no separate discrete R/G/B
+LEDs. Per
+[`wiki/picoros_zenoh_migration_plan.md`](../wiki/picoros_zenoh_migration_plan.md)
+Phase 6: "RP2350 support and board-specific USB, memory and pinout require
+separate verification; do not treat the KAmod RP2040 result as evidence for
+this board." Before any hardware-readiness claim, flash a spare XIAO RP2350
+and repeat the 30-minute three-topic validation plus the reconnect/rollback
+gates used for the other boards — a compile-only result is not qualification.
 
 ### Bench vs Sensor Modes
 

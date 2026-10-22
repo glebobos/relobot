@@ -12,6 +12,8 @@ git -c safe.directory="${ROOT}/build/zenoh-pico" \
   -C "${ROOT}/build/zenoh-pico" apply "${ROOT}/patches/zenoh-pico-usb-task.patch"
 git clone --filter=blob:none --no-checkout https://github.com/FreeRTOS/FreeRTOS-Kernel.git "${ROOT}/build/FreeRTOS-Kernel"
 git -C "${ROOT}/build/FreeRTOS-Kernel" checkout "${FREERTOS_COMMIT}"
+git -C "${ROOT}/build/FreeRTOS-Kernel" submodule update --init \
+  -- portable/ThirdParty/Community-Supported-Ports
 
 git -c safe.directory="${ROOT}/build/rmw_zenoh_pico" \
   -C "${ROOT}/build/rmw_zenoh_pico" reset --hard HEAD

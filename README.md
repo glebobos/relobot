@@ -22,7 +22,7 @@ and validation before migration.
 | **Wheels** | XIAO RP2040 | `pico_ware_wheels_microros` | `/robot_joint_commands` + `/robot_joint_states` (JointState) |
 | **Knives** | XIAO RP2040 | `pico_ware_knives_picoros` (qualification pending) | `knives/set_rpm` + `knives/current_rpm` (Float32) |
 | **IMU** | RPi Pico RP2040 | `pico_ware_imu_microros` | `/imu/data` (Imu) |
-| **Power** | RPi Pico 2 RP2350 | `pico_ware_ina226_microros` | `/battery_state` |
+| **Power** | XIAO RP2350 | `pico_ware_ina226_microros` | `/battery_state` |
 | **LiDAR** | USB | `ldlidar` | `/scan` |
 | **Camera** | USB | `camera_ros` | image/depth topics |
 
@@ -33,7 +33,7 @@ The differential drive uses `topic_based_ros2_control/TopicBasedSystem` as the h
 - **Raspberry Pi 5** — main compute, runs all Docker containers
 - **XIAO RP2040** ×2 — wheels and knives, USB CDC micro-ROS
 - **RPi Pico RP2040** — IMU (ICM20948), USB CDC micro-ROS
-- **RPi Pico 2 RP2350** — INA226 power monitor, USB CDC micro-ROS
+- **XIAO RP2350** — INA226 power monitor, USB CDC micro-ROS
 - DC motors with single-channel 60 CPR encoders
 - LiDAR (USB)
 - USB camera

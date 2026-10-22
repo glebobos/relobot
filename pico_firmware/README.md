@@ -26,10 +26,16 @@ work. The old helper configuration/LED files remain only for the independent
 `rmw_zenoh_pico` comparison; its one-off hardware probes have been removed.
 Pico-ROS no longer includes that comparison's configuration or LED driver.
 
-Only `RELOBOT_PICO_BOARD=kamod_rp2040` is implemented. Unsupported profiles,
-including RP2350, and conflicting `PICO_BOARD`/`PICO_PLATFORM` settings fail at
-configuration rather than silently reusing RP2040 pins or transport code.
-Adding another board requires its own profile and driver implementation.
+Implemented profiles are `kamod_rp2040`, `xiao_rp2040`, `pico` (all RP2040),
+and `xiao_rp2350` (Seeed Studio XIAO RP2350, `PICO_BOARD=seeed_xiao_rp2350`,
+`PICO_PLATFORM=rp2350-arm-s`). The `xiao_rp2350` profile is
+cross-build-verified only (see
+[`pico_ware_ina226_picoros/README.md`](../pico_ware_ina226_picoros/README.md));
+it has not been flashed or validated on physical RP2350 hardware. Other
+unsupported profiles and conflicting `PICO_BOARD`/`PICO_PLATFORM` settings
+still fail at configuration rather than silently reusing RP2040 pins or
+transport code. Adding another board requires its own profile and driver
+implementation.
 
 ## Application API
 
