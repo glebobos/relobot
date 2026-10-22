@@ -11,7 +11,7 @@ ReloBot is a ROS2-based robotics platform running on Raspberry Pi 5.
 - `AGENTS.md`: Central workspace entry point, rules, and commands reference.
 - `README.md`: High-level repository overview.
 - `FLASHING.md`: Detailed guide for building, flashing, and monitoring micro-ROS firmwares.
-- `.agents/skills/rust-skills/`: Comprehensive Rust guidelines & best practices ([SKILL.md](file:///home/glebos/projects/relobot/.agents/skills/rust-skills/SKILL.md)) for writing, reviewing, and refactoring Rust components (e.g. `rosbridge_rust`).
+- [.agents/skills/](.agents/skills/README.md): Specialized AI agent skills suite covering bare-metal & RP2040 firmware (FreeRTOS, PWM, GPIO, I2C, SPI, DMA, OpenOCD), performance profiling (Linux perf, flamegraphs, strace, valgrind, heaptrack), C++ build & sanitizers (CMake, cross-gcc, ASan/TSan), Linux containers/device-tree, and [Rust guidelines](.agents/skills/rust-skills/SKILL.md).
 - `pico_ware_*/`: Microcontroller C/C++ micro-ROS firmwares:
     - [pico_ware_wheels_microros/README.md](file:///home/admin/projects/relobot/pico_ware_wheels_microros/README.md): Differential drive motor control, Cytron MD13S pinout, and PI/feedforward tuning.
     - [pico_ware_knives_microros/README.md](file:///home/admin/projects/relobot/pico_ware_knives_microros/README.md): Mower blade motor driver micro-ROS node.
