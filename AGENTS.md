@@ -21,6 +21,8 @@ ReloBot is a ROS2-based robotics platform running on Raspberry Pi 5.
 - `pico_ware_*_picoros/`: Native Pico-ROS (Zenoh) firmwares:
     - [pico_ware_knives_picoros/README.md](pico_ware_knives_picoros/README.md): Knives motor driver native Pico-ROS node.
     - [pico_ware_ina226_picoros/README.md](pico_ware_ina226_picoros/README.md): INA226 power & dock monitoring native Pico-ROS node.
+    - [pico_ware_imu_picoros/README.md](pico_ware_imu_picoros/README.md): IMU sensor native Pico-ROS node.
+    - [pico_ware_wheels_picoros/README.md](pico_ware_wheels_picoros/README.md): Differential drive wheel control native Pico-ROS node.
 - `helpers/`: Utility tools and calibration procedures:
     - [helpers/wheel_calibration/README.md](file:///home/admin/projects/relobot/helpers/wheel_calibration/README.md): Wheel velocity calibration sweep & linear regression constants.
     - [helpers/camera_calibration/README.md](file:///home/admin/projects/relobot/helpers/camera_calibration/README.md): Fisheye camera calibration guide.

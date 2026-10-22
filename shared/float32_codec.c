@@ -43,7 +43,7 @@ bool float32_codec_encode(float value, uint8_t payload[FLOAT32_CDR_SIZE])
     memcpy(payload, (uint8_t[]){0, 1, 0, 0}, 4);
     ucdrBuffer cdr;
     ucdr_init_buffer_origin_offset_endian(&cdr, payload + 4, FLOAT32_CDR_SIZE - 4,
-                                         0, 0, UCDR_LITTLE_ENDIANNESS);
+                                          0, 0, UCDR_LITTLE_ENDIANNESS);
     return callbacks != NULL && callbacks->cdr_serialize(&message, &cdr) &&
            ucdr_buffer_length(&cdr) == FLOAT32_CDR_SIZE - 4;
 }
@@ -66,4 +66,3 @@ bool float32_codec_decode(uint8_t *payload, size_t length, float *value)
     *value = message.data;
     return true;
 }
-

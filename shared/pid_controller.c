@@ -1,5 +1,4 @@
 #include "pid_controller.h"
-#include <stddef.h>
 
 void pid_controller_init(
     pid_controller_t *pid,
@@ -15,6 +14,7 @@ void pid_controller_init(
         return;
     }
 
+    /* Silently swap inverted limits so clamp always works correctly */
     if (out_min > out_max)           { float t = out_min; out_min = out_max; out_max = t; }
     if (integral_min > integral_max) { float t = integral_min; integral_min = integral_max; integral_max = t; }
 
@@ -46,6 +46,7 @@ float pid_controller_update(pid_controller_t *pid, float setpoint, float measure
         return 0.0f;
     }
 
+    /* Refuse to corrupt integral state with NaN/Inf inputs */
     if (!isfinite(setpoint) || !isfinite(measurement)) {
         return 0.0f;
     }
@@ -56,6 +57,7 @@ float pid_controller_update(pid_controller_t *pid, float setpoint, float measure
         pid->integral_min,
         pid->integral_max);
 
+    /* Derivative-on-measurement eliminates setpoint-step kick */
     float derivative = 0.0f;
     if (pid->initialized) {
         derivative = -(measurement - pid->prev_measurement) / dt_s;

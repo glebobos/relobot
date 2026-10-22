@@ -14,12 +14,15 @@ include("${RELOBOT_PICO_ROOT}/cmake/picoros.cmake")
 
 relobot_add_firmware(picoros_knives
     src/main.c
-    src/pid_controller.c
-    src/float32_codec.c
+    ../shared/pid_controller.c
+    ../shared/float32_codec.c
     src/command_state.c
 )
 
-target_include_directories(picoros_knives PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+target_include_directories(picoros_knives PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/src"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../shared"
+)
 target_link_libraries(picoros_knives PRIVATE hardware_pwm hardware_gpio hardware_watchdog)
 target_compile_definitions(picoros_knives PRIVATE RELOBOT_KNIVES_BENCH=$<BOOL:${RELOBOT_KNIVES_BENCH}>)
 target_compile_options(picoros_knives PRIVATE -Wall -Wextra -Werror)

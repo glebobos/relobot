@@ -2,11 +2,13 @@
 #define PID_CONTROLLER_H
 
 #include <math.h>
+#include <stddef.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+/* Canonical clamp shared across translation units */
 static inline float pid_clampf(float v, float lo, float hi)
 {
     if (v < lo) return lo;
@@ -45,4 +47,4 @@ float pid_controller_update(pid_controller_t *pid, float setpoint, float measure
 }
 #endif
 
-#endif
+#endif /* PID_CONTROLLER_H */

@@ -33,6 +33,8 @@ pico_ware_imu_microros/**/build
 pico_ware_imu_microros/*.uf2
 pico_ware_knives_picoros/**/build
 pico_ware_ina226_picoros/**/build
+pico_ware_imu_picoros/**/build
+pico_ware_wheels_picoros/**/build
 *.uf2
 
 # Rust / Cargo build directories
