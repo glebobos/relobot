@@ -1,7 +1,22 @@
 {
   "devices": {
     "knives": {
-      "serial_by_id": "",
+      "serial_by_id": "usb-Raspberry_Pi_Pico_4150323038323712-if00",
+      "baudrate": 115200,
+      "enabled": true
+    },
+    "wheels": {
+      "serial_by_id": "usb-ReloBot_picoros_wheels_4150324E30363318-if00",
+      "baudrate": 115200,
+      "enabled": true
+    },
+    "ina226": {
+      "serial_by_id": "usb-Raspberry_Pi_Pico_926316917F40C4E9-if00",
+      "baudrate": 115200,
+      "enabled": true
+    },
+    "imu": {
+      "serial_by_id": "usb-Raspberry_Pi_Pico_4150324E30363318-if00",
       "baudrate": 115200,
       "enabled": true
     }

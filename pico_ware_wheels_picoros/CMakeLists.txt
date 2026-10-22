@@ -6,6 +6,8 @@ if(NOT RELOBOT_WHEELS_BENCH AND NOT RELOBOT_PICO_BOARD STREQUAL "xiao_rp2040")
     message(FATAL_ERROR "Motor mode is only defined for xiao_rp2040; use bench mode on KAmod")
 endif()
 add_compile_definitions(RELOBOT_FIRMWARE_FAULT_HOOKS=1)
+add_compile_definitions(USBD_PRODUCT="picoros_wheels")
+add_compile_definitions(USBD_MANUFACTURER="ReloBot")
 include("${CMAKE_CURRENT_LIST_DIR}/../pico_firmware/cmake/import.cmake")
 
 project(picoros_wheels C CXX ASM)
