@@ -140,40 +140,80 @@ static void app_task(void *argument)
     pub_charger_voltage.topic.rihs_hash = float32_codec_hash();
     pub_on_dock.topic.rihs_hash = bool_codec_hash();
 
-    picoros_diagnostic_stage(1);
-    if (relobot_picoros_init() != PICOROS_OK) {
-        startup_failed(3);
-    }
-    picoros_diagnostic_stage(7);
-    if (picoros_node_init(&node) != PICOROS_OK) {
-        startup_failed(4);
-    }
-    picoros_diagnostic_stage(8);
+    for (;;) {
+        picoros_diagnostic_stage(1);
+        if (relobot_picoros_init() != PICOROS_OK) {
+            picoros_diagnostic_stage(3);
+            vTaskDelay(pdMS_TO_TICKS(500));
+            continue;
+        }
+        picoros_diagnostic_stage(7);
+        if (picoros_node_init(&node) != PICOROS_OK) {
+            picoros_interface_close();
+            picoros_diagnostic_stage(4);
+            vTaskDelay(pdMS_TO_TICKS(500));
+            continue;
+        }
+        picoros_diagnostic_stage(8);
 
-    z_publisher_options_default(&pub_battery_voltage.opts);
-    if (picoros_publisher_declare(&node, &pub_battery_voltage) != PICOROS_OK) {
-        startup_failed(5);
-    }
+        z_publisher_options_default(&pub_battery_voltage.opts);
+        if (picoros_publisher_declare(&node, &pub_battery_voltage) != PICOROS_OK) {
+            (void)picoros_node_drop(&node);
+            picoros_interface_close();
+            picoros_diagnostic_stage(5);
+            vTaskDelay(pdMS_TO_TICKS(500));
+            continue;
+        }
 
-    z_publisher_options_default(&pub_charger_voltage.opts);
-    if (picoros_publisher_declare(&node, &pub_charger_voltage) != PICOROS_OK) {
-        startup_failed(5);
-    }
+        z_publisher_options_default(&pub_charger_voltage.opts);
+        if (picoros_publisher_declare(&node, &pub_charger_voltage) != PICOROS_OK) {
+            (void)picoros_publisher_drop(&pub_battery_voltage);
+            (void)picoros_node_drop(&node);
+            picoros_interface_close();
+            picoros_diagnostic_stage(5);
+            vTaskDelay(pdMS_TO_TICKS(500));
+            continue;
+        }
 
-    z_publisher_options_default(&pub_on_dock.opts);
-    if (picoros_publisher_declare(&node, &pub_on_dock) != PICOROS_OK) {
-        startup_failed(5);
-    }
+        z_publisher_options_default(&pub_on_dock.opts);
+        if (picoros_publisher_declare(&node, &pub_on_dock) != PICOROS_OK) {
+            (void)picoros_publisher_drop(&pub_charger_voltage);
+            (void)picoros_publisher_drop(&pub_battery_voltage);
+            (void)picoros_node_drop(&node);
+            picoros_interface_close();
+            picoros_diagnostic_stage(5);
+            vTaskDelay(pdMS_TO_TICKS(500));
+            continue;
+        }
 
 #if RELOBOT_INA226_BENCH
-    for (size_t index = 0; index < sizeof(bench_publishers) / sizeof(bench_publishers[0]); ++index) {
-        bench_publishers[index].topic.rihs_hash = float32_codec_hash();
-        z_publisher_options_default(&bench_publishers[index].opts);
-        if (picoros_publisher_declare(&node, &bench_publishers[index]) != PICOROS_OK) {
-            startup_failed(5);
+        bool bench_ok = true;
+        size_t declared_bench = 0;
+        for (size_t index = 0; index < sizeof(bench_publishers) / sizeof(bench_publishers[0]); ++index) {
+            bench_publishers[index].topic.rihs_hash = float32_codec_hash();
+            z_publisher_options_default(&bench_publishers[index].opts);
+            if (picoros_publisher_declare(&node, &bench_publishers[index]) != PICOROS_OK) {
+                bench_ok = false;
+                break;
+            }
+            declared_bench = index + 1;
         }
-    }
+        if (!bench_ok) {
+            for (size_t index = 0; index < declared_bench; ++index) {
+                (void)picoros_publisher_drop(&bench_publishers[index]);
+            }
+            (void)picoros_publisher_drop(&pub_on_dock);
+            (void)picoros_publisher_drop(&pub_charger_voltage);
+            (void)picoros_publisher_drop(&pub_battery_voltage);
+            (void)picoros_node_drop(&node);
+            picoros_interface_close();
+            picoros_diagnostic_stage(5);
+            vTaskDelay(pdMS_TO_TICKS(500));
+            continue;
+        }
 #endif
+        break;
+    }
 
     taskENTER_CRITICAL();
     entities_ready = true;
@@ -263,14 +303,10 @@ static void sensor_task(void *argument)
             b = 32; /* Solid Blue: codec_init failed */
         } else if (stage >= 1 && stage <= 5) {
             r = 32; /* Red: waiting/attempting Zenoh session init */
+        } else if (ready && stage >= 6 && stage <= 10) {
+            g = 32; /* Solid Green: active publishing */
         } else if (stage >= 6 && stage <= 9) {
             r = 24; g = 20; /* Amber/Yellow: Zenoh session open, declaring ROS entities */
-        } else if (stage == 10) {
-            if (!ready) {
-                r = 32;
-            } else {
-                g = 32; /* Solid Green: active publishing */
-            }
         } else {
             r = 32; b = 16; /* Magenta: unexpected state */
         }

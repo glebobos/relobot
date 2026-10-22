@@ -386,16 +386,14 @@ static void control_task(void *argument)
             b = 32; /* Solid Blue: float32_codec_init failed */
         } else if (stage >= 1 && stage <= 5) {
             r = 32; /* Red: waiting/attempting Zenoh session init or retrying declarations */
-        } else if (stage >= 6 && stage <= 9) {
-            r = 24; g = 20; /* Amber/Yellow: Zenoh session open, declaring ROS entities */
-        } else if (stage == 10) {
-            if (!initialized) {
-                r = 32;
-            } else if (active) {
+        } else if (initialized && stage >= 6 && stage <= 10) {
+            if (active) {
                 g = 32;
             } else {
                 r = 24; g = 12;
             }
+        } else if (stage >= 6 && stage <= 9) {
+            r = 24; g = 20; /* Amber/Yellow: Zenoh session open, declaring ROS entities */
         } else {
             r = 32; b = 16; /* Magenta: unexpected state */
         }
@@ -436,31 +434,68 @@ static void app_task(void *argument)
     sub_set_rpm.topic.rihs_hash = float32_codec_hash();
     pub_current_rpm.topic.rihs_hash = float32_codec_hash();
 
-    picoros_diagnostic_stage(1);
-    if (relobot_picoros_init() != PICOROS_OK) {
-        startup_failed(3);
-    }
-    picoros_diagnostic_stage(7);
-    if (picoros_node_init(&node) != PICOROS_OK) {
-        startup_failed(4);
-    }
-    picoros_diagnostic_stage(8);
-    z_publisher_options_default(&pub_current_rpm.opts);
-    if (picoros_publisher_declare(&node, &pub_current_rpm) != PICOROS_OK) {
-        startup_failed(5);
-    }
-#if RELOBOT_KNIVES_BENCH
-    for (size_t index = 0; index < sizeof(bench_publishers) / sizeof(bench_publishers[0]); ++index) {
-        bench_publishers[index].topic.rihs_hash = float32_codec_hash();
-        z_publisher_options_default(&bench_publishers[index].opts);
-        if (picoros_publisher_declare(&node, &bench_publishers[index]) != PICOROS_OK) {
-            startup_failed(5);
+    for (;;) {
+        picoros_diagnostic_stage(1);
+        if (relobot_picoros_init() != PICOROS_OK) {
+            picoros_diagnostic_stage(3);
+            vTaskDelay(pdMS_TO_TICKS(500));
+            continue;
         }
-    }
+        picoros_diagnostic_stage(7);
+        if (picoros_node_init(&node) != PICOROS_OK) {
+            picoros_interface_close();
+            picoros_diagnostic_stage(4);
+            vTaskDelay(pdMS_TO_TICKS(500));
+            continue;
+        }
+        picoros_diagnostic_stage(8);
+        z_publisher_options_default(&pub_current_rpm.opts);
+        if (picoros_publisher_declare(&node, &pub_current_rpm) != PICOROS_OK) {
+            (void)picoros_node_drop(&node);
+            picoros_interface_close();
+            picoros_diagnostic_stage(5);
+            vTaskDelay(pdMS_TO_TICKS(500));
+            continue;
+        }
+#if RELOBOT_KNIVES_BENCH
+        bool bench_ok = true;
+        size_t declared_bench = 0;
+        for (size_t index = 0; index < sizeof(bench_publishers) / sizeof(bench_publishers[0]); ++index) {
+            bench_publishers[index].topic.rihs_hash = float32_codec_hash();
+            z_publisher_options_default(&bench_publishers[index].opts);
+            if (picoros_publisher_declare(&node, &bench_publishers[index]) != PICOROS_OK) {
+                bench_ok = false;
+                break;
+            }
+            declared_bench = index + 1;
+        }
+        if (!bench_ok) {
+            for (size_t index = 0; index < declared_bench; ++index) {
+                (void)picoros_publisher_drop(&bench_publishers[index]);
+            }
+            (void)picoros_publisher_drop(&pub_current_rpm);
+            (void)picoros_node_drop(&node);
+            picoros_interface_close();
+            picoros_diagnostic_stage(5);
+            vTaskDelay(pdMS_TO_TICKS(500));
+            continue;
+        }
 #endif
-    picoros_diagnostic_stage(9);
-    if (picoros_subscriber_declare(&node, &sub_set_rpm) != PICOROS_OK) {
-        startup_failed(5);
+        picoros_diagnostic_stage(9);
+        if (picoros_subscriber_declare(&node, &sub_set_rpm) != PICOROS_OK) {
+#if RELOBOT_KNIVES_BENCH
+            for (size_t index = 0; index < sizeof(bench_publishers) / sizeof(bench_publishers[0]); ++index) {
+                (void)picoros_publisher_drop(&bench_publishers[index]);
+            }
+#endif
+            (void)picoros_publisher_drop(&pub_current_rpm);
+            (void)picoros_node_drop(&node);
+            picoros_interface_close();
+            picoros_diagnostic_stage(5);
+            vTaskDelay(pdMS_TO_TICKS(500));
+            continue;
+        }
+        break;
     }
     taskENTER_CRITICAL();
     entities_ready = true;

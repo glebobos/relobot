@@ -1,18 +1,18 @@
 diff --git a/src/system/rpi_pico/usb_uart.c b/src/system/rpi_pico/usb_uart.c
 --- a/src/system/rpi_pico/usb_uart.c
 +++ b/src/system/rpi_pico/usb_uart.c
-@@ -265,3 +265,19 @@
+@@ -303,3 +303,19 @@
      return ret;
  }
  #endif
 +
 +#if Z_FEATURE_LINK_SERIAL == 1 && Z_FEATURE_LINK_SERIAL_USB == 1 && defined(PICOROS_USB_POLL)
 +int _z_usb_uart_try_getc(void) {
-+    if (_z_mutex_try_lock(&_z_usb_uart_mutex) != 0) {
++    if (!_z_usb_uart_started || _z_mutex_try_lock(&_z_usb_uart_mutex) != 0) {
 +        return -2;
 +    }
 +    int result = -2;
-+    if (!tud_cdc_connected()) {
++    if (!_z_usb_uart_active || !tud_cdc_connected()) {
 +        result = -1;
 +    } else if (tud_cdc_available()) {
 +        result = (int)tud_cdc_read_char();
