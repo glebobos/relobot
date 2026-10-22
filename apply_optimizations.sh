@@ -70,13 +70,13 @@ if command -v rpi-eeprom-config >/dev/null 2>&1; then
     rm -f "$TEMP_EEPROM"
 fi
 
-# Configure Realtek RTL8822BU Wi-Fi: lock to USB 2 mode (no RF interference) and disable deep sleep
+# Configure Realtek RTL8822BU Wi-Fi: lock to USB 2 mode (no RF interference), disable deep sleep and beamformee stalls
 cat << "EOF" > /etc/modprobe.d/rtw88.conf
-# ReloBot: Prevent Realtek RTL8822BU Wi-Fi firmware crashes and RF interference
-options rtw88_core disable_lps_deep=y
+# ReloBot: Prevent Realtek RTL8822BU Wi-Fi firmware crashes, TX report stalls, and RF interference
+options rtw88_core disable_lps_deep=y support_bf=n
 options rtw88_usb switch_usb_mode=n
 EOF
-echo "  -> Configured /etc/modprobe.d/rtw88.conf (switch_usb_mode=n, disable_lps_deep=y)."
+echo "  -> Configured /etc/modprobe.d/rtw88.conf (switch_usb_mode=n, disable_lps_deep=y, support_bf=n)."
 
 # ------------------------------------------------------------------------------
 # 2. Docker Cgroup Memory Accounting in cmdline.txt
