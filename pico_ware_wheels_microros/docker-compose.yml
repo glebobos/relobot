@@ -1,8 +1,0 @@
-services:
-  builder:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    volumes:
-      - ./src:/project/src
-    network_mode: host

@@ -1,0 +1,32 @@
+cmake_minimum_required(VERSION 3.13)
+project(knives_command_tests C)
+set(CMAKE_C_STANDARD 11)
+enable_testing()
+add_executable(command_state_test command_state_test.c ../src/command_state.c)
+target_include_directories(command_state_test PRIVATE ../src ../../shared)
+target_compile_options(command_state_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_link_libraries(command_state_test PRIVATE m)
+add_test(NAME knives_command_state COMMAND command_state_test)
+
+foreach(stub_header IN ITEMS FreeRTOS.h task.h picoros.h tusb.h
+        pico/stdlib.h pico/bootrom.h hardware/gpio.h hardware/pwm.h
+        hardware/sync.h hardware/watchdog.h)
+    get_filename_component(stub_directory "${CMAKE_CURRENT_BINARY_DIR}/stubs/${stub_header}" DIRECTORY)
+    file(MAKE_DIRECTORY "${stub_directory}")
+    file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/stubs/${stub_header}" "#include \"platform_stubs.h\"\n")
+endforeach()
+foreach(control_target IN ITEMS control_test bench_control_test)
+    add_executable(${control_target} control_test.c ../src/command_state.c ../../shared/pid_controller.c)
+    target_include_directories(${control_target} PRIVATE
+        "${CMAKE_CURRENT_BINARY_DIR}/stubs" . ../src ../../shared ../../pico_firmware/include)
+    target_compile_options(${control_target} PRIVATE -Wall -Wextra -Werror -UNDEBUG -ffunction-sections -fdata-sections)
+    target_link_options(${control_target} PRIVATE -Wl,--gc-sections)
+    target_link_libraries(${control_target} PRIVATE m)
+endforeach()
+target_compile_definitions(control_test PRIVATE RELOBOT_KNIVES_BENCH=0)
+target_compile_definitions(bench_control_test PRIVATE RELOBOT_KNIVES_BENCH=1)
+foreach(scenario IN ITEMS timeout control_gap encoder_loss brake_limit boot_coasting
+        coast_telemetry malloc_failure stack_failure)
+    add_test(NAME knives_control_${scenario} COMMAND control_test ${scenario})
+endforeach()
+add_test(NAME knives_bench_no_encoder COMMAND bench_control_test bench_no_encoder)

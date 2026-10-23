@@ -49,8 +49,10 @@ class CoverageExecution:
         self.ingress_goal_id = None
         self.follower = ActionClient(node, FollowPath, 'follow_path')
         self.backup = ActionClient(node, BackUp, 'backup')
-        self.tf = Buffer()
-        self.listener = TransformListener(self.tf, node)
+        self.tf = Buffer(node=node)
+        self.listener = None
+        self._sensor_subs = []
+        self._motion_odom_topic = motion_odom_topic
         self.plan_pub = node.create_publisher(Path, '/coverage/execution_path',
             QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL))
         self.control_plan_pub = node.create_publisher(Path, '/coverage/control_path',
@@ -94,18 +96,45 @@ class CoverageExecution:
         self.request_id = 0
         self.join_pool = ThreadPoolExecutor(max_workers=1)
         self.join_future = None
-        latest_sensor_qos = QoSProfile(history=HistoryPolicy.KEEP_LAST, depth=1,
-                          reliability=ReliabilityPolicy.BEST_EFFORT,
-                          durability=DurabilityPolicy.VOLATILE)
-        node.create_subscription(OccupancyGrid, '/local_costmap/costmap', self.on_costmap,
-                     latest_sensor_qos)
-        node.create_subscription(LaserScan, '/scan', self.on_scan, latest_sensor_qos)
-        node.create_subscription(Odometry, motion_odom_topic, self.on_odometry, latest_sensor_qos)
         qos = QoSProfile(depth=10, durability=DurabilityPolicy.TRANSIENT_LOCAL)
         for action in ('navigate_to_pose', 'navigate_through_poses'):
             node.create_subscription(GoalStatusArray, f'/{action}/_action/status',
                                      lambda msg, name=action: self.on_navigation(name, msg), qos)
         self.timer = None
+
+    def attach_sensors(self):
+        if getattr(self, 'listener', None) is not None or getattr(self, 'node', None) is None:
+            return
+        if not hasattr(self, 'tf'):
+            self.tf = Buffer(node=self.node)
+        self.listener = TransformListener(self.tf, self.node)
+        latest_sensor_qos = QoSProfile(history=HistoryPolicy.KEEP_LAST, depth=1,
+                          reliability=ReliabilityPolicy.BEST_EFFORT,
+                          durability=DurabilityPolicy.VOLATILE)
+        self._sensor_subs = [
+            self.node.create_subscription(OccupancyGrid, '/local_costmap/costmap', self.on_costmap, latest_sensor_qos),
+            self.node.create_subscription(LaserScan, '/scan', self.on_scan, latest_sensor_qos),
+            self.node.create_subscription(Odometry, getattr(self, '_motion_odom_topic', '/odometry/filtered'), self.on_odometry, latest_sensor_qos),
+        ]
+
+    def detach_sensors(self):
+        listener = getattr(self, 'listener', None)
+        if listener is not None:
+            try:
+                listener.unregister()
+            except Exception:
+                pass
+            self.listener = None
+            if hasattr(self, 'tf'):
+                self.tf.clear()
+        node = getattr(self, 'node', None)
+        for sub in getattr(self, '_sensor_subs', []):
+            if node is not None:
+                try:
+                    node.destroy_subscription(sub)
+                except Exception:
+                    pass
+        self._sensor_subs = []
 
     def on_navigation(self, name, message):
         self.other_navigation[name] = any(
@@ -159,6 +188,8 @@ class CoverageExecution:
             self.local_config = None
 
     def robot_pose(self, frame):
+        if self.listener is None:
+            self.attach_sensors()
         stamped = self.tf.lookup_transform(frame, 'base_link', Time())
         age = (self.node.get_clock().now().nanoseconds - Time.from_msg(stamped.header.stamp).nanoseconds) / 1e9
         if not -0.1 <= age <= 0.5:
@@ -196,6 +227,7 @@ class CoverageExecution:
         if self.busy:
             self.report('busy', 'Coverage is still handling an action.')
             return
+        self.attach_sensors()
         try:
             self.ready()
             paths = work_paths(route, work_sections)
@@ -466,6 +498,8 @@ class CoverageExecution:
         goal.path = path
         goal.controller_id = 'CoverageFollowPath'
         goal.goal_checker_id = 'coverage_goal_checker'
+        goal.progress_checker_id = 'progress_checker'
+        goal.path_handler_id = 'CoveragePathHandler'
         self.report('executing', 'Following the validated work section.', phase=self.phase,
                     path_points=len(path.poses), path_length_m=self.tracker.length,
                     motion_direction='forward',
@@ -517,7 +551,7 @@ class CoverageExecution:
         tracking_warning = not tracking['tracking_valid'] or tracking['path_distance_m'] > 0.15
         if tracking_warning and time.monotonic() - getattr(self, 'last_tracking_warning', 0.0) >= 2.0:
             self.last_tracking_warning = time.monotonic()
-            self.node.get_logger().warn(
+            self.node.get_logger().warning(
                 f"Coverage tracking deviation: {tracking['path_distance_m']:.3f} m; "
                 'MPPI collision checking remains active')
         if tracking['tracking_valid']:
@@ -623,6 +657,7 @@ class CoverageExecution:
     def finish(self, state, reason):
         self.busy = False
         self.stop_guard_timer()
+        self.detach_sensors()
         self.phase = state
         self.handle = None
         self.plan_pub.publish(Path())
@@ -635,6 +670,7 @@ class CoverageExecution:
         if self.busy:
             raise ValueError('Cannot discard an active execution')
         self.stop_guard_timer()
+        self.detach_sensors()
         self.route = self.execution_path = self.tracker = None
         self.sections = []
         self.work_sections = None
@@ -645,6 +681,7 @@ class CoverageExecution:
 
     def close(self):
         self.stop_guard_timer()
+        self.detach_sensors()
         self.join_pool.shutdown(wait=False, cancel_futures=True)
 
     def remaining_path(self):

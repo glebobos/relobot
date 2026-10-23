@@ -118,7 +118,7 @@ a stall. Distinguish the firmware's configured 0.35 rad/s deadband from the
 minimum stable speed observed under load. Preserve ordinary/work speed limits,
 acceleration, clearance and stop checks; no deadband candidate is deployed yet.
 
-The [current firmware](../../pico_ware_wheels_microros/src/main.cpp#L25) uses
+The [current firmware](../../pico_ware_wheels_picoros/src/main.c) uses
 60 counts per wheel revolution. At a 0.0937 m wheel radius, one wheel tick is
 approximately 9.8 mm of rim travel. The signed tick accumulator uses the last
 commanded drive direction, not an independently measured encoder direction.

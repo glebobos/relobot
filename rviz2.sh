@@ -60,6 +60,7 @@ docker run -ti \
     --network=host \
     --ipc=host \
     --privileged \
+    -v /tmp:/tmp \
     -v /tmp/.X11-unix:/tmp/.X11-unix \
     -v /dev/shm:/dev/shm \
     -v "$SCRIPT_DIR/.rviz2:/root/.rviz2" \
@@ -69,9 +70,11 @@ docker run -ti \
     -e DISPLAY="$DISPLAY" \
     -e WAYLAND_DISPLAY="$WAYLAND_DISPLAY" \
     -e QT_X11_NO_MITSHM=1 \
-    -e FASTDDS_DEFAULT_PROFILES_FILE=/ros2_ws/fastdds_localhost.xml \
-    -e FASTRTPS_DEFAULT_PROFILES_FILE=/ros2_ws/fastdds_localhost.xml \
+    -e RMW_IMPLEMENTATION=rmw_zenoh_cpp \
+    -e ZENOH_SHM_ALLOC_SIZE="${ZENOH_SHM_ALLOC_SIZE:-16777216}" \
+    -e ZENOH_SHM_MESSAGE_SIZE_THRESHOLD="${ZENOH_SHM_MESSAGE_SIZE_THRESHOLD:-512}" \
+    -e ZENOH_CONFIG_OVERRIDE="${ZENOH_SESSION_CONFIG_OVERRIDE:-transport/shared_memory/enabled=true;transport/shared_memory/mode=\"lazy\";transport/shared_memory/transport_optimization/enabled=true;transport/shared_memory/transport_optimization/pool_size=16777216;transport/shared_memory/transport_optimization/message_size_threshold=512}" \
     ros2_ws-ros2_gazebo_sim:latest \
-    bash -c "source /opt/ros/humble/setup.bash && source /ros2_ws/install/setup.bash 2>/dev/null || true && rviz2 ${RVIZ_CONFIG_OPTS[*]} ${RVIZ_ARGS[*]}"
+    bash -c "source /opt/ros/lyrical/setup.bash && source /ros2_ws/install/setup.bash 2>/dev/null || true && rviz2 ${RVIZ_CONFIG_OPTS[*]} ${RVIZ_ARGS[*]}"
 
 echo "RViz2 container stopped."

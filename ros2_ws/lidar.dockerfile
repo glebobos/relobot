@@ -1,23 +1,26 @@
-FROM ros:humble
+FROM ros:lyrical-ros-base-resolute@sha256:f79cd486fa218596747c45d00ca42101b0303fc6d94ed5adb72145cd6f54b86c
 
-# Install additional dependencies
-RUN apt-get update 
-# Create workspace
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+ENV DEBIAN_FRONTEND=noninteractive RMW_IMPLEMENTATION=rmw_zenoh_cpp
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ros-lyrical-rmw-zenoh-cpp \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /ros2_ws
 
-# Source the workspace
-RUN echo "source /opt/ros/humble/setup.bash" >> /root/.bashrc
+RUN echo "source /opt/ros/lyrical/setup.bash" >> /root/.bashrc
 
-# Create development script
-RUN echo '#!/bin/bash\n\
-set -e\n\
-source /opt/ros/humble/setup.bash\n\
-cd /ros2_ws\n\
-if [ "$DEV" = "true" ]; then\n\
-  colcon build --packages-select ldlidar \n\
-fi\n\
-source install/setup.bash\n\
-ros2 launch ldlidar stl27l.launch.py' > /start_dev.sh && \
-chmod +x /start_dev.sh
+RUN printf '%s\n' \
+    '#!/bin/bash' \
+    'set -eo pipefail' \
+    'source /opt/ros/lyrical/setup.bash' \
+    'cd /ros2_ws' \
+    'if [ "$DEV" = "true" ] || [ ! -f /ros2_ws/install/ldlidar/share/ldlidar/package.xml ]; then' \
+    '  colcon build --packages-select ldlidar --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF' \
+    'fi' \
+    'source install/setup.bash' \
+    'exec ros2 launch ldlidar stl27l.launch.py' \
+    > /start_dev.sh && chmod +x /start_dev.sh
 
 CMD ["/start_dev.sh"]

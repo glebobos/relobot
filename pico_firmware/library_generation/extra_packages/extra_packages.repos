@@ -1,0 +1,5 @@
+repositories:
+  rmw_zenoh_pico:
+    type: git
+    url: https://github.com/esol-community/rmw_zenoh_pico.git
+    version: 54e20a460c9533d279e07a581d0e69e647d60a0e

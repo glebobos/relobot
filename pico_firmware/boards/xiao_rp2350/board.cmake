@@ -1,0 +1,12 @@
+set(PICO_BOARD "seeed_xiao_rp2350" CACHE STRING "Pico SDK board" FORCE)
+set(PICO_PLATFORM "rp2350-arm-s" CACHE STRING "Pico SDK platform" FORCE)
+
+function(relobot_add_board)
+    set(board_dir "${RELOBOT_PICO_ROOT}/boards/xiao_rp2350")
+    add_library(relobot_board STATIC "${board_dir}/board.c")
+    target_include_directories(relobot_board PUBLIC "${RELOBOT_PICO_ROOT}/include")
+    target_include_directories(relobot_board PRIVATE "${board_dir}")
+    pico_generate_pio_header(relobot_board "${board_dir}/xiao_ws2812.pio")
+    target_link_libraries(relobot_board PUBLIC pico_stdlib hardware_pio hardware_clocks)
+    target_compile_options(relobot_board PRIVATE -Wall -Wextra -Werror)
+endfunction()

@@ -1,0 +1,11 @@
+cmake_minimum_required(VERSION 3.13)
+project(relobot_picoros_runtime_tests C)
+set(CMAKE_C_STANDARD 11)
+enable_testing()
+
+add_executable(picoros_runtime_test picoros_runtime_test.c ../src/picoros_runtime.c)
+target_include_directories(picoros_runtime_test PRIVATE stubs ../include)
+target_compile_options(picoros_runtime_test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+foreach(scenario IN ITEMS ready wait_ready error wait_error)
+    add_test(NAME picoros_startup_${scenario} COMMAND picoros_runtime_test ${scenario})
+endforeach()

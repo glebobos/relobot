@@ -527,7 +527,7 @@ Environment variables (set before launch or in docker-compose):
 | :--- | :--- | :--- |
 | `WHEELS_TTY` | `/dev/ttyACM0` | Wheels Pico USB port |
 | `IMU_TTY` | `/dev/ttyACM4` | IMU Pico USB port |
-| `INA226_TTY` | `/dev/ttyACM2` | INA226 Pico 2 USB port |
+| `INA226_TTY` | `/dev/ttyACM2` | INA226 XIAO RP2350 USB port |
 | `KNIVES_TTY` | `/dev/ttyACM3` | Knives Pico USB port |
 
 ## Sending test commands

@@ -1,0 +1,218 @@
+diff --git a/rmw_zenoh_pico/include/rmw_zenoh_pico/rmw_zenoh_pico.h b/rmw_zenoh_pico/include/rmw_zenoh_pico/rmw_zenoh_pico.h
+index 7cc5e97..6047e70 100644
+--- a/rmw_zenoh_pico/include/rmw_zenoh_pico/rmw_zenoh_pico.h
++++ b/rmw_zenoh_pico/include/rmw_zenoh_pico/rmw_zenoh_pico.h
+@@ -59,8 +59,10 @@
+ #include <zenoh-pico/utils/result.h>
+ 
+ // debug print
+-#ifdef LINUX_POSIX
++#if defined(LINUX_POSIX)
+ #define DEBUG_PRINT(fmt, ...) printf(fmt, ##__VA_ARGS__)
++#elif defined(ZENOH_RPI_PICO)
++#define DEBUG_PRINT(...) ((void)0)
+ #else
+ extern int target_print(const char *fmt, ...);
+ #define DEBUG_PRINT(fmt, ...) target_print(fmt, ##__VA_ARGS__)
+diff --git a/rmw_zenoh_pico/include/rmw_zenoh_pico/rmw_zenoh_pico_logging.h b/rmw_zenoh_pico/include/rmw_zenoh_pico/rmw_zenoh_pico_logging.h
+index d562533..e513477 100644
+--- a/rmw_zenoh_pico/include/rmw_zenoh_pico/rmw_zenoh_pico_logging.h
++++ b/rmw_zenoh_pico/include/rmw_zenoh_pico/rmw_zenoh_pico_logging.h
+@@ -65,11 +65,11 @@ extern void rmw_zenoh_pico_log_unlock(void);
+ #define _Z_INFO(...) (void)(0)
+ #define _Z_ERROR(...) (void)(0)
+ 
+-#define RMW_ZENOH_LOG_DEBUG (void)(0)
+-#define RMW_ZENOH_LOG_INFO (void)(0)
+-#define RMW_ZENOH_LOG_ERROR (void)(0)
++#define RMW_ZENOH_LOG_DEBUG(...) (void)(0)
++#define RMW_ZENOH_LOG_INFO(...) (void)(0)
++#define RMW_ZENOH_LOG_ERROR(...) (void)(0)
+ 
+-#define RMW_ZENOH_FUNC_ENTRY() (void)(0)
++#define RMW_ZENOH_FUNC_ENTRY(...) (void)(0)
+ 
+ #else
+ 
+@@ -213,7 +213,7 @@ static inline void __debug_print_log_loaned_sample(const z_loaned_sample_t * v,
+ #define RMW_ZENOH_FUNC_ENTRY(v) RMW_ZENOH_DEBUG_PRINT(v, "start : ")
+ 
+ #else
+-#define RMW_ZENOH_FUNC_ENTRY() (void)(0)
++#define RMW_ZENOH_FUNC_ENTRY(...) (void)(0)
+ #endif
+ 
+ 
+diff --git a/rmw_zenoh_pico/include/rmw_zenoh_pico/rmw_zenoh_pico_options.h b/rmw_zenoh_pico/include/rmw_zenoh_pico/rmw_zenoh_pico_options.h
+index a4c4f67..99be99a 100644
+--- a/rmw_zenoh_pico/include/rmw_zenoh_pico/rmw_zenoh_pico_options.h
++++ b/rmw_zenoh_pico/include/rmw_zenoh_pico/rmw_zenoh_pico_options.h
+@@ -44,7 +44,7 @@ extern "C"
+ 				       const char *mcast_port,
+ 				       const char *mcast_dev);
+ #elif defined (RMW_ZENOH_PICO_TRANSPORT_SERIAL)
+-  extern void rmw_zenoh_pico_set_serial_device(const char *device);
++  extern void rmw_zenoh_pico_set_serial_device(const char *device, const char *param);
+ #endif
+ 
+   extern int rmw_zenoh_pico_debug_level_get(void);
+diff --git a/rmw_zenoh_pico/include/rmw_zenoh_pico/zenoh_pico/rmw_zenoh_pico_liveliness.h b/rmw_zenoh_pico/include/rmw_zenoh_pico/zenoh_pico/rmw_zenoh_pico_liveliness.h
+index 65de19c..79e397a 100644
+--- a/rmw_zenoh_pico/include/rmw_zenoh_pico/zenoh_pico/rmw_zenoh_pico_liveliness.h
++++ b/rmw_zenoh_pico/include/rmw_zenoh_pico/zenoh_pico/rmw_zenoh_pico_liveliness.h
+@@ -39,7 +39,7 @@ extern "C"
+   extern z_result_t convert_hash(const rosidl_type_hash_t * type_hash, z_owned_string_t *value);
+   extern z_result_t convert_message_type(const message_type_support_callbacks_t *callbacks, z_owned_string_t *value);
+   extern z_result_t convert_client_type(const message_type_support_callbacks_t *callbacks, z_owned_string_t *value);
+-  extern z_result_t qos_to_keyexpr(rmw_qos_profile_t *qos, z_owned_string_t *value);
++  extern z_result_t qos_to_keyexpr(const rmw_qos_profile_t *qos, z_owned_string_t *value);
+ 
+ #if defined(__cplusplus)
+ }
+diff --git a/rmw_zenoh_pico/src/rmw_init.c b/rmw_zenoh_pico/src/rmw_init.c
+index 2695094..6aa13d2 100644
+--- a/rmw_zenoh_pico/src/rmw_init.c
++++ b/rmw_zenoh_pico/src/rmw_init.c
+@@ -125,7 +125,7 @@ static rmw_ret_t rmw_zenoh_pico_init_option(ZenohPicoTransportParams *params)
+ #if defined(RMW_ZENOH_PICO_TRANSPORT_SERIAL)
+   {
+     if(_rmw_zenoh_pico_mode == NULL)
+-      params->mode = "serial";
++      params->mode = "client";
+     else
+       params->mode = _rmw_zenoh_pico_mode;
+ 
+@@ -376,8 +376,20 @@ rmw_zenoh_pico_set_mcast_config(ZenohPicoTransportParams *params, z_owned_config
+ static rmw_ret_t
+ rmw_zenoh_pico_set_serial_config(ZenohPicoTransportParams *params, z_owned_config_t *config)
+ {
+-  RMW_SET_ERROR_MSG("not support serial transport, yet.");
+-  return RMW_RET_ERROR;
++  rmw_ret_t ret = rmw_zenoh_pico_set_common_config(params, config);
++  if(ret != RMW_RET_OK)
++    return ret;
++
++  if(strlen(params->serial_device) > 0){
++    if(_Z_IS_ERR(zp_config_insert(z_config_loan_mut(config),
++                                  Z_CONFIG_CONNECT_KEY,
++                                  params->serial_device))){
++      RMW_SET_ERROR_MSG("serial device parameter setting error.");
++      return RMW_RET_ERROR;
++    }
++  }
++
++  return RMW_RET_OK;
+ }
+ 
+ void rmw_zenoh_pico_init(void)
+diff --git a/rmw_zenoh_pico/src/rmw_logging.c b/rmw_zenoh_pico/src/rmw_logging.c
+index 92604b2..b28ddd8 100644
+--- a/rmw_zenoh_pico/src/rmw_logging.c
++++ b/rmw_zenoh_pico/src/rmw_logging.c
+@@ -14,6 +14,8 @@
+ // limitations under the License.
+ 
+ #include "zenoh-pico/api/macros.h"
++#include <stdarg.h>
++#include <stdio.h>
+ #include <rmw_zenoh_pico/rmw_zenoh_pico.h>
+ 
+ static z_owned_mutex_t mutex_logging;
+@@ -37,6 +39,16 @@ void z_log_prefix(const char *prefix, const char *func_name, const char *fmt, ..
+ 
+   printf("[%-5s] [%s] [%s] : %s\n",  prefix, tstamp, func_name, msg);
+ }
++#elif defined(ZENOH_RPI_PICO)
++
++void z_log_prefix(const char *prefix, const char *func_name, const char *fmt, ...) {
++  va_list args;
++  va_start(args, fmt);
++  printf("[%s] [%s] : ", prefix, func_name);
++  vprintf(fmt, args);
++  printf("\n");
++  va_end(args);
++}
+ #else
+ #error "Unsupported platform"
+ #endif
+diff --git a/rmw_zenoh_pico/src/zenoh_pico/zenoh_pico_condition.c b/rmw_zenoh_pico/src/zenoh_pico/zenoh_pico_condition.c
+index 0101c23..29ac8a9 100644
+--- a/rmw_zenoh_pico/src/zenoh_pico/zenoh_pico_condition.c
++++ b/rmw_zenoh_pico/src/zenoh_pico/zenoh_pico_condition.c
+@@ -42,6 +42,20 @@ z_result_t z_condvar_timewait(z_loaned_condvar_t *cv, z_loaned_mutex_t *mp, stru
+ 
+   return ret;
+ }
++#elif defined(ZENOH_RPI_PICO)
++
++z_result_t z_condvar_init_with_attr(z_owned_condvar_t *cv, pthread_condattr_t *attr){
++  (void)attr;
++  return z_condvar_init(cv);
++}
++
++z_result_t z_condvar_timewait(z_loaned_condvar_t *cv, z_loaned_mutex_t *mp, struct timespec *wait_timeout){
++  z_clock_t abstime = z_clock_now();
++  uint64_t timeout_ms = (uint64_t)wait_timeout->tv_sec * 1000U +
++                        (uint64_t)wait_timeout->tv_nsec / 1000000U;
++  z_clock_advance_ms(&abstime, (unsigned long)timeout_ms);
++  return z_condvar_wait_until(cv, mp, &abstime);
++}
+ #else
+ #error "Unsupported platform"
+ #endif
+diff --git a/rmw_zenoh_pico/src/zenoh_pico/zenoh_pico_gid.c b/rmw_zenoh_pico/src/zenoh_pico/zenoh_pico_gid.c
+index 3e3f027..0ac6d0b 100644
+--- a/rmw_zenoh_pico/src/zenoh_pico/zenoh_pico_gid.c
++++ b/rmw_zenoh_pico/src/zenoh_pico/zenoh_pico_gid.c
+@@ -16,7 +16,7 @@
+ 
+ #include <rmw_zenoh_pico/rmw_zenoh_pico.h>
+ 
+-#if defined(ZENOH_LINUX) || defined(ZENOH_ARDUINO_ESP32) || defined (ZENOH_ESPIDF)
++#if defined(ZENOH_LINUX) || defined(ZENOH_ARDUINO_ESP32) || defined (ZENOH_ESPIDF) || defined(ZENOH_RPI_PICO)
+ 
+ #define XXH_STATIC_LINKING_ONLY /* access advanced declarations */
+ #define XXH_IMPLEMENTATION      /* access definitions */
+diff --git a/rmw_zenoh_pico/src/zenoh_pico/zenoh_pico_liveliness.c b/rmw_zenoh_pico/src/zenoh_pico/zenoh_pico_liveliness.c
+index 638c318..5280811 100644
+--- a/rmw_zenoh_pico/src/zenoh_pico/zenoh_pico_liveliness.c
++++ b/rmw_zenoh_pico/src/zenoh_pico/zenoh_pico_liveliness.c
+@@ -354,7 +354,7 @@ static inline bool qos_add_delimiter(char delimiter, char **buf, size_t *left)
+ #define QOS_APPEND_VALUE(v) qos_append_value(v, &buf_ptr, &left_size)
+ #define QOS_APPEND_DELIMITER(v) qos_add_delimiter(v, &buf_ptr, &left_size)
+ 
+-z_result_t qos_to_keyexpr(rmw_qos_profile_t *qos, z_owned_string_t *value)
++z_result_t qos_to_keyexpr(const rmw_qos_profile_t *qos, z_owned_string_t *value)
+ {
+   char qos_data[64];
+ 
+diff --git a/rmw_zenoh_pico/src/zenoh_pico/zenoh_pico_session.c b/rmw_zenoh_pico/src/zenoh_pico/zenoh_pico_session.c
+index f54ac92..f395498 100644
+--- a/rmw_zenoh_pico/src/zenoh_pico/zenoh_pico_session.c
++++ b/rmw_zenoh_pico/src/zenoh_pico/zenoh_pico_session.c
+@@ -43,7 +43,7 @@ ZenohPicoSession *zenoh_pico_generate_session(const z_loaned_config_t *config,
+   }
+ 
+   session->graph_guard_condition.implementation_identifier = rmw_get_implementation_identifier();
+-  session->graph_guard_condition.data = zenoh_pico_guard_condition_data;
++  session->graph_guard_condition.data = zenoh_pico_guard_condition_data();
+ 
+   session->enable_session = false;
+ 
+diff --git a/rmw_zenoh_pico/src/zenoh_pico/zenoh_pico_topicInfo.c b/rmw_zenoh_pico/src/zenoh_pico/zenoh_pico_topicInfo.c
+index f7f143d..7e95beb 100644
+--- a/rmw_zenoh_pico/src/zenoh_pico/zenoh_pico_topicInfo.c
++++ b/rmw_zenoh_pico/src/zenoh_pico/zenoh_pico_topicInfo.c
+@@ -47,11 +47,7 @@ ZenohPicoTopicInfo *zenoh_pico_generate_topic_info(const char *name,
+ 
+   {
+     z_owned_string_t qos_key;
+-    rmw_qos_profile_t _qos_profile;
+-    memset(&_qos_profile, 0, sizeof(_qos_profile));
+-    test_qos_profile(&_qos_profile);
+-
+-    qos_to_keyexpr(&_qos_profile, &qos_key);
++    qos_to_keyexpr(qos, &qos_key);
+     const z_loaned_string_t *_qos_key = z_loan(qos_key);
+     RMW_ZENOH_LOG_INFO("qos = [%*s]", (int)z_string_len(_qos_key), z_string_data(_qos_key));
+ 

@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import os
-import tempfile
 import yaml
 
 from ament_index_python.packages import get_package_share_directory
@@ -31,33 +30,6 @@ from nav2_common.launch import RewrittenYaml
 class RosParametersDumper(yaml.SafeDumper):
     def ignore_aliases(self, data):
         return True
-
-
-class CoverageTrialParameters(RewrittenYaml):
-    def __init__(self, overlay, namespace, **kwargs):
-        super().__init__(**kwargs)
-        self.overlay = overlay
-        self.namespace = namespace
-
-    def perform(self, context):
-        base = super().perform(context)
-        with open(base) as stream:
-            params = yaml.safe_load(stream)
-        with open(self.overlay) as stream:
-            overrides = yaml.safe_load(stream)
-
-        def merge(target, source):
-            for key, value in source.items():
-                if isinstance(value, dict):
-                    merge(target.setdefault(key, {}), value)
-                else:
-                    target[key] = value
-
-        namespace = self.namespace.perform(context)
-        merge(params.setdefault(namespace, {}) if namespace else params, overrides)
-        with tempfile.NamedTemporaryFile(mode='w', delete=False) as stream:
-            yaml.dump(params, stream, Dumper=RosParametersDumper)
-            return stream.name
 
 
 def generate_launch_description():
@@ -95,7 +67,8 @@ def generate_launch_description():
     )
     # -----------------------------------
 
-    lifecycle_nodes = ['controller_server',
+    lifecycle_nodes = ['slam_toolbox',
+                       'controller_server',
                        'smoother_server',
                        'planner_server',
                        'behavior_server',
@@ -119,9 +92,7 @@ def generate_launch_description():
         'use_sim_time': use_sim_time,
         'autostart': autostart}
 
-    rewritten_yaml = CoverageTrialParameters(
-            overlay=os.path.join(nav2_dir, 'config', 'coverage_sim.yaml'),
-            namespace=namespace,
+    rewritten_yaml = RewrittenYaml(
             source_file=params_file,
             root_key=namespace,
             param_rewrites=param_substitutions,
@@ -297,7 +268,8 @@ def generate_launch_description():
                 arguments=['--ros-args', '--log-level', log_level],
                 parameters=[{'use_sim_time': use_sim_time},
                             {'autostart': autostart},
-                            {'node_names': lifecycle_nodes}]),
+                            {'node_names': lifecycle_nodes},
+                            {'bond_timeout': 0.0}]),
             Node(
                 package='opennav_docking',
                 executable='opennav_docking',
@@ -390,7 +362,8 @@ def generate_launch_description():
                 name='lifecycle_manager_navigation',
                 parameters=[{'use_sim_time': use_sim_time,
                              'autostart': autostart,
-                             'node_names': lifecycle_nodes}]),
+                             'node_names': lifecycle_nodes,
+                             'bond_timeout': 0.0}]),
             ComposableNode(
                 package='robot_pose_publisher',
                 plugin='robot_pose_publisher::RobotPosePublisher',

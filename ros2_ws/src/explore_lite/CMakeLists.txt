@@ -1,32 +1,16 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.20)
 project(explore_lite)
 
-# Default to C99
 if(NOT CMAKE_C_STANDARD)
-  set(CMAKE_C_STANDARD 99)
+  set(CMAKE_C_STANDARD 17)
 endif()
 
-# Default to C++14
 if(NOT CMAKE_CXX_STANDARD)
-  set(CMAKE_CXX_STANDARD 14)
+  set(CMAKE_CXX_STANDARD 20)
 endif()
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
-endif()
-
-# Set flag depending on distro
-if(NOT DEFINED ENV{ROS_DISTRO})
-  message(FATAL_ERROR "ROS_DISTRO is not defined." )
-endif()
-if("$ENV{ROS_DISTRO}" STREQUAL "eloquent")
-  message(STATUS "Build for ROS2 eloquent")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DELOQUENT")
-elseif("$ENV{ROS_DISTRO}" STREQUAL "dashing")
-  message(STATUS "Build for ROS2 dashing")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DDASHING")
-else()
-  message(STATUS "BuilD for ROS2: " "$ENV{ROS_DISTRO}")
 endif()
 
 # find dependencies
@@ -93,8 +77,6 @@ target_link_libraries(explore PUBLIC
 
 install(TARGETS explore
   DESTINATION lib/${PROJECT_NAME})
-
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${GAZEBO_CXX_FLAGS}")
 
 ament_export_dependencies(
   explore_lite_msgs

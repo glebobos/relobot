@@ -16,11 +16,11 @@
 import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, SetEnvironmentVariable, RegisterEventHandler, TimerAction
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, SetEnvironmentVariable, RegisterEventHandler, TimerAction, ExecuteProcess
 from launch.event_handlers import OnProcessExit
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import Command, FindExecutable, LaunchConfiguration, PathJoinSubstitution, PythonExpression
+from launch.substitutions import Command, EnvironmentVariable, FindExecutable, LaunchConfiguration, PathJoinSubstitution, PythonExpression
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
 
@@ -38,6 +38,7 @@ def generate_launch_description():
     z_pose_arg = LaunchConfiguration('z_pose')
     yaw_arg = LaunchConfiguration('yaw')
     web_video_arg = LaunchConfiguration('web_video')
+    knives_mock_arg = LaunchConfiguration('knives_mock')
 
     # Declared arguments
     declare_world_cmd = DeclareLaunchArgument(
@@ -68,41 +69,37 @@ def generate_launch_description():
         default_value='true',
         description='Launch web_video_server for streaming camera to web UI'
     )
+    declare_knives_mock_cmd = DeclareLaunchArgument(
+        'knives_mock',
+        default_value=EnvironmentVariable('SIM_KNIVES_MOCK', default_value='true'),
+        description='Disable when using a physical Pico-ROS knives controller'
+    )
 
     # Set GZ resource path for models/worlds
     worlds_path = os.path.join(pkg_relobot_gazebo, 'worlds')
     pkg_models_path = os.path.join(pkg_relobot_gazebo, 'models')
-    src_models_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'models'))
-    resource_paths = [src_models_path, pkg_models_path, worlds_path]
-    for env_var in ('GZ_SIM_RESOURCE_PATH', 'IGN_GAZEBO_RESOURCE_PATH', 'GAZEBO_MODEL_PATH'):
-        val = os.environ.get(env_var, '')
-        if val:
-            resource_paths.append(val)
+    resource_paths = [pkg_models_path, worlds_path]
+    if os.environ.get('GZ_SIM_RESOURCE_PATH'):
+        resource_paths.append(os.environ['GZ_SIM_RESOURCE_PATH'])
     combined_resource_path = ':'.join(resource_paths)
 
     # Export directly to process environment so all spawned children inherit it
     os.environ['GZ_SIM_RESOURCE_PATH'] = combined_resource_path
-    os.environ['IGN_GAZEBO_RESOURCE_PATH'] = combined_resource_path
-    os.environ['GAZEBO_MODEL_PATH'] = combined_resource_path
 
     gz_resource_path = SetEnvironmentVariable(
         name='GZ_SIM_RESOURCE_PATH',
         value=combined_resource_path
     )
-    ign_resource_path = SetEnvironmentVariable(
-        name='IGN_GAZEBO_RESOURCE_PATH',
-        value=combined_resource_path
-    )
-    gazebo_model_path = SetEnvironmentVariable(
-        name='GAZEBO_MODEL_PATH',
-        value=combined_resource_path
-    )
-
-    # World path substitution
+    # World path substitution (normalize short names like garden, obstacles, empty to *.sdf)
+    world_file = PythonExpression([
+        "('", world_arg, "'.strip() if '", world_arg, "'.endswith('.sdf') else "
+        "('obstacle_world.sdf' if '", world_arg, "' in ['obstacle', 'obstacles'] else "
+        "('", world_arg, ".sdf' if '", world_arg, "'.endswith('_world') else '", world_arg, "_world.sdf')))"
+    ])
     world_path = PathJoinSubstitution([
         pkg_relobot_gazebo,
         'worlds',
-        world_arg
+        world_file
     ])
 
     # Gazebo Sim Launch
@@ -165,17 +162,21 @@ def generate_launch_description():
     )
 
     # Standard ROS 2 Controller Spawners
+    controller_config = os.path.join(pkg_relobot_gazebo, 'config', 'gazebo_controllers.yaml')
     joint_state_broadcaster_spawner = Node(
         package='controller_manager',
         executable='spawner',
-        arguments=['joint_state_broadcaster', '--controller-manager', '/controller_manager', '--controller-manager-timeout', '30'],
+        arguments=['joint_state_broadcaster', '--controller-manager', '/controller_manager',
+               '--controller-manager-timeout', '30', '--param-file', controller_config],
         parameters=[{'use_sim_time': use_sim_time_arg}],
     )
 
     diff_drive_controller_spawner = Node(
         package='controller_manager',
         executable='spawner',
-        arguments=['diff_drive_controller', '--controller-manager', '/controller_manager', '--controller-manager-timeout', '30'],
+        arguments=['diff_drive_controller', '--controller-manager', '/controller_manager',
+               '--controller-manager-timeout', '30', '--param-file', controller_config,
+               '--controller-ros-args', '--ros-args --remap ~/cmd_vel:=/cmd_vel'],
         parameters=[{'use_sim_time': use_sim_time_arg}],
     )
 
@@ -191,6 +192,19 @@ def generate_launch_description():
         event_handler=OnProcessExit(
             target_action=joint_state_broadcaster_spawner,
             on_exit=[diff_drive_controller_spawner],
+        )
+    )
+
+    init_cmd_vel_cmd = ExecuteProcess(
+        cmd=['ros2', 'topic', 'pub', '--once', '/cmd_vel', 'geometry_msgs/msg/TwistStamped',
+             '{header: {frame_id: "base_link"}, twist: {linear: {x: 0.0}, angular: {z: 0.0}}}'],
+        output='log'
+    )
+
+    delay_init_cmd_vel = RegisterEventHandler(
+        event_handler=OnProcessExit(
+            target_action=diff_drive_controller_spawner,
+            on_exit=[init_cmd_vel_cmd],
         )
     )
 
@@ -236,6 +250,7 @@ def generate_launch_description():
 
     # Knives RPM mock node (/knives/set_rpm -> /knives/current_rpm)
     knives_mock_node = Node(
+        condition=IfCondition(knives_mock_arg),
         package='relobot_gazebo',
         executable='knives_mock.py',
         name='knives_mock',
@@ -258,19 +273,18 @@ def generate_launch_description():
         declare_z_pose_cmd,
         declare_yaw_cmd,
         declare_web_video_cmd,
+        declare_knives_mock_cmd,
         gz_resource_path,
-        ign_resource_path,
-        gazebo_model_path,
         gz_sim,
         robot_state_publisher_node,
         delayed_spawn_robot,
         ros_gz_bridge,
         delay_joint_state_broadcaster,
         delay_diff_drive_controller,
+        delay_init_cmd_vel,
         knives_mock_node,
         ekf_node,
         web_video_server_node,
         camera_compressed_republisher,
     ])
-
 
