@@ -21,8 +21,8 @@ Run the automated launcher script from the root of the repository:
 ```
 This script will automatically:
 1. Stop running robot containers to avoid command interference.
-2. Build and flash `pico_wheels_calibration.uf2` to the wheels board.
-3. Start the micro-ROS agent and execute the PWM sweep calibration routine.
+2. Start the Zenoh router to connect to native Pico-ROS microcontrollers.
+3. Run the PWM sweep calibration routine via ROS 2 Lyrical (`rmw_zenoh_cpp`).
 
 ---
 
@@ -37,7 +37,8 @@ If you prefer to run steps individually:
 
 2. **Run Calibration Sweep**:
    ```bash
-   docker compose -f ros2_ws/docker-compose.yml run --rm ros2_diff_robot bash -c "source /opt/ros/humble/setup.bash && source /uros_ws/install/local_setup.bash && ros2 run micro_ros_agent micro_ros_agent multiserial --devs \"/dev/ttyACM0 /dev/ttyACM1 /dev/ttyACM2 /dev/ttyACM3\" -b 115200 & sleep 5 && python3 /ros2_ws/helpers/wheel_calibration/calibrate.py"
+   docker compose -f ros2_ws/docker-compose.yml up -d ros2_zenoh_router
+   docker compose -f ros2_ws/docker-compose.yml run --rm ros2_diff_robot bash -c "source /opt/ros/lyrical/setup.bash && export RMW_IMPLEMENTATION=rmw_zenoh_cpp && python3 /ros2_ws/helpers/wheel_calibration/calibrate.py"
    ```
 
 > [!WARNING]
@@ -45,8 +46,8 @@ If you prefer to run steps individually:
 
 ### 3. Apply the Coefficients
 1. Copy the printed `#define` lines from the calibration script output.
-2. Replace the old constants in [main.cpp](file:///home/admin/projects/relobot/pico_ware_wheels_microros/src/main.cpp#L31-L38):
-   ```cpp
+2. Replace the old constants in [pico_ware_wheels_picoros/src/main.c](file:///home/glebos/projects/relobot/pico_ware_wheels_picoros/src/main.c):
+   ```c
    // --- Feedforward: pwm_fraction = K * |omega_rad_s| + C ---
    #define FF_K_LEFT_FWD               ...
    #define FF_C_LEFT_FWD               ...
@@ -67,9 +68,9 @@ If you prefer to run steps individually:
 
 If you suspect an encoder is damaged, disconnected, or picking up noise, you can run the diagnostic script to print raw tick counts and velocities in real-time.
 
-1. Start the micro-ROS agent in one terminal:
+1. Start the Zenoh router in one terminal:
    ```bash
-   docker compose -f ros2_ws/docker-compose.yml run --rm ros2_diff_robot bash -c "source /opt/ros/humble/setup.bash && source /uros_ws/install/local_setup.bash && ros2 run micro_ros_agent micro_ros_agent multiserial --devs \"/dev/ttyACM0 /dev/ttyACM1 /dev/ttyACM2 /dev/ttyACM3\" -b 115200"
+   docker compose -f ros2_ws/docker-compose.yml up -d ros2_zenoh_router
    ```
 2. In another terminal, run the diagnostic script:
    ```bash

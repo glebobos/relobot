@@ -127,6 +127,8 @@ class CoverageManager(Node):
         self._preview_started = 0.0
         self._preview_zone = None
         self._pending_execution = None
+        self._last_robot_pose: PoseStamped | None = None
+        self.create_subscription(PoseStamped, '/robot_pose', self._on_robot_pose, 1)
         self._layout_pool = ThreadPoolExecutor(max_workers=1)
         self._layout_future = None
         self._layout_cancel = Event()
@@ -167,6 +169,9 @@ class CoverageManager(Node):
         self.create_timer(1.0, self._republish_state, clock=Clock(clock_type=ClockType.STEADY_TIME))
 
         self._publish_status('idle', 'Coverage manager ready.')
+
+    def _on_robot_pose(self, msg: PoseStamped) -> None:
+        self._last_robot_pose = msg
 
     def _on_command(self, msg: String) -> None:
         command = msg.data.strip().lower()
@@ -448,7 +453,7 @@ class CoverageManager(Node):
         except Exception as exc:
             self._preview_pending = False
             self._pending_execution = None
-            self.get_logger().warn(f'Coverage layout rejected: {exc}')
+            self.get_logger().warning(f'Coverage layout rejected: {exc}')
             self._publish_status('failed', f'Coverage layout rejected: {exc}')
             return
         self._preview_pending = False
@@ -480,6 +485,7 @@ class CoverageManager(Node):
                              waypoint_count=len(path.poses), **details)
         if self._pending_execution is not None:
             resuming, self._pending_execution = self._pending_execution, None
+            self._execution.attach_sensors()
             self._execution.start(path, resuming=resuming, work_sections=details.get('work_sections'))
 
     @staticmethod
@@ -631,6 +637,7 @@ class CoverageManager(Node):
                 self._check_preview, path, dict(deepcopy(self._cached_preview_details), work_sections=work_sections))
             self._publish_status('planning', 'Revalidating the remaining route against the current map.')
         else:
+            self._execution.attach_sensors()
             self._execution.start(path, resuming=resuming, work_sections=work_sections)
 
     def _busy(self):
@@ -649,6 +656,7 @@ class CoverageManager(Node):
         FreeSpaceValidator(grid, self._footprint, self._clearance, zone).check_path(path)
 
     def _cancel_active_goals(self) -> None:
+        self._execution.detach_sensors()
         if self._preview_pending:
             self._preview_cancel = True
             self._layout_cancel.set()
@@ -798,7 +806,8 @@ class CoverageManager(Node):
             try:
                 robot_position = None
                 if not self._custom_polygon_active:
-                    pose = self._execution.robot_pose(msg.header.frame_id).pose.position
+                    pose = (self._last_robot_pose.pose.position if self._last_robot_pose is not None
+                            else self._execution.robot_pose(msg.header.frame_id).pose.position)
                     robot_position = (pose.x, pose.y)
                 self._coverage_regions, self._map_details = self._map_processor.extract_coverage_regions(
                     msg, self._custom_zone_points if self._custom_polygon_active else None, robot_position)
@@ -877,7 +886,7 @@ class CoverageManager(Node):
         payload.update(extra)
         payload['can_execute'] = bool(self._last_preview_valid and self._cached_path.poses and not self._busy())
         if state in ('blocked', 'failed', 'stale_preview', 'no_preview'):
-            self.get_logger().warn(f'{state}: {message}')
+            self.get_logger().warning(f'{state}: {message}')
         self._status_pub.publish(String(data=json.dumps(payload)))
 
 

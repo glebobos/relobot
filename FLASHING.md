@@ -26,7 +26,7 @@ The recommended way to build and flash firmwares is using `./run_firmware.sh`. A
 ./run_firmware.sh monitor wheels
 ```
 
-Alternatively, you can run `run.sh` directly inside any firmware subfolder (e.g. `cd pico_ware_wheels_microros && ./run.sh flash`).
+Alternatively, you can run `build.sh` directly inside any firmware subfolder (e.g. `cd pico_ware_wheels_picoros && ./build.sh xiao_rp2040 motor`).
 
 ---
 
@@ -125,7 +125,7 @@ picotool load -x your_firmware.uf2
 | **WHEELS** | Seeeduino XIAO | RP2040 | `/dev/ttyACM0` |
 | **KNIVES** | Seeeduino XIAO | RP2040 | `/dev/ttyACM3` |
 | **IMU** | RPi Pico | RP2040 | `/dev/ttyACM4` |
-| **INA226** | RPi Pico 2 | **RP2350** | `/dev/ttyACM2` |
+| **INA226** | Seeed XIAO | **RP2350** | `/dev/ttyACM2` |
 
 ---
 

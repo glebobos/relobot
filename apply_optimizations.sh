@@ -9,7 +9,7 @@
 #  4. Disables slow MicroSD swap and enables compressed ZRAM swap in RAM (zstd)
 #  5. Pins CPU governor to "performance" (2.4 GHz constant Cortex-A76 clock)
 #  6. Disables unused background daemons (cups, cups-browsed, ModemManager)
-#  7. Tunes virtual memory & FastDDS network buffer sysctl parameters
+#  7. Tunes virtual memory & network socket buffer sysctl parameters
 #  8. Sets up systemd journal limits to protect storage from log thrashing
 #  9. Disables USB autosuspend and locks hub power to active 'on'
 # ==============================================================================
@@ -70,13 +70,13 @@ if command -v rpi-eeprom-config >/dev/null 2>&1; then
     rm -f "$TEMP_EEPROM"
 fi
 
-# Configure Realtek RTL8822BU Wi-Fi: lock to USB 2 mode (no RF interference) and disable deep sleep
+# Configure Realtek RTL8822BU Wi-Fi: lock to USB 2 mode (no RF interference), disable deep sleep and beamformee stalls
 cat << "EOF" > /etc/modprobe.d/rtw88.conf
-# ReloBot: Prevent Realtek RTL8822BU Wi-Fi firmware crashes and RF interference
-options rtw88_core disable_lps_deep=y
+# ReloBot: Prevent Realtek RTL8822BU Wi-Fi firmware crashes, TX report stalls, and RF interference
+options rtw88_core disable_lps_deep=y support_bf=n
 options rtw88_usb switch_usb_mode=n
 EOF
-echo "  -> Configured /etc/modprobe.d/rtw88.conf (switch_usb_mode=n, disable_lps_deep=y)."
+echo "  -> Configured /etc/modprobe.d/rtw88.conf (switch_usb_mode=n, disable_lps_deep=y, support_bf=n)."
 
 # ------------------------------------------------------------------------------
 # 2. Docker Cgroup Memory Accounting in cmdline.txt
@@ -156,7 +156,7 @@ systemctl enable cpu-governor-performance.service
 echo "  -> CPU performance governor service enabled on boot."
 
 # ------------------------------------------------------------------------------
-# 6. Virtual Memory & FastDDS Sysctl Optimization
+# 6. Virtual Memory & Network Sysctl Optimization
 # ------------------------------------------------------------------------------
 echo "[6/7] Applying kernel sysctl parameters..."
 
@@ -168,8 +168,8 @@ vm.dirty_ratio = 10
 vm.dirty_background_ratio = 5
 EOF
 
-cat << "EOF" > /etc/sysctl.d/99-ros2-fastdds.conf
-# FastDDS Network Sockets & UDP Buffer Optimization
+cat << "EOF" > /etc/sysctl.d/99-ros2-network.conf
+# High-Throughput Network Sockets & UDP Buffer Optimization
 net.core.rmem_max = 67108864
 net.core.wmem_max = 67108864
 net.core.rmem_default = 33554432

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.20)
 project(robot_pose_publisher)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
@@ -22,12 +22,13 @@ target_include_directories(robot_pose_publisher_component PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
 )
-ament_target_dependencies(robot_pose_publisher_component
-  rclcpp
-  rclcpp_components
-  geometry_msgs
-  tf2_ros
-  tf2_geometry_msgs
+target_compile_features(robot_pose_publisher_component PUBLIC cxx_std_20)
+target_link_libraries(robot_pose_publisher_component PUBLIC
+  rclcpp::rclcpp
+  rclcpp_components::component
+  ${geometry_msgs_TARGETS}
+  tf2_ros::tf2_ros
+  tf2_geometry_msgs::tf2_geometry_msgs
 )
 rclcpp_components_register_nodes(robot_pose_publisher_component
   "robot_pose_publisher::RobotPosePublisher"
@@ -40,14 +41,6 @@ add_executable(robot_pose_publisher_node
 target_link_libraries(robot_pose_publisher_node
   robot_pose_publisher_component
 )
-ament_target_dependencies(robot_pose_publisher_node
-  rclcpp
-  rclcpp_components
-  geometry_msgs
-  tf2_ros
-  tf2_geometry_msgs
-)
-
 install(TARGETS
   robot_pose_publisher_component
   ARCHIVE DESTINATION lib

@@ -6,35 +6,38 @@
 
 ## Overview
 
-ReloBot is a robotics platform built on ROS2 Humble that integrates differential-drive wheels, cutting blades (knives), IMU, power monitoring, and a camera for navigation. All microcontrollers run C micro-ROS firmware over USB CDC, communicating directly with the ROS2 graph. High-level navigation uses Nav2 with a LiDAR-based EKF stack.
+ReloBot is an autonomous robotics platform built on **ROS 2 Lyrical** with **Zenoh Shared Memory (`rmw_zenoh_cpp`)**. It integrates differential-drive wheels, cutting blades (knives), IMU, power monitoring, and a camera for navigation. All four microcontrollers run **native Pico-ROS (Zenoh)** communicating over USB serial via a central `ros2_zenoh_router`. High-level navigation uses Nav2 with a LiDAR-based EKF stack.
+
+Architecture decisions, performance benchmarks, and hardware validation results are documented in [wiki/zenoh_picoros_architecture_and_decisions.md](wiki/zenoh_picoros_architecture_and_decisions.md).
 
 ## System Architecture
 
-| Component | Hardware | Firmware | ROS2 interface |
+| Component | Hardware | Firmware | ROS 2 Interface |
 | :--- | :--- | :--- | :--- |
-| **Wheels** | XIAO RP2040 | `pico_ware_wheels_microros` | `/robot_joint_commands` + `/robot_joint_states` (JointState) |
-| **Knives** | XIAO RP2040 | `pico_ware_knives_microros` | `knives/set_rpm` + `knives/current_rpm` (Float32) |
-| **IMU** | RPi Pico RP2040 | `pico_ware_imu_microros` | `/imu/data` (Imu) |
-| **Power** | RPi Pico 2 RP2350 | `pico_ware_ina226_microros` | `/battery_state` |
+| **Wheels** | XIAO RP2040 | `pico_ware_wheels_picoros` | `/robot_joint_commands` + `/robot_joint_states` (JointState) |
+| **Knives** | XIAO RP2040 | `pico_ware_knives_picoros` | `knives/set_rpm` + `knives/current_rpm` (Float32) |
+| **IMU** | RPi Pico RP2040 | `pico_ware_imu_picoros` | `/imu/data` (Imu) |
+| **Power** | XIAO RP2350 | `pico_ware_ina226_picoros` | `/battery_state` |
 | **LiDAR** | USB | `ldlidar` | `/scan` |
 | **Camera** | USB | `camera_ros` | image/depth topics |
 
-The differential drive uses `topic_based_ros2_control/TopicBasedSystem` as the hardware plugin — no custom C++ serial driver. The controller manager talks to the wheels Pico purely through ROS2 topics.
+The differential drive uses `topic_based_ros2_control/TopicBasedSystem` as the hardware plugin — no custom C++ serial driver. The controller manager talks to the wheels Pico purely through ROS 2 topics over Zenoh.
 
 ## Hardware
 
 - **Raspberry Pi 5** — main compute, runs all Docker containers
-- **XIAO RP2040** ×2 — wheels and knives, USB CDC micro-ROS
-- **RPi Pico RP2040** — IMU (ICM20948), USB CDC micro-ROS
-- **RPi Pico 2 RP2350** — INA226 power monitor, USB CDC micro-ROS
+- **XIAO RP2040** ×2 — wheels and knives, native Pico-ROS USB serial
+- **RPi Pico RP2040** — IMU (ICM20948), native Pico-ROS USB serial
+- **XIAO RP2350** — INA226 power monitor, native Pico-ROS USB serial
 - DC motors with single-channel 60 CPR encoders
 - LiDAR (USB)
 - USB camera
 
 ## Software Stack
 
-- **ROS2 Humble** — core framework (all nodes run in Docker)
-- **micro-ROS** — C firmware on all Pico boards (USB CDC transport)
+- **ROS 2 Lyrical** — core framework (all nodes run in Docker with `rmw_zenoh_cpp`)
+- **Zenoh Shared Memory** — zero-copy host transport (`transport/shared_memory/enabled=true`)
+- **Native Pico-ROS** — FreeRTOS + Zenoh-Pico firmware on all Pico boards (USB CDC transport)
 - **ros2_control** + `topic_based_ros2_control` — hardware abstraction for wheels
 - **diff_drive_controller** — velocity → wheel command conversion
 - **robot_localization** (EKF) — fuses wheel odometry + IMU
@@ -45,6 +48,7 @@ The differential drive uses `topic_based_ros2_control/TopicBasedSystem` as the h
 
 ```
 ├── start_robot.sh              # Start/stop the full stack
+├── start_sim.sh                # Start Gazebo simulation launcher
 ├── run_firmware.sh             # Unified firmware build, scan, flash, & monitor CLI
 ├── start_wheel_calibration.sh  # Automated wheel feedforward calibration launcher
 ├── start_camera_calibration.sh # Camera calibration launcher
@@ -53,17 +57,21 @@ The differential drive uses `topic_based_ros2_control/TopicBasedSystem` as the h
 ├── helpers/
 │   ├── wheel_calibration/      # Wheel velocity calibration & diagnostic scripts
 │   ├── camera_calibration/     # Camera calibration tool
-│   ├── joystic_test/           # Joystick testing utilities
+│   ├── cpu_profiler/           # CPU and Memory profiler for Docker & ROS 2
 │   └── rviz2/                  # RViz2 Docker configuration
-├── pico_ware_wheels_microros/  # RP2040 micro-ROS firmware — wheels
-├── pico_ware_knives_microros/  # RP2040 micro-ROS firmware — knife spindle
-├── pico_ware_imu_microros/     # RP2040 micro-ROS firmware — IMU
-├── pico_ware_ina226_microros/  # RP2350 micro-ROS firmware — power monitor
-└── ros2_ws/                    # ROS2 workspace
+├── pico_firmware/              # Shared foundation (Pico SDK 2.2.0, FreeRTOS, Zenoh-Pico, Docker builder)
+├── pico_ware_wheels_picoros/   # RP2040 Pico-ROS firmware — wheels
+├── pico_ware_knives_picoros/   # RP2040 Pico-ROS firmware — knife spindle
+├── pico_ware_imu_picoros/      # RP2040 Pico-ROS firmware — IMU
+├── pico_ware_ina226_picoros/   # RP2350 Pico-ROS firmware — power monitor
+├── wiki/                       # Architecture decision records & benchmarks
+└── ros2_ws/                    # ROS 2 workspace
     ├── docker-compose.yml      # All services
-    ├── *.dockerfile            # Per-service Dockerfiles
+    ├── ZenohRouter.dockerfile  # Zenoh router container
+    ├── DiffDriveHardware.dockerfile # ros2_control diffbot hardware container
+    ├── zenoh_devices.json      # Mapping of USB by-id serial endpoints
     └── src/
-        ├── diff_drive_hardware/    # URDF, controllers config, launch (no C++ plugin)
+        ├── diff_drive_hardware/    # URDF, controllers config, launch
         ├── camera_ros/             # Camera driver
         ├── ldlidar/                # LiDAR driver
         ├── explore_lite/           # Autonomous exploration
@@ -78,98 +86,47 @@ The differential drive uses `topic_based_ros2_control/TopicBasedSystem` as the h
 
 - Raspberry Pi 5 with Raspberry Pi OS (64-bit)
 - Docker and Docker Compose installed
-- All Pico boards flashed with their respective micro-ROS firmware (see [FLASHING.md](FLASHING.md))
-- USB devices plugged in (see device mapping in [FLASHING.md](FLASHING.md))
-
-### Host System Configuration
-
-#### 1. FastDDS & Network Socket Buffer Optimization (Critical)
-
-Linux defaults to a small ~212 KB UDP socket buffer (`net.core.rmem_max`). During SLAM mapping, large costmap exploration, or high-load builds, large DDS messages (e.g. occupancy grids, high-rate TF) can instantly overflow this default buffer, causing dropped packets, cascading FastDDS NACK retransmission loops, and high kernel Software Interrupt CPU usage (`si`).
-
-To configure high-throughput 64 MB maximum / 32 MB default socket buffers permanently on the host:
-
-```bash
-echo -e "net.core.rmem_max = 67108864\nnet.core.rmem_default = 33554432\nnet.core.wmem_max = 67108864\nnet.core.wmem_default = 33554432" | sudo tee /etc/sysctl.d/99-ros2-fastdds.conf
-sudo sysctl --system
-```
-
-#### 2. Configuring 5 GHz WiFi (DFS Channels)
-
-By default, the Raspberry Pi's physical WiFi chip operates under a restricted regulatory domain (`country 99: DFS-UNSET`). This prevents the Pi from scanning or connecting to 5 GHz **DFS channels** (like Channel 52). 
-
-To configure and enable 5 GHz WiFi:
-
-1. **Set the WLAN Country Code**:
-   Run the following command on the Raspberry Pi host (replace `PL` with your local two-letter ISO country code, e.g. `PL`, `US`, `GB`):
-   ```bash
-   sudo raspi-config nonint do_wifi_country PL
-   ```
-
-2. **Reboot the Raspberry Pi**:
-   ```bash
-   sudo reboot
-   ```
-
-3. **Verify the Domain**:
-   Run `iw reg get` to verify that `phy#0` now lists your country code instead of `99`.
-
-4. **Force/Prefer 5 GHz (Optional)**:
-   If your router uses the same SSID for both 2.4 GHz and 5 GHz, you can lock the connection profile to the 5 GHz band:
-   ```bash
-   sudo nmcli connection modify preconfigured 802-11-wireless.band a
-   sudo nmcli connection up preconfigured
-   ```
-   *(To revert this back to automatic band selection, run `sudo nmcli connection modify preconfigured 802-11-wireless.band ""`)*
+- All Pico boards flashed with their respective Pico-ROS firmware (see [FLASHING.md](FLASHING.md))
+- USB devices configured in `ros2_ws/zenoh_devices.json` (see device mapping in [FLASHING.md](FLASHING.md))
 
 ### Start the stack
 
 ```bash
-./start_robot.sh up
-```
+# Physical Hardware Mode (auto-rebuilds packages with --dev):
+./start_robot.sh up [--dev]
 
-Development mode (rebuilds ROS2 packages on startup):
-```bash
-./start_robot.sh up --dev
-```
+# Gazebo Simulation Mode:
+./start_sim.sh up [--world garden|obstacles|empty] [--gui|--headless] [--dev]
 
-Stop everything:
-```bash
+# Stop everything:
 ./start_robot.sh down
-```
-
-Start a single service:
-```bash
-./start_robot.sh up ros2_diff_robot
 ```
 
 ### Docker Services
 
 | Service | Description |
 | :--- | :--- |
+| `ros2_zenoh_router` | rmw_zenohd router connecting host nodes and microcontroller serial devices |
 | `ros2_frontend` | nginx — serves the web UI |
 | `ros2_lidar` | LiDAR driver (`ldlidar`) |
-| `ros2_diff_robot` | ros2_control + diff_drive_controller + EKF + micro-ROS agent (wheels, knives, IMU, INA226) |
+| `ros2_diff_robot` | ros2_control + diff_drive_controller + EKF |
 | `ros2_camera_rp` | Camera driver + AprilTag detection |
 | `ros2_nav2` | Nav2 navigation stack |
 
 ### Running RViz2
 
 ```bash
+# Physical robot view:
 ./rviz2.sh
-```
 
-Or directly:
-```bash
-docker run -it --rm -v /tmp/.X11-unix:/tmp/.X11-unix -v /mnt/wslg:/mnt/wslg \
-  -e DISPLAY -e WAYLAND_DISPLAY -e XDG_RUNTIME_DIR -e PULSE_SERVER \
-  --network host osrf/ros:jazzy-desktop rviz2
+# Gazebo simulation view:
+./rviz2.sh --sim
 ```
 
 ## Coverage Planning Workflow
 
 1. Start the stack with `./start_robot.sh up`.
-2. Open the web UI.
+2. Open the web UI at `http://raspberrypi.local/` (or `http://localhost/`).
 3. Click the map to place polygon vertices for the coverage area.
 4. Right-click to remove the last point.
 5. Click **Preview Coverage** to call the coverage planner.
@@ -181,83 +138,22 @@ docker run -it --rm -v /tmp/.X11-unix:/tmp/.X11-unix -v /mnt/wslg:/mnt/wslg \
 
 ```bash
 # Joint states from wheels Pico
-ros2 topic echo /robot_joint_states
+docker compose -f ros2_ws/docker-compose.yml exec ros2_diff_robot bash -c "source /opt/ros/lyrical/setup.bash && ros2 topic echo /robot_joint_states"
 
 # Odometry
-ros2 topic echo /odom
+docker compose -f ros2_ws/docker-compose.yml exec ros2_diff_robot bash -c "source /opt/ros/lyrical/setup.bash && ros2 topic echo /odom"
 
 # LiDAR
-ros2 topic echo /scan
+docker compose -f ros2_ws/docker-compose.yml exec ros2_lidar bash -c "source /opt/ros/lyrical/setup.bash && ros2 topic echo /scan"
 ```
 
 ## Troubleshooting
 
-- **Wheels Pico not connecting** — check `ls /dev/ttyACM*`, verify `WHEELS_TTY` env var matches
-- **Motors not moving** — confirm micro-ROS agent is up: `ros2 node list` should show `wheels_node`
-- **Robot turns instead of going straight** — feedforward calibration values are in `pico_ware_wheels_microros/src/main.cpp` (`FF_K_*`, `FF_C_*`)
+- **Microcontroller not connecting** — check `python3 ros2_ws/zenoh_devices.py validate` and `ls -l /dev/serial/by-id/`
+- **Motors not moving** — confirm `ros2_zenoh_router` is running and `ros2 topic echo /robot_joint_states` receives messages
+- **Robot turns instead of going straight** — recalibrate feedforward with `./start_wheel_calibration.sh` and update constants in `pico_ware_wheels_picoros/src/main.c`
 - **Pico needs reflashing** — see [FLASHING.md](FLASHING.md)
 
 ## License
 
 Apache License 2.0 — see [LICENSE](LICENSE).
-
-For questions or support, please open an issue on the GitHub repository.
-
-## Raspberry Pi 5 Autostart Configuration
-
-To configure ReloBot to automatically start when the Raspberry Pi 5 boots up:
-
-1. Create a systemd service file:
-   ```bash
-   sudo nano /etc/systemd/system/relobot.service
-   ```
-
-2. Add the following content:
-   ```
-   [Unit]
-   Description=ReloBot ROS2 Service
-   After=network.target docker.service
-   Requires=docker.service
-
-   [Service]
-   Type=simple
-   User=admin
-   WorkingDirectory=/home/admin/projects/relobot
-   ExecStart=/home/admin/projects/relobot/start_robot.sh up
-   Restart=on-failure
-   RestartSec=10
-
-   [Install]
-   WantedBy=multi-user.target
-   ```
-
-3. Enable and start the service:
-   ```bash
-   sudo systemctl daemon-reload
-   sudo systemctl enable relobot.service
-   sudo systemctl start relobot.service
-   ```
-
-4. Check service status:
-   ```bash
-   sudo systemctl status relobot.service
-   ```
-
-### Autostart Troubleshooting
-
-If the autostart service fails:
-
-1. Check the systemd logs:
-   ```bash
-   sudo journalctl -u relobot.service
-   ```
-
-2. Verify that the start_app_helper.sh script has execute permissions:
-   ```bash
-   chmod +x /home/admin/Documents/relobot/start_app_helper.sh
-   ```
-
-3. Make sure Docker service is running:
-   ```bash
-   sudo systemctl status docker
-   ```

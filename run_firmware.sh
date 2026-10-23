@@ -17,11 +17,11 @@ Commands:
   all                 Build all firmware targets.
 
 Targets:
-  wheels              pico_wheels_microros.uf2 (XIAO RP2040)
-  wheels_calibration  pico_wheels_calibration.uf2 (XIAO RP2040)
-  knives              pico_knives_microros.uf2 (XIAO RP2040)
-  imu                 pico_imu_microros.uf2 (RPi Pico RP2040)
-  ina226              pico_ina226_microros.uf2 (RPi Pico 2 RP2350)
+  wheels              picoros_wheels_xiao_rp2040_motor.uf2 (XIAO RP2040)
+  wheels_calibration  picoros_wheels_calibration.uf2 (XIAO RP2040)
+  knives              picoros_knives_xiao_rp2040_motor.uf2 (XIAO RP2040)
+  imu                 picoros_imu_pico_sensor.uf2 (RPi Pico RP2040)
+  ina226              picoros_ina226_xiao_rp2350_sensor.uf2 (Seeed XIAO RP2350)
 
 Options:
   --port <device>     Explicitly specify serial port (e.g. /dev/ttyACM0)
@@ -41,61 +41,60 @@ EOF
 # Target metadata helpers
 get_pkg_dir() {
   case "$1" in
-    wheels|wheels_calibration) echo "pico_ware_wheels_microros" ;;
-    knives)                     echo "pico_ware_knives_microros" ;;
-    imu)                        echo "pico_ware_imu_microros" ;;
-    ina226)                     echo "pico_ware_ina226_microros" ;;
+    wheels|wheels_calibration) echo "pico_ware_wheels_picoros" ;;
+    knives)                     echo "pico_ware_knives_picoros" ;;
+    imu)                        echo "pico_ware_imu_picoros" ;;
+    ina226)                     echo "pico_ware_ina226_picoros" ;;
     *)                          echo "" ;;
   esac
 }
 
 get_uf2_name() {
   case "$1" in
-    wheels)             echo "pico_wheels_microros.uf2" ;;
-    wheels_calibration) echo "pico_wheels_calibration.uf2" ;;
-    knives)             echo "pico_knives_microros.uf2" ;;
-    imu)                echo "pico_imu_microros.uf2" ;;
-    ina226)             echo "pico_ina226_microros.uf2" ;;
+    wheels)             echo "picoros_wheels_xiao_rp2040_motor.uf2" ;;
+    wheels_calibration) echo "picoros_wheels_calibration.uf2" ;;
+    knives)             echo "picoros_knives_xiao_rp2040_motor.uf2" ;;
+    imu)                echo "picoros_imu_pico_sensor.uf2" ;;
+    ina226)             echo "picoros_ina226_xiao_rp2350_sensor.uf2" ;;
     *)                  echo "" ;;
   esac
 }
 
 get_image_name() {
-  local pkg_dir
-  pkg_dir=$(get_pkg_dir "$1")
-  if [[ -n "$pkg_dir" ]]; then
-    echo "relobot_${pkg_dir}:latest"
-  else
-    echo "relobot_pico_ware_wheels_microros:latest"
-  fi
+  echo "relobot_pico_firmware_builder:latest"
 }
 
 get_expected_product() {
   case "$1" in
-    wheels)             echo "pico_wheels_microros" ;;
-    wheels_calibration) echo "pico_wheels_calibration" ;;
-    knives)             echo "pico_knives_microros" ;;
-    imu)                echo "pico_imu_microros" ;;
-    ina226)             echo "pico_ina226_microros" ;;
+    wheels)             echo "picoros_wheels" ;;
+    wheels_calibration) echo "picoros_wheels_calibration" ;;
+    knives)             echo "picoros_knives" ;;
+    imu)                echo "picoros_imu" ;;
+    ina226)             echo "picoros_ina226" ;;
     *)                  echo "" ;;
   esac
 }
 
 # Helper: Ensure Docker image exists for target (or build it once)
 ensure_docker_image() {
-  local target="${1:-wheels}"
-  local pkg_dir
-  pkg_dir=$(get_pkg_dir "$target")
-  if [[ -z "$pkg_dir" ]]; then pkg_dir="pico_ware_wheels_microros"; fi
-
   local image_name
-  image_name=$(get_image_name "$target")
+  image_name=$(get_image_name "$1")
 
   if ! docker image inspect "$image_name" >/dev/null 2>&1; then
     echo "==> Building Docker image ($image_name)..." >&2
-    docker build -t "$image_name" "$pkg_dir"
+    docker build -t "$image_name" "${SCRIPT_DIR}/pico_firmware"
   fi
   echo "$image_name"
+}
+
+ensure_dependencies() {
+  local firmware_deps="${SCRIPT_DIR}/pico_firmware/build"
+  if [[ ! -f "${firmware_deps}/libmicroros/libmicroros.a" ||
+        ! -d "${firmware_deps}/FreeRTOS-Kernel/.git" ||
+        ! -d "${firmware_deps}/picoros/.git" ]]; then
+    echo "==> Setting up pico_firmware dependencies..." >&2
+    "${SCRIPT_DIR}/pico_firmware/setup_dependencies.sh"
+  fi
 }
 
 # Helper: Extract USB sysfs properties for a given ttyACM sysfs path
@@ -149,21 +148,32 @@ build_target() {
     exit 1
   fi
 
-  local image_name
-  image_name=$(ensure_docker_image "$target")
+  ensure_docker_image "$target" >/dev/null
+  ensure_dependencies
 
   echo "==> Compiling firmware for '$target'..."
-  docker run --rm \
-    --user "$(id -u):$(id -g)" \
-    -v "$SCRIPT_DIR/$pkg_dir/src:/project/src" \
-    -w /project \
-    "$image_name" \
-    /usr/local/bin/build.sh
+  case "$target" in
+    wheels)
+      "${SCRIPT_DIR}/${pkg_dir}/build.sh" xiao_rp2040 motor
+      ;;
+    wheels_calibration)
+      "${SCRIPT_DIR}/${pkg_dir}/build.sh" xiao_rp2040 calibration
+      ;;
+    knives)
+      "${SCRIPT_DIR}/${pkg_dir}/build.sh" xiao_rp2040 motor
+      ;;
+    imu)
+      "${SCRIPT_DIR}/${pkg_dir}/build.sh" pico sensor
+      ;;
+    ina226)
+      "${SCRIPT_DIR}/${pkg_dir}/build.sh" xiao_rp2350 sensor
+      ;;
+  esac
 
   local uf2_name
   uf2_name=$(get_uf2_name "$target")
-  if [[ -f "$pkg_dir/src/$uf2_name" ]]; then
-    echo "✅ Success: Created $pkg_dir/src/$uf2_name"
+  if [[ -f "$pkg_dir/$uf2_name" ]]; then
+    echo "✅ Success: Created $pkg_dir/$uf2_name"
   else
     echo "❌ Error: $uf2_name was not generated!" >&2
     exit 1
@@ -203,7 +213,7 @@ flash_target() {
 
   local uf2_name
   uf2_name=$(get_uf2_name "$target")
-  local uf2_path="$pkg_dir/src/$uf2_name"
+  local uf2_path="$pkg_dir/$uf2_name"
 
   if [[ ! -f "$uf2_path" ]]; then
     echo "Firmware binary '$uf2_path' not found. Building first..."
@@ -290,7 +300,7 @@ flash_target() {
   echo "==> Flashing '$uf2_name' via picotool in Docker..."
   docker run --rm --privileged \
     -v /dev/bus/usb:/dev/bus/usb \
-    -v "$SCRIPT_DIR/$pkg_dir/src:/project" \
+    -v "$SCRIPT_DIR/$pkg_dir:/project" \
     -w /project \
     "$image_name" \
     picotool load -f -x "$uf2_name"

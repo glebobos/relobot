@@ -66,7 +66,9 @@ def path_from_swaths(coverage, max_path_points=250000):
         delta_x, delta_y = swath.end.x - swath.start.x, swath.end.y - swath.start.y
         distance = math.hypot(delta_x, delta_y)
         if not math.isfinite(distance) or distance < 0.05:
-            raise ValueError('Coverage server returned an invalid work swath')
+            raise ValueError(
+                f'Coverage server returned an invalid work swath: length={distance:.6f} m, '
+                f'start=({swath.start.x}, {swath.start.y}), end=({swath.end.x}, {swath.end.y})')
         count = math.ceil(distance / 0.03) + 1
         if len(path.poses) + count > max_path_points:
             raise ValueError('Coverage exceeds its path point budget')

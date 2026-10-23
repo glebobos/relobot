@@ -28,7 +28,7 @@ RELOBOT_SYSTEM_PROMPT = (
     "6. Tools & ROS Integration: You have direct access to the robot via ros-mcp server tools (call_mcp_tool) and read-only file inspection (view_file). All ros-mcp action recipes are preloaded in your instructions. Always execute robot actions (dock, undock, explore, stop) immediately in one shot using call_mcp_tool without checking tool schemas or calling view_file."
 )
 
-AGY_DEFAULT_MODEL = os.getenv("AGY_MODEL", "gemini-3.7-flash-low")
+AGY_DEFAULT_MODEL = os.getenv("AGY_MODEL", "gemini-3.8-flash-low")
 
 
 def load_agent_definition(agent_name: str = "relobot") -> tuple[str, str]:
@@ -41,7 +41,7 @@ def load_agent_definition(agent_name: str = "relobot") -> tuple[str, str]:
         os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", ".agents", "agents", agent_name, "agent.md")),
     ]
 
-    model = os.getenv("AGY_MODEL", "gemini-3.7-flash-low")
+    model = os.getenv("AGY_MODEL", "gemini-3.8-flash-low")
     prompt = RELOBOT_SYSTEM_PROMPT
 
     for path in candidate_paths:

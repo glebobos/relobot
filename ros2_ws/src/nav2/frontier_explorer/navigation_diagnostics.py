@@ -153,7 +153,7 @@ class NavigationDiagnostics(Node):
         self.last_states = {}
         self.scan_result = None
         self.scan_key = None
-        self.tf_buffer = Buffer()
+        self.tf_buffer = Buffer(node=self)
         self.tf_listener = TransformListener(self.tf_buffer, self)
         for topic, message_type in (
             ('/cmd_vel_nav', Twist), ('/cmd_vel', Twist), ('/odometry/filtered', Odometry),

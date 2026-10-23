@@ -1,0 +1,26 @@
+diff --git a/opennav_coverage/src/coverage_server.cpp b/opennav_coverage/src/coverage_server.cpp
+--- a/opennav_coverage/src/coverage_server.cpp
++++ b/opennav_coverage/src/coverage_server.cpp
+@@ -63,5 +63,6 @@ nav2::CallbackReturn CoverageServer::on_configure(const rclcpp_lifecycle::State & /*state*/)
+     "compute_coverage_path",
+     std::bind(&CoverageServer::computeCoveragePath, this),
+     nullptr,
++    nullptr,
+     std::chrono::milliseconds(500),
+     true);
+diff --git a/opennav_coverage/include/opennav_coverage/utils.hpp b/opennav_coverage/include/opennav_coverage/utils.hpp
+--- a/opennav_coverage/include/opennav_coverage/utils.hpp
++++ b/opennav_coverage/include/opennav_coverage/utils.hpp
+@@ -198,4 +198,4 @@ inline opennav_coverage_msgs::msg::PathComponents toCoveragePathMsg(
+       opennav_coverage_msgs::msg::Swath swath;
+       swath.start = toMsg(curr_swath_start);
+-      swath.end = toMsg(path[i - 1].point);
++      swath.end = toMsg(path[i - 1].atEnd());
+       msg.swaths.push_back(swath);
+@@ -223,4 +223,4 @@ inline opennav_coverage_msgs::msg::PathComponents toCoveragePathMsg(
+     opennav_coverage_msgs::msg::Swath swath;
+     swath.start = toMsg(curr_swath_start);
+-    swath.end = toMsg(path.back().point);
++    swath.end = toMsg(path.back().atEnd());
+     msg.swaths.push_back(swath);
+ 

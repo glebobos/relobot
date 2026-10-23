@@ -1,0 +1,11 @@
+diff --git a/src/system/rpi_pico/usb_uart.c b/src/system/rpi_pico/usb_uart.c
+--- a/src/system/rpi_pico/usb_uart.c
++++ b/src/system/rpi_pico/usb_uart.c
+@@ -177,5 +177,6 @@ static _z_mutex_t _z_usb_uart_mutex;
+ static _z_task_t _z_usb_uart_task;
+ static volatile bool _z_usb_uart_task_run;
+ 
+-static void *_z_usb_uart_task_proc(void *) {
++static void *_z_usb_uart_task_proc(void *arg) {
++    (void)arg;
+     while (_z_usb_uart_task_run) {

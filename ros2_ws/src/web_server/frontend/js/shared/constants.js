@@ -12,7 +12,7 @@ export const CFG = {
     knifeMaxRpm: 3000,
 };
 
-export const BT_DIR = '/ros2_ws/install/nav2/share/nav2/behavior_trees';
+export const BT_DIR = '/ros2_ws/src/nav2/behavior_trees';
 export const DOCK_ID = 'home_dock';
 
 export const TOPICS = {
@@ -81,6 +81,7 @@ export const MSG_TYPES = {
     STRING: 'std_msgs/String',
     // geometry_msgs
     TWIST: 'geometry_msgs/Twist',
+    TWIST_STAMPED: 'geometry_msgs/TwistStamped',
     POLYGON_STAMPED: 'geometry_msgs/PolygonStamped',
     POSE_STAMPED: 'geometry_msgs/PoseStamped',
     TF_MESSAGE: 'tf2_msgs/msg/TFMessage',
@@ -94,7 +95,7 @@ export const MSG_TYPES = {
     GOAL_STATUS_ARRAY: 'action_msgs/GoalStatusArray',
     // Custom / third-party
     EXPLORE_STATUS: 'explore_lite_msgs/ExploreStatus',
-    DOCK_ROBOT: 'opennav_docking_msgs/action/DockRobot',
+    DOCK_ROBOT: 'nav2_msgs/action/DockRobot',
     NAVIGATE_TO_POSE: 'nav2_msgs/action/NavigateToPose',
     SERIALIZE_MAP_SRV: 'slam_toolbox/srv/SerializePoseGraph',
     SET_PARAMETERS: 'rcl_interfaces/srv/SetParameters',
