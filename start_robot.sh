@@ -43,10 +43,6 @@ while [[ $# -gt 0 ]]; do
             SIM=true
             shift
             ;;
-        --picoros-knives)
-            PICOROS_KNIVES=true
-            shift
-            ;;
         --headless)
             SIM_GUI=false
             shift
@@ -109,7 +105,6 @@ if [ -z "$COMMAND" ]; then
     echo ""
     echo "Options:"
     echo "  --sim          - Run in Gazebo simulation mode (swaps hardware drivers for Gazebo)"
-    echo "  --picoros-knives - Connect a physical Pico-ROS knives board in simulation (default on hardware)"
     echo "  --gui          - Launch Gazebo 3D GUI (default in sim mode)"
     echo "  --headless     - Run Gazebo in headless mode (no GUI window)"
     echo "  --wslg         - Enable WSLg devices and libraries (requires --sim --gui)"
@@ -123,14 +118,12 @@ cd "${ROS2_WS_DIR}"
 export DEV="${DEV}"
 export RELOBOT_HOST_DIR="${SCRIPT_DIR}"
 COMPOSE=(docker compose -f docker-compose.yml)
-if [[ "$SIM" != true || "$PICOROS_KNIVES" = true ]]; then
-    export PICO_KNIVES_ENABLED=true
+if [[ "$SIM" != true ]]; then
     export SIM_KNIVES_MOCK=false
     if [[ "$COMMAND" = up ]]; then
         python3 "${ROS2_WS_DIR}/zenoh_devices.py" validate
     fi
 else
-    export PICO_KNIVES_ENABLED=false
     export SIM_KNIVES_MOCK=true
 fi
 if [[ "$WSLG" = true ]]; then
@@ -178,14 +171,6 @@ else
 fi
 
 if [ "$COMMAND" == "up" ]; then
-    # Pre-flight check: FastDDS host socket buffer limits
-    RMEM_MAX=$(sysctl -n net.core.rmem_max 2>/dev/null || echo 0)
-    if [ "$RMEM_MAX" -lt 67108864 ]; then
-        echo -e "\033[33m[WARN] FastDDS socket buffer limit (net.core.rmem_max = $RMEM_MAX) is below recommended 67108864 (64 MB).\033[0m"
-        echo -e "\033[33mTo prevent packet drops during heavy SLAM/TF loads, apply:\033[0m"
-        echo -e "\033[33m  echo -e 'net.core.rmem_max = 67108864\\nnet.core.rmem_default = 33554432\\nnet.core.wmem_max = 67108864\\nnet.core.wmem_default = 33554432' | sudo tee /etc/sysctl.d/99-ros2-fastdds.conf && sudo sysctl --system\033[0m"
-    fi
-
     UP_ARGS=(--remove-orphans)
     if [ "$DETACH" = true ]; then
         UP_ARGS+=(-d)

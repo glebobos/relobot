@@ -41,7 +41,7 @@ Reuse the [shared firmware platform](../pico_firmware/README.md) and its prepare
 ./pico_ware_ina226_picoros/build.sh xiao_rp2040 sensor
 
 # Build sensor firmware for Seeed XIAO RP2350 — the actual INA226 board.
-# Same I2C wiring (GPIO6/7) as pico_ware_ina226_microros. Cross-build
+# Same I2C wiring (GPIO6/7). Cross-build
 # verified only; not yet flashed or validated on physical hardware.
 ./pico_ware_ina226_picoros/build.sh xiao_rp2350 sensor
 ```

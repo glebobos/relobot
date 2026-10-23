@@ -9,7 +9,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     cmake \
     build-essential \
     ros-lyrical-rmw-zenoh-cpp \
-    ros-lyrical-rmw-fastrtps-cpp \
     ros-lyrical-ros2launch \
     ros-lyrical-ros2-control \
     ros-lyrical-ros2-controllers \
@@ -21,16 +20,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-lyrical-robot-localization \
     && rm -rf /var/lib/apt/lists/*
 
-# Build micro-ROS agent and topic_based_ros2_control for Lyrical
-WORKDIR /opt/uros_ws/src
-RUN git clone -b rolling https://github.com/micro-ROS/micro_ros_msgs.git && \
-    git clone -b rolling https://github.com/micro-ROS/micro-ROS-Agent.git && \
-    git clone https://github.com/PickNikRobotics/topic_based_ros2_control.git
+# Build topic_based_ros2_control for Lyrical
+WORKDIR /opt/ros2_control_ws/src
+RUN git clone https://github.com/PickNikRobotics/topic_based_ros2_control.git
 
-WORKDIR /opt/uros_ws
+WORKDIR /opt/ros2_control_ws
 RUN . /opt/ros/lyrical/setup.sh && \
     colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF && \
-    echo "source /opt/uros_ws/install/setup.bash" >> /root/.bashrc
+    echo "source /opt/ros2_control_ws/install/setup.bash" >> /root/.bashrc
 
 # Workspace setup
 WORKDIR /ros2_ws
@@ -41,7 +38,7 @@ RUN printf '%s\n' \
     '#!/bin/bash' \
     'set -eo pipefail' \
     'source /opt/ros/lyrical/setup.bash' \
-    'source /opt/uros_ws/install/setup.bash' \
+    'source /opt/ros2_control_ws/install/setup.bash' \
     'cd /ros2_ws' \
     'if [ "$DEV" = "true" ] || [ ! -f /ros2_ws/install/diff_drive_hardware/share/diff_drive_hardware/package.xml ]; then' \
     '  colcon build --packages-select diff_drive_hardware --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF' \

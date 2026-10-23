@@ -1,4 +1,0 @@
-services:
-  ros2_zenoh_router:
-    environment:
-      RUST_LOG: info,zenoh_link_serial=trace,z_serial=trace,zenoh_transport=debug

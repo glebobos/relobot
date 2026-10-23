@@ -26,15 +26,12 @@ ros2_ws/models/
 *.onnx.json
 
 # ──────────────────────────────────────────────
-# pico_ware_imu_microros
+# Pico-ROS Firmware & Toolchain
 # ──────────────────────────────────────────────
 
-pico_ware_imu_microros/**/build
-pico_ware_imu_microros/*.uf2
-pico_ware_knives_picoros/**/build
-pico_ware_ina226_picoros/**/build
-pico_ware_imu_picoros/**/build
-pico_ware_wheels_picoros/**/build
+pico_firmware/build/
+pico_firmware/**/build
+pico_ware_*_picoros/**/build
 *.uf2
 
 # Rust / Cargo build directories

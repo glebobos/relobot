@@ -10,30 +10,24 @@ ReloBot is a ROS2-based robotics platform running on Raspberry Pi 5.
 ## File Structure & Documentation Index
 - `AGENTS.md`: Central workspace entry point, rules, and commands reference.
 - `README.md`: High-level repository overview.
-- `FLASHING.md`: Detailed guide for building, flashing, and monitoring micro-ROS firmwares.
+- `FLASHING.md`: Detailed guide for building, flashing, and monitoring Pico-ROS firmwares.
 - `.agents/skills/rust-skills/`: Comprehensive Rust guidelines & best practices ([SKILL.md](file:///home/glebos/projects/relobot/.agents/skills/rust-skills/SKILL.md)) for writing, reviewing, and refactoring Rust components (e.g. `rosbridge_rust`).
-- [pico_firmware/README.md](pico_firmware/README.md): Shared foundation for new Pico-ROS firmware: SDK/FreeRTOS, USB/Zenoh, startup and board profiles. Reuse it instead of copying platform setup per controller; only spare KAmod RP2040 is currently hardware-validated. Existing production micro-ROS controllers are not migrated automatically.
-- `pico_ware_*_microros/`: Microcontroller C/C++ micro-ROS firmwares:
-    - [pico_ware_wheels_microros/README.md](file:///home/admin/projects/relobot/pico_ware_wheels_microros/README.md): Differential drive motor control, Cytron MD13S pinout, and PI/feedforward tuning.
-    - [pico_ware_knives_microros/README.md](file:///home/admin/projects/relobot/pico_ware_knives_microros/README.md): Mower blade motor driver micro-ROS node.
-    - [pico_ware_imu_microros/README.md](file:///home/admin/projects/relobot/pico_ware_imu_microros/README.md): IMU sensor micro-ROS node.
-    - [pico_ware_ina226_microros/README.md](file:///home/admin/projects/relobot/pico_ware_ina226_microros/README.md): Power & voltage monitoring micro-ROS node.
+- [pico_firmware/README.md](pico_firmware/README.md): Shared foundation for Pico-ROS firmware: SDK/FreeRTOS, USB/Zenoh, startup and board profiles.
 - `pico_ware_*_picoros/`: Native Pico-ROS (Zenoh) firmwares:
+    - [pico_ware_wheels_picoros/README.md](pico_ware_wheels_picoros/README.md): Differential drive wheel control native Pico-ROS node.
     - [pico_ware_knives_picoros/README.md](pico_ware_knives_picoros/README.md): Knives motor driver native Pico-ROS node.
     - [pico_ware_ina226_picoros/README.md](pico_ware_ina226_picoros/README.md): INA226 power & dock monitoring native Pico-ROS node.
     - [pico_ware_imu_picoros/README.md](pico_ware_imu_picoros/README.md): IMU sensor native Pico-ROS node.
-    - [pico_ware_wheels_picoros/README.md](pico_ware_wheels_picoros/README.md): Differential drive wheel control native Pico-ROS node.
 - `helpers/`: Utility tools and calibration procedures:
-    - [helpers/wheel_calibration/README.md](file:///home/admin/projects/relobot/helpers/wheel_calibration/README.md): Wheel velocity calibration sweep & linear regression constants.
-    - [helpers/camera_calibration/README.md](file:///home/admin/projects/relobot/helpers/camera_calibration/README.md): Fisheye camera calibration guide.
-    - [helpers/cpu_profiler/README.md](file:///home/admin/projects/relobot/helpers/cpu_profiler/README.md): ROS 2 & Docker container CPU/Memory statistical profiler.
-    - [helpers/picoros_poc/README.md](file:///home/admin/projects/relobot/helpers/picoros_poc/README.md): Reproducible Pico-ROS to `rmw_zenoh_cpp` host compatibility proof.
-    - [helpers/rmw_zenoh_pico_spike/README.md](file:///home/admin/projects/relobot/helpers/rmw_zenoh_pico_spike/README.md): Isolated RP2040 `rclc` over Zenoh-Pico USB serial feasibility build.
-    - [wiki/rmw_zenoh_pico_robot_validation.md](file:///home/admin/projects/relobot/wiki/rmw_zenoh_pico_robot_validation.md): Physical robot validation, USB identification, flashing, recovery tests, and production gates for the RP2040 Zenoh spike.
+    - [helpers/wheel_calibration/README.md](helpers/wheel_calibration/README.md): Wheel velocity calibration sweep & linear regression constants.
+    - [helpers/camera_calibration/README.md](helpers/camera_calibration/README.md): Fisheye camera calibration guide.
+    - [helpers/cpu_profiler/README.md](helpers/cpu_profiler/README.md): ROS 2 & Docker container CPU/Memory statistical profiler.
 - `ros2_ws/`: The main ROS2 workspace (`src/`, `docker-compose.yml`, Dockerfiles).
-    - [ros2_ws/readme.md](file:///home/admin/projects/relobot/ros2_ws/readme.md): ROS2 nodes architecture.
-    - [ros2_ws/src/web_server/README.md](file:///home/admin/projects/relobot/ros2_ws/src/web_server/README.md): Web frontend server details.
-- `wiki/`: Architecture decisions and benchmark reports (e.g. `composition_performance_report.md`, `cpu_profiling_and_optimization_report.md`).
+    - [ros2_ws/readme.md](ros2_ws/readme.md): ROS2 nodes architecture.
+    - [ros2_ws/src/web_server/README.md](ros2_ws/src/web_server/README.md): Web frontend server details.
+- `wiki/`: Architecture decisions and benchmark reports:
+    - [wiki/zenoh_picoros_architecture_and_decisions.md](wiki/zenoh_picoros_architecture_and_decisions.md): Architecture Decision Records (ADR 1-4), validation evidence, and performance benchmarks for ROS 2 Lyrical + Zenoh SHM + Native Pico-ROS.
+    - `composition_performance_report.md`, `cpu_profiling_and_optimization_report.md`.
 - Core Helper Scripts:
     - `start_robot.sh`: Core host script to start/stop the Docker containers (supports `--sim` for Gazebo simulation and `--dev` mode).
     - `start_sim.sh`: Convenience launcher for Gazebo simulation (`./start_sim.sh up [--gui|--headless] [--world garden|obstacles|empty] [--dev]`).
@@ -48,7 +42,7 @@ ReloBot is a ROS2-based robotics platform running on Raspberry Pi 5.
 1. **Repository**: `git clone ...` (already done if you are reading this).
 2. **Devices**: Run `python3 finddevice.py` to auto-detect and map serial devices (TTYs) when running on physical hardware.
 3. **Environment**: Ensure `docker` and `docker compose` are installed. For WSL2, WSLg graphics acceleration is automatically detected.
-4. **Host Kernel Tuning**: Ensure `/etc/sysctl.d/99-ros2-fastdds.conf` is applied (`net.core.rmem_max = 67108864`) to prevent FastDDS UDP buffer overflow storms (see [README.md](README.md#1-fastdds--network-socket-buffer-optimization-critical)).
+4. **Zenoh Middleware**: ReloBot runs on ROS 2 Lyrical with `rmw_zenoh_cpp` and Zenoh shared memory (`transport/shared_memory/enabled=true`). All microcontrollers communicate via native Pico-ROS USB serial connected to `ros2_zenoh_router`.
 
 ## Workflow
 ### Running the Robot (Physical Hardware)

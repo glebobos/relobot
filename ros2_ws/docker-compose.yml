@@ -21,7 +21,6 @@ services:
     container_name: ros2_zenoh_router
     environment:
       RUST_LOG: ${ZENOH_ROUTER_RUST_LOG:-info}
-      PICO_KNIVES_ENABLED: ${PICO_KNIVES_ENABLED:-true}
       ZENOH_SHM_ALLOC_SIZE: ${ZENOH_SHM_ALLOC_SIZE:-16777216}
       ZENOH_SHM_MESSAGE_SIZE_THRESHOLD: ${ZENOH_SHM_MESSAGE_SIZE_THRESHOLD:-512}
     volumes:
@@ -156,7 +155,6 @@ services:
       - /dev/:/dev/
     environment:
       <<: *ros-env
-      PICO_KNIVES_ENABLED: ${PICO_KNIVES_ENABLED:-true}
     depends_on:
       ros2_zenoh_router:
         condition: service_started
