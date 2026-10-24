@@ -13,7 +13,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-lyrical-rosbridge-server \
     ros-lyrical-nav2-msgs \
     ros-lyrical-slam-toolbox \
-    ros-lyrical-web-video-server && \
+    ros-lyrical-web-video-server \
+    python3-dbus && \
     rm -rf /var/lib/apt/lists/*
 
 # Install Rust toolchain

@@ -80,6 +80,7 @@ services:
     volumes:
       - .:/ros2_ws/
       - /tmp:/tmp
+      - /var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket
       - cargo_registry:/root/.cargo/registry
       - cargo_git:/root/.cargo/git
     environment:
@@ -197,7 +198,6 @@ services:
     container_name: ros2_camera_rp
     volumes:
       - .:/ros2_ws/
-      - /var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket
       - /tmp:/tmp
     devices:
       - /dev/:/dev/

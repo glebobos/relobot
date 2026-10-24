@@ -111,21 +111,10 @@ def generate_launch_description():
         on_exit=Shutdown(),
     )
 
-    # System monitor node: monitors and publishes CPU and RAM stats
-    system_monitor = Node(
-        package='camera_ros',
-        executable='system_monitor',
-        name='system_monitor',
-        output='screen',
-        arguments=['--ros-args', '--log-level', log_level],
-        on_exit=Shutdown(),
-    )
-
     return LaunchDescription([
         camera_launch_arg,
         declare_log_level_cmd,
         container,
-        system_monitor,
     ])
 
 

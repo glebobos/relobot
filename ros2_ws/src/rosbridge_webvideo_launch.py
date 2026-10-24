@@ -5,7 +5,7 @@ Note: web_video_server was moved to camera.launch.py for zero-copy.
 """
 
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
+from launch.actions import DeclareLaunchArgument, ExecuteProcess
 from launch.substitutions import EnvironmentVariable, LaunchConfiguration
 from launch_ros.actions import Node
 
@@ -39,5 +39,10 @@ def generate_launch_description():
             name='rosapi',
             output='screen',
             arguments=['--ros-args', '--log-level', log_level],
+        ),
+        ExecuteProcess(
+            cmd=['python3', '/ros2_ws/src/web_server/scripts/system_monitor.py', '--ros-args', '--log-level', log_level],
+            output='screen',
+            name='system_monitor',
         ),
     ])
