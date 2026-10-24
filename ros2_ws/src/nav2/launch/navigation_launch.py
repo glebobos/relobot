@@ -41,10 +41,20 @@ def generate_launch_description():
     autostart = LaunchConfiguration('autostart')
     params_file = LaunchConfiguration('params_file')
     use_composition = LaunchConfiguration('use_composition')
+    use_intra_process_comms = LaunchConfiguration('use_intra_process_comms')
     container_name = LaunchConfiguration('container_name')
     container_name_full = (namespace, '/', container_name)
     use_respawn = LaunchConfiguration('use_respawn')
     log_level = LaunchConfiguration('log_level')
+
+    # Map fully qualified names to relative ones so the node's namespace can be prepended.
+    # In case of the transforms (tf), currently, there doesn't seem to be a better alternative
+    # https://github.com/ros/geometry2/issues/32
+    # https://github.com/ros/robot_state_publisher/pull/30
+    # TODO(orduno) Substitute with `PushNodeRemapping`
+    #              https://github.com/ros2/launch_ros/issues/56
+    remappings = [('/tf', 'tf'),
+                  ('/tf_static', 'tf_static')]
 
     # --- SLAM Toolbox configuration ---
     slam_config_file = os.path.join(nav2_dir, 'config', 'slam_toolbox_config.yaml')
@@ -63,8 +73,11 @@ def generate_launch_description():
         executable='localization_slam_toolbox_node' if map_exists else 'async_slam_toolbox_node',
         name='slam_toolbox',
         output='screen',
+        respawn=use_respawn,
+        respawn_delay=2.0,
         parameters=[slam_config_file, slam_params],
         arguments=['--ros-args', '--log-level', log_level],
+        remappings=remappings,
     )
     # -----------------------------------
 
@@ -78,15 +91,6 @@ def generate_launch_description():
                        'velocity_smoother',
                        'coverage_server',
                        'docking_server']
-
-    # Map fully qualified names to relative ones so the node's namespace can be prepended.
-    # In case of the transforms (tf), currently, there doesn't seem to be a better alternative
-    # https://github.com/ros/geometry2/issues/32
-    # https://github.com/ros/robot_state_publisher/pull/30
-    # TODO(orduno) Substitute with `PushNodeRemapping`
-    #              https://github.com/ros2/launch_ros/issues/56
-    remappings = [('/tf', 'tf'),
-                  ('/tf_static', 'tf_static')]
 
     # Create our own temporary YAML files that include substitutions
     param_substitutions = {
@@ -128,6 +132,10 @@ def generate_launch_description():
     declare_use_composition_cmd = DeclareLaunchArgument(
         'use_composition', default_value='True',
         description='Use composed bringup if True')
+
+    declare_use_intra_process_comms_cmd = DeclareLaunchArgument(
+        'use_intra_process_comms', default_value='True',
+        description='Whether to use intra-process communications when in a container')
 
     declare_container_name_cmd = DeclareLaunchArgument(
         'container_name', default_value='nav2_container',
@@ -176,12 +184,20 @@ def generate_launch_description():
         package='rclcpp_components',
         executable='component_container',
         output='screen',
-        arguments=['--executor-type', 'single-threaded', '--isolated', '--ros-args', '--log-level', log_level, '--params-file', rewritten_yaml],
+        arguments=[
+            '--executor-type', 'single-threaded',
+            '--isolated',
+            '--ros-args',
+            '--log-level', log_level,
+            '--params-file', rewritten_yaml,
+            '--params-file', slam_config_file,
+        ],
     )
 
     load_nodes = GroupAction(
         condition=IfCondition(PythonExpression(['not ', use_composition])),
         actions=[
+            slam_toolbox_node,
             Node(
                 package='nav2_controller',
                 executable='controller_server',
@@ -303,62 +319,76 @@ def generate_launch_description():
         target_container=container_name_full,
         composable_node_descriptions=[
             ComposableNode(
+                package='slam_toolbox',
+                plugin='slam_toolbox::LocalizationSlamToolbox' if map_exists else 'slam_toolbox::AsynchronousSlamToolbox',
+                name='slam_toolbox',
+                parameters=[slam_config_file, slam_params],
+                remappings=remappings,
+                extra_arguments=[{'use_intra_process_comms': False}]),
+            ComposableNode(
                 package='nav2_controller',
                 plugin='nav2_controller::ControllerServer',
                 name='controller_server',
                 parameters=[configured_params],
-                remappings=remappings + [('cmd_vel', 'cmd_vel_nav')]),
+                remappings=remappings + [('cmd_vel', 'cmd_vel_nav')],
+                extra_arguments=[{'use_intra_process_comms': use_intra_process_comms}]),
             ComposableNode(
                 package='nav2_smoother',
                 plugin='nav2_smoother::SmootherServer',
                 name='smoother_server',
                 parameters=[configured_params],
-                remappings=remappings),
+                remappings=remappings,
+                extra_arguments=[{'use_intra_process_comms': use_intra_process_comms}]),
             ComposableNode(
                 package='nav2_planner',
                 plugin='nav2_planner::PlannerServer',
                 name='planner_server',
                 parameters=[configured_params],
-                remappings=remappings),
+                remappings=remappings,
+                extra_arguments=[{'use_intra_process_comms': use_intra_process_comms}]),
             ComposableNode(
                 package='nav2_behaviors',
                 plugin='behavior_server::BehaviorServer',
                 name='behavior_server',
                 parameters=[configured_params],
-                remappings=remappings),
+                remappings=remappings,
+                extra_arguments=[{'use_intra_process_comms': use_intra_process_comms}]),
             ComposableNode(
                 package='nav2_bt_navigator',
                 plugin='nav2_bt_navigator::BtNavigator',
                 name='bt_navigator',
                 parameters=[configured_params],
-                remappings=remappings),
+                remappings=remappings,
+                extra_arguments=[{'use_intra_process_comms': use_intra_process_comms}]),
             ComposableNode(
                 package='nav2_waypoint_follower',
                 plugin='nav2_waypoint_follower::WaypointFollower',
                 name='waypoint_follower',
                 parameters=[configured_params],
-                remappings=remappings),
+                remappings=remappings,
+                extra_arguments=[{'use_intra_process_comms': use_intra_process_comms}]),
             ComposableNode(
                 package='nav2_velocity_smoother',
                 plugin='nav2_velocity_smoother::VelocitySmoother',
                 name='velocity_smoother',
                 parameters=[configured_params],
                 remappings=remappings +
-                           [('cmd_vel', 'cmd_vel_nav'), ('cmd_vel_smoothed', 'cmd_vel')]),
+                           [('cmd_vel', 'cmd_vel_nav'), ('cmd_vel_smoothed', 'cmd_vel')],
+                extra_arguments=[{'use_intra_process_comms': use_intra_process_comms}]),
             ComposableNode(
                 package='opennav_coverage',
                 plugin='opennav_coverage::CoverageServer',
                 name='coverage_server',
                 parameters=[configured_params],
                 remappings=remappings,
-            ),
+                extra_arguments=[{'use_intra_process_comms': use_intra_process_comms}]),
             ComposableNode(
                 package='opennav_docking',
                 plugin='opennav_docking::DockingServer',
                 name='docking_server',
                 parameters=[configured_params],
                 remappings=remappings,
-            ),
+                extra_arguments=[{'use_intra_process_comms': use_intra_process_comms}]),
             ComposableNode(
                 package='nav2_lifecycle_manager',
                 plugin='nav2_lifecycle_manager::LifecycleManager',
@@ -366,14 +396,15 @@ def generate_launch_description():
                 parameters=[{'use_sim_time': use_sim_time,
                              'autostart': autostart,
                              'node_names': lifecycle_nodes,
-                             'bond_timeout': 0.0}]),
+                             'bond_timeout': 0.0}],
+                extra_arguments=[{'use_intra_process_comms': False}]),
             ComposableNode(
                 package='robot_pose_publisher',
                 plugin='robot_pose_publisher::RobotPosePublisher',
                 name='robot_pose_publisher',
                 parameters=[robot_pose_params, {'use_sim_time': use_sim_time}],
                 remappings=remappings,
-            ),
+                extra_arguments=[{'use_intra_process_comms': use_intra_process_comms}]),
         ],
     )
 
@@ -408,6 +439,7 @@ def generate_launch_description():
     ld.add_action(declare_params_file_cmd)
     ld.add_action(declare_autostart_cmd)
     ld.add_action(declare_use_composition_cmd)
+    ld.add_action(declare_use_intra_process_comms_cmd)
     ld.add_action(declare_container_name_cmd)
     ld.add_action(declare_use_respawn_cmd)
     ld.add_action(declare_log_level_cmd)
@@ -416,7 +448,6 @@ def generate_launch_description():
     ld.add_action(container)
     ld.add_action(load_nodes)
     ld.add_action(load_composable_nodes)
-    ld.add_action(slam_toolbox_node)
     ld.add_action(explore_node)
     ld.add_action(coverage_manager_node)
     ld.add_action(apriltag_manager_node)
