@@ -404,6 +404,15 @@ static void update_motor(motor_t *m, float dt_s)
         }
     }
 
+#if RELOBOT_WHEELS_CALIBRATION
+    if (fabsf(m->cmd_vel) < 0.001f) {
+        stop_motor(m);
+        return;
+    }
+    float out_pwm = pid_clampf(m->cmd_vel, -1.0f, 1.0f);
+    bool fwd = (out_pwm >= 0.0f);
+    set_motor_pwm(m, fabsf(out_pwm), fwd);
+#else
     /* Slew limit */
     float delta_cmd = m->cmd_vel - m->target_vel;
     delta_cmd = pid_clampf(delta_cmd, -SLEW_LIMIT_RAD_S_PER_CYCLE, SLEW_LIMIT_RAD_S_PER_CYCLE);
@@ -458,6 +467,7 @@ static void update_motor(motor_t *m, float dt_s)
 
     float out_pwm = pid_clampf(ff_pwm + m->last_pi_adj, 0.0f, 1.0f);
     set_motor_pwm(m, out_pwm, fwd);
+#endif
 }
 
 static void update_control(void)
@@ -505,8 +515,13 @@ static void control_task(void *argument)
         taskENTER_CRITICAL();
         bool ready = entities_ready;
         unsigned int stage = diagnostic_stage;
+#if RELOBOT_WHEELS_CALIBRATION
+        bool active = ready && (fabsf(left_motor.cmd_vel) >= 0.001f ||
+                                fabsf(right_motor.cmd_vel) >= 0.001f);
+#else
         bool active = ready && (fabsf(left_motor.cmd_vel) >= MOTOR_DEADBAND_RAD_S ||
                                 fabsf(right_motor.cmd_vel) >= MOTOR_DEADBAND_RAD_S);
+#endif
         taskEXIT_CRITICAL();
 
         uint32_t now = now_ms();

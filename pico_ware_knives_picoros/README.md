@@ -1,19 +1,15 @@
 # Knives Pico-ROS integration
 
-Only knives use the native path: RP2040 USB serial -> `rmw_zenohd` -> ROS/Zenoh.
-Wheels, IMU and INA226 retain micro-ROS -> FastDDS agent -> `uros_bridge` -> Zenoh.
-Hardware startup selects native knives by default. Ordinary simulation keeps
-the Gazebo knives mock and does not enable USB serial. **Motor operation is not
-yet qualified**; see the ordered [production gates](../PICO_NEXT_STEPS.md).
-The existing XIAO profile, pinout and encoder configuration are accepted for
-the migration; pins are confirmed by the operator. Rechecking the hardware
-mapping or qualifying a micro-ROS rollback is not a required rollout stage.
+Native Pico-ROS knives firmware: RP2040 USB serial -> `rmw_zenohd` -> ROS/Zenoh.
+All four microcontroller subsystems (wheels, knives, IMU, and INA226) run native Pico-ROS communicating directly with the Zenoh router. Hardware startup selects native Pico-ROS by default. Ordinary simulation keeps the Gazebo knives mock.
+
+For architecture decisions and validation benchmarks, see [wiki/zenoh_picoros_architecture_and_decisions.md](../wiki/zenoh_picoros_architecture_and_decisions.md).
 
 ## Firmware builds
 
 Reuse the [shared firmware platform](../pico_firmware/README.md) and its pinned
-dependencies prepared under `helpers/rmw_zenoh_pico_spike/build`. The builder
-image must already be available. Builds run offline inside Docker; source and
+dependencies prepared under `pico_firmware/build`. The builder
+image `relobot_pico_firmware_builder:latest` must already be available. Builds run offline inside Docker; source and
 dependencies are read-only, with generated dependency headers in a local copy.
 
 ```bash
@@ -173,7 +169,7 @@ values are minimum remaining 32-bit words. Diagnostics are absent in motor mode.
 
 ## Tests and cleanup
 
-Keep the isolated [regressions and bench acceptance procedure](../helpers/rmw_zenoh_pico_spike/host_tests/README.md#knives-integration-regressions).
+Unit tests are run via `./pico_ware_knives_picoros/tests/run_tests.sh`. Architecture decisions and validation evidence are documented in [wiki/zenoh_picoros_architecture_and_decisions.md](../wiki/zenoh_picoros_architecture_and_decisions.md).
 They cover initialization, command expiry/invalid values, USB ownership, router
 config preservation and Gazebo mock selection. The command acceptance script
 is for the **no-actuator bench only**, never a powered motor. No regression

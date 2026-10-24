@@ -17,7 +17,7 @@ RUN git init && git remote add origin https://github.com/eclipse-zenoh/zenoh-c.g
     && test "$(git rev-parse HEAD)" = 05bd370343b5161ca9269649b9a914c9c2dc4170 \
     && cargo fetch --locked
 
-COPY helpers/rmw_zenoh_pico_spike/host_router/zenoh-serial-accept.patch /build/zenoh-serial-accept.patch
+COPY ros2_ws/patches/zenoh-serial-accept.patch /build/zenoh-serial-accept.patch
 RUN source_dir=$(find "$CARGO_HOME/git/checkouts" -maxdepth 3 -type d -name 2687c51) \
     && test -n "$source_dir" \
     && test "$(git -C "$source_dir" rev-parse HEAD)" = 2687c51352121f006e3a603ce07925a8ad0b295c \

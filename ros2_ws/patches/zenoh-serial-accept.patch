@@ -2,7 +2,7 @@ diff --git a/io/zenoh-links/zenoh-link-serial/src/unicast.rs b/io/zenoh-links/ze
 --- a/io/zenoh-links/zenoh-link-serial/src/unicast.rs
 +++ b/io/zenoh-links/zenoh-link-serial/src/unicast.rs
 @@ -430,6 +430,7 @@ async fn accept_read_task(
- 
+
          tracing::trace!("Creating Serial listener on device {src_path:?}, with baudrate {baud_rate} and exclusive set as {exclusive}");
          if release_on_close {
 +            link.unset_port();
@@ -12,7 +12,7 @@ diff --git a/io/zenoh-links/zenoh-link-serial/src/unicast.rs b/io/zenoh-links/ze
 @@ -448,7 +449,10 @@ async fn accept_read_task(
              link.clear_buffers()?;
          }
- 
+
 -        while link.get_port_mut()?.accept().await.is_err() {
 +        while let Err(error) = link.get_port_mut()?.accept().await {
 +            if release_on_close {

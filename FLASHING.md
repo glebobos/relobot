@@ -26,7 +26,7 @@ The recommended way to build and flash firmwares is using `./run_firmware.sh`. A
 ./run_firmware.sh monitor wheels
 ```
 
-Alternatively, you can run `run.sh` directly inside any firmware subfolder (e.g. `cd pico_ware_wheels_microros && ./run.sh flash`).
+Alternatively, you can run `build.sh` directly inside any firmware subfolder (e.g. `cd pico_ware_wheels_picoros && ./build.sh xiao_rp2040 motor`).
 
 ---
 

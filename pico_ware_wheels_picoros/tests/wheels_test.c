@@ -75,18 +75,22 @@ size_t xPortGetFreeHeapSize(void) { return 65536; }
 size_t xPortGetMinimumEverFreeHeapSize(void) { return 32768; }
 unsigned int uxTaskGetStackHighWaterMark(TaskHandle_t task) { (void)task; return 256; }
 picoros_res_t picoros_node_init(picoros_node_t *node) { (void)node; return PICOROS_OK; }
+picoros_res_t picoros_node_drop(picoros_node_t *node) { (void)node; return PICOROS_OK; }
 picoros_res_t picoros_publisher_declare(picoros_node_t *node, picoros_publisher_t *publisher)
 {
     (void)node; (void)publisher; return PICOROS_OK;
 }
+picoros_res_t picoros_publisher_drop(picoros_publisher_t *publisher) { (void)publisher; return PICOROS_OK; }
 picoros_res_t picoros_subscriber_declare(picoros_node_t *node, picoros_subscriber_t *subscriber)
 {
     (void)node; (void)subscriber; return PICOROS_OK;
 }
+picoros_res_t picoros_subscriber_drop(picoros_subscriber_t *subscriber) { (void)subscriber; return PICOROS_OK; }
 picoros_res_t picoros_publish(picoros_publisher_t *publisher, const uint8_t *payload, size_t length)
 {
     (void)publisher; (void)payload; (void)length; return PICOROS_OK;
 }
+void picoros_interface_close(void) {}
 void z_publisher_options_default(int *options) { (void)options; }
 picoros_res_t relobot_picoros_init(void) { return PICOROS_OK; }
 void relobot_board_init(void) {}

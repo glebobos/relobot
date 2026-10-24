@@ -135,14 +135,12 @@ fi
 export RCUTILS_DEFAULT_LOGGER_DEFAULT_LEVEL="${RCUTILS_DEFAULT_LOGGER_DEFAULT_LEVEL:-${ROS_LOG_LEVEL}}"
 export RELOBOT_HOST_DIR="${SCRIPT_DIR}"
 COMPOSE=(docker compose -f docker-compose.yml)
-if [[ "$SIM" != true || "$PICOROS_KNIVES" = true ]]; then
-    export PICO_KNIVES_ENABLED=true
+if [[ "$SIM" != true ]]; then
     export SIM_KNIVES_MOCK=false
     if [[ "$COMMAND" = up ]]; then
         python3 "${ROS2_WS_DIR}/zenoh_devices.py" validate
     fi
 else
-    export PICO_KNIVES_ENABLED=false
     export SIM_KNIVES_MOCK=true
 fi
 if [[ "$WSLG" = true ]]; then
@@ -192,14 +190,6 @@ else
 fi
 
 if [ "$COMMAND" == "up" ]; then
-    # Pre-flight check: FastDDS host socket buffer limits
-    RMEM_MAX=$(sysctl -n net.core.rmem_max 2>/dev/null || echo 0)
-    if [ "$RMEM_MAX" -lt 67108864 ]; then
-        echo -e "\033[33m[WARN] FastDDS socket buffer limit (net.core.rmem_max = $RMEM_MAX) is below recommended 67108864 (64 MB).\033[0m"
-        echo -e "\033[33mTo prevent packet drops during heavy SLAM/TF loads, apply:\033[0m"
-        echo -e "\033[33m  echo -e 'net.core.rmem_max = 67108864\\nnet.core.rmem_default = 33554432\\nnet.core.wmem_max = 67108864\\nnet.core.wmem_default = 33554432' | sudo tee /etc/sysctl.d/99-ros2-fastdds.conf && sudo sysctl --system\033[0m"
-    fi
-
     UP_ARGS=(--remove-orphans)
     if [ "$DETACH" = true ]; then
         UP_ARGS+=(-d)

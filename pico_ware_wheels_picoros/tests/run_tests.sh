@@ -8,7 +8,7 @@ mkdir -p "${script_dir}/build"
 docker run --rm --network none --user "$(id -u):$(id -g)" --entrypoint bash \
     -v "${repo_root}:/project:ro" \
     -v "${script_dir}/build:/output" \
-    relobot_pico_ware_wheels_microros:latest \
+    relobot_pico_firmware_builder:latest \
     -lc 'set -euo pipefail
          cmake -S /project/pico_ware_wheels_picoros/tests -B /output/test-tree
          cmake --build /output/test-tree -j2

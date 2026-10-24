@@ -64,7 +64,6 @@ def generate_launch_description():
         default_value=EnvironmentVariable("ROS_LOG_LEVEL", default_value="WARN"),
         description="ROS 2 logger severity level",
     )
-
     control_node = Node(
         package="controller_manager",
         executable="ros2_control_node",

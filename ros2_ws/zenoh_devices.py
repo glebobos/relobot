@@ -63,41 +63,12 @@ def router_override(config=DEFAULT_CONFIG):
     return 'listen/endpoints=' + json.dumps(endpoints, separators=(',', ':'))
 
 
-def micro_ros_serial_devices(config=DEFAULT_CONFIG, native_enabled=True):
-    native_devices = load_devices(config) if native_enabled else {}
-    excluded = set()
-    for device in native_devices.values():
-        native_path = f'/dev/serial/by-id/{device["serial_by_id"]}'
-        if not os.path.exists(native_path):
-            raise RuntimeError(f'Cannot exclude missing native Pico-ROS device: {native_path}')
-        excluded.add(os.path.realpath(native_path))
-    by_id = sorted(set(
-        glob.glob('/dev/serial/by-id/usb-*Pico*') +
-        glob.glob('/dev/serial/by-id/usb-*ReloBot*')
-    ))
-    eligible_by_id = [path for path in by_id
-                      if os.path.exists(path) and os.path.realpath(path) not in excluded]
-    candidates = eligible_by_id or sorted(glob.glob('/dev/ttyACM*'))
-    candidates += [value for key, value in sorted(os.environ.items())
-                   if key.startswith('TTY_') and value]
-    devices = []
-    identities = set()
-    for candidate in candidates:
-        identity = os.path.realpath(candidate)
-        if os.path.exists(candidate) and identity not in excluded and identity not in identities:
-            devices.append(candidate)
-            identities.add(identity)
-    return devices
-
-
 def main():
     parser = argparse.ArgumentParser(description='Load native Pico-ROS USB devices from JSON.')
     parser.add_argument('--config', type=Path, default=DEFAULT_CONFIG)
     commands = parser.add_subparsers(dest='command', required=True)
     commands.add_parser('validate')
     commands.add_parser('router-override')
-    selection = commands.add_parser('micro-ros-devices')
-    selection.add_argument('--native-enabled', choices=('true', 'false'), default='true')
     arguments = parser.parse_args()
     try:
         if arguments.command == 'validate':
@@ -106,9 +77,6 @@ def main():
                 f'{name}={device["serial_by_id"]}' for name, device in devices.items()))
         elif arguments.command == 'router-override':
             print(router_override(arguments.config))
-        else:
-            print(json.dumps(micro_ros_serial_devices(
-                arguments.config, native_enabled=arguments.native_enabled == 'true')))
     except (OSError, ValueError, RuntimeError) as error:
         print(f'Error: {arguments.config}: {error}', file=sys.stderr)
         return 1
