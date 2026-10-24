@@ -20,8 +20,10 @@ from tts_engine import OptimusTTS, normalize_text_for_speech
 from audio_output import PcmAudioSink
 from terminal_manager import TerminalManager
 
+_LOG_LEVEL_STR = os.getenv("ROS_LOG_LEVEL", "WARN").upper()
+_LOG_LEVEL = getattr(logging, "WARNING" if _LOG_LEVEL_STR == "WARN" else _LOG_LEVEL_STR, logging.WARNING)
 logging.basicConfig(
-    level=logging.INFO,
+    level=_LOG_LEVEL,
     format="%(asctime)s [%(levelname)s] [%(name)s] %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S"
 )

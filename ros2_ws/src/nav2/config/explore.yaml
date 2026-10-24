@@ -387,6 +387,19 @@ bt_navigator:
     always_reload_bt_xml: false
     default_nav_to_pose_bt_xml: $(find-pkg-share nav2)/behavior_trees/navigate_to_pose.xml
     default_nav_through_poses_bt_xml: $(find-pkg-share nav2)/behavior_trees/navigate_through_poses.xml
+    error_code_name_prefixes:
+    - assisted_teleop
+    - backup
+    - compute_path
+    - dock_robot
+    - drive_on_heading
+    - follow_object
+    - follow_path
+    - nav_thru_poses
+    - nav_to_pose
+    - spin
+    - undock_robot
+    - wait
     plugin_lib_names:
     - opennav_dock_action_bt_node
     - opennav_undock_action_bt_node

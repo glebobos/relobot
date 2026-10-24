@@ -20,7 +20,7 @@ from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, GroupAction, SetEnvironmentVariable
 from launch.conditions import IfCondition
-from launch.substitutions import LaunchConfiguration, PythonExpression
+from launch.substitutions import EnvironmentVariable, LaunchConfiguration, PythonExpression
 from launch_ros.actions import LoadComposableNodes
 from launch_ros.actions import Node
 from launch_ros.descriptions import ComposableNode, ParameterFile
@@ -64,6 +64,7 @@ def generate_launch_description():
         name='slam_toolbox',
         output='screen',
         parameters=[slam_config_file, slam_params],
+        arguments=['--ros-args', '--log-level', log_level],
     )
     # -----------------------------------
 
@@ -137,7 +138,8 @@ def generate_launch_description():
         description='Whether to respawn if a node crashes. Applied when composition is disabled.')
 
     declare_log_level_cmd = DeclareLaunchArgument(
-        'log_level', default_value='info',
+        'log_level',
+        default_value=EnvironmentVariable('ROS_LOG_LEVEL', default_value='WARN'),
         description='log level')
 
     declare_apriltag_always_on_cmd = DeclareLaunchArgument(
@@ -151,6 +153,7 @@ def generate_launch_description():
         name='explore_node',
         output='screen',
         parameters=[explore_lite_params, {'use_sim_time': use_sim_time}],
+        arguments=['--ros-args', '--log-level', log_level],
         remappings=[('/tf', 'tf'), ('/tf_static', 'tf_static')],
     )
 
@@ -171,9 +174,9 @@ def generate_launch_description():
         condition=IfCondition(use_composition),
         name=container_name,
         package='rclcpp_components',
-        executable='component_container_isolated',
+        executable='component_container',
         output='screen',
-        arguments=['--ros-args', '--log-level', log_level, '--params-file', rewritten_yaml],
+        arguments=['--executor-type', 'single-threaded', '--isolated', '--ros-args', '--log-level', log_level, '--params-file', rewritten_yaml],
     )
 
     load_nodes = GroupAction(
@@ -382,6 +385,7 @@ def generate_launch_description():
         output='screen',
         respawn=use_respawn,
         respawn_delay=2.0,
+        arguments=['--ros-args', '--log-level', log_level],
         parameters=[{
             'container': container_name_full,
             'dock_action': '/dock_robot',

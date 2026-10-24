@@ -1,6 +1,6 @@
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, Shutdown
-from launch.substitutions import LaunchConfiguration
+from launch.substitutions import EnvironmentVariable, LaunchConfiguration
 from launch_ros.actions import ComposableNodeContainer, Node
 from launch_ros.descriptions import ComposableNode
 import os
@@ -23,6 +23,12 @@ def generate_launch_description():
         camera_param_name,
         default_value=camera_param_default,
         description="camera ID or name"
+    )
+    log_level = LaunchConfiguration("log_level")
+    declare_log_level_cmd = DeclareLaunchArgument(
+        "log_level",
+        default_value=EnvironmentVariable("ROS_LOG_LEVEL", default_value="WARN"),
+        description="ROS 2 logger severity level",
     )
 
     container = ComposableNodeContainer(
@@ -101,6 +107,7 @@ def generate_launch_description():
             ),
         ],
         output='screen',
+        arguments=['--ros-args', '--log-level', log_level],
         on_exit=Shutdown(),
     )
 
@@ -110,11 +117,13 @@ def generate_launch_description():
         executable='system_monitor',
         name='system_monitor',
         output='screen',
+        arguments=['--ros-args', '--log-level', log_level],
         on_exit=Shutdown(),
     )
 
     return LaunchDescription([
         camera_launch_arg,
+        declare_log_level_cmd,
         container,
         system_monitor,
     ])

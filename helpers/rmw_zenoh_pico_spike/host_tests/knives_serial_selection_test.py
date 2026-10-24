@@ -194,11 +194,16 @@ import sys
 print('COMPOSE_CAPTURE:' + json.dumps({
     'arguments': sys.argv[1:],
     'environment': {key: os.environ.get(key) for key in (
-        'PICO_KNIVES_ENABLED', 'SIM_KNIVES_MOCK')},
+        'PICO_KNIVES_ENABLED', 'SIM_KNIVES_MOCK',
+        'ROS_LOG_LEVEL', 'RCUTILS_DEFAULT_LOGGER_DEFAULT_LEVEL',
+        'RUST_LOG', 'ZENOH_ROUTER_RUST_LOG', 'LIBCAMERA_LOG_LEVELS')},
 }))
 ''')
         docker.chmod(0o755)
         environment = os.environ.copy()
+        for key in ('ROS_LOG_LEVEL', 'RCUTILS_DEFAULT_LOGGER_DEFAULT_LEVEL',
+                    'RUST_LOG', 'ZENOH_ROUTER_RUST_LOG', 'LIBCAMERA_LOG_LEVELS'):
+            environment.pop(key, None)
         environment.update({
             'PATH': str(self.directory) + os.pathsep + environment['PATH'],
             'PICO_KNIVES_ENABLED': 'inherited',
@@ -223,6 +228,9 @@ print('COMPOSE_CAPTURE:' + json.dumps({
         self.assertIn(os.path.basename(NATIVE), result.stdout)
         self.assertEqual(capture['environment'], {
             'PICO_KNIVES_ENABLED': 'true', 'SIM_KNIVES_MOCK': 'false',
+            'ROS_LOG_LEVEL': 'WARN', 'RCUTILS_DEFAULT_LOGGER_DEFAULT_LEVEL': 'WARN',
+            'RUST_LOG': 'warn', 'ZENOH_ROUTER_RUST_LOG': 'warn',
+            'LIBCAMERA_LOG_LEVELS': '*:WARN',
         })
         self.assertEqual(capture['arguments'][3:5], ['--profile', 'hardware'])
 
@@ -230,8 +238,20 @@ print('COMPOSE_CAPTURE:' + json.dumps({
         capture = self.capture(self.launch(['up', '--sim', '--headless'], '{broken JSON'))
         self.assertEqual(capture['environment'], {
             'PICO_KNIVES_ENABLED': 'false', 'SIM_KNIVES_MOCK': 'true',
+            'ROS_LOG_LEVEL': 'WARN', 'RCUTILS_DEFAULT_LOGGER_DEFAULT_LEVEL': 'WARN',
+            'RUST_LOG': 'warn', 'ZENOH_ROUTER_RUST_LOG': 'warn',
+            'LIBCAMERA_LOG_LEVELS': '*:WARN',
         })
         self.assertEqual(capture['arguments'][3:5], ['--profile', 'sim'])
+
+    def test_dev_mode_sets_info_log_levels(self):
+        capture = self.capture(self.launch(['up', '--sim', '--headless', '--dev'], '{broken JSON'))
+        self.assertEqual(capture['environment'], {
+            'PICO_KNIVES_ENABLED': 'false', 'SIM_KNIVES_MOCK': 'true',
+            'ROS_LOG_LEVEL': 'INFO', 'RCUTILS_DEFAULT_LOGGER_DEFAULT_LEVEL': 'INFO',
+            'RUST_LOG': 'info', 'ZENOH_ROUTER_RUST_LOG': 'info',
+            'LIBCAMERA_LOG_LEVELS': '*:INFO',
+        })
 
     def test_hybrid_uses_json_and_disables_mock(self):
         capture = self.capture(self.launch(['up', '--sim', '--headless', '--picoros-knives']))

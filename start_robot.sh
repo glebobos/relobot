@@ -114,13 +114,25 @@ if [ -z "$COMMAND" ]; then
     echo "  --headless     - Run Gazebo in headless mode (no GUI window)"
     echo "  --wslg         - Enable WSLg devices and libraries (requires --sim --gui)"
     echo "  --world <name> - Specify world: garden (default), obstacles, empty"
-    echo "  --dev          - Enable development mode (rebuilds ROS2 packages on startup)"
+    echo "  --dev          - Enable development mode (rebuilds ROS2 packages on startup and sets INFO log level)"
     exit 1
 fi
 
 cd "${ROS2_WS_DIR}"
 
 export DEV="${DEV}"
+if [ "$DEV" = true ]; then
+    export ROS_LOG_LEVEL="${ROS_LOG_LEVEL:-INFO}"
+    export RUST_LOG="${RUST_LOG:-info}"
+    export ZENOH_ROUTER_RUST_LOG="${ZENOH_ROUTER_RUST_LOG:-info}"
+    export LIBCAMERA_LOG_LEVELS="${LIBCAMERA_LOG_LEVELS:-*:INFO}"
+else
+    export ROS_LOG_LEVEL="${ROS_LOG_LEVEL:-WARN}"
+    export RUST_LOG="${RUST_LOG:-warn}"
+    export ZENOH_ROUTER_RUST_LOG="${ZENOH_ROUTER_RUST_LOG:-warn}"
+    export LIBCAMERA_LOG_LEVELS="${LIBCAMERA_LOG_LEVELS:-*:WARN}"
+fi
+export RCUTILS_DEFAULT_LOGGER_DEFAULT_LEVEL="${RCUTILS_DEFAULT_LOGGER_DEFAULT_LEVEL:-${ROS_LOG_LEVEL}}"
 export RELOBOT_HOST_DIR="${SCRIPT_DIR}"
 COMPOSE=(docker compose -f docker-compose.yml)
 if [[ "$SIM" != true || "$PICOROS_KNIVES" = true ]]; then
@@ -162,9 +174,10 @@ if [ "$SIM" = true ]; then
 
     echo "=========================================================="
     echo " ReloBot: GAZEBO SIMULATION MODE"
-    echo " World:    ${SIM_WORLD}"
-    echo " GUI:      ${SIM_GUI}"
-    echo " Dev Mode: ${DEV}"
+    echo " World:     ${SIM_WORLD}"
+    echo " GUI:       ${SIM_GUI}"
+    echo " Dev Mode:  ${DEV}"
+    echo " Log Level: ${ROS_LOG_LEVEL}"
     echo "=========================================================="
 else
     export COMPOSE_PROFILES="hardware"
@@ -173,7 +186,8 @@ else
 
     echo "=========================================================="
     echo " ReloBot: PHYSICAL HARDWARE MODE"
-    echo " Dev Mode: ${DEV}"
+    echo " Dev Mode:  ${DEV}"
+    echo " Log Level: ${ROS_LOG_LEVEL}"
     echo "=========================================================="
 fi
 
