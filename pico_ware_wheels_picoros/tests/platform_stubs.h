@@ -81,6 +81,8 @@ uint32_t time_us_32(void);
 void sleep_ms(uint32_t milliseconds);
 void tight_loop_contents(void);
 void reset_usb_boot(uint32_t gpio_mask, uint32_t disable_mask);
+bool gpio_get(uint pin);
+void busy_wait_us_32(uint32_t delay_us);
 void gpio_init(uint pin);
 void gpio_set_dir(uint pin, bool output);
 void gpio_put(uint pin, bool value);

@@ -1,11 +1,43 @@
 #!/usr/bin/env python3
 import json
-import subprocess
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String
 
+try:
+    import dbus
+    HAVE_DBUS = True
+except ImportError:
+    HAVE_DBUS = False
+
+
+def get_wifi_ssid():
+    """
+    Retrieve currently connected Wi-Fi SSID from NetworkManager via D-Bus system bus.
+    """
+    if not HAVE_DBUS:
+        return None
+    try:
+        bus = dbus.SystemBus()
+        nm = bus.get_object('org.freedesktop.NetworkManager', '/org/freedesktop/NetworkManager')
+        props = dbus.Interface(nm, 'org.freedesktop.DBus.Properties')
+        active_paths = props.Get('org.freedesktop.NetworkManager', 'ActiveConnections')
+        for path in active_paths:
+            conn = bus.get_object('org.freedesktop.NetworkManager', path)
+            c_props = dbus.Interface(conn, 'org.freedesktop.DBus.Properties')
+            c_type = c_props.Get('org.freedesktop.NetworkManager.Connection.Active', 'Type')
+            if str(c_type) == '802-11-wireless':
+                ssid = c_props.Get('org.freedesktop.NetworkManager.Connection.Active', 'Id')
+                return str(ssid)
+    except Exception:
+        pass
+    return None
+
+
 def get_wifi_signal():
+    """
+    Parse /proc/net/wireless to extract wireless link signal strength (dBm).
+    """
     valid_signals = []
     try:
         with open('/proc/net/wireless', 'r') as f:
@@ -32,7 +64,11 @@ def get_wifi_signal():
         pass
     return None
 
+
 def get_memory_usage():
+    """
+    Calculate RAM percentage usage from /proc/meminfo.
+    """
     try:
         with open('/proc/meminfo', 'r') as f:
             lines = f.readlines()
@@ -54,9 +90,10 @@ def get_memory_usage():
             used = total - free - buffers - cached
             percent = (used / total) * 100.0
             return round(percent, 1)
-    except Exception as e:
-        print(f"Error reading meminfo: {e}")
+    except Exception:
+        pass
     return 0.0
+
 
 class SystemMonitor(Node):
     def __init__(self):
@@ -72,7 +109,12 @@ class SystemMonitor(Node):
         self.prev_idle = 0
         self.prev_total = 0
         self.has_prev = False
-        self.get_logger().info("System Monitor Node initialized with command listener.")
+
+        # Cache Wi-Fi SSID to avoid blocking D-Bus calls every second
+        self.cached_wifi_ssid = None
+        self.wifi_ssid_poll_counter = 0
+
+        self.get_logger().info("System Monitor Node initialized with D-Bus host command listener.")
 
     def command_callback(self, msg: String):
         command = msg.data.strip().lower()
@@ -84,28 +126,28 @@ class SystemMonitor(Node):
             self.get_logger().warn(f"Unknown system command: {command}")
 
     def _reboot_pi(self):
-        self.get_logger().info('Rebooting Raspberry Pi...')
+        self.get_logger().info('Rebooting Raspberry Pi via D-Bus systemd-logind...')
+        if not HAVE_DBUS:
+            self.get_logger().error('dbus module not available, cannot reboot')
+            return
         try:
-            subprocess.run([
-                'dbus-send', '--system', '--print-reply',
-                '--dest=org.freedesktop.login1',
-                '/org/freedesktop/login1',
-                'org.freedesktop.login1.Manager.Reboot',
-                'boolean:true'
-            ], check=True)
+            bus = dbus.SystemBus()
+            login1 = bus.get_object('org.freedesktop.login1', '/org/freedesktop/login1')
+            manager = dbus.Interface(login1, 'org.freedesktop.login1.Manager')
+            manager.Reboot(True)
         except Exception as e:
             self.get_logger().error(f'Failed to send D-Bus reboot command: {e}')
 
     def _poweroff_pi(self):
-        self.get_logger().info('Powering off Raspberry Pi...')
+        self.get_logger().info('Powering off Raspberry Pi via D-Bus systemd-logind...')
+        if not HAVE_DBUS:
+            self.get_logger().error('dbus module not available, cannot power off')
+            return
         try:
-            subprocess.run([
-                'dbus-send', '--system', '--print-reply',
-                '--dest=org.freedesktop.login1',
-                '/org/freedesktop/login1',
-                'org.freedesktop.login1.Manager.PowerOff',
-                'boolean:true'
-            ], check=True)
+            bus = dbus.SystemBus()
+            login1 = bus.get_object('org.freedesktop.login1', '/org/freedesktop/login1')
+            manager = dbus.Interface(login1, 'org.freedesktop.login1.Manager')
+            manager.PowerOff(True)
         except Exception as e:
             self.get_logger().error(f'Failed to send D-Bus poweroff command: {e}')
 
@@ -115,13 +157,17 @@ class SystemMonitor(Node):
             self.has_prev = False
             return
 
-        # Calculate memory
+        # RAM & Wi-Fi
         ram_percent = get_memory_usage()
-
-        # Calculate WiFi info
         wifi_dbm = get_wifi_signal()
 
-        # Calculate CPU
+        # Query Wi-Fi SSID every 10 seconds or immediately on first run
+        if self.cached_wifi_ssid is None or self.wifi_ssid_poll_counter % 10 == 0:
+            self.cached_wifi_ssid = get_wifi_ssid()
+        self.wifi_ssid_poll_counter += 1
+        wifi_ssid = self.cached_wifi_ssid
+
+        # CPU calculation
         cpu_percent = 0.0
         try:
             with open('/proc/stat', 'r') as f:
@@ -158,9 +204,11 @@ class SystemMonitor(Node):
         msg.data = json.dumps({
             "cpu": cpu_percent,
             "ram": ram_percent,
-            "wifi_dbm": wifi_dbm
+            "wifi_dbm": wifi_dbm,
+            "wifi_ssid": wifi_ssid
         })
         self.publisher.publish(msg)
+
 
 def main(args=None):
     rclpy.init(args=args)
@@ -172,6 +220,7 @@ def main(args=None):
     finally:
         node.destroy_node()
         rclpy.shutdown()
+
 
 if __name__ == '__main__':
     main()

@@ -28,6 +28,9 @@ void sleep_ms(uint32_t ms) { test_time_ms += ms; test_time_us += ms * 1000U; }
 uint32_t save_and_disable_interrupts(void) { return 0; }
 void tight_loop_contents(void) { assert(false); }
 
+bool gpio_get(uint pin) { return (pin < 32) ? gpio_levels[pin] : false; }
+void busy_wait_us_32(uint32_t delay_us) { test_time_us += delay_us; }
+
 void gpio_init(uint pin) { (void)pin; }
 void gpio_set_dir(uint pin, bool output) { (void)pin; (void)output; }
 void gpio_put(uint pin, bool value) { if (pin < 32) gpio_levels[pin] = value; }

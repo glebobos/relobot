@@ -10,24 +10,20 @@
 #include <ucdr/microcdr.h>
 
 static const message_type_support_callbacks_t *callbacks;
-static char type_hash[2 * ROSIDL_TYPE_HASH_SIZE + 1];
+/* ROS 2 Lyrical REP-2011 RIHS hash for sensor_msgs/msg/JointState */
+static const char *type_hash = "a13ee3a330e346c9d87b5aa18d24e11690752bd33a0350f11c5882bc9179260e";
 
 bool joint_state_codec_init(void)
 {
-    const rosidl_type_hash_t *hash = sensor_msgs__msg__JointState__get_type_hash(NULL);
     const rosidl_message_type_support_t *support =
         ROSIDL_TYPESUPPORT_INTERFACE__MESSAGE_SYMBOL_NAME(
             rosidl_typesupport_microxrcedds_c, sensor_msgs, msg, JointState)();
-    if (hash == NULL || hash->version != 1 || support == NULL || support->data == NULL) {
+    if (support == NULL || support->data == NULL) {
         return false;
     }
     callbacks = support->data;
     if (callbacks->cdr_serialize == NULL || callbacks->cdr_deserialize == NULL) {
         return false;
-    }
-    for (size_t index = 0; index < ROSIDL_TYPE_HASH_SIZE; ++index) {
-        snprintf(type_hash + 2 * index, sizeof(type_hash) - 2 * index,
-                 "%02x", hash->value[index]);
     }
     return true;
 }

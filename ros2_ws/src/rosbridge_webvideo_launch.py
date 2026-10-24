@@ -5,16 +5,27 @@ Note: web_video_server was moved to camera.launch.py for zero-copy.
 """
 
 from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument, ExecuteProcess
+from launch.substitutions import EnvironmentVariable, LaunchConfiguration
 from launch_ros.actions import Node
 
 
 def generate_launch_description():
+    log_level = LaunchConfiguration('log_level')
+    declare_log_level_cmd = DeclareLaunchArgument(
+        'log_level',
+        default_value=EnvironmentVariable('ROS_LOG_LEVEL', default_value='WARN'),
+        description='ROS 2 logger severity level',
+    )
+
     return LaunchDescription([
+        declare_log_level_cmd,
         Node(
             package='rosbridge_server',
             executable='rosbridge_websocket',
             name='rosbridge_websocket',
             output='screen',
+            arguments=['--ros-args', '--log-level', log_level],
             parameters=[{
                 'port': 9091,
                 'default_call_service_timeout': 5.0,
@@ -27,5 +38,11 @@ def generate_launch_description():
             executable='rosapi_node',
             name='rosapi',
             output='screen',
+            arguments=['--ros-args', '--log-level', log_level],
+        ),
+        ExecuteProcess(
+            cmd=['python3', '/ros2_ws/src/web_server/scripts/system_monitor.py', '--ros-args', '--log-level', log_level],
+            output='screen',
+            name='system_monitor',
         ),
     ])

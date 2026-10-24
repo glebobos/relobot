@@ -2,6 +2,8 @@
 import os
 import glob
 from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument
+from launch.substitutions import EnvironmentVariable, LaunchConfiguration
 from launch_ros.actions import Node
 
 '''
@@ -47,12 +49,20 @@ def generate_launch_description():
   port_name = find_lidar_port()
   print(f"[STL27L Launch] Using LiDAR serial port: {port_name}")
 
+  log_level = LaunchConfiguration('log_level')
+  declare_log_level_cmd = DeclareLaunchArgument(
+      'log_level',
+      default_value=EnvironmentVariable('ROS_LOG_LEVEL', default_value='WARN'),
+      description='ROS 2 logger severity level'
+  )
+
   # LDROBOT LiDAR publisher node
   ldlidar_node = Node(
       package='ldlidar',
       executable='ldlidar_node',
       name='STL27L',
       output='screen',
+      arguments=['--ros-args', '--log-level', log_level],
       parameters=[
         {'product_name': 'LDLiDAR_STL27L'},
         {'topic_name': 'scan'},
@@ -68,5 +78,6 @@ def generate_launch_description():
 
   # Define LaunchDescription variable
   ld = LaunchDescription()
+  ld.add_action(declare_log_level_cmd)
   ld.add_action(ldlidar_node)
   return ld

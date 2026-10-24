@@ -121,10 +121,14 @@ export class SettingsPanel {
                 break;
             }
 
-            case 'system':
+            case 'system': {
                 this.drawerTitle.textContent = 'System Operations';
-                renderSystemSettings(this.drawerContent, context);
+                const systemInstance = renderSystemSettings(this.drawerContent, context);
+                if (systemInstance && typeof systemInstance.cleanup === 'function') {
+                    this.activePanelCleanup = systemInstance.cleanup;
+                }
                 break;
+            }
 
             case 'calibration': {
                 this.drawerTitle.textContent = 'Camera & Calibration';

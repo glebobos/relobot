@@ -223,6 +223,7 @@ static void stop_motor(motor_t *m)
     m->kickstart_counter = 0;
     m->last_pi_adj       = 0.0f;
     m->encoder_age       = 0;
+    m->measured_vel      = 0.0f;
 }
 
 static void emergency_stop_all(void)
@@ -268,6 +269,12 @@ void tud_cdc_line_coding_cb(uint8_t itf, cdc_line_coding_t const *p_line_coding)
 static void encoder_isr(uint gpio, uint32_t events)
 {
     (void)events;
+    /* Level verification: short EMI spikes drop back to 0 within < 30 us */
+    busy_wait_us_32(30);
+    if (!gpio_get(gpio)) {
+        return;
+    }
+
     uint32_t now_us = time_us_32();
     if (gpio == PIN_ENCODER_LEFT) {
         uint32_t diff = now_us - left_motor.last_tick_us;
@@ -379,23 +386,29 @@ static void update_motor(motor_t *m, float dt_s)
 
     /* Velocity and position estimation */
     if (delta > 0) {
-        uint32_t period_us = m->tick_period_us;
-        if (period_us > 500U && period_us < 5000000U) {
-            float raw_vel = direction * TWO_PI
-                            / (COUNTS_PER_REVOLUTION * ((float)period_us * 1e-6f));
-            if (isfinite(raw_vel)) {
-                m->measured_vel = VELOCITY_EMA_ALPHA_TICK * raw_vel
-                                + (1.0f - VELOCITY_EMA_ALPHA_TICK) * m->measured_vel;
+        if (fabsf(m->target_vel) < MOTOR_DEADBAND_RAD_S && fabsf(m->cmd_vel) < MOTOR_DEADBAND_RAD_S) {
+            m->measured_vel = 0.0f;
+        } else {
+            uint32_t period_us = m->tick_period_us;
+            if (period_us > 500U && period_us < 5000000U) {
+                float raw_vel = direction * TWO_PI
+                                / (COUNTS_PER_REVOLUTION * ((float)period_us * 1e-6f));
+                if (isfinite(raw_vel)) {
+                    m->measured_vel = VELOCITY_EMA_ALPHA_TICK * raw_vel
+                                    + (1.0f - VELOCITY_EMA_ALPHA_TICK) * m->measured_vel;
+                }
             }
+            m->tick_accumulator += m->last_dir_fwd ? (int64_t)delta : -(int64_t)delta;
+            m->encoder_age       = 0;
+            m->kickstart_counter = 0;
         }
-        m->tick_accumulator += m->last_dir_fwd ? (int64_t)delta : -(int64_t)delta;
-        m->encoder_age       = 0;
-        m->kickstart_counter = 0;
     } else {
         m->encoder_age++;
         uint32_t age_us    = time_us_32() - m->last_tick_us;
         uint32_t period_us = m->tick_period_us;
-        if (age_us > period_us && age_us > 500U && age_us < 5000000U) {
+        if (age_us >= 5000000U || fabsf(m->target_vel) < MOTOR_DEADBAND_RAD_S) {
+            m->measured_vel = 0.0f;
+        } else if (age_us > period_us && age_us > 500U) {
             float raw_vel = direction * TWO_PI
                             / (COUNTS_PER_REVOLUTION * ((float)age_us * 1e-6f));
             if (isfinite(raw_vel)) {
@@ -421,11 +434,7 @@ static void update_motor(motor_t *m, float dt_s)
     /* Deadband */
     if (fabsf(m->target_vel) < MOTOR_DEADBAND_RAD_S) {
         stop_motor(m);
-        uint32_t age_us = time_us_32() - m->last_tick_us;
-        if (age_us > m->tick_period_us && age_us > 500U && age_us < 5000000U) {
-            m->measured_vel = direction * TWO_PI
-                              / (COUNTS_PER_REVOLUTION * ((float)age_us * 1e-6f));
-        }
+        m->measured_vel = 0.0f;
         return;
     }
 

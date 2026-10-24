@@ -5,7 +5,15 @@ export class VirtualJoystick {
     constructor(containerSelector) {
         this.videoContainer = document.querySelector(containerSelector);
         this.manager = null;
-        this.throttlePublish = null;
+        this.isHeld = false;
+        this.currentX = 0;
+        this.currentY = 0;
+        this.publishInterval = null;
+        this.lastPublishTime = 0;
+        this.publishRateMs = 100; // 10 Hz continuous heartbeat matches ROS watchdog expectations
+        this.guardHandlers = [];
+        this.blurHandler = null;
+        this.visibilityHandler = null;
         this.init();
     }
 
@@ -35,11 +43,13 @@ export class VirtualJoystick {
             }
         });
 
-        // Throttle joystick command publisher (100ms) with immediate stop logic
-        this.throttlePublish = this.throttle((x, y) => {
-            const { linear, angular } = gamepadService.computeTwist(x, y);
-            gamepadService.publishTwist(linear, angular);
-        }, 100);
+        // Window blur and visibility change guards to guarantee immediate stop on tab switch / phone call
+        this.blurHandler = () => this.stop();
+        this.visibilityHandler = () => {
+            if (document.visibilityState !== 'visible') this.stop();
+        };
+        window.addEventListener('blur', this.blurHandler);
+        document.addEventListener('visibilitychange', this.visibilityHandler);
 
         this.manager = nipplejs.create({
             zone: this.videoContainer,
@@ -49,27 +59,68 @@ export class VirtualJoystick {
             catchDistance: 80
         });
 
+        this.manager.on('start', () => {
+            this.isHeld = true;
+            this.currentX = 0;
+            this.currentY = 0;
+            this.startPublishLoop();
+        });
+
         this.manager.on('move', (evt, data) => {
             if (data && data.position && data.instance) {
                 const dx = data.position.x - data.instance.position.x;
                 const dy = data.position.y - data.instance.position.y;
                 const radius = 60; // size/2
-                const normX = Math.max(-1, Math.min(1, dx / radius));
-                const normY = Math.max(-1, Math.min(1, dy / radius));
-                this.throttlePublish(normX, normY);
+                this.currentX = Math.max(-1, Math.min(1, dx / radius));
+                this.currentY = Math.max(-1, Math.min(1, dy / radius));
+                this.isHeld = true;
+
+                // Ensure heartbeat publish loop is active
+                this.startPublishLoop();
+
+                // Responsive immediate publish on finger move if at least 50ms elapsed
+                const now = performance.now();
+                if (now - this.lastPublishTime >= 50) {
+                    this.sendCurrentTwist();
+                }
             }
         });
 
         this.manager.on('end', () => {
-            this.throttlePublish(0, 0);
+            this.stop();
         });
     }
 
-    destroy() {
-        if (this.throttlePublish?.cancel) {
-            this.throttlePublish.cancel();
+    sendCurrentTwist() {
+        this.lastPublishTime = performance.now();
+        const { linear, angular } = gamepadService.computeTwist(this.currentX, this.currentY);
+        gamepadService.publishTwist(linear, angular);
+    }
+
+    startPublishLoop() {
+        if (this.publishInterval) return;
+        this.publishInterval = setInterval(() => {
+            if (this.isHeld) {
+                this.sendCurrentTwist();
+            } else {
+                this.stop();
+            }
+        }, this.publishRateMs);
+    }
+
+    stop() {
+        this.isHeld = false;
+        this.currentX = 0;
+        this.currentY = 0;
+        if (this.publishInterval) {
+            clearInterval(this.publishInterval);
+            this.publishInterval = null;
         }
         gamepadService.publishTwist(0, 0);
+    }
+
+    destroy() {
+        this.stop();
         if (this.manager) {
             this.manager.destroy();
             this.manager = null;
@@ -79,36 +130,13 @@ export class VirtualJoystick {
             el.removeEventListener('touchstart', touchHandler);
         });
         this.guardHandlers = [];
-    }
-
-    throttle(func, limit) {
-        let lastRan = 0;
-        let timeout = null;
-        const throttled = function(...args) {
-            const now = Date.now();
-            const run = () => {
-                lastRan = Date.now();
-                func(...args);
-            };
-            // Publish stop commands immediately
-            if (args[0] === 0 && args[1] === 0) {
-                if (timeout) clearTimeout(timeout);
-                run();
-                return;
-            }
-            if (now - lastRan >= limit) {
-                run();
-            } else if (!timeout) {
-                timeout = setTimeout(() => {
-                    timeout = null;
-                    run();
-                }, limit - (now - lastRan));
-            }
-        };
-        throttled.cancel = () => {
-            if (timeout) clearTimeout(timeout);
-            timeout = null;
-        };
-        return throttled;
+        if (this.blurHandler) {
+            window.removeEventListener('blur', this.blurHandler);
+            this.blurHandler = null;
+        }
+        if (this.visibilityHandler) {
+            document.removeEventListener('visibilitychange', this.visibilityHandler);
+            this.visibilityHandler = null;
+        }
     }
 }

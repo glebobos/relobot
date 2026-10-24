@@ -15,9 +15,9 @@
 import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import ExecuteProcess, RegisterEventHandler, Shutdown
+from launch.actions import DeclareLaunchArgument, ExecuteProcess, RegisterEventHandler, Shutdown
 from launch.event_handlers import OnProcessExit
-from launch.substitutions import Command, FindExecutable, PathJoinSubstitution
+from launch.substitutions import Command, EnvironmentVariable, FindExecutable, LaunchConfiguration, PathJoinSubstitution
 from launch_ros.parameter_descriptions import ParameterValue
 
 from launch_ros.actions import Node
@@ -58,19 +58,27 @@ def generate_launch_description():
         'robot_state_publisher.yaml'
     )
 
+    log_level = LaunchConfiguration("log_level")
+    declare_log_level_cmd = DeclareLaunchArgument(
+        "log_level",
+        default_value=EnvironmentVariable("ROS_LOG_LEVEL", default_value="WARN"),
+        description="ROS 2 logger severity level",
+    )
     control_node = Node(
         package="controller_manager",
         executable="ros2_control_node",
         parameters=[robot_description, robot_controllers],
-        output="both",
+        arguments=["--ros-args", "--log-level", log_level],
+        output="screen",
         on_exit=Shutdown(),
     )
 
     robot_state_pub_node = Node(
         package="robot_state_publisher",
         executable="robot_state_publisher",
-        output="both",
+        output="screen",
         parameters=[robot_description, robot_state_pub_config],
+        arguments=["--ros-args", "--log-level", log_level],
     )
 
     joint_state_broadcaster_spawner = Node(
@@ -114,10 +122,12 @@ def generate_launch_description():
         executable='ekf_node',
         name='ekf_filter_node',
         output='screen',
-        parameters=[ekf_config_file]
+        parameters=[ekf_config_file],
+        arguments=['--ros-args', '--log-level', log_level],
     )
 
     nodes = [
+        declare_log_level_cmd,
         control_node,
         robot_state_pub_node,
         joint_state_broadcaster_spawner,
