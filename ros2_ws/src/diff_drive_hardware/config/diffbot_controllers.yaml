@@ -16,6 +16,7 @@ diff_drive_controller:
     wheel_radius: 0.0937
 
     publish_rate: 30.0
+    position_feedback: false
     enable_odom_tf: false
     odom_frame_id: "odom"
     base_frame_id: "base_link"

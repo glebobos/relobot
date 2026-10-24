@@ -44,7 +44,7 @@ diff --git a/src/link/transport/serial/uart_rpi_pico.c b/src/link/transport/seri
 diff --git a/src/system/rpi_pico/usb_uart.c b/src/system/rpi_pico/usb_uart.c
 --- a/src/system/rpi_pico/usb_uart.c
 +++ b/src/system/rpi_pico/usb_uart.c
-@@ -177,74 +177,118 @@ static _z_mutex_t _z_usb_uart_mutex;
+@@ -177,75 +177,128 @@ static _z_mutex_t _z_usb_uart_mutex;
  static _z_task_t _z_usb_uart_task;
  static volatile bool _z_usb_uart_task_run;
 +static bool _z_usb_uart_started = false;
