@@ -116,6 +116,7 @@ picoros_res_t picoros_publisher_drop(picoros_publisher_t *publisher);
 picoros_res_t picoros_subscriber_declare(picoros_node_t *node, picoros_subscriber_t *subscriber);
 picoros_res_t picoros_subscriber_drop(picoros_subscriber_t *subscriber);
 picoros_res_t picoros_publish(picoros_publisher_t *publisher, const uint8_t *payload, size_t length);
+bool picoros_interface_is_up(void);
 void picoros_interface_close(void);
 void z_publisher_options_default(int *options);
 

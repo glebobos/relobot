@@ -29,6 +29,7 @@ static TaskHandle_t app_task_handle;
 static TaskHandle_t sensor_task_handle;
 
 static bool entities_ready = false;
+static volatile uint32_t consecutive_publish_errors = 0;
 static picoros_node_t node = {.name = "ina226_node"};
 static volatile unsigned int diagnostic_stage = 1;
 
@@ -212,17 +213,35 @@ static void app_task(void *argument)
             continue;
         }
 #endif
-        break;
-    }
+        taskENTER_CRITICAL();
+        entities_ready = true;
+        diagnostic_stage = 10;
+        consecutive_publish_errors = 0;
+        taskEXIT_CRITICAL();
 
-    taskENTER_CRITICAL();
-    entities_ready = true;
-    diagnostic_stage = 10;
-    taskEXIT_CRITICAL();
+        while (entities_ready) {
+            if (!picoros_interface_is_up() || consecutive_publish_errors >= 10) {
+                break;
+            }
+            vTaskDelay(pdMS_TO_TICKS(100));
+        }
 
-    /* App task remains running to maintain FreeRTOS context */
-    for (;;) {
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        /* Session or interface dropped: clean up and retry initialization */
+        taskENTER_CRITICAL();
+        entities_ready = false;
+        taskEXIT_CRITICAL();
+
+#if RELOBOT_INA226_BENCH
+        for (size_t index = 0; index < sizeof(bench_publishers) / sizeof(bench_publishers[0]); ++index) {
+            (void)picoros_publisher_drop(&bench_publishers[index]);
+        }
+#endif
+        (void)picoros_publisher_drop(&pub_on_dock);
+        (void)picoros_publisher_drop(&pub_charger_voltage);
+        (void)picoros_publisher_drop(&pub_battery_voltage);
+        (void)picoros_node_drop(&node);
+        picoros_interface_close();
+        vTaskDelay(pdMS_TO_TICKS(500));
     }
 }
 
@@ -247,9 +266,11 @@ static void sensor_task(void *argument)
         bool on_dock = ina226_is_on_dock(v_charger);
 
         if (ready) {
+            bool pub_ok = true;
             /* Skip invalid readings so subscribers never see I2C error values as data */
             if (!isnan(v_battery)) {
                 if (!publish_float(&pub_battery_voltage, v_battery)) {
+                    pub_ok = false;
 #if RELOBOT_INA226_BENCH
                     publish_errors++;
 #endif
@@ -257,6 +278,7 @@ static void sensor_task(void *argument)
             }
             if (!isnan(v_charger)) {
                 if (!publish_float(&pub_charger_voltage, v_charger)) {
+                    pub_ok = false;
 #if RELOBOT_INA226_BENCH
                     publish_errors++;
 #endif
@@ -264,9 +286,16 @@ static void sensor_task(void *argument)
             }
             /* Always publish dock status — false on I2C error is the safe default */
             if (!publish_bool(&pub_on_dock, on_dock)) {
+                pub_ok = false;
 #if RELOBOT_INA226_BENCH
                 publish_errors++;
 #endif
+            }
+
+            if (!pub_ok) {
+                consecutive_publish_errors++;
+            } else {
+                consecutive_publish_errors = 0;
             }
 
 #if RELOBOT_INA226_BENCH

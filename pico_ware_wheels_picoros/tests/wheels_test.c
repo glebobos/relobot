@@ -21,6 +21,7 @@ static uint16_t pwm_levels[32];
 
 /* Platform stubs implementation */
 absolute_time_t get_absolute_time(void) { return (uint64_t)test_time_ms; }
+bool picoros_interface_is_up(void) { return true; }
 uint32_t to_ms_since_boot(absolute_time_t time) { return (uint32_t)time; }
 uint64_t to_us_since_boot(absolute_time_t time) { return (uint64_t)time * 1000ULL; }
 uint32_t time_us_32(void) { return test_time_us; }

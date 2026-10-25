@@ -661,82 +661,109 @@ static void app_task(void *argument)
             vTaskDelay(pdMS_TO_TICKS(500));
             continue;
         }
-        break;
-    }
 
-    taskENTER_CRITICAL();
-    entities_ready = true;
-    diagnostic_stage = 10;
-    taskEXIT_CRITICAL();
-
-#if RELOBOT_WHEELS_BENCH
-    uint32_t publish_errors = 0;
-    uint32_t last_diagnostics_ms = now_ms();
-#endif
-
-    for (;;) {
         taskENTER_CRITICAL();
-        int64_t left_ticks = left_motor.tick_accumulator;
-        int64_t right_ticks = right_motor.tick_accumulator;
-        float left_vel = left_motor.measured_vel;
-        float right_vel = right_motor.measured_vel;
-#if RELOBOT_WHEELS_BENCH
-        float target_left = left_motor.cmd_vel;
-        float target_right = right_motor.cmd_vel;
-#endif
+        entities_ready = true;
+        diagnostic_stage = 10;
         taskEXIT_CRITICAL();
 
-        state_pos_arr[0] = (double)left_ticks * ((double)TWO_PI / (double)COUNTS_PER_REVOLUTION);
-        state_pos_arr[1] = (double)right_ticks * ((double)TWO_PI / (double)COUNTS_PER_REVOLUTION);
-        state_vel_arr[0] = (double)left_vel;
-        state_vel_arr[1] = (double)right_vel;
-        state_eff_arr[0] = 0.0;
-        state_eff_arr[1] = 0.0;
+#if RELOBOT_WHEELS_BENCH
+        uint32_t publish_errors = 0;
+        uint32_t last_diagnostics_ms = now_ms();
+#endif
+        uint32_t consecutive_publish_errors = 0;
 
-        uint64_t now_us = to_us_since_boot(get_absolute_time());
-        state_msg.header.stamp.sec = (int32_t)(now_us / 1000000ULL);
-        state_msg.header.stamp.nanosec = (uint32_t)((now_us % 1000000ULL) * 1000ULL);
+        while (entities_ready) {
+            if (!picoros_interface_is_up()) {
+                break;
+            }
 
-        uint8_t payload[JOINT_STATE_CDR_MAX_SIZE];
-        size_t actual_length = 0;
-        if (joint_state_codec_encode(&state_msg, payload, sizeof(payload), &actual_length)) {
-            if (picoros_publish(&pub_states, payload, actual_length) != PICOROS_OK) {
+            taskENTER_CRITICAL();
+            int64_t left_ticks = left_motor.tick_accumulator;
+            int64_t right_ticks = right_motor.tick_accumulator;
+            float left_vel = left_motor.measured_vel;
+            float right_vel = right_motor.measured_vel;
+#if RELOBOT_WHEELS_BENCH
+            float target_left = left_motor.cmd_vel;
+            float target_right = right_motor.cmd_vel;
+#endif
+            taskEXIT_CRITICAL();
+
+            state_pos_arr[0] = (double)left_ticks * ((double)TWO_PI / (double)COUNTS_PER_REVOLUTION);
+            state_pos_arr[1] = (double)right_ticks * ((double)TWO_PI / (double)COUNTS_PER_REVOLUTION);
+            state_vel_arr[0] = (double)left_vel;
+            state_vel_arr[1] = (double)right_vel;
+            state_eff_arr[0] = 0.0;
+            state_eff_arr[1] = 0.0;
+
+            uint64_t now_us = to_us_since_boot(get_absolute_time());
+            state_msg.header.stamp.sec = (int32_t)(now_us / 1000000ULL);
+            state_msg.header.stamp.nanosec = (uint32_t)((now_us % 1000000ULL) * 1000ULL);
+
+            uint8_t payload[JOINT_STATE_CDR_MAX_SIZE];
+            size_t actual_length = 0;
+            bool published = false;
+            if (joint_state_codec_encode(&state_msg, payload, sizeof(payload), &actual_length)) {
+                if (picoros_publish(&pub_states, payload, actual_length) == PICOROS_OK) {
+                    published = true;
+                }
+            }
+
+            if (!published) {
 #if RELOBOT_WHEELS_BENCH
                 publish_errors++;
 #endif
-            }
-        } else {
-#if RELOBOT_WHEELS_BENCH
-            publish_errors++;
-#endif
-        }
-
-#if RELOBOT_WHEELS_BENCH
-        uint32_t now = now_ms();
-        if ((uint32_t)(now - last_diagnostics_ms) >= 1000U) {
-            float values[] = {
-                target_left,
-                target_right,
-                (float)xPortGetFreeHeapSize(),
-                (float)xPortGetMinimumEverFreeHeapSize(),
-                (float)uxTaskGetStackHighWaterMark(app_task_handle),
-                (float)uxTaskGetStackHighWaterMark(control_task_handle),
-                (float)publish_errors,
-            };
-            _Static_assert(sizeof(values) / sizeof(values[0]) ==
-                           sizeof(bench_publishers) / sizeof(bench_publishers[0]),
-                           "bench values must match publishers");
-            for (size_t index = 0; index < sizeof(values) / sizeof(values[0]); ++index) {
-                if (!publish_float(&bench_publishers[index], values[index])) {
-                    publish_errors++;
+                if (++consecutive_publish_errors >= 5) {
                     break;
                 }
+            } else {
+                consecutive_publish_errors = 0;
             }
-            last_diagnostics_ms = now;
-        }
+
+#if RELOBOT_WHEELS_BENCH
+            uint32_t now = now_ms();
+            if ((uint32_t)(now - last_diagnostics_ms) >= 1000U) {
+                float values[] = {
+                    target_left,
+                    target_right,
+                    (float)xPortGetFreeHeapSize(),
+                    (float)xPortGetMinimumEverFreeHeapSize(),
+                    (float)uxTaskGetStackHighWaterMark(app_task_handle),
+                    (float)uxTaskGetStackHighWaterMark(control_task_handle),
+                    (float)publish_errors,
+                };
+                _Static_assert(sizeof(values) / sizeof(values[0]) ==
+                               sizeof(bench_publishers) / sizeof(bench_publishers[0]),
+                               "bench values must match publishers");
+                for (size_t index = 0; index < sizeof(values) / sizeof(values[0]); ++index) {
+                    if (!publish_float(&bench_publishers[index], values[index])) {
+                        publish_errors++;
+                        break;
+                    }
+                }
+                last_diagnostics_ms = now;
+            }
 #endif
 
-        vTaskDelay(pdMS_TO_TICKS(PUBLISH_PERIOD_MS));
+            vTaskDelay(pdMS_TO_TICKS(PUBLISH_PERIOD_MS));
+        }
+
+        /* Session or interface dropped: clean up and retry initialization */
+        taskENTER_CRITICAL();
+        entities_ready = false;
+        emergency_stop_all();
+        taskEXIT_CRITICAL();
+
+        (void)picoros_subscriber_drop(&sub_commands);
+#if RELOBOT_WHEELS_BENCH
+        for (size_t index = 0; index < sizeof(bench_publishers) / sizeof(bench_publishers[0]); ++index) {
+            (void)picoros_publisher_drop(&bench_publishers[index]);
+        }
+#endif
+        (void)picoros_publisher_drop(&pub_states);
+        (void)picoros_node_drop(&node);
+        picoros_interface_close();
+        vTaskDelay(pdMS_TO_TICKS(500));
     }
 }
 

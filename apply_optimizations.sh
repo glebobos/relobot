@@ -3,7 +3,7 @@
 # ReloBot: Raspberry Pi 5 Host Performance & Power Optimization Script
 # ==============================================================================
 # Safe, non-destructive host optimizations for Raspberry Pi 5 / ROS2:
-#  1. Unlocks 1.6A USB port current & GPU memory in /boot/firmware/config.txt
+#  1. Unlocks 1.6A USB port current & GPU memory in /boot/firmware/config.txt, tunes Wi-Fi modules (rtw88 & brcmfmac)
 #  2. Enables Docker cgroup memory & swap accounting in /boot/firmware/cmdline.txt
 #  3. Disables GUI / Desktop stack (multi-user.target, lightdm) for headless operation
 #  4. Disables slow MicroSD swap and enables compressed ZRAM swap in RAM (zstd)
@@ -78,6 +78,13 @@ options rtw88_core disable_lps_deep=y support_bf=n
 options rtw88_usb switch_usb_mode=n
 EOF
 echo "  -> Configured /etc/modprobe.d/rtw88.conf (switch_usb_mode=n, disable_lps_deep=y, support_bf=n)."
+
+# Configure Broadcom onboard Wi-Fi: disable autonomous firmware roaming to eliminate mesh latency spikes
+cat << "EOF" > /etc/modprobe.d/brcmfmac.conf
+# ReloBot: Prevent Broadcom internal Wi-Fi firmware roaming scan latency spikes on mesh networks
+options brcmfmac roamoff=1
+EOF
+echo "  -> Configured /etc/modprobe.d/brcmfmac.conf (roamoff=1 for low-latency mesh operation)."
 
 # ------------------------------------------------------------------------------
 # 2. Docker Cgroup Memory Accounting in cmdline.txt

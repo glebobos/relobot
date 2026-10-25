@@ -24,7 +24,6 @@ class GamepadService {
         // Create topics
         this.cmdVelTopic = rosService.createTopic(TOPICS.CMD_VEL, MSG_TYPES.TWIST_STAMPED);
         this.knifeRpmTopic = rosService.createTopic(TOPICS.CMD_KNIVES, MSG_TYPES.FLOAT32, {
-            reconnect_on_close: false,
             queue_size: 1,
         });
 
@@ -107,6 +106,12 @@ class GamepadService {
     setKnifeRpm(rpm, overrideCruise = false) {
         const canOperate = rosService.isConnected && document.visibilityState === 'visible';
         if (!Number.isFinite(rpm) || !canOperate) rpm = 0;
+
+        // Zero-first safety arming: when transitioning from 0 to non-zero, pulse 0 first to satisfy firmware arming
+        if (rpm !== 0 && this.knifeCurrentRpm === 0) {
+            this.publishRpm(0);
+        }
+
         this.knifeCurrentRpm = rpm;
         if (overrideCruise) {
             this.cruiseActive = false;
