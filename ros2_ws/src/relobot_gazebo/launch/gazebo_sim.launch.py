@@ -39,6 +39,7 @@ def generate_launch_description():
     yaw_arg = LaunchConfiguration('yaw')
     web_video_arg = LaunchConfiguration('web_video')
     knives_mock_arg = LaunchConfiguration('knives_mock')
+    log_level = LaunchConfiguration('log_level')
 
     # Declared arguments
     declare_world_cmd = DeclareLaunchArgument(
@@ -73,6 +74,11 @@ def generate_launch_description():
         'knives_mock',
         default_value=EnvironmentVariable('SIM_KNIVES_MOCK', default_value='true'),
         description='Disable when using a physical Pico-ROS knives controller'
+    )
+    declare_log_level_cmd = DeclareLaunchArgument(
+        'log_level',
+        default_value=EnvironmentVariable('ROS_LOG_LEVEL', default_value='WARN'),
+        description='ROS 2 logger severity level'
     )
 
     # Set GZ resource path for models/worlds
@@ -131,6 +137,7 @@ def generate_launch_description():
         package='robot_state_publisher',
         executable='robot_state_publisher',
         output='screen',
+        arguments=['--ros-args', '--log-level', log_level],
         parameters=[robot_description, {'use_sim_time': use_sim_time_arg}]
     )
 
@@ -146,6 +153,7 @@ def generate_launch_description():
             '-y', y_pose_arg,
             '-z', z_pose_arg,
             '-Y', yaw_arg,
+            '--ros-args', '--log-level', log_level,
         ]
     )
 
@@ -155,6 +163,7 @@ def generate_launch_description():
         package='ros_gz_bridge',
         executable='parameter_bridge',
         output='screen',
+        arguments=['--ros-args', '--log-level', log_level],
         parameters=[{
             'config_file': bridge_config_file,
             'use_sim_time': False,
@@ -215,6 +224,7 @@ def generate_launch_description():
         executable='ekf_node',
         name='ekf_filter_node',
         output='screen',
+        arguments=['--ros-args', '--log-level', log_level],
         parameters=[ekf_config_file, {'use_sim_time': use_sim_time_arg}]
     )
 
@@ -225,6 +235,7 @@ def generate_launch_description():
         executable='web_video_server',
         name='web_video_server',
         output='screen',
+        arguments=['--ros-args', '--log-level', log_level],
         parameters=[{
             'port': 8080,
             'address': '0.0.0.0',
@@ -242,6 +253,7 @@ def generate_launch_description():
         output='screen',
         arguments=[
             'raw', 'compressed', '--ros-args',
+            '--log-level', log_level,
             '-r', 'in:=/camera/image_raw',
             '-r', 'out/compressed:=/camera/image_rect/compressed',
         ],
@@ -255,6 +267,7 @@ def generate_launch_description():
         executable='knives_mock.py',
         name='knives_mock',
         output='screen',
+        arguments=['--ros-args', '--log-level', log_level],
         parameters=[{'use_sim_time': use_sim_time_arg}],
     )
 
@@ -274,6 +287,7 @@ def generate_launch_description():
         declare_yaw_cmd,
         declare_web_video_cmd,
         declare_knives_mock_cmd,
+        declare_log_level_cmd,
         gz_resource_path,
         gz_sim,
         robot_state_publisher_node,

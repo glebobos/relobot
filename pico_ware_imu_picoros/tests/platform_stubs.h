@@ -102,6 +102,7 @@ picoros_res_t picoros_node_drop(picoros_node_t *node);
 picoros_res_t picoros_publisher_declare(picoros_node_t *node, picoros_publisher_t *publisher);
 picoros_res_t picoros_publisher_drop(picoros_publisher_t *publisher);
 picoros_res_t picoros_publish(picoros_publisher_t *publisher, const uint8_t *payload, size_t length);
+bool picoros_interface_is_up(void);
 void picoros_interface_close(void);
 void z_publisher_options_default(int *options);
 void relobot_board_init(void);

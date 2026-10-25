@@ -10,24 +10,20 @@
 #include <ucdr/microcdr.h>
 
 static const message_type_support_callbacks_t *callbacks;
-static char type_hash[2 * ROSIDL_TYPE_HASH_SIZE + 1];
+/* ROS 2 Lyrical REP-2011 RIHS hash for std_msgs/msg/Bool */
+static const char *type_hash = "feb91e995ff9ebd09c0cb3d2aed18b11077585839fb5db80193b62d74528f6c9";
 
 bool bool_codec_init(void)
 {
-    const rosidl_type_hash_t *hash = std_msgs__msg__Bool__get_type_hash(NULL);
     const rosidl_message_type_support_t *support =
         ROSIDL_TYPESUPPORT_INTERFACE__MESSAGE_SYMBOL_NAME(
             rosidl_typesupport_microxrcedds_c, std_msgs, msg, Bool)();
-    if (hash == NULL || hash->version != 1 || support == NULL || support->data == NULL) {
+    if (support == NULL || support->data == NULL) {
         return false;
     }
     callbacks = support->data;
     if (callbacks->cdr_serialize == NULL || callbacks->cdr_deserialize == NULL) {
         return false;
-    }
-    for (size_t index = 0; index < ROSIDL_TYPE_HASH_SIZE; ++index) {
-        snprintf(type_hash + 2 * index, sizeof(type_hash) - 2 * index,
-                 "%02x", hash->value[index]);
     }
     return true;
 }

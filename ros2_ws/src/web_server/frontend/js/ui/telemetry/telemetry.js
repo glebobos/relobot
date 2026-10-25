@@ -172,6 +172,7 @@ export class Telemetry {
             }
         }
     }
+
     destroy() {
         this.subscriptions.forEach(subscription => subscription.unsubscribe());
         this.subscriptions = [];

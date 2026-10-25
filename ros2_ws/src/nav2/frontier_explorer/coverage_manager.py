@@ -20,6 +20,12 @@ from rclpy.node import Node
 from rclpy.qos import QoSDurabilityPolicy, QoSProfile
 from std_msgs.msg import String
 
+try:
+    from slam_toolbox.srv import DeserializePoseGraph, Reset
+    HAVE_SLAM_TOOLBOX = True
+except ImportError:
+    HAVE_SLAM_TOOLBOX = False
+
 from frontier_explorer.coverage_execution import CoverageExecution
 from frontier_explorer.coverage_path import (
     FreeSpaceValidator, directional_coverage, path_from_swaths, validate_forward_path, validate_headland_bounds, work_paths,
@@ -113,6 +119,13 @@ class CoverageManager(Node):
         )
 
         self._compute_client = ActionClient(self, ComputeCoveragePath, compute_action_name)
+
+        if HAVE_SLAM_TOOLBOX:
+            self._slam_reset_client = self.create_client(Reset, '/slam_toolbox/reset')
+            self._slam_deserialize_client = self.create_client(DeserializePoseGraph, '/slam_toolbox/deserialize_map')
+        else:
+            self._slam_reset_client = None
+            self._slam_deserialize_client = None
 
         self._polygon_msg = PolygonStamped()
         self._coverage_regions = []
@@ -223,23 +236,84 @@ class CoverageManager(Node):
 
         self._publish_status('error', f'Unknown coverage command: {command}')
 
-    def _restart_slam(self) -> None:
-        self.get_logger().info('Restarting SLAM toolbox by terminating the nav2 launch process...')
-        import subprocess
+    def _call_slam_reset(self) -> None:
+        if not self._slam_reset_client:
+            self.get_logger().error('SLAM reset service client not available')
+            self._publish_status('error', 'SLAM reset service unavailable.')
+            return
         try:
-            # Terminate the ros2 launch process gracefully, allowing child nodes to clean up
-            subprocess.run(['pkill', '-f', 'ros2 launch nav2'], check=True)
+            if not self._slam_reset_client.wait_for_service(timeout_sec=2.0):
+                self.get_logger().error('Service /slam_toolbox/reset not available')
+                self._publish_status('error', 'SLAM reset service unavailable.')
+                return
+            req = Reset.Request()
+            req.pause_new_measurements = False
+            future = self._slam_reset_client.call_async(req)
+            def _done_cb(fut):
+                try:
+                    res = fut.result()
+                    self.get_logger().info(f'SLAM reset result: {res.result}')
+                    if res.result == 0:
+                        self._on_clear_zone()
+                        self._publish_status('idle', 'Map and SLAM state reset successfully.')
+                    else:
+                        self.get_logger().error(f'SLAM reset returned error code: {res.result}')
+                        self._publish_status('error', f'SLAM reset failed with code {res.result}.')
+                except Exception as ex:
+                    self.get_logger().error(f'SLAM reset call failed: {ex}')
+                    self._publish_status('error', f'SLAM reset failed: {ex}')
+            future.add_done_callback(_done_cb)
         except Exception as e:
-            self.get_logger().error(f'Failed to kill launch process with pkill: {e}')
-            import os
-            import signal
-            try:
-                os.kill(1, signal.SIGTERM)
-            except Exception as ex:
-                self.get_logger().error(f'Failed to kill PID 1: {ex}')
+            self.get_logger().error(f'Failed to invoke /slam_toolbox/reset: {e}')
+            self._publish_status('error', f'SLAM reset error: {e}')
+
+    def _call_slam_deserialize(self, filename: str) -> None:
+        if not self._slam_deserialize_client:
+            self.get_logger().warn('SLAM deserialize service client not available, falling back to reset')
+            self._call_slam_reset()
+            return
+        try:
+            if not self._slam_deserialize_client.wait_for_service(timeout_sec=2.0):
+                self.get_logger().warn('Service /slam_toolbox/deserialize_map not available, falling back to reset')
+                self._call_slam_reset()
+                return
+            req = DeserializePoseGraph.Request()
+            req.filename = filename
+            req.match_type = 1
+            future = self._slam_deserialize_client.call_async(req)
+            def _done_cb(fut):
+                try:
+                    res = fut.result()
+                    self.get_logger().info(f'SLAM deserialize map result: {res.result}')
+                    if res.result == 0:
+                        self._on_clear_zone()
+                        self._publish_status('idle', 'Saved map reloaded successfully.')
+                    else:
+                        self.get_logger().error(f'SLAM deserialize returned error code: {res.result}, falling back to reset')
+                        self._call_slam_reset()
+                except Exception as ex:
+                    self.get_logger().error(f'SLAM deserialize call failed: {ex}')
+                    self._publish_status('error', f'Map reload failed: {ex}')
+            future.add_done_callback(_done_cb)
+        except Exception as e:
+            self.get_logger().error(f'Failed to invoke /slam_toolbox/deserialize_map: {e}')
+            self._publish_status('error', f'SLAM reload error: {e}')
+
+    def _restart_slam(self) -> None:
+        self.get_logger().info('Restarting SLAM toolbox...')
+        self._cancel_active_goals()
+        self._clear_cached_state()
+        import os
+        map_path = '/ros2_ws/map_serialized'
+        if os.path.isfile(map_path + '.posegraph') or os.path.isfile(map_path + '.data'):
+            self._call_slam_deserialize(map_path)
+        else:
+            self._call_slam_reset()
 
     def _reset_map(self) -> None:
         self.get_logger().info('Resetting map (deleting serialized pose graph and data files)...')
+        self._cancel_active_goals()
+        self._clear_cached_state()
         import os
         for ext in ('.posegraph', '.data'):
             path = '/ros2_ws/map_serialized' + ext
@@ -251,7 +325,7 @@ class CoverageManager(Node):
                     self.get_logger().error(f'Failed to delete {path}: {e}')
             else:
                 self.get_logger().info(f'Map file does not exist: {path}')
-        self._restart_slam()
+        self._call_slam_reset()
 
 
     def _start_preview(self) -> None:

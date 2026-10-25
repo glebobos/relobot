@@ -18,7 +18,7 @@ const UPSTREAM_URL: &str = "ws://127.0.0.1:9091";
 async fn main() -> Result<()> {
     // Initialize structured tracing logger
     let filter = EnvFilter::builder()
-        .with_default_directive(LevelFilter::INFO.into())
+        .with_default_directive(LevelFilter::WARN.into())
         .from_env_lossy();
 
     tracing_subscriber::fmt()

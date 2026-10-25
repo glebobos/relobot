@@ -11,11 +11,4 @@ install(DIRECTORY
   DESTINATION share/${PROJECT_NAME}/
 )
 
-# Python scripts (system_monitor)
-install(PROGRAMS
-  scripts/system_monitor.py
-  DESTINATION lib/${PROJECT_NAME}
-  RENAME system_monitor
-)
-
 ament_package()

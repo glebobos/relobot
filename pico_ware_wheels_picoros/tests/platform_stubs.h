@@ -81,6 +81,8 @@ uint32_t time_us_32(void);
 void sleep_ms(uint32_t milliseconds);
 void tight_loop_contents(void);
 void reset_usb_boot(uint32_t gpio_mask, uint32_t disable_mask);
+bool gpio_get(uint pin);
+void busy_wait_us_32(uint32_t delay_us);
 void gpio_init(uint pin);
 void gpio_set_dir(uint pin, bool output);
 void gpio_put(uint pin, bool value);
@@ -114,6 +116,7 @@ picoros_res_t picoros_publisher_drop(picoros_publisher_t *publisher);
 picoros_res_t picoros_subscriber_declare(picoros_node_t *node, picoros_subscriber_t *subscriber);
 picoros_res_t picoros_subscriber_drop(picoros_subscriber_t *subscriber);
 picoros_res_t picoros_publish(picoros_publisher_t *publisher, const uint8_t *payload, size_t length);
+bool picoros_interface_is_up(void);
 void picoros_interface_close(void);
 void z_publisher_options_default(int *options);
 

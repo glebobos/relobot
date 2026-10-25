@@ -70,6 +70,7 @@ picoros_res_t picoros_node_drop(picoros_node_t *n) { (void)n; return PICOROS_OK;
 picoros_res_t picoros_publisher_declare(picoros_node_t *n, picoros_publisher_t *p) { (void)n; (void)p; return PICOROS_OK; }
 picoros_res_t picoros_publisher_drop(picoros_publisher_t *p) { (void)p; return PICOROS_OK; }
 picoros_res_t picoros_publish(picoros_publisher_t *p, const uint8_t *payload, size_t length) { (void)p; (void)payload; (void)length; return PICOROS_OK; }
+bool picoros_interface_is_up(void) { return true; }
 void picoros_interface_close(void) {}
 void z_publisher_options_default(int *opts) { (void)opts; }
 

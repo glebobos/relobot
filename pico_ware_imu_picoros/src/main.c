@@ -35,6 +35,7 @@ static TaskHandle_t app_task_handle;
 static TaskHandle_t sensor_task_handle;
 
 static bool entities_ready = false;
+static volatile uint32_t consecutive_publish_errors = 0;
 static picoros_node_t node = {.name = "imu_node"};
 static volatile unsigned int diagnostic_stage = 1;
 
@@ -187,17 +188,33 @@ static void app_task(void *argument)
             continue;
         }
 #endif
-        break;
-    }
+        taskENTER_CRITICAL();
+        entities_ready = true;
+        diagnostic_stage = 10;
+        consecutive_publish_errors = 0;
+        taskEXIT_CRITICAL();
 
-    taskENTER_CRITICAL();
-    entities_ready = true;
-    diagnostic_stage = 10;
-    taskEXIT_CRITICAL();
+        while (entities_ready) {
+            if (!picoros_interface_is_up() || consecutive_publish_errors >= 15) {
+                break;
+            }
+            vTaskDelay(pdMS_TO_TICKS(100));
+        }
 
-    /* App task remains running to maintain FreeRTOS context */
-    for (;;) {
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        /* Session or interface dropped: clean up and retry initialization */
+        taskENTER_CRITICAL();
+        entities_ready = false;
+        taskEXIT_CRITICAL();
+
+#if RELOBOT_IMU_BENCH
+        for (size_t index = 0; index < sizeof(bench_publishers) / sizeof(bench_publishers[0]); ++index) {
+            (void)picoros_publisher_drop(&bench_publishers[index]);
+        }
+#endif
+        (void)picoros_publisher_drop(&pub_imu);
+        (void)picoros_node_drop(&node);
+        picoros_interface_close();
+        vTaskDelay(pdMS_TO_TICKS(500));
     }
 }
 
@@ -275,16 +292,20 @@ static void sensor_task(void *argument)
 
             uint8_t payload[IMU_CDR_MAX_SIZE];
             size_t actual_length = 0;
+            bool published = false;
             if (imu_codec_encode(&imu_msg, payload, sizeof(payload), &actual_length)) {
-                if (picoros_publish(&pub_imu, payload, actual_length) != PICOROS_OK) {
-#if RELOBOT_IMU_BENCH
-                    publish_errors++;
-#endif
+                if (picoros_publish(&pub_imu, payload, actual_length) == PICOROS_OK) {
+                    published = true;
                 }
-            } else {
+            }
+
+            if (!published) {
 #if RELOBOT_IMU_BENCH
                 publish_errors++;
 #endif
+                consecutive_publish_errors++;
+            } else {
+                consecutive_publish_errors = 0;
             }
 
 #if RELOBOT_IMU_BENCH

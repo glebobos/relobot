@@ -74,7 +74,7 @@ RUN printf '%s\n' \
     'source /opt/camera_ws/install/setup.bash' \
     'cd /ros2_ws' \
     'if [ "$DEV" = "true" ]; then' \
-    '  colcon build --packages-select camera_ros --cmake-clean-cache' \
+    '  colcon build --symlink-install --packages-select camera_ros --cmake-clean-cache' \
     'fi' \
     'source install/setup.bash' \
     'exec ros2 launch camera_ros camera.launch.py' \

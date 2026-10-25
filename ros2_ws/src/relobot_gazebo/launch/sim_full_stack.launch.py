@@ -18,7 +18,7 @@ from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import LaunchConfiguration
+from launch.substitutions import EnvironmentVariable, LaunchConfiguration
 
 
 def generate_launch_description():
@@ -27,6 +27,7 @@ def generate_launch_description():
 
     world_arg = LaunchConfiguration('world')
     gui_arg = LaunchConfiguration('gui')
+    log_level = LaunchConfiguration('log_level')
 
     declare_world_cmd = DeclareLaunchArgument(
         'world',
@@ -40,6 +41,12 @@ def generate_launch_description():
         description='Launch Gazebo GUI if true'
     )
 
+    declare_log_level_cmd = DeclareLaunchArgument(
+        'log_level',
+        default_value=EnvironmentVariable('ROS_LOG_LEVEL', default_value='WARN'),
+        description='ROS 2 logger severity level'
+    )
+
     # 1. Gazebo Simulation + Robot + Bridge + EKF
     gazebo_sim = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
@@ -49,6 +56,7 @@ def generate_launch_description():
             'world': world_arg,
             'gui': gui_arg,
             'use_sim_time': 'true',
+            'log_level': log_level,
         }.items(),
     )
 
@@ -60,12 +68,14 @@ def generate_launch_description():
         launch_arguments={
             'use_sim_time': 'true',
             'autostart': 'true',
+            'log_level': log_level,
         }.items(),
     )
 
     return LaunchDescription([
         declare_world_cmd,
         declare_gui_cmd,
+        declare_log_level_cmd,
         gazebo_sim,
         nav2_bringup,
     ])

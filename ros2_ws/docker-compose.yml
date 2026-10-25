@@ -1,5 +1,8 @@
 x-ros-env: &ros-env
   DEV: ${DEV:-false}
+  ROS_LOG_LEVEL: ${ROS_LOG_LEVEL:-WARN}
+  RCUTILS_DEFAULT_LOGGER_DEFAULT_LEVEL: ${RCUTILS_DEFAULT_LOGGER_DEFAULT_LEVEL:-${ROS_LOG_LEVEL:-WARN}}
+  RUST_LOG: ${RUST_LOG:-warn}
   PYTHONUNBUFFERED: 1
   OPENBLAS_NUM_THREADS: 1
   OMP_NUM_THREADS: 2
@@ -20,7 +23,8 @@ services:
       dockerfile: ros2_ws/ZenohRouter.dockerfile
     container_name: ros2_zenoh_router
     environment:
-      RUST_LOG: ${ZENOH_ROUTER_RUST_LOG:-info}
+      RUST_LOG: ${ZENOH_ROUTER_RUST_LOG:-warn}
+      RCUTILS_DEFAULT_LOGGER_DEFAULT_LEVEL: ${RCUTILS_DEFAULT_LOGGER_DEFAULT_LEVEL:-${ROS_LOG_LEVEL:-WARN}}
       ZENOH_SHM_ALLOC_SIZE: ${ZENOH_SHM_ALLOC_SIZE:-16777216}
       ZENOH_SHM_MESSAGE_SIZE_THRESHOLD: ${ZENOH_SHM_MESSAGE_SIZE_THRESHOLD:-512}
     volumes:
@@ -31,8 +35,16 @@ services:
       - ./zenoh_devices.py:/usr/local/bin/zenoh_devices.py:ro
     device_cgroup_rules:
       - "c 166:* rwm"
+    cap_add:
+      - SYS_NICE
+      - IPC_LOCK
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
     network_mode: host
     ipc: host
+    pid: host
     restart: unless-stopped
 
   ros2_frontend:
@@ -54,9 +66,21 @@ services:
       dockerfile: Rosbridge.dockerfile
     container_name: ros2_rosbridge
     ipc: host
+    pid: host
+    cap_add:
+      - SYS_NICE
+      - IPC_LOCK
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    depends_on:
+      ros2_zenoh_router:
+        condition: service_started
     volumes:
       - .:/ros2_ws/
       - /tmp:/tmp
+      - /var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket
       - cargo_registry:/root/.cargo/registry
       - cargo_git:/root/.cargo/git
     environment:
@@ -71,6 +95,7 @@ services:
       dockerfile: nav2.dockerfile
     container_name: ros2_nav2
     ipc: host
+    pid: host
     volumes:
       - .:/ros2_ws/
       - /tmp:/tmp
@@ -112,7 +137,7 @@ services:
       PULSE_SERVER: unix:/run/user/1000/pulse/native
       RELOBOT_HOST_DIR: ${RELOBOT_HOST_DIR:-}
       RELOBOT_WORKSPACE: ${RELOBOT_WORKSPACE:-/relobot}
-      AGY_MODEL: ${AGY_MODEL:-gemini-3.7-flash-low}
+      AGY_MODEL: ${AGY_MODEL:-gemini-3.8-flash-low}
       AGY_EFFORT: ${AGY_EFFORT:-low}
     working_dir: /relobot
     network_mode: host
@@ -136,7 +161,8 @@ services:
     environment:
       <<: *ros-env
     network_mode: host
-    ipc: host 
+    ipc: host
+    pid: host
     privileged: true
     restart: unless-stopped
 
@@ -159,7 +185,8 @@ services:
       ros2_zenoh_router:
         condition: service_started
     network_mode: host
-    ipc: host 
+    ipc: host
+    pid: host
     privileged: true
     restart: unless-stopped
 
@@ -171,14 +198,15 @@ services:
     container_name: ros2_camera_rp
     volumes:
       - .:/ros2_ws/
-      - /var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket
       - /tmp:/tmp
     devices:
       - /dev/:/dev/
     environment:
       <<: *ros-env
+      LIBCAMERA_LOG_LEVELS: ${LIBCAMERA_LOG_LEVELS:-*:WARN}
     network_mode: host
-    ipc: host 
+    ipc: host
+    pid: host
     privileged: true
     restart: unless-stopped
 
@@ -203,6 +231,7 @@ services:
       QT_X11_NO_MITSHM: 1
     network_mode: host
     ipc: host
+    pid: host
     privileged: true
     restart: unless-stopped
 

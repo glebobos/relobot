@@ -495,54 +495,82 @@ static void app_task(void *argument)
             vTaskDelay(pdMS_TO_TICKS(500));
             continue;
         }
-        break;
-    }
-    taskENTER_CRITICAL();
-    entities_ready = true;
-    diagnostic_stage = 10;
-    taskEXIT_CRITICAL();
+        taskENTER_CRITICAL();
+        entities_ready = true;
+        diagnostic_stage = 10;
+        taskEXIT_CRITICAL();
 
 #if RELOBOT_KNIVES_BENCH
-    uint32_t publish_errors = 0;
-    uint32_t last_diagnostics_ms = now_ms();
+        uint32_t publish_errors = 0;
+        uint32_t last_diagnostics_ms = now_ms();
 #endif
-    for (;;) {
-        taskENTER_CRITICAL();
-        float current = measured_rpm;
+        uint32_t consecutive_publish_errors = 0;
+        while (entities_ready) {
+            if (!picoros_interface_is_up()) {
+                break;
+            }
+
+            taskENTER_CRITICAL();
+            float current = measured_rpm;
 #if RELOBOT_KNIVES_BENCH
-        float target = command_state.target_rpm;
+            float target = command_state.target_rpm;
 #endif
-        taskEXIT_CRITICAL();
-        bool published = publish_float(&pub_current_rpm, current);
-#if RELOBOT_KNIVES_BENCH
-        if (!published) {
-            publish_errors++;
-        }
-        uint32_t now = now_ms();
-        if ((uint32_t)(now - last_diagnostics_ms) >= 1000) {
-            float values[] = {
-                target,
-                (float)xPortGetFreeHeapSize(),
-                (float)xPortGetMinimumEverFreeHeapSize(),
-                (float)uxTaskGetStackHighWaterMark(NULL),
-                (float)uxTaskGetStackHighWaterMark(control_task_handle),
-                (float)publish_errors,
-            };
-            _Static_assert(sizeof(values) / sizeof(values[0]) ==
-                           sizeof(bench_publishers) / sizeof(bench_publishers[0]),
-                           "bench values must match publishers");
-            for (size_t index = 0; index < sizeof(values) / sizeof(values[0]); ++index) {
-                if (!publish_float(&bench_publishers[index], values[index])) {
-                    publish_errors++;
+            taskEXIT_CRITICAL();
+            bool published = publish_float(&pub_current_rpm, current);
+            if (!published) {
+                if (++consecutive_publish_errors >= 5) {
                     break;
                 }
+            } else {
+                consecutive_publish_errors = 0;
             }
-            last_diagnostics_ms = now;
-        }
-#else
-        (void)published;
+
+#if RELOBOT_KNIVES_BENCH
+            if (!published) {
+                publish_errors++;
+            }
+            uint32_t now = now_ms();
+            if ((uint32_t)(now - last_diagnostics_ms) >= 1000) {
+                float values[] = {
+                    target,
+                    (float)xPortGetFreeHeapSize(),
+                    (float)xPortGetMinimumEverFreeHeapSize(),
+                    (float)uxTaskGetStackHighWaterMark(NULL),
+                    (float)uxTaskGetStackHighWaterMark(control_task_handle),
+                    (float)publish_errors,
+                };
+                _Static_assert(sizeof(values) / sizeof(values[0]) ==
+                               sizeof(bench_publishers) / sizeof(bench_publishers[0]),
+                               "bench values must match publishers");
+                for (size_t index = 0; index < sizeof(values) / sizeof(values[0]); ++index) {
+                    if (!publish_float(&bench_publishers[index], values[index])) {
+                        publish_errors++;
+                        break;
+                    }
+                }
+                last_diagnostics_ms = now;
+            }
 #endif
-        vTaskDelay(pdMS_TO_TICKS(TELEMETRY_PERIOD_MS));
+            vTaskDelay(pdMS_TO_TICKS(TELEMETRY_PERIOD_MS));
+        }
+
+        /* Session or interface dropped: clean up and retry initialization */
+        taskENTER_CRITICAL();
+        entities_ready = false;
+        knives_command_disarm(&command_state);
+        taskEXIT_CRITICAL();
+        stop_motor_control();
+
+        (void)picoros_subscriber_drop(&sub_set_rpm);
+        (void)picoros_publisher_drop(&pub_current_rpm);
+#if RELOBOT_KNIVES_BENCH
+        for (size_t index = 0; index < sizeof(bench_publishers) / sizeof(bench_publishers[0]); ++index) {
+            (void)picoros_publisher_drop(&bench_publishers[index]);
+        }
+#endif
+        (void)picoros_node_drop(&node);
+        picoros_interface_close();
+        vTaskDelay(pdMS_TO_TICKS(500));
     }
 }
 

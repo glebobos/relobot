@@ -4,8 +4,22 @@ import { SERVICES, MSG_TYPES } from '../shared/constants.js';
 
 export class CameraController {
     constructor() {
-        this.mainCameraService = new CameraService('cameraStream', { type: 'ros_compressed' });
-        this.pipCameraService = new CameraService('pipCameraStream', { type: 'ros_compressed' });
+        this.mainCameraService = new CameraService('cameraStream', {
+            type: 'ros_compressed',
+            mode: 'snapshot',
+            width: 640,
+            height: 480,
+            quality: 40,
+            targetFps: 15
+        });
+        this.pipCameraService = new CameraService('pipCameraStream', {
+            type: 'ros_compressed',
+            mode: 'snapshot',
+            width: 240,
+            height: 180,
+            quality: 30,
+            targetFps: 8
+        });
         this.tfTopic = null;
         this.hudTimeout = null;
         this.currentScreenIndex = 0;

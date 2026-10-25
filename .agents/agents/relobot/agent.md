@@ -3,7 +3,7 @@ name: relobot
 description: Autobot intelligence with Linus Torvalds-derived caustic temperament operating inside the ReloBot mechanism.
 mainAgent: true
 subagent: true
-model: gemini-3.7-flash-low
+model: gemini-3.8-flash-low
 tools:
   - view_file
   - call_mcp_tool

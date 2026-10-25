@@ -223,6 +223,7 @@ static void stop_motor(motor_t *m)
     m->kickstart_counter = 0;
     m->last_pi_adj       = 0.0f;
     m->encoder_age       = 0;
+    m->measured_vel      = 0.0f;
 }
 
 static void emergency_stop_all(void)
@@ -268,6 +269,12 @@ void tud_cdc_line_coding_cb(uint8_t itf, cdc_line_coding_t const *p_line_coding)
 static void encoder_isr(uint gpio, uint32_t events)
 {
     (void)events;
+    /* Level verification: short EMI spikes drop back to 0 within < 30 us */
+    busy_wait_us_32(30);
+    if (!gpio_get(gpio)) {
+        return;
+    }
+
     uint32_t now_us = time_us_32();
     if (gpio == PIN_ENCODER_LEFT) {
         uint32_t diff = now_us - left_motor.last_tick_us;
@@ -379,23 +386,29 @@ static void update_motor(motor_t *m, float dt_s)
 
     /* Velocity and position estimation */
     if (delta > 0) {
-        uint32_t period_us = m->tick_period_us;
-        if (period_us > 500U && period_us < 5000000U) {
-            float raw_vel = direction * TWO_PI
-                            / (COUNTS_PER_REVOLUTION * ((float)period_us * 1e-6f));
-            if (isfinite(raw_vel)) {
-                m->measured_vel = VELOCITY_EMA_ALPHA_TICK * raw_vel
-                                + (1.0f - VELOCITY_EMA_ALPHA_TICK) * m->measured_vel;
+        if (fabsf(m->target_vel) < MOTOR_DEADBAND_RAD_S && fabsf(m->cmd_vel) < MOTOR_DEADBAND_RAD_S) {
+            m->measured_vel = 0.0f;
+        } else {
+            uint32_t period_us = m->tick_period_us;
+            if (period_us > 500U && period_us < 5000000U) {
+                float raw_vel = direction * TWO_PI
+                                / (COUNTS_PER_REVOLUTION * ((float)period_us * 1e-6f));
+                if (isfinite(raw_vel)) {
+                    m->measured_vel = VELOCITY_EMA_ALPHA_TICK * raw_vel
+                                    + (1.0f - VELOCITY_EMA_ALPHA_TICK) * m->measured_vel;
+                }
             }
+            m->tick_accumulator += m->last_dir_fwd ? (int64_t)delta : -(int64_t)delta;
+            m->encoder_age       = 0;
+            m->kickstart_counter = 0;
         }
-        m->tick_accumulator += m->last_dir_fwd ? (int64_t)delta : -(int64_t)delta;
-        m->encoder_age       = 0;
-        m->kickstart_counter = 0;
     } else {
         m->encoder_age++;
         uint32_t age_us    = time_us_32() - m->last_tick_us;
         uint32_t period_us = m->tick_period_us;
-        if (age_us > period_us && age_us > 500U && age_us < 5000000U) {
+        if (age_us >= 5000000U || fabsf(m->target_vel) < MOTOR_DEADBAND_RAD_S) {
+            m->measured_vel = 0.0f;
+        } else if (age_us > period_us && age_us > 500U) {
             float raw_vel = direction * TWO_PI
                             / (COUNTS_PER_REVOLUTION * ((float)age_us * 1e-6f));
             if (isfinite(raw_vel)) {
@@ -421,11 +434,7 @@ static void update_motor(motor_t *m, float dt_s)
     /* Deadband */
     if (fabsf(m->target_vel) < MOTOR_DEADBAND_RAD_S) {
         stop_motor(m);
-        uint32_t age_us = time_us_32() - m->last_tick_us;
-        if (age_us > m->tick_period_us && age_us > 500U && age_us < 5000000U) {
-            m->measured_vel = direction * TWO_PI
-                              / (COUNTS_PER_REVOLUTION * ((float)age_us * 1e-6f));
-        }
+        m->measured_vel = 0.0f;
         return;
     }
 
@@ -652,82 +661,109 @@ static void app_task(void *argument)
             vTaskDelay(pdMS_TO_TICKS(500));
             continue;
         }
-        break;
-    }
 
-    taskENTER_CRITICAL();
-    entities_ready = true;
-    diagnostic_stage = 10;
-    taskEXIT_CRITICAL();
-
-#if RELOBOT_WHEELS_BENCH
-    uint32_t publish_errors = 0;
-    uint32_t last_diagnostics_ms = now_ms();
-#endif
-
-    for (;;) {
         taskENTER_CRITICAL();
-        int64_t left_ticks = left_motor.tick_accumulator;
-        int64_t right_ticks = right_motor.tick_accumulator;
-        float left_vel = left_motor.measured_vel;
-        float right_vel = right_motor.measured_vel;
-#if RELOBOT_WHEELS_BENCH
-        float target_left = left_motor.cmd_vel;
-        float target_right = right_motor.cmd_vel;
-#endif
+        entities_ready = true;
+        diagnostic_stage = 10;
         taskEXIT_CRITICAL();
 
-        state_pos_arr[0] = (double)left_ticks * ((double)TWO_PI / (double)COUNTS_PER_REVOLUTION);
-        state_pos_arr[1] = (double)right_ticks * ((double)TWO_PI / (double)COUNTS_PER_REVOLUTION);
-        state_vel_arr[0] = (double)left_vel;
-        state_vel_arr[1] = (double)right_vel;
-        state_eff_arr[0] = 0.0;
-        state_eff_arr[1] = 0.0;
+#if RELOBOT_WHEELS_BENCH
+        uint32_t publish_errors = 0;
+        uint32_t last_diagnostics_ms = now_ms();
+#endif
+        uint32_t consecutive_publish_errors = 0;
 
-        uint64_t now_us = to_us_since_boot(get_absolute_time());
-        state_msg.header.stamp.sec = (int32_t)(now_us / 1000000ULL);
-        state_msg.header.stamp.nanosec = (uint32_t)((now_us % 1000000ULL) * 1000ULL);
+        while (entities_ready) {
+            if (!picoros_interface_is_up()) {
+                break;
+            }
 
-        uint8_t payload[JOINT_STATE_CDR_MAX_SIZE];
-        size_t actual_length = 0;
-        if (joint_state_codec_encode(&state_msg, payload, sizeof(payload), &actual_length)) {
-            if (picoros_publish(&pub_states, payload, actual_length) != PICOROS_OK) {
+            taskENTER_CRITICAL();
+            int64_t left_ticks = left_motor.tick_accumulator;
+            int64_t right_ticks = right_motor.tick_accumulator;
+            float left_vel = left_motor.measured_vel;
+            float right_vel = right_motor.measured_vel;
+#if RELOBOT_WHEELS_BENCH
+            float target_left = left_motor.cmd_vel;
+            float target_right = right_motor.cmd_vel;
+#endif
+            taskEXIT_CRITICAL();
+
+            state_pos_arr[0] = (double)left_ticks * ((double)TWO_PI / (double)COUNTS_PER_REVOLUTION);
+            state_pos_arr[1] = (double)right_ticks * ((double)TWO_PI / (double)COUNTS_PER_REVOLUTION);
+            state_vel_arr[0] = (double)left_vel;
+            state_vel_arr[1] = (double)right_vel;
+            state_eff_arr[0] = 0.0;
+            state_eff_arr[1] = 0.0;
+
+            uint64_t now_us = to_us_since_boot(get_absolute_time());
+            state_msg.header.stamp.sec = (int32_t)(now_us / 1000000ULL);
+            state_msg.header.stamp.nanosec = (uint32_t)((now_us % 1000000ULL) * 1000ULL);
+
+            uint8_t payload[JOINT_STATE_CDR_MAX_SIZE];
+            size_t actual_length = 0;
+            bool published = false;
+            if (joint_state_codec_encode(&state_msg, payload, sizeof(payload), &actual_length)) {
+                if (picoros_publish(&pub_states, payload, actual_length) == PICOROS_OK) {
+                    published = true;
+                }
+            }
+
+            if (!published) {
 #if RELOBOT_WHEELS_BENCH
                 publish_errors++;
 #endif
-            }
-        } else {
-#if RELOBOT_WHEELS_BENCH
-            publish_errors++;
-#endif
-        }
-
-#if RELOBOT_WHEELS_BENCH
-        uint32_t now = now_ms();
-        if ((uint32_t)(now - last_diagnostics_ms) >= 1000U) {
-            float values[] = {
-                target_left,
-                target_right,
-                (float)xPortGetFreeHeapSize(),
-                (float)xPortGetMinimumEverFreeHeapSize(),
-                (float)uxTaskGetStackHighWaterMark(app_task_handle),
-                (float)uxTaskGetStackHighWaterMark(control_task_handle),
-                (float)publish_errors,
-            };
-            _Static_assert(sizeof(values) / sizeof(values[0]) ==
-                           sizeof(bench_publishers) / sizeof(bench_publishers[0]),
-                           "bench values must match publishers");
-            for (size_t index = 0; index < sizeof(values) / sizeof(values[0]); ++index) {
-                if (!publish_float(&bench_publishers[index], values[index])) {
-                    publish_errors++;
+                if (++consecutive_publish_errors >= 5) {
                     break;
                 }
+            } else {
+                consecutive_publish_errors = 0;
             }
-            last_diagnostics_ms = now;
-        }
+
+#if RELOBOT_WHEELS_BENCH
+            uint32_t now = now_ms();
+            if ((uint32_t)(now - last_diagnostics_ms) >= 1000U) {
+                float values[] = {
+                    target_left,
+                    target_right,
+                    (float)xPortGetFreeHeapSize(),
+                    (float)xPortGetMinimumEverFreeHeapSize(),
+                    (float)uxTaskGetStackHighWaterMark(app_task_handle),
+                    (float)uxTaskGetStackHighWaterMark(control_task_handle),
+                    (float)publish_errors,
+                };
+                _Static_assert(sizeof(values) / sizeof(values[0]) ==
+                               sizeof(bench_publishers) / sizeof(bench_publishers[0]),
+                               "bench values must match publishers");
+                for (size_t index = 0; index < sizeof(values) / sizeof(values[0]); ++index) {
+                    if (!publish_float(&bench_publishers[index], values[index])) {
+                        publish_errors++;
+                        break;
+                    }
+                }
+                last_diagnostics_ms = now;
+            }
 #endif
 
-        vTaskDelay(pdMS_TO_TICKS(PUBLISH_PERIOD_MS));
+            vTaskDelay(pdMS_TO_TICKS(PUBLISH_PERIOD_MS));
+        }
+
+        /* Session or interface dropped: clean up and retry initialization */
+        taskENTER_CRITICAL();
+        entities_ready = false;
+        emergency_stop_all();
+        taskEXIT_CRITICAL();
+
+        (void)picoros_subscriber_drop(&sub_commands);
+#if RELOBOT_WHEELS_BENCH
+        for (size_t index = 0; index < sizeof(bench_publishers) / sizeof(bench_publishers[0]); ++index) {
+            (void)picoros_publisher_drop(&bench_publishers[index]);
+        }
+#endif
+        (void)picoros_publisher_drop(&pub_states);
+        (void)picoros_node_drop(&node);
+        picoros_interface_close();
+        vTaskDelay(pdMS_TO_TICKS(500));
     }
 }
 

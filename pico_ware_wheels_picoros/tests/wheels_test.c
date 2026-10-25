@@ -21,12 +21,16 @@ static uint16_t pwm_levels[32];
 
 /* Platform stubs implementation */
 absolute_time_t get_absolute_time(void) { return (uint64_t)test_time_ms; }
+bool picoros_interface_is_up(void) { return true; }
 uint32_t to_ms_since_boot(absolute_time_t time) { return (uint32_t)time; }
 uint64_t to_us_since_boot(absolute_time_t time) { return (uint64_t)time * 1000ULL; }
 uint32_t time_us_32(void) { return test_time_us; }
 void sleep_ms(uint32_t ms) { test_time_ms += ms; test_time_us += ms * 1000U; }
 uint32_t save_and_disable_interrupts(void) { return 0; }
 void tight_loop_contents(void) { assert(false); }
+
+bool gpio_get(uint pin) { return (pin < 32) ? gpio_levels[pin] : false; }
+void busy_wait_us_32(uint32_t delay_us) { test_time_us += delay_us; }
 
 void gpio_init(uint pin) { (void)pin; }
 void gpio_set_dir(uint pin, bool output) { (void)pin; (void)output; }
