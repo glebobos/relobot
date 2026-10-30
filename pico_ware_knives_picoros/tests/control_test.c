@@ -78,9 +78,6 @@ int main(int argument_count, char **arguments)
         is_braking = true;
         update_control();
         assert_outputs_disabled();
-        assert(!command_state.armed);
-        assert(!knives_command_accept(&command_state, 1200.0f, 5120));
-        assert(knives_command_accept(&command_state, 0.0f, 5140));
         assert(knives_command_accept(&command_state, 1200.0f, 5160));
         test_time_ms = 5160;
         update_control();

@@ -51,6 +51,7 @@ export const TOPICS = {
     // System
     ROBOT_DESCRIPTION: '/robot_description',
     DOCK_ACTION_STATUS: '/dock_robot/_action/status',
+    UNDOCK_ACTION_STATUS: '/undock_robot/_action/status',
     SYSTEM_METRICS: '/system/metrics',
     SYSTEM_COMMAND: '/system/command'
 };
@@ -96,6 +97,7 @@ export const MSG_TYPES = {
     // Custom / third-party
     EXPLORE_STATUS: 'explore_lite_msgs/ExploreStatus',
     DOCK_ROBOT: 'nav2_msgs/action/DockRobot',
+    UNDOCK_ROBOT: 'nav2_msgs/action/UndockRobot',
     NAVIGATE_TO_POSE: 'nav2_msgs/action/NavigateToPose',
     SERIALIZE_MAP_SRV: 'slam_toolbox/srv/SerializePoseGraph',
     SET_PARAMETERS: 'rcl_interfaces/srv/SetParameters',
@@ -111,6 +113,7 @@ export const EXPLORE_STATUS = {
 
 export const ACTIONS = {
     DOCK_ROBOT: '/dock_robot',
+    UNDOCK_ROBOT: '/undock_robot',
     NAVIGATE_TO_POSE: '/navigate_to_pose'
 };
 

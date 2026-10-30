@@ -1,9 +1,0 @@
-<root BTCPP_format="4" main_tree_to_execute="MainTree">
-  <BehaviorTree ID="MainTree">
-    <Sequence>
-      <UndockRobot dock_type="apriltag_dock" max_undocking_time="30.0"/>
-      <Wait wait_duration="1"/>
-      <Spin spin_dist="3.14159" time_allowance="10.0"/>
-    </Sequence>
-  </BehaviorTree>
-</root>

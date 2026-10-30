@@ -96,6 +96,34 @@ static picoros_publisher_t pub_current_rpm = {
     },
 };
 
+typedef enum {
+    KNIVES_FAULT_NONE            = 0,
+    KNIVES_FAULT_CMD_TIMEOUT     = 1,
+    KNIVES_FAULT_GAP_TIMEOUT     = 2,
+    KNIVES_FAULT_ENCODER_TIMEOUT = 3,
+    KNIVES_FAULT_BRAKE_TIMEOUT   = 4,
+    KNIVES_FAULT_UNARMED_REJECT  = 5,
+    KNIVES_FAULT_DECODE_ERR      = 6,
+    KNIVES_FAULT_NON_FINITE      = 7,
+} knives_fault_code_t;
+
+static picoros_publisher_t debug_publishers[] = {
+    {.topic = {.name = "knives/debug/target_rpm", .type = "std_msgs::msg::dds_::Float32"}},
+    {.topic = {.name = "knives/debug/control_rpm", .type = "std_msgs::msg::dds_::Float32"}},
+    {.topic = {.name = "knives/debug/out_pwm", .type = "std_msgs::msg::dds_::Float32"}},
+    {.topic = {.name = "knives/debug/encoder_ticks", .type = "std_msgs::msg::dds_::Float32"}},
+    {.topic = {.name = "knives/debug/armed", .type = "std_msgs::msg::dds_::Float32"}},
+    {.topic = {.name = "knives/debug/fault_code", .type = "std_msgs::msg::dds_::Float32"}},
+    {.topic = {.name = "knives/debug/cmd_count", .type = "std_msgs::msg::dds_::Float32"}},
+    {.topic = {.name = "knives/debug/last_raw_cmd", .type = "std_msgs::msg::dds_::Float32"}},
+    {.topic = {.name = "knives/debug/last_cmd_age_ms", .type = "std_msgs::msg::dds_::Float32"}},
+};
+
+static volatile uint32_t debug_cmd_count = 0;
+static volatile float debug_last_raw_cmd = 0.0f;
+static volatile float debug_out_pwm = 0.0f;
+static volatile float debug_fault_code = 0.0f;
+
 #if RELOBOT_KNIVES_BENCH
 static picoros_publisher_t bench_publishers[] = {
     {.topic = {.name = "knives/bench/target_rpm", .type = "std_msgs::msg::dds_::Float32"}},
@@ -120,6 +148,7 @@ static float rpm_to_base_pwm(float rpm)
 
 static void set_motor_pwm(float pwm, bool forward)
 {
+    debug_out_pwm = (pwm > 0.0f) ? pwm : 0.0f;
 #if RELOBOT_KNIVES_BENCH
     (void)pwm;
     (void)forward;
@@ -159,6 +188,7 @@ static void set_motor_pwm(float pwm, bool forward)
 
 static void stop_motor_control(void)
 {
+    debug_out_pwm = 0.0f;
     control_rpm = 0.0f;
     is_braking = false;
     last_pwm_adjust = 0.0f;
@@ -222,12 +252,26 @@ static void encoder_callback(uint gpio, uint32_t events)
 
 static void command_received(uint8_t *payload, size_t length)
 {
+    debug_cmd_count++;
     float value;
-    if (float32_codec_decode(payload, length, &value)) {
-        taskENTER_CRITICAL();
-        knives_command_accept(&command_state, value, now_ms());
-        taskEXIT_CRITICAL();
+    if (!float32_codec_decode(payload, length, &value)) {
+        debug_fault_code = (float)KNIVES_FAULT_DECODE_ERR;
+        return;
     }
+    debug_last_raw_cmd = value;
+    if (!isfinite(value)) {
+        debug_fault_code = (float)KNIVES_FAULT_NON_FINITE;
+        return;
+    }
+    taskENTER_CRITICAL();
+    bool accepted = knives_command_accept(&command_state, value, now_ms());
+    if (!accepted && !command_state.armed && fabsf(value) >= KNIVES_ZERO_EPSILON_RPM) {
+        debug_fault_code = (float)KNIVES_FAULT_UNARMED_REJECT;
+    } else if (accepted && (fabsf(value) < KNIVES_ZERO_EPSILON_RPM) &&
+               debug_fault_code == (float)KNIVES_FAULT_UNARMED_REJECT) {
+        debug_fault_code = (float)KNIVES_FAULT_NONE;
+    }
+    taskEXIT_CRITICAL();
 }
 
 static picoros_subscriber_t sub_set_rpm = {
@@ -273,8 +317,12 @@ static void update_control(void)
 
     if (!authorized || (uint32_t)(now - last_control_ms) > MAX_CONTROL_GAP_MS) {
         if (authorized) {
+            debug_fault_code = (float)KNIVES_FAULT_GAP_TIMEOUT;
             control_fault();
         } else {
+            if (command_state.received && (uint32_t)(now - command_state.received_at_ms) >= KNIVES_COMMAND_TIMEOUT_MS) {
+                debug_fault_code = (float)KNIVES_FAULT_CMD_TIMEOUT;
+            }
             stop_motor_control();
         }
         last_control_ms = now;
@@ -289,6 +337,7 @@ static void update_control(void)
         last_activity_encoder_ticks = activity_ticks;
     } else if (!RELOBOT_KNIVES_BENCH &&
                (uint32_t)(now - last_encoder_activity_ms) >= ENCODER_TIMEOUT_MS) {
+        debug_fault_code = (float)KNIVES_FAULT_ENCODER_TIMEOUT;
         control_fault();
         last_control_ms = now;
         return;
@@ -309,7 +358,10 @@ static void update_control(void)
 
     if (is_braking) {
         if ((uint32_t)(now - braking_started_ms) >= BRAKE_MAX_DURATION_MS) {
-            control_fault();
+            is_braking = false;
+            control_rpm = 0.0f;
+            pid_controller_reset(&rpm_pid);
+            set_motor_pwm(0.0f, true);
             last_control_ms = now;
             return;
         } else if (fabsf(target_rpm) >= 1.0f) {
@@ -457,6 +509,28 @@ static void app_task(void *argument)
             vTaskDelay(pdMS_TO_TICKS(500));
             continue;
         }
+        bool debug_ok = true;
+        size_t declared_debug = 0;
+        for (size_t index = 0; index < sizeof(debug_publishers) / sizeof(debug_publishers[0]); ++index) {
+            debug_publishers[index].topic.rihs_hash = float32_codec_hash();
+            z_publisher_options_default(&debug_publishers[index].opts);
+            if (picoros_publisher_declare(&node, &debug_publishers[index]) != PICOROS_OK) {
+                debug_ok = false;
+                break;
+            }
+            declared_debug = index + 1;
+        }
+        if (!debug_ok) {
+            for (size_t index = 0; index < declared_debug; ++index) {
+                (void)picoros_publisher_drop(&debug_publishers[index]);
+            }
+            (void)picoros_publisher_drop(&pub_current_rpm);
+            (void)picoros_node_drop(&node);
+            picoros_interface_close();
+            picoros_diagnostic_stage(5);
+            vTaskDelay(pdMS_TO_TICKS(500));
+            continue;
+        }
 #if RELOBOT_KNIVES_BENCH
         bool bench_ok = true;
         size_t declared_bench = 0;
@@ -473,6 +547,9 @@ static void app_task(void *argument)
             for (size_t index = 0; index < declared_bench; ++index) {
                 (void)picoros_publisher_drop(&bench_publishers[index]);
             }
+            for (size_t index = 0; index < sizeof(debug_publishers) / sizeof(debug_publishers[0]); ++index) {
+                (void)picoros_publisher_drop(&debug_publishers[index]);
+            }
             (void)picoros_publisher_drop(&pub_current_rpm);
             (void)picoros_node_drop(&node);
             picoros_interface_close();
@@ -488,6 +565,9 @@ static void app_task(void *argument)
                 (void)picoros_publisher_drop(&bench_publishers[index]);
             }
 #endif
+            for (size_t index = 0; index < sizeof(debug_publishers) / sizeof(debug_publishers[0]); ++index) {
+                (void)picoros_publisher_drop(&debug_publishers[index]);
+            }
             (void)picoros_publisher_drop(&pub_current_rpm);
             (void)picoros_node_drop(&node);
             picoros_interface_close();
@@ -504,6 +584,7 @@ static void app_task(void *argument)
         uint32_t publish_errors = 0;
         uint32_t last_diagnostics_ms = now_ms();
 #endif
+        uint32_t last_debug_publish_ms = now_ms();
         uint32_t consecutive_publish_errors = 0;
         while (entities_ready) {
             if (!picoros_interface_is_up()) {
@@ -525,11 +606,44 @@ static void app_task(void *argument)
                 consecutive_publish_errors = 0;
             }
 
+            uint32_t now = now_ms();
+            if ((uint32_t)(now - last_debug_publish_ms) >= 200) {
+                last_debug_publish_ms = now;
+                taskENTER_CRITICAL();
+                float dbg_target = command_state.target_rpm;
+                float dbg_control = control_rpm;
+                float dbg_pwm = debug_out_pwm;
+                float dbg_ticks = (float)encoder_ticks;
+                float dbg_armed = command_state.armed ? 1.0f : 0.0f;
+                float dbg_fault = debug_fault_code;
+                float dbg_count = (float)debug_cmd_count;
+                float dbg_raw = debug_last_raw_cmd;
+                float dbg_age = command_state.received ? (float)(now - command_state.received_at_ms) : 99999.0f;
+                taskEXIT_CRITICAL();
+
+                float debug_values[] = {
+                    dbg_target,
+                    dbg_control,
+                    dbg_pwm,
+                    dbg_ticks,
+                    dbg_armed,
+                    dbg_fault,
+                    dbg_count,
+                    dbg_raw,
+                    dbg_age,
+                };
+                _Static_assert(sizeof(debug_values) / sizeof(debug_values[0]) ==
+                               sizeof(debug_publishers) / sizeof(debug_publishers[0]),
+                               "debug values count must match debug publishers count");
+                for (size_t index = 0; index < sizeof(debug_publishers) / sizeof(debug_publishers[0]); ++index) {
+                    (void)publish_float(&debug_publishers[index], debug_values[index]);
+                }
+            }
+
 #if RELOBOT_KNIVES_BENCH
             if (!published) {
                 publish_errors++;
             }
-            uint32_t now = now_ms();
             if ((uint32_t)(now - last_diagnostics_ms) >= 1000) {
                 float values[] = {
                     target,
@@ -568,6 +682,9 @@ static void app_task(void *argument)
             (void)picoros_publisher_drop(&bench_publishers[index]);
         }
 #endif
+        for (size_t index = 0; index < sizeof(debug_publishers) / sizeof(debug_publishers[0]); ++index) {
+            (void)picoros_publisher_drop(&debug_publishers[index]);
+        }
         (void)picoros_node_drop(&node);
         picoros_interface_close();
         vTaskDelay(pdMS_TO_TICKS(500));

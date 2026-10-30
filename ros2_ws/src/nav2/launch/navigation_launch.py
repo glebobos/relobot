@@ -420,7 +420,7 @@ def generate_launch_description():
         parameters=[{
             'container': container_name_full,
             'dock_action': '/dock_robot',
-            'dock_tag_frame': 'tag25h9:0',
+            'dock_tag_frame': 'tag36h11:0',
             'base_frame': 'odom',
             'always_on': LaunchConfiguration('apriltag_always_on'),
             'use_sim_time': use_sim_time,

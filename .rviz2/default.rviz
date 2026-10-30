@@ -126,7 +126,7 @@ Visualization Manager:
           Value: true
         right_wheel:
           Value: true
-        tag25h9:0:
+        tag36h11:0:
           Value: true
       Marker Scale: 1
       Name: TF
@@ -140,7 +140,7 @@ Visualization Manager:
               base_laser:
                 {}
               camera:
-                tag25h9:0:
+                tag36h11:0:
                   {}
               imu_link:
                 {}
