@@ -24,8 +24,8 @@ RUN ARCH=$(uname -m) && \
 COPY src/voice_chat_server/requirements.txt /tmp/requirements.txt
 RUN pip install --no-cache-dir -r /tmp/requirements.txt && rm /tmp/requirements.txt
 
-# Install uv package runner
-RUN pip install --no-cache-dir uv
+# Install uv package runner and pre-install ros-mcp for instant MCP startup
+RUN pip install --no-cache-dir uv "mcp<2" "fastmcp<3.0" pydantic-settings ros-mcp
 
 # Download Piper Optimus Prime voice model using model_manager.py as Single Source of Truth
 ENV PIPER_MODELS_DIR=/opt/piper_models

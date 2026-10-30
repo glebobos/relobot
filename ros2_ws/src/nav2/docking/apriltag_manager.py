@@ -78,7 +78,7 @@ class AprilTagManager(Node):
         # --- ROS parameters ---
         self.declare_parameter('container', 'nav2_container')
         self.declare_parameter('dock_action', '/dock_robot')
-        self.declare_parameter('dock_tag_frame', 'tag25h9:0')
+        self.declare_parameter('dock_tag_frame', 'tag36h11:0')
         self.declare_parameter('base_frame', 'odom')
         self.declare_parameter('publish_rate', 10.0)
         self.declare_parameter('always_on', False)

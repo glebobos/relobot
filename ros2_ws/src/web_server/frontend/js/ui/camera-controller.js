@@ -163,9 +163,9 @@ export class CameraController {
         this.tfTopic = rosService.subscribe('/tf', 'tf2_msgs/msg/TFMessage', (message) => {
             if (!message.transforms || message.transforms.length === 0) return;
             
-            // Look for a transform starting with tag25h9: or tag36h11: etc
+            // Look for a transform starting with tag36h11: or tag25h9: etc
             const tagTransform = message.transforms.find(t => 
-                t.child_frame_id.startsWith('tag25h9:') || t.child_frame_id.startsWith('tag36h11:')
+                t.child_frame_id.startsWith('tag36h11:') || t.child_frame_id.startsWith('tag25h9:')
             );
 
             if (tagTransform) {

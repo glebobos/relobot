@@ -96,6 +96,9 @@ services:
     container_name: ros2_nav2
     ipc: host
     pid: host
+    depends_on:
+      ros2_zenoh_router:
+        condition: service_started
     volumes:
       - .:/ros2_ws/
       - /tmp:/tmp
@@ -115,6 +118,11 @@ services:
     container_name: ros2_voice_chat
     ipc: host
     pid: host
+    depends_on:
+      ros2_zenoh_router:
+        condition: service_started
+      ros2_rosbridge:
+        condition: service_started
     volumes:
       - .:/ros2_ws/
       - ..:/relobot

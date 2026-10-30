@@ -1,0 +1,18 @@
+# ReloBot persistent microcontroller and sensor serial symlinks
+# Copy to /etc/udev/rules.d/99-relobot.rules and run:
+#   sudo udevadm control --reload-rules && sudo udevadm trigger
+
+# Knives Motor Controller (Seeed XIAO RP2040)
+SUBSYSTEM=="tty", ATTRS{serial}=="4150323038323712", MODE="0660", GROUP="dialout", SYMLINK+="relobot_knives"
+
+# Wheels Differential Drive Controller (Seeed XIAO RP2040)
+SUBSYSTEM=="tty", ATTRS{serial}=="4150324E30363318", ATTRS{product}=="picoros_wheels", MODE="0660", GROUP="dialout", SYMLINK+="relobot_wheels"
+
+# INA226 Power & Dock Sensor (Seeed XIAO RP2350)
+SUBSYSTEM=="tty", ATTRS{serial}=="926316917F40C4E9", MODE="0660", GROUP="dialout", SYMLINK+="relobot_ina226"
+
+# IMU Sensor (Raspberry Pi Pico RP2040)
+SUBSYSTEM=="tty", ATTRS{serial}=="4150324E30363318", ATTRS{product}=="Pico", MODE="0660", GROUP="dialout", SYMLINK+="relobot_imu"
+
+# Lidar (Silicon Labs CP2102 USB-to-UART Bridge)
+SUBSYSTEM=="tty", ATTRS{idVendor}=="10c4", ATTRS{idProduct}=="ea60", MODE="0660", GROUP="dialout", SYMLINK+="relobot_lidar"

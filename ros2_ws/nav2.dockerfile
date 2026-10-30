@@ -3,6 +3,28 @@ FROM ros:lyrical-ros-base-resolute@sha256:f79cd486fa218596747c45d00ca42101b0303f
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ENV DEBIAN_FRONTEND=noninteractive RMW_IMPLEMENTATION=rmw_zenoh_cpp
 
+# Configure APT pinning for Nav2 1.5.3 stack from ros2-testing while holding other packages on stable
+RUN printf '%s\n' \
+    'Types: deb' \
+    'URIs: http://packages.ros.org/ros2-testing/ubuntu' \
+    'Suites: resolute' \
+    'Components: main' \
+    'Signed-By: /usr/share/keyrings/ros2-archive-keyring.gpg' \
+    > /etc/apt/sources.list.d/ros2-testing.sources && \
+    printf '%s\n' \
+    'Package: ros-lyrical-nav2-* ros-lyrical-navigation2 ros-lyrical-opennav-*' \
+    'Pin: version 1.5.3*' \
+    'Pin-Priority: 990' \
+    '' \
+    'Package: ros-lyrical-nanoflann-vendor' \
+    'Pin: version 2.*' \
+    'Pin-Priority: 990' \
+    '' \
+    'Package: ros-lyrical-rmw-zenoh-cpp ros-lyrical-zenoh-cpp-vendor' \
+    'Pin: version 0.10.7*' \
+    'Pin-Priority: -1' \
+    > /etc/apt/preferences.d/nav2
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     libgdal-dev \

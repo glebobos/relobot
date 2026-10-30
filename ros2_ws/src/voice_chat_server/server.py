@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
 ReloBot AI Voice Chat Server
-Direct bidirectional bridge coordinating Web Interface, Antigravity (AGY) Agent, and Piper Neural TTS.
+Direct bidirectional bridge coordinating Web Interface, persistent Antigravity (AGY) Agent,
+and streaming Piper Neural TTS.
 """
 
 import os
@@ -9,8 +10,11 @@ import sys
 import json
 import time
 import re
+import signal
+import atexit
 import asyncio
 import logging
+import threading
 from typing import Optional
 
 # Local imports
@@ -39,7 +43,7 @@ CLAUSE_BREAK_RE = re.compile(r"([,;:—–]+)\s*")
 
 
 class VoiceChatServer:
-    """Coordinates AI prompt streaming, real-time token delivery, and concurrent Piper TTS."""
+    """Coordinates persistent AI prompt streaming, real-time token delivery, and concurrent Piper TTS."""
 
     def __init__(self):
         self.agent = AgentRunner()
@@ -58,6 +62,21 @@ class VoiceChatServer:
         except Exception as e:
             logger.warning(f"Piper TTS engine could not be loaded: {e}. Voice synthesis disabled.")
             self.tts = None
+
+    async def shutdown(self):
+        """Gracefully terminates all child processes (AGY session, ttyd terminal)."""
+        logger.info("Shutting down VoiceChatServer components...")
+        if self.agent:
+            await self.agent.stop()
+        if self.terminal:
+            await self.terminal.stop()
+
+    def sync_cleanup(self):
+        """Emergency synchronous cleanup for atexit handlers."""
+        if self.agent:
+            self.agent.sync_stop()
+        if self.terminal:
+            self.terminal.sync_stop()
 
     async def handle_connection(self, websocket):
         client_addr = getattr(websocket, 'remote_address', 'unknown')
@@ -90,11 +109,20 @@ class VoiceChatServer:
                     }))
                     continue
 
-                elif msg_type == "cancel" or msg_type == "stop":
+                elif msg_type in ("cancel", "stop"):
                     if active_task and not active_task.done():
                         active_task.cancel()
                         logger.info(f"Generation cancelled for client {client_addr}.")
+                    # Terminate active process turn so next prompt starts clean
+                    await self.agent.stop()
                     await websocket.send(json.dumps({"type": "cancelled"}))
+                    continue
+
+                elif msg_type in ("reset", "flush"):
+                    if active_task and not active_task.done():
+                        active_task.cancel()
+                    await self.agent.stop()
+                    await websocket.send(json.dumps({"type": "reset_ack"}))
                     continue
 
                 elif msg_type == "prompt":
@@ -139,7 +167,7 @@ class VoiceChatServer:
     ):
         """Processes a prompt: streams tokens immediately and concurrently synthesizes speech."""
         t_start = time.time()
-        logger.info(f"Processing prompt [{msg_id}] (conv={conversation_id or 'new'}): '{prompt}'")
+        logger.info(f"Processing prompt [{msg_id}]: '{prompt}'")
 
         await websocket.send(json.dumps({
             "type": "start",
@@ -214,20 +242,19 @@ class VoiceChatServer:
                     if enable_tts and tts_queue:
                         sentence_buffer += token
                         while True:
+                            # 1. Complete sentence ended by . ! ? or newline -> dispatch immediately!
                             match = SENTENCE_END_RE.search(sentence_buffer)
                             if match:
                                 split_idx = match.end()
                                 candidate = sentence_buffer[:split_idx].strip()
-                                words = candidate.split()
-                                if len(words) >= 8:
-                                    sentence_buffer = sentence_buffer[split_idx:]
-                                    if candidate:
-                                        tts_queue.put_nowait(candidate)
-                                    continue
+                                sentence_buffer = sentence_buffer[split_idx:]
+                                if candidate:
+                                    tts_queue.put_nowait(candidate)
+                                continue
 
-                            # For very long clauses without periods, split on comma/semicolon if >= 12 words
+                            # 2. Mid-sentence long clause break (, ; : —) only if >= 8 words
                             words = sentence_buffer.split()
-                            if len(words) >= 12:
+                            if len(words) >= 8:
                                 c_match = CLAUSE_BREAK_RE.search(sentence_buffer)
                                 if c_match:
                                     split_idx = c_match.end()
@@ -301,7 +328,7 @@ class VoiceChatServer:
         audio_sink: Optional[PcmAudioSink],
         stream_browser: bool
     ):
-        """Synthesizes queued text clauses into raw PCM chunks and streams to browser and speaker."""
+        """Synthesizes queued text clauses into raw PCM chunks and streams to browser and speaker in real-time."""
         if stream_browser and self.tts:
             try:
                 await websocket.send(json.dumps({
@@ -311,6 +338,8 @@ class VoiceChatServer:
                 }))
             except Exception as e:
                 logger.warning(f"Failed to send audio_start for [{msg_id}]: {e}")
+
+        loop = asyncio.get_running_loop()
 
         while True:
             try:
@@ -322,20 +351,35 @@ class VoiceChatServer:
                 if not clean_text or not self.tts:
                     continue
 
+                chunk_queue: asyncio.Queue = asyncio.Queue()
                 t0 = time.time()
-                # Run ONNX inference in threadpool to avoid blocking event loop
-                chunks = await asyncio.to_thread(lambda: list(self.tts.synthesize_pcm_chunks(clean_text)))
-                synth_ms = (time.time() - t0) * 1000
-                total_bytes = sum(len(c) for c in chunks)
 
-                logger.debug(
-                    f"Synthesized clause [{msg_id}] in {synth_ms:.1f}ms "
-                    f"({len(chunks)} chunks, {total_bytes:,} bytes): '{clean_text[:40]}...'"
-                )
+                def _synthesize_chunks():
+                    try:
+                        for chunk in self.tts.synthesize_pcm_chunks(clean_text):
+                            if chunk:
+                                loop.call_soon_threadsafe(chunk_queue.put_nowait, chunk)
+                    except Exception as exc:
+                        loop.call_soon_threadsafe(chunk_queue.put_nowait, exc)
+                    finally:
+                        loop.call_soon_threadsafe(chunk_queue.put_nowait, None)
 
-                for chunk in chunks:
-                    if not chunk:
-                        continue
+                synth_thread = threading.Thread(target=_synthesize_chunks, daemon=True)
+                synth_thread.start()
+
+                chunk_idx = 0
+                total_bytes = 0
+                while True:
+                    chunk = await chunk_queue.get()
+                    if chunk is None:
+                        break
+                    if isinstance(chunk, Exception):
+                        logger.warning(f"TTS synthesis error for [{msg_id}]: {chunk}")
+                        break
+
+                    total_bytes += len(chunk)
+                    chunk_idx += 1
+
                     # 1. Output to local robot hardware speaker
                     if audio_sink:
                         audio_sink.write(chunk)
@@ -343,10 +387,16 @@ class VoiceChatServer:
                     if stream_browser:
                         await websocket.send(chunk)
 
+                synth_ms = (time.time() - t0) * 1000
+                logger.debug(
+                    f"Synthesized and streamed clause [{msg_id}] in {synth_ms:.1f}ms "
+                    f"({chunk_idx} chunks, {total_bytes:,} bytes): '{clean_text[:40]}...'"
+                )
+
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                logger.warning(f"TTS synthesis error for [{msg_id}]: {e}")
+                logger.warning(f"TTS synthesis worker error for [{msg_id}]: {e}")
             finally:
                 if 'clause' in locals() and clause is not None:
                     queue.task_done()
@@ -364,6 +414,20 @@ class VoiceChatServer:
 async def main():
     import websockets
     server_instance = VoiceChatServer()
+
+    # Register emergency synchronous cleanup on process exit
+    atexit.register(server_instance.sync_cleanup)
+
+    loop = asyncio.get_running_loop()
+    stop_event = asyncio.Event()
+
+    def _on_signal():
+        logger.info("Shutdown signal received (SIGTERM/SIGINT). Initiating graceful shutdown...")
+        stop_event.set()
+
+    for sig in (signal.SIGTERM, signal.SIGINT):
+        loop.add_signal_handler(sig, _on_signal)
+
     if server_instance.terminal:
         await server_instance.terminal.start()
     logger.info("Starting ReloBot Voice Chat WebSocket Server on ws://%s:%s", HOST, PORT)
@@ -378,10 +442,11 @@ async def main():
             max_size=10 * 1024 * 1024
         ):
             logger.info("ReloBot Voice Chat Server listening on %s:%s", HOST, PORT)
-            await asyncio.Future()
+            await stop_event.wait()
     finally:
-        if server_instance.terminal:
-            await server_instance.terminal.stop()
+        logger.info("Stopping VoiceChatServer and terminating child processes...")
+        await server_instance.shutdown()
+        logger.info("VoiceChatServer shutdown complete.")
 
 
 if __name__ == "__main__":

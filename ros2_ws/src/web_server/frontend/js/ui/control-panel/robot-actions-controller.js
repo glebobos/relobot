@@ -1,5 +1,5 @@
 import { rosService } from '../../services/ros-service.js';
-import { ACTIONS, BT_DIR, DOCK_ID, MSG_TYPES, TOPICS } from '../../shared/constants.js';
+import { ACTIONS, DOCK_ID, MSG_TYPES, TOPICS } from '../../shared/constants.js';
 import { DomListenerBag } from '../../shared/dom-listener-bag.js';
 
 export class RobotActionsController {
@@ -10,6 +10,7 @@ export class RobotActionsController {
         this.undockButton = document.getElementById('undock-btn');
         this.batteryWidget = document.getElementById('headerBatteryWidget');
         this.dockAction = rosService.createAction(ACTIONS.DOCK_ROBOT, MSG_TYPES.DOCK_ROBOT);
+        this.undockAction = rosService.createAction(ACTIONS.UNDOCK_ROBOT, MSG_TYPES.UNDOCK_ROBOT);
         this.navigationAction = rosService.createAction(
             ACTIONS.NAVIGATE_TO_POSE,
             MSG_TYPES.NAVIGATE_TO_POSE,
@@ -73,6 +74,7 @@ export class RobotActionsController {
         if (!this.dockingActive) return;
         try {
             this.dockAction.cancelAllGoals();
+            this.undockAction.cancelAllGoals();
         } finally {
             this.setDockingState(false);
         }
@@ -87,19 +89,13 @@ export class RobotActionsController {
     }
 
     sendUndockGoal() {
-        this.navigationAction.sendGoal(
+        this.undockAction.sendGoal(
             {
-                behavior_tree: `${BT_DIR}/undock_and_turn.xml`,
-                pose: {
-                    header: { frame_id: 'map' },
-                    pose: {
-                        position: { x: 0, y: 0, z: 0 },
-                        orientation: { x: 0, y: 0, z: 0, w: 1 },
-                    },
-                },
+                dock_type: 'apriltag_dock',
+                max_undocking_time: 30.0,
             },
             result => console.log('[Undock] Result:', result),
-            () => {},
+            feedback => console.debug('[Undock] Feedback:', feedback),
             error => console.error('[Undock] Goal failed:', error),
         );
     }

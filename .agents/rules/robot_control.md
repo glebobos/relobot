@@ -35,17 +35,11 @@ DO NOT call `get_actions`, `get_action_details`, `get_parameters`, `get_topics`,
    - Arguments:
      ```json
      {
-       "action_name": "/navigate_to_pose",
-       "action_type": "nav2_msgs/action/NavigateToPose",
+       "action_name": "/undock_robot",
+       "action_type": "nav2_msgs/action/UndockRobot",
        "goal": {
-         "behavior_tree": "/ros2_ws/src/nav2/behavior_trees/undock_and_turn.xml",
-         "pose": {
-           "header": { "frame_id": "map" },
-           "pose": {
-             "position": { "x": 0.0, "y": 0.0, "z": 0.0 },
-             "orientation": { "x": 0.0, "y": 0.0, "z": 0.0, "w": 1.0 }
-           }
-         }
+         "dock_type": "apriltag_dock",
+         "max_undocking_time": 30.0
        }
      }
      ```
@@ -76,14 +70,20 @@ DO NOT call `get_actions`, `get_action_details`, `get_parameters`, `get_topics`,
      }
      ```
 
-5. **CANCEL DOCKING** ("cancel dock", "abort docking"):
+5. **CANCEL DOCKING / UNDOCKING** ("cancel dock", "abort docking", "cancel undock", "abort undocking"):
    - Tool: `call_mcp_tool`
    - ServerName: `ros-mcp`
    - ToolName: `cancel_action_goal`
-   - Arguments:
+   - Arguments (for dock):
      ```json
      {
        "action_name": "/dock_robot"
+     }
+     ```
+   - Arguments (for undock):
+     ```json
+     {
+       "action_name": "/undock_robot"
      }
      ```
 
