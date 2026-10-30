@@ -286,3 +286,21 @@ class TerminalManager:
             )
         except Exception:
             pass
+
+    def sync_stop(self):
+        """Emergency synchronous cleanup for atexit handlers."""
+        if self.proc and self.proc.returncode is None:
+            try:
+                self.proc.kill()
+            except Exception:
+                pass
+            self.proc = None
+        try:
+            subprocess.run(
+                ["tmux", "-L", TMUX_SOCKET, "kill-session", "-t", "agy-terminal"],
+                capture_output=True,
+                check=False
+            )
+        except Exception:
+            pass
+

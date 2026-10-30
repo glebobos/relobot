@@ -84,6 +84,9 @@ async def run_tests():
             f"Multi-turn context retention failed: expected 'ALPHA-992' in '{full_t2}'"
         )
         print("[PASS] AGY multi-turn conversation memory verified.")
+        await runner.stop()
+        assert not runner.is_running, "Runner process still active after stop()"
+        print("[PASS] AGY persistent process group cleanly stopped.")
     else:
         print("[SKIP] AGY binary not available in current environment; skipping CLI test.")
 
